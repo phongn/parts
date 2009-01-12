@@ -1,0 +1,6 @@
+from parts import *
+
+Part('a_alias', 'a.parts')
+
+#print DefaultEnvironment().Dump('PART_INFO')
+#print DefaultEnvironment().Dump('PART_IDS')

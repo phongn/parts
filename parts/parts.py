@@ -1,0 +1,435 @@
+import os
+import time
+import SCons.Script 
+import core
+import common
+import vcs
+import part_logger
+
+# these imports add stuff we will need to export to the parts file.
+from platform_info import ChipArchitecture
+from platform_info import OSBit
+import location
+import version
+import node_helpers
+import functors
+import sdk
+
+from pattern import Pattern
+
+
+def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
+    def_env=SCons.Script.DefaultEnvironment()
+    rpt=def_env['PARTS_REPORTER']
+    part_info={}
+    
+    # we assume all parts make SDK.. else they will modify this value latter
+    part_info['MAKES_SDK']=True
+    
+    
+    # the path and location to the sub .scons file
+    ## The Alias...
+
+    # setup which part is being defined.
+    # we hold old state as needed. We create the name based on the
+    # currently defined Part + .<new part name>
+    if parent_alias!=None:
+        # existing part is being define, this subpart is defines as
+        # parentpart.subpart
+        alias=parent_alias+'.'+short_alias 
+    else:
+        alias=short_alias
+
+    #setup state
+    def_env['DEFINING_PART']=alias
+    
+    # Part Alias
+    part_info['ALIAS']=alias
+    env['ALIAS']=alias
+    # The Alias Parent
+    part_info['PARENT_ALIAS']=parent_alias
+    # The Alias Short Form
+    part_info['SHORT_ALIAS']=short_alias
+
+    # some data we will use for our own DB file
+    if common.g_name_alias_map.has_key(alias) == False:
+        common.g_name_alias_map[alias]=set()
+            
+    #setup the root info
+    root_info=part_info
+    while root_info['PARENT_ALIAS'] != None:
+        root_info=def_env['PART_INFO'][root_info['PARENT_ALIAS']]
+        common.g_name_alias_map[alias].add(root_info['ALIAS'])
+
+    #the Alias Root
+    part_info['ROOT_ALIAS']=root_info['ALIAS']    
+
+    ## FILE STUFF
+    if parts_file != None:
+        # force subst to make sure funny path issues are handled
+        parts_file=env.subst(parts_file)
+    
+        # do any checkout/copy/updates needed
+        # update the parts_file location
+        parts_file=vcs.process_vcs(env,alias,parts_file,vcs_type)
+
+        # work around in Scons bug
+        if parts_file[1] == ':' or parts_file[0]=='/':
+            parts_file=env.File(parts_file)
+        else:
+            curr_path=env.Dir('.').srcnode().abspath
+            parts_file=env.File(os.path.join(curr_path,parts_file))
+            #parts_file=env.Dir('.').srcnode().File(parts_file)
+        
+    part_info['FILE']=parts_file
+    
+    ## The names..
+    #the short name
+    part_info['SHORT_NAME']=None
+    #the Root name
+    part_info['ROOT_NAME']="${PARTNAME('"+root_info['ALIAS']+"')}"
+    
+    if parent_alias==None:
+        #The full name
+        part_info['NAME']=None
+        #the Parent name
+        part_info['PARENT_NAME']=None
+        
+        # some default version info
+        part_info['VERSION']=version.version('0.0.0')
+        part_info['SHORT_VERSION']='0.0'
+    else:
+        #The full name
+        part_info['NAME']="${PARTNAME('"+parent_alias+"')}.${PARTSHORTNAME('"+part_info['ALIAS']+"')}"
+        #the Parent name
+        part_info['PARENT_NAME']="${PARTNAME('"+parent_alias+"')}"
+            
+        # some default version info
+        part_info['VERSION']="${PARTS('"+root_info['ALIAS']+"','VERSION')}"
+        part_info['SHORT_VERSION']="${PARTS('"+root_info['ALIAS']+"','SHORT_VERSION')}"
+
+    #refernece to this env .. for better resolution later
+    part_info['ENV']=env
+    
+    #list of what we dependon 
+    part_info['DEPENDSON']=[]
+    
+    # some stuff for the SDK .. need to clean up latter
+    part_info['EXPORTED_HEADERS']=[]
+    part_info['EXPORTED_LIBS']=[]
+    part_info['EXPORTED_BINS']=[]
+    
+    #def_env[name]=part_info
+    if def_env.has_key('PART_INFO')==False:
+        def_env['PART_INFO']={}
+    if def_env['PART_INFO'].has_key(alias):
+        rpt.part_warning(env,'Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
+        #print 'Parts: Warning= Overriding predefined alias [',alias,'] file=[',def_env['PART_INFO'][alias]['FILE'],'] with data from part file=[',part_info['FILE'],']'
+
+    return part_info
+    
+
+def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
+                append={},prepend={},create_sdk=True,**kw):
+    
+    new_kw=env1.get('PARTS_KW',{})
+    new_kw.update(kw)
+    Part(alias,parts_file,mode,vcs_type,default,append,prepend,create_sdk,**new_kw)
+    
+def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
+            append={},prepend={},create_sdk=True,**kw):
+    start_time=time.time()
+    #print "defining" ,alias
+    if common.g_args['PARTS_MODE']=='help':
+        return
+
+    def_env=SCons.Script.DefaultEnvironment()
+    rpt=def_env['PARTS_REPORTER']
+    parent_alias=def_env.get('DEFINING_PART',None)
+    
+    sdk_file=[None]
+    if parent_alias == None:
+        talias=alias
+        # empty list to save mem if this is a root part
+        sdk.g_sdked_files=[]
+        # this allows us to decide if we want to continue processing this file or not
+        # if not we will return. The second part of this is to see if we modify the part file
+        # we will read to be the original, or the generated one.
+        sdk_file=core.process_part(talias)
+    else:
+        
+        talias=parent_alias+'.'+alias
+
+    if sdk_file == None:
+        #print "Skipping",talias
+        #print talias,'\t\t',time.time() - start_time,"seconds"
+        return    
+    ## process the part
+    part_info={}
+    
+    ## setup the basics
+    # Get the enviroment to use
+    env=core.generate_config(prepend,append,kw)
+
+    # add to our set of Env with builders
+    #common.g_env_w_builders.add(id(env))
+    
+    env['PARTS_KW']=kw
+    # get our current ABS path for later use
+    curr_path=env.Dir('.').srcnode().abspath
+    ## Setup the global state 
+    
+    ## store part specfic data
+    if sdk_file != [None]:
+    #    print "Building",talias,"from SDK!!"
+        rpt.part_message(env.subst('Building from SDK -- ${PART_ALIAS_CONCEPT}'+talias))
+        part_info=make_part_info(env,sdk_file,alias,parent_alias,None)
+    else:
+        if parent_alias == None:
+            rpt.part_message(env.subst('Building from source -- ${PART_ALIAS_CONCEPT}'+talias))
+        #    print "Building",talias,"from source!!"
+        part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
+    
+    alias=part_info['ALIAS']
+    parts_file=part_info['FILE']
+
+    def_env['PART_INFO'][alias]=part_info
+    
+    #helps with debugging
+    env['PART_INFO']=part_info
+    
+
+    ## Setup the enviroment with dependent libs, include, etc...
+
+    
+    libpath=['$BUILD_DIR']
+    env.Append(LIBPATH=libpath)
+
+    # test to what we want to the SRC_DIR to be.. works around
+    # annoying behavior of Root Sconstruct file not working with
+    # with other files not under it directory tree
+    s=os.path.split(part_info['FILE'].srcnode().abspath)[0]
+    if s=='':
+        s=curr_path
+    env['SRC_DIR']=env['PART_DIR']=s
+    
+    if mode == []:
+        mode=env['mode']
+    env['MODE']=mode
+    
+    ## logger and task spawners
+    spawn=env['PART_SPAWNER']
+ 
+    env['PART_LOG_MAPPER']=part_logger.part_logger(env,def_env['PARTS_REPORTER'].console)
+    env['SPAWN']=spawn(env)
+    
+    
+    ##alias info
+    env['PART_ALIAS']=part_info['ALIAS']
+    env['PART_ROOT_ALIAS']=part_info['ROOT_ALIAS']
+    env['PART_PARENT_ALIAS']=part_info['PARENT_ALIAS']
+    
+    ## name info
+    env['PART_NAME']="${PARTNAME('"+alias+"')}"
+    env['PART_SHORT_NAME']="${PARTSHORTNAME('"+alias+"')}"    
+    env['PART_ROOT_NAME']="${PARTS('"+alias+"','ROOT_NAME')}"
+    env['PART_PARENT_NAME']="${PARTS('"+alias+"','PARENT_NAME')}"
+
+    ## version info
+    env['PART_VERSION']="${PARTS('"+alias+"','VERSION')}"
+    env['PART_SHORT_VERSION']="${PARTS('"+alias+"','SHORT_VERSION')}"
+    
+    ##  some backward compatible stuff to later remove
+    ## also we ahve some stuff for mapping the export var correctly while
+    ## handling some ugly wrapper to ceratina object i would rather have as 
+    ## pieces
+    export_map=common.g_parts_objs
+    Bin=location.Bin(env)
+    Lib=location.Lib(env)
+    AbsFile=node_helpers._AbsFile(env)
+    AbsDir=node_helpers._AbsDir(env)
+    Include=location.Include(env)
+    env['mode']=kw.get('mode',[])
+    
+    export_map['AbsFile']=AbsFile
+    export_map['AbsDir']=AbsDir
+    export_map['env']=env
+    
+    # this should force Scons to be called and warn if the file does not
+    # exist, except when we are cleaning and the checked out version
+    # does not exists
+    ret=None
+    if (common.g_args["PARTS_MODE"]=='build') or (os.path.exists(parts_file.srcnode().abspath)==True):
+        if os.path.exists(parts_file.srcnode().abspath)==False:
+            rpt.part_warning(env,'Parts file '+parts_file.srcnode().abspath+" was not found. The build may fail")
+            #print 'Parts: Warning -- Parts file',parts_file.srcnode().abspath,'was not found. The build may fail'
+        # Call the part file        
+##        s=env.subst('$SRC_DIR')
+##        ffile=parts_file
+##        print
+##        print 'build_dir=',env.subst('$BUILD_DIR'),env.Dir(env.subst('$BUILD_DIR')).path
+##        print 'src_dir=',env.Dir(s),env.Dir(s).abspath
+##        print 'src_dir2=',env.Dir(s).srcnode(),env.Dir(s).srcnode().abspath
+##        print 'file=',ffile,ffile.abspath,ffile.srcnode().abspath
+##        print
+        if env['CONTINUE_ON_EXCEPTION']:
+            try:
+                ret=def_env.SConscript(
+                    parts_file,
+                    src_dir=env.subst('$SRC_DIR'),
+                    variant_dir=env.subst('$BUILD_DIR'),
+                    duplicate=env['duplicate_build'],
+                    exports=export_map
+                    )
+            except Exception,ec:
+                import traceback,StringIO
+                ec_str=StringIO.StringIO()
+                traceback.print_exc(file=ec_str)
+                rpt.part_error(env,"Exception thrown while processing "+parts_file.srcnode().abspath+"\n"+ec_str.getvalue())
+                rpt.part_message("Will try to continue...")
+                env.Exit(0)
+        else:
+            ret=def_env.SConscript(
+                    parts_file,
+                    src_dir=env.subst('$SRC_DIR'),
+                    variant_dir=env.subst('$BUILD_DIR'),
+                    duplicate=env['duplicate_build'],
+                    exports=export_map
+                    )
+
+    
+    ## Setup SDK stuff
+ 
+    if (env['CREATE_SDK'] == False and create_sdk == True):
+        create_sdk=False;
+    
+    if create_sdk==True:
+        pinfo=def_env['PART_INFO'][alias]
+        #set up the builder for the SDK file
+        v=env.__CreateSDKBuilder__([],parts_file)
+        part_info['SDK_FILE']=v[0]
+        # needs to depend on all the file existing in the SDK 
+        # else the builder may fail.
+        env.Requires(v,env.Alias('_${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias))
+        env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias,v)
+        if pinfo.has_key('CREATE_SDK') == False:
+                pinfo['CREATE_SDK']=[]
+        if parent_alias!=None:
+            parent_pinfo=def_env['PART_INFO'][parent_alias]
+            if parent_pinfo.has_key('CREATE_SDK') == False:
+                parent_pinfo['CREATE_SDK']=[]
+            sdkname=pinfo['NAME']+'_'+pinfo['VERSION']+'.sdk.parts'
+            args={'alias':pinfo['SHORT_NAME'],'parts_file':sdkname,
+            'mode':mode,
+            'vcs_type':None,'default':default,'append':append,'prepend':prepend,
+            'create_sdk':False}
+            parent_pinfo['CREATE_SDK'].append(('Part',[common.named_parms(args),
+            common.named_parms(kw)])) 
+    
+
+    ## here we map the alias tree
+
+    # this builder allows us to map what parts tries to map... 
+    # nice for debugging build issues and making depends mapping graphs
+    # need better mapping.. for now we map to abstract 'package'
+    vfile=env._MapUnknowns([],parts_file)
+    env.Alias("version_mapping::",vfile)
+    env.Alias("package",vfile)       
+        
+    #build alias
+    build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+    # this aliasmap below is modifed to make sure parts that call stuff like
+    # make under the hood or any other action that prevents build directory
+    # from being made, from stopping desired behavior
+    a=env.Alias("_"+build_alias)
+    a2=env.Alias(build_alias,[a,env.Dir(env.subst('$BUILD_DIR'))])
+    env.Clean(a,env.subst('$BUILD_DIR'))
+    common.g_name_alias_map[alias].add("_"+build_alias)
+    common.g_name_alias_map[alias].add(build_alias)
+    common.make_alias_tree(env,'${PART_BUILD_CONCEPT}',a2)
+
+    #sdk alias stuff
+    sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+    a=env.Alias(sdk_alias,[a])
+    common.g_name_alias_map[alias].add(sdk_alias)
+    common.make_alias_tree(env,'${PART_SDK_CONCEPT}',a)
+    
+    #install alias stuff
+    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+    a=env.Alias(install_alias,[a])
+    common.g_name_alias_map[alias].add(install_alias)
+    common.make_alias_tree(env,'${PART_INSTALL_CONCEPT}',a)
+    
+    #add to queue the delayed mapping of any dependent stuff
+    def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_parts_alias(env))
+    
+    
+    #main alias
+    a=env.Alias(alias,[a])
+    common.g_name_alias_map[alias].add(alias)
+    
+    a=env.Alias('${PART_ALIAS_CONCEPT}'+alias,a)
+    common.g_name_alias_map[alias].add(env.subst('${PART_ALIAS_CONCEPT}')+alias)
+    # all alias??
+    env.Alias('${PART_ALIAS_CONCEPT}',a)
+    pv_alias=common.make_alias_tree(env,'${PART_NAME_CONCEPT}',a)
+    
+    env.Alias('all',[pv_alias])
+    
+    # basic clean stuff .. note this might clean stuff in a way that 
+    # scons should have clean in other ways but failed to.. 
+    # may cause a false postive bug to be filed
+    ## NOte the all cases we might want to move to a new location
+    #ta=env.Alias(env.subst(part_info['ROOT_ALIAS']))
+##    if common.def_args['OUT_INCLUDE'] == env['OUT_INCLUDE']:
+##        #print alias,env.Dir('$OUT_INCLUDE')
+##        env.Clean(ta,env.Dir('$OUT_INCLUDE'))
+##    if common.def_args['OUT_LIB'] == env['OUT_LIB']:
+##        #print env.Dir('$OUT_LIB').srcnode().abspath
+##        env.Clean(ta,env.Dir('$OUT_LIB'))
+##    if common.def_args['OUT_BIN'] == env['OUT_BIN']:
+##        #print env.Dir('$OUT_BIN').srcnode().abspath
+##        env.Clean(env.Alias('all'),env.Dir('$OUT_BIN'))
+##    if common.def_args['BUILD_DIR'] == env['BUILD_DIR']:
+##        #print "build",env.Dir('$BUILD_DIR').abspath
+##        env.Clean(ta,env.Dir('$BUILD_DIR').abspath)
+##    if common.def_args['OUT_BIN_ROOT'] == env['OUT_BIN_ROOT']:
+##        #print env.Dir('$OUT_BIN').srcnode().abspath
+##        env.Clean(env.Alias('all'),env.Dir('$OUT_BIN_ROOT'))
+##    if common.def_args['OUT_LIB_ROOT'] == env['OUT_LIB_ROOT']:
+##        #print env.Dir('$OUT_BIN').srcnode().abspath
+##        env.Clean(env.Alias('all'),env.Dir('$OUT_LIB_ROOT'))
+##    if common.def_args['OUT_INCLUDE_ROOT'] == env['OUT_INCLUDE_ROOT']:
+##        #print env.Dir('$OUT_BIN').srcnode().abspath
+##        env.Clean(env.Alias('all'),env.Dir('$OUT_INCLUDE_ROOT'))
+##    if common.def_args['BUILD_DIR_ROOT'] == env['BUILD_DIR_ROOT']:
+##        #print env.Dir('$OUT_BIN').srcnode().abspath
+##        env.Clean(env.Alias('all'),env.Dir('$BUILD_DIR_ROOT'))
+    
+
+    # must be last statement for this function
+    if default==True:
+        def_env.Default(pv_alias)
+    
+    def_env['DEFINING_PART']=parent_alias   
+    #print alias,'\t\t',time.time() - start_time,"seconds"
+    
+
+
+    
+# This is what we want to be setup in parts
+from SCons.Script.SConscript import SConsEnvironment
+
+# adding logic to Scons Enviroment object
+SConsEnvironment.Part=Part_method
+
+# add configuartion varaible needed for part
+common.add_config_var('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}')
+
+common.add_config_var('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}')
+common.add_config_var('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}')
+common.add_config_var('BUILD_DIR_ROOT','#build')
+common.add_config_var('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${PLATFORM}_${ARCHITECTURE}/$ALIAS')
+common.add_config_var('use_env',False)
+common.add_config_var('duplicate_build',False)
+common.add_config_var('mode',['default'])

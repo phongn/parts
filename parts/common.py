@@ -1,0 +1,458 @@
+###########
+## Common code and general objects
+##########
+
+import fnmatch
+import string
+import os
+
+
+# test if bool is defined, define if not
+if not __builtins__.has_key('bool'):
+    True=1
+    False=0
+
+# import Scons stuff
+import SCons.Script 
+
+g_builders={}
+g_args={}
+g_env_cache={}
+g_parts_objs={}
+
+# node we have processed
+#g_parts_node=set()
+# enviroments with builders
+# or ones that are used created by the part call which we always assume to have one
+#g_env_w_builders=set()
+
+def_args={}
+
+# holds the set of alias that are created by parts
+g_name_alias_map={}
+# set of the part we know we want to build
+g_buildable_part=set()
+# set of alias we are targeting to be build as source
+g_target_alias=set()
+#set of parts we want to build as an SDK, given that it exists in the sdk directory
+g_build_as_sdk=set()
+#depends data we stored
+g_depends_data={}
+
+def add_parts_object(key,object):
+    g_parts_objs[key]=object
+    # add code to for help generation
+
+def add_config_var(key,default,help=''):
+    def_args[key]=default
+    # add code to for help generation
+
+##########################################################
+
+def make_list_converter(val, allowedElems=[], mapdict={}):
+    """
+    """
+    # make the list
+    val = filter(None, string.split(val, ','))
+    # map values
+    val = map(lambda v, m=mapdict: m.get(v, v), val)
+    if allowedElems != []:
+        # validate if we have bad elements
+        notAllowed = filter(lambda v, aE=allowedElems: not v in aE, val)
+        if notAllowed:
+            raise ValueError("Invalid value(s) for option: %s" %
+                        string.join(notAllowed, ','))
+    # see if we have duplicate elements
+    notAllowed = filter(lambda v,lst=val: lst.count(v)>1, val)
+    if notAllowed:
+        raise ValueError("Value(s) are entered more then once for option: %s" %
+                    string.join(make_unique(notAllowed), ','))
+    return val
+
+
+def ListOption2(key, help, default=[], names=[], map={}):
+    """
+    """
+    names_str = 'allowed names: %s' % string.join(names, ' ')
+    if SCons.Util.is_List(default):
+        default = string.join(default, ',')
+    help = string.join(
+        (help, '(all|none|comma-separated list of names)', names_str),
+        '\n    ')
+    return (key, help, default,
+            None, #_validator,
+            lambda val, elems=names, m=map: make_list_converter(val, elems, m))
+###############
+
+def process_tool_arg(lst):
+    tmplst=[]
+    for i in lst:
+        if is_string(i):
+            tmp=string.split(i,'_',2)
+        else:
+            tmp=i
+        if len(tmp)==1:
+            tmp.append(None)
+        elif len(tmp)!=2:
+            # error
+            print "Invalid tool defined [",tmp,']'
+            Exit(1)
+        tmplst.append(tmp)
+    return tmplst
+
+def AddBuilder(name,builder):
+    if g_builders.has_key(name)==False:
+        g_builders[name]=builder
+    else:
+        pass
+        
+
+def matches(value, includes, excludes=None):
+    '''Function help with tell if a value (as a string) matched on of the include
+    patterns and doesn't match on of the exclude patterns.
+    '''
+    match = 0
+    for pattern in includes:
+        if fnmatch.fnmatchcase(value, pattern):
+            match = 1
+            break
+    if match == 1:
+       for pattern in excludes:
+           if fnmatch.fnmatchcase(value, pattern):
+               match = 0
+               break
+    return match
+
+def make_unique(obj):
+    ''' The purpose of this object is to make a list
+    with only unique values in it.
+    The input is the list object.
+    It returns the new list (Note this is NOT a deep copy)'''
+    tmp=[]
+    for i in obj:
+        if not i in tmp:
+            if type(i) == type([]):
+                tmp.extend(i)
+            else:
+                tmp.append(i)
+    return tmp    
+
+def make_unique_str(obj):
+    ''' The purpose of this object is to make a list
+    with only unique values in it.
+    The input is the list object.
+    It returns the new list (Note this is NOT a deep copy)'''
+    tmp=[]
+    for i in obj:
+        addit=True
+        for j in tmp:
+            if str(j) == str(i):
+                 addit=False
+                 break 
+        if addit:
+            tmp.append(i)
+    return tmp
+
+def is_list(obj):
+    import UserList
+    return type(obj) is type([]) or isinstance(obj,UserList.UserList)
+    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+
+def is_string(obj):
+    return type(obj) is type('')
+    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+
+def is_bool(obj):
+    return type(obj) is type(True)
+
+def is_catagory_file(env,cat,file):
+    ''' this function is the master function for finding a if a file matches a type pattern.'''
+    '''This function returns True if the argument looks like a file that would be copied to a LIB directory'''
+    patterns=env[cat]
+    for i in patterns:
+        if fnmatch.fnmatchcase(str(file),i):
+            return True;
+    return False
+
+def option_bool(val,option, default=False):
+    if is_string(val):
+        if val.lower() == 'true':
+            return True
+        elif val.lower() == 'false':
+            return False
+        else:
+            print 'Parts:',option,'set to invalid value of [',val,'], using default of value of [',default,']'
+            return default
+    return bool(val)    
+
+#def is_lib_file(env,file):
+#    '''This function returns True if the argument looks like a file that would be copied to a LIB directory'''
+#    return is_catagory_file(env,'LIB_PATTERN',file)
+
+#def is_bin_file(env,file):
+#    '''This function returns True is the argument looks like a file that would be copied to a BIN directory'''
+#    return is_catagory_file(env,'BIN_PATTERN',file)
+
+
+## amazing enough python never added a relpath function....
+def relpath(to_dir, from_dir=os.curdir):
+    """
+    Return a relative path to the target [to_dir] from either the current dir or an optional base dir(from_dir).
+    Base can be a directory specified either as absolute or relative to current dir.
+    Does not check to see if directories exist.. assumes you get that right yourself
+    Also in drive based systems.. it returns the abs_path(to_dir) in cases of different drives
+    """
+    
+    from_dir_list = (os.path.abspath(from_dir)).split(os.sep)
+    to_dir_list = (os.path.abspath(to_dir)).split(os.sep)
+    
+    # On the windows platform the target may be on a completely different drive from the base.
+    if os.name in ['nt','dos','os2'] and from_dir_list[0] != to_dir_list[0]:
+        # we coudl error .. but instead I return the to_path
+        return os.path.abspath(to_dir)
+
+    # Starting from the filepath root, work out how much of the filepath is
+    # shared by base and target.
+    for i in range(min(len(from_dir_list), len(to_dir_list))):
+        if from_dir_list[i] != to_dir_list[i]: break
+    else:
+        # If we broke out of the loop, i is pointing to the first differing path elements.
+        # If we didn't break out of the loop, i is pointing to identical path elements.
+        # Increment i so that in all cases it points to the first differing path elements.
+        i+=1
+
+    rel_list = [os.pardir] * (len(from_dir_list)-i) + to_dir_list[i:]
+    if rel_list == []:
+        return '.'
+    return os.path.join(*rel_list)
+
+
+
+#---------------------------------------------------------------------
+# parseVersionNumber
+#
+# Parses a version number string such as '8.1.0' and returns 
+# major_number, minor_number, and revision_number.  For any of these
+# fields, a value of -1 means 'any'.  For example, '8.x.1' would return
+# 8, -1, and 1.  The given version number string must not start with a 
+# product prefix.
+#
+# Returns (error_msg, major_number, minor_number, revision_number).
+# error_msg is an empty string if there is no error.
+#---------------------------------------------------------------------
+def parseVersionNumber(versionNumber):
+    fields = string.split(versionNumber, '.')
+    fieldValues = [-1, -1, -1]		# default values
+
+    for i in range(len(fields)):
+        if fields[i] == 'x' or fields[i] == 'X' or fields[i] == '*':
+            value = -1
+        else:
+            value = int(fields[i])
+
+        fieldValues[i] = value
+        # Parse only as many version numbers as we have room for
+        if i + 1 == len(fieldValues):
+            break
+
+    return fieldValues[0], fieldValues[1], fieldValues[2]
+
+#---------------------------------------------------------------------
+# CompareVersionNumbers
+#
+# Compares two discrete version numbers and returns (error_msg, result) 
+# where error_msg is an emptry string if there is no error.  
+# result contains the result of the comparison
+# as follows:
+#
+#	result = 0:	versionNumber1 = versionNumber2
+#	result < 0:	versionNumber1 < versionNumber2
+#	result > 0: versionNumber1 > versionNumber2
+#
+# Arguments must be in the discrete version string format, e.g. '8.1.2'.
+# Argument of None is considered to be less than '0.0.0'
+#
+# Returns (error_message, result) where error_message is '' if no error.
+#---------------------------------------------------------------------
+def CompareVersionNumbers(verStr1, verStr2):
+    if verStr1 == None and verStr2 == None:
+        return 0
+
+    if verStr1 == None and verStr2 != None:
+        return -1
+
+    if verStr1 != None and verStr2 == None:
+        return 1
+
+    major1, minor1, rev1 = parseVersionNumber(verStr1)
+
+    major2, minor2, rev2 = parseVersionNumber(verStr2)
+
+    if major1 < major2 and not (major1 == -1 or major2 == -1):
+        return -1
+    if major1 > major2 and not (major1 == -1 or major2 == -1):
+        return 1
+
+    if minor1 < minor2 and not (minor1 == -1 or minor2 == -1):
+        return -1
+    if minor1 > minor2 and not (minor1 == -1 or minor2 == -1):
+        return 1
+
+    if rev1 < rev2 and not (rev1 == -1 or rev2 == -1):
+        return -1
+    if rev1 > rev2 and not (rev1 == -1 or rev2 == -1):
+        return 1
+
+    return 0
+
+def get_version_from_list(v, vlist):
+    for vi in vlist:
+        if CompareVersionNumbers(vi,v) == 0:
+            return vi
+    return False
+
+    
+## help objects
+class _make_rel:
+    def __init__(self,lst):
+        self.lst=lst
+    
+    def string_it(self,env,path):
+        import pattern
+        ret='[ '
+        for i in self.lst:
+            if isinstance(i,SCons.Node.FS.Dir):
+                ret+="env.Dir('"+relpath(env.Dir(i).srcnode().abspath,path)+"')"
+            elif isinstance(i,pattern.Pattern):
+                t,sr=i.target_source(path)
+                inc=[]
+                for s in sr:
+                    inc.append(relpath(s,path).replace('\\','/'))
+                #installed_files+=env.InstallAs(t,sr)
+                s = 'Pattern(src_dir="'+relpath(i.src_dir.abspath,path).replace('\\','/')+'",includes = '+str(inc)
+                if i.sub_dir!='':
+                    s += ",sub_dir='"+str(i.sub_dir)+"'"
+                s+=")"
+                ret+=s
+            else:
+                ret+="'"+relpath(env.File(i).srcnode().abspath,path).replace('\\','/')+"'"
+            ret+=','
+        ret=ret[:-1]+']'
+        return ret
+
+
+
+class _make_reld:
+    def __init__(self,lst):
+        self.lst=lst
+    
+    def string_it(self,env,path):
+        ret=[]
+        for i in self.lst:
+            if isinstance(i,SCons.Node.FS.Dir):
+                ret.append("env.Dir("+relpath(env.Dir(i).srcnode().abspath,path)+")")
+            else:
+                ret.append(relpath(env.Dir(i).srcnode().abspath,path))
+        return str(ret)
+
+class named_parms:
+    def __init__(self,_kw):
+        self.kw=_kw
+    
+    def string_it(self,env,path):
+        ret=""
+        i=len(self.kw)
+        for k,v in self.kw.items():
+            i=i-1
+            ret+=str(k)+"="+gen_arg(env,path,v)
+            if i>0:
+                ret+=','
+        if ret=='':
+            ret='**{}'
+        return ret  
+
+
+def gen_arg(env,sdk_path,value):
+    ret=''
+    if isinstance(value,_make_rel):
+        ret+=value.string_it(env,sdk_path)
+    elif isinstance(value,_make_reld):
+        ret+=value.string_it(env,sdk_path)
+    elif isinstance(value,named_parms):
+        ret+=value.string_it(env,sdk_path)
+    elif is_string(value):
+        ret+="'"+env.subst(value)+"'"
+    else:
+        ret+=str(value)
+    return ret
+
+def func_gen(env,sdk_path,func,values):
+    s='env.'+func+'('
+    i=len(values)
+    for v in values:
+        i=i-1
+        s+=gen_arg(env,sdk_path,v)
+        if i>0:
+            s+=','
+    s+=')'
+    return s
+
+
+def make_alias_tree(env,concept,
+    name_version,
+    name_shortversion=None,
+    name_majorversion=None,
+    name_only=None,
+    action=None,
+    always_build=False):
+    
+    alias=env.subst('$ALIAS')
+    if g_name_alias_map.has_key(alias)==False:
+        g_name_alias_map[alias]=set()
+    
+    
+    name=env.subst(concept+'${PART_NAME}_${PART_VERSION}')
+    g_name_alias_map[alias].add(name)
+    
+    if action ==None:
+        n_ver_alias=env.Alias(name, name_version)
+    else:
+        n_ver_alias=env.Alias(name, name_version, action)
+    
+    name=env.subst(concept+'${PART_NAME}_${PART_SHORT_VERSION}')
+    g_name_alias_map[alias].add(name)
+    if name_shortversion == None:
+        n_sver_alias=env.Alias(name, n_ver_alias)
+    else:
+        n_sver_alias=env.Alias(name, [n_ver_alias,name_shortversion])
+        
+    
+    name=env.subst(concept+'${PART_NAME}_')+str(env.PartVersion().major())
+    g_name_alias_map[alias].add(name)
+    if name_majorversion == None:
+        n_mver_alias=env.Alias(name, n_sver_alias)
+    else:
+        n_mver_alias=env.Alias(name, [n_sver_alias,name_majorversion])
+    
+    name=env.subst(concept+'${PART_NAME}')
+    g_name_alias_map[alias].add(name)
+    if name_only == None:
+        name_alias=env.Alias(name, n_mver_alias)
+    else:
+        name_alias=env.Alias(name, [n_mver_alias,name_only])
+        
+    if always_build:
+        env.AlwaysBuild(n_ver_alias)
+        env.AlwaysBuild(n_sver_alias)
+        env.AlwaysBuild(n_mver_alias)
+        env.AlwaysBuild(name_alias)
+    
+    # clean up thsi statement once we clean up the Part vars
+    if env['PART_INFO']['PARENT_ALIAS'] != None:
+        def_env=SCons.Script.DefaultEnvironment()
+        parent_env=def_env['PART_INFO'][env['PART_INFO']['PARENT_ALIAS']]['ENV']
+        return make_alias_tree(parent_env,concept,n_ver_alias,n_sver_alias,n_mver_alias,name_alias,always_build=always_build)
+    
+    return name_alias
+
+add_config_var('ALIAS_SEPARTATOR','::')

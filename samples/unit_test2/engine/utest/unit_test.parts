@@ -1,0 +1,6 @@
+Import('*')
+
+env.PartName('unit_tests')
+env.DependsOn([Component('engine.core',env.PartVersion())])
+
+env.UnitTest("test",["test.cpp"])
