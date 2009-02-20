@@ -6,6 +6,7 @@ added some day this will not be needed external, but instead user will use env
 var defined to to tell what has been targeted as the build env.
 '''
 import common
+import SCons.Platform
 
 def OSBit():
     ''' 
@@ -59,9 +60,9 @@ def ChipArchitecture():
     import sys
     if sys.platform == 'win32':
         import os
-        #val=os.environ.get('PROCESSOR_ARCHITEW6432','')
-        #if val=='':
-        val=os.environ['PROCESSOR_ARCHITECTURE']
+        val=os.environ.get('PROCESSOR_ARCHITEW6432','')
+        if val=='':
+            val=os.environ['PROCESSOR_ARCHITECTURE']
         return arch_map.get(val,'')
     
     #else we just assume the python code will work at this time
@@ -70,9 +71,32 @@ def ChipArchitecture():
         return arch_map.get(platform.machine(),'')
 
 
+class system_config:
+    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+        self.platform=platform
+        self.arch=arch
+    
+    def __eq__ (self,rhs):
+        return self.platform==rhs.platform and self.arch == rhs.arch
+    
+    def __str__(self):
+        return self.platform+"-"+self.arch
+    
+    def __hash__(self):
+        return hash(str(self))
+
+_host_sys=system_config()
+    
+def HostSystem():
+    return _host_sys
+
 # add configuartion varaible
 common.add_config_var('ARCHITECTURE',ChipArchitecture())
 common.add_config_var('OSBITNESS',str(OSBit()))
 
+common.add_config_var('HOST_SYSTEM',_host_sys)
+common.add_config_var('TARGET_SYSTEM',_host_sys)
+
 common.add_parts_object('ChipArchitecture',ChipArchitecture)
 common.add_parts_object('OSBit',OSBit)
+common.add_parts_object('HostSystem',HostSystem)

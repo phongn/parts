@@ -375,10 +375,10 @@ common.add_config_var('INSTALL_ROOT','#install/${CONFIG}_${PLATFORM}_${ARCHITECT
 # these are old and to be removed.. left around to not break existing code
 common.add_config_var('OUT_LIB_ROOT','${INSTALL_ROOT}/lib')
 common.add_config_var('OUT_BIN_ROOT','${INSTALL_ROOT}/bin')
-common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}${OSBITNESS}')
-common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}${OSBITNESS}')
-#common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}')
-#common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}')
+#common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}${OSBITNESS}')
+#common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}${OSBITNESS}')
+common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}')
+common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}')
 
 #these are the replacements
 common.add_config_var('INSTALL_LIB','$OUT_LIB')

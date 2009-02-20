@@ -5,15 +5,13 @@
 import fnmatch
 import string
 import os
-
-
-# test if bool is defined, define if not
-if not __builtins__.has_key('bool'):
-    True=1
-    False=0
+import imp
+import sys
 
 # import Scons stuff
 import SCons.Script 
+import SCons.Errors
+import SCons.Tool
 
 g_builders={}
 g_args={}
@@ -454,5 +452,35 @@ def make_alias_tree(env,concept,
         return make_alias_tree(parent_env,concept,n_ver_alias,n_sver_alias,n_mver_alias,name_alias,always_build=always_build)
     
     return name_alias
+
+
+def load_module(root,name):
+    """Return the imported module for some platform.
+    
+    Taken from SCons platform.. and made more generic so Parts can reuse the logic
+    instead of using the C&P anit-patttern.
+
+    """
+    full_name = root+'.' + name
+    #print full_name,sys.modules.has_key(full_name)
+    if not sys.modules.has_key(full_name):
+        try:
+            file, path, desc = imp.find_module(name,
+                                sys.modules[root].__path__)
+            try:
+                mod = imp.load_module(full_name, file, path, desc)
+            finally:
+                if file:
+                    file.close()
+        except ImportError:
+            try:
+                import zipimport            
+                importer = zipimport.zipimporter( sys.modules[root].__path__[0] )
+                mod = importer.load_module(full_name)                    
+            except ImportError:
+                raise SCons.Errors.UserError, "No %s named '%s'" % (root,name)
+        #setattr(???, name, mod) # was in orginal SCons code.. however i don't get it
+
+    return sys.modules[full_name]
 
 add_config_var('ALIAS_SEPARTATOR','::')

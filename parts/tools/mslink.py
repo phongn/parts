@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007 The SCons Foundation
+# __COPYRIGHT__
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,7 +31,7 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "/home/scons/scons/branch.0/baseline/src/engine/SCons/Tool/mslink.py 0.97.D001 2007/05/17 11:35:19 knight"
+__revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
 import os.path
 
@@ -40,9 +40,9 @@ import SCons.Defaults
 import SCons.Errors
 import SCons.Platform.win32
 import SCons.Tool
-import parts.tools.msvc
-import SCons.Tool.msvs
 import SCons.Util
+
+from MSVSCommon import msvc_exists,setup_env,validate_vars
 
 def pdbGenerator(env, target, source, for_signature):
     try:
@@ -74,17 +74,8 @@ def windowsShlinkSources(target, source, env, for_signature):
     return listCmd
 
 def windowsLibEmitter(target, source, env):
-    parts.tools.msvc.validate_vars(env)
-    
+    SCons.Tool.msvc.validate_vars(env)
 
-    ## this is a part hack to remove a practice that was soem how started
-    ## that does nothing remove this once it is corrected
-    if env.has_key('embed_manifest'):
-        def_env=SCons.Script.DefaultEnvironment()
-        rpt=def_env['PARTS_REPORTER']
-        rpt.part_warning(env,"Argument of 'embed_manifest="+str(env['embed_manifest'])+"' is deprecated. Please remove!") 
-                
-    
     extratargets = []
     extrasources = []
 
@@ -107,18 +98,16 @@ def windowsLibEmitter(target, source, env):
     version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
     if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 0):
         # MSVC 8 automatically generates .manifest files that must be installed
-        tmp=env.ReplaceIxes(dll,
+        extratargets.append(
+            env.ReplaceIxes(dll,
                             "SHLIBPREFIX", "SHLIBSUFFIX",
-                            "WINDOWSSHLIBMANIFESTPREFIX", "WINDOWSSHLIBMANIFESTSUFFIX")
-        if tmp not in target:
-            extratargets.append(tmp)
+                            "WINDOWSSHLIBMANIFESTPREFIX", "WINDOWSSHLIBMANIFESTSUFFIX"))
 
     if env.has_key('PDB') and env['PDB']:
         pdb = env.arg2nodes('$PDB', target=target, source=source)[0]
-        if pdb not in target:
-            extratargets.append(pdb)
-            target[0].attributes.pdb = pdb
-    
+        extratargets.append(pdb)
+        target[0].attributes.pdb = pdb
+
     if not no_import_lib and \
        not env.FindIxes(target, "LIBPREFIX", "LIBSUFFIX"):
         # Append an import library to the list of targets.
@@ -131,20 +120,13 @@ def windowsLibEmitter(target, source, env):
             env.ReplaceIxes(dll,
                             "SHLIBPREFIX", "SHLIBSUFFIX",
                             "WINDOWSEXPPREFIX", "WINDOWSEXPSUFFIX"))
+
     return (target+extratargets, source+extrasources)
 
 def prog_emitter(target, source, env):
-    parts.tools.msvc.validate_vars(env)
+    SCons.Tool.msvc.validate_vars(env)
 
     extratargets = []
-
-    ## this is a part hack to remove a practice that was soem how started
-    ## that does nothing remove this once it is corrected
-    if env.has_key('embed_manifest'):
-        def_env=SCons.Script.DefaultEnvironment()
-        rpt=def_env['PARTS_REPORTER']
-        rpt.part_warning(env,"Argument of 'embed_manifest="+str(env['embed_manifest'])+"' is deprecated. Please remove!") 
-    
 
     exe = env.FindIxes(target, "PROGPREFIX", "PROGSUFFIX")
     if not exe:
@@ -153,17 +135,15 @@ def prog_emitter(target, source, env):
     version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
     if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 0):
         # MSVC 8 automatically generates .manifest files that have to be installed
-        tmp=env.ReplaceIxes(exe,
+        extratargets.append(
+            env.ReplaceIxes(exe,
                             "PROGPREFIX", "PROGSUFFIX",
-                            "WINDOWSPROGMANIFESTPREFIX", "WINDOWSPROGMANIFESTSUFFIX")
-        if tmp not in target:
-            extratargets.append(tmp)
+                            "WINDOWSPROGMANIFESTPREFIX", "WINDOWSPROGMANIFESTSUFFIX"))
 
     if env.has_key('PDB') and env['PDB']:
         pdb = env.arg2nodes('$PDB', target=target, source=source)[0]
-        if pdb not in target:
-            extratargets.append(pdb)
-            target[0].attributes.pdb = pdb
+        extratargets.append(pdb)
+        target[0].attributes.pdb = pdb
 
     return (target+extratargets,source)
 
@@ -177,92 +157,13 @@ def RegServerFunc(target, source, env):
         return ret
     return 0
 
-def SignDLLFunc(target,source,env):
-    if(SCons.Tool.msvs.msvs_parse_version(env['MSVS_VERSION'])[0] < 7.1): return 0
-    if(env.has_key('signing_key')):
-        key=env.File(env['signing_key'])
-        env.Depends(target,key)
-        signed=str(target[0])+'.signed'
-        ret = (signDLLAction + SCons.Defaults.Touch(signed))([target[0]],[key],env)
-        env.File(signed)
-        env.Depends(signed,target)
-        if ret:
-            raise SCons.Errors.UserError, "Unable to sign %s" % (target[0])
-        else:
-            print "Successfully signed %s" %(target[0])
-        return ret
-    
-def SetupDelaySignFunc(target,source,env):
-    if(SCons.Tool.msvs.msvs_parse_version(env['MSVS_VERSION'])[0] < 7.1): return 0
-    if(env.has_key('signing_key')):
-        env.Append(LINKFLAGS=['/DELAYSIGN','/KEYFILE:"%s"' % (env['signing_key'])])
-    return 0
-
-def EmbedManifestDLLFunc(target,source,env):
-    
-    if(SCons.Tool.msvs.msvs_parse_version(env['MSVS_VERSION'])[0] < 8.0): return 0
-    insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
-    manifestSrc = str(target[0])+'.manifest'
-
-    
-    if(insert_manifest and os.path.exists (manifestSrc)):
-        manifest = manifestSrc#str(target[0])+'.manifest.embedded'
-        #ret = (embedManifestDLLAction+SCons.Defaults.Touch(manifest)) ([target[0]],None,env)        
-        ret = (embedManifestDLLAction) ([target[0]],None,env)        
-        #env.File(manifest)
-        #env.Depends(manifest,target)
-        if ret:
-            raise SCons.Errors.UserError, "Unable to embed manifest into %s" % (target[0])
-        else:
-            print "Embedded %(target)s.manifest successfully into %(target)s" %{'target':target[0]}
-        return ret
-    return 0
-
-    
 regServerAction = SCons.Action.Action("$REGSVRCOM", "$REGSVRCOMSTR")
 regServerCheck = SCons.Action.Action(RegServerFunc, None)
-embedManifestDLLAction = SCons.Action.Action("$EMBEDMANIFESTDLLCOM","$EMBEDMANIFESTDLLCOMSTR")
-embedManifestDLLCheck = SCons.Action.Action(EmbedManifestDLLFunc,None)
-signDLLAction = SCons.Action.Action("$SIGNDLLCOM","$SIGNDLLCOMSTR")
-signDLLCheck = SCons.Action.Action(SignDLLFunc,None)
-setupDelaySignAction = SCons.Action.Action(SetupDelaySignFunc,None)
-
 shlibLinkAction = SCons.Action.Action('${TEMPFILE("$SHLINK $SHLINKFLAGS $_SHLINK_TARGETS $( $_LIBDIRFLAGS $) $_LIBFLAGS $_PDB $_SHLINK_SOURCES")}')
-compositeDLLLinkAction = setupDelaySignAction + shlibLinkAction + regServerCheck + embedManifestDLLCheck + signDLLCheck
+compositeLinkAction = shlibLinkAction + regServerCheck
 
-def EmbedManifestProgFunc(target,source,env):
-    #test to see if the version of VC is greater than 8.0
-    # as this version requires that manifest be used
-    # need tests for no manifest cases for 8.0 and above (currently stupid on this)
-    if(SCons.Tool.msvs.msvs_parse_version(env['MSVS_VERSION'])[0] < 8.0): return 0
-    
-    insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
-    manifestSrc = str(target[0])+'.manifest'
-    
-    if insert_manifest and os.path.exists (manifestSrc):
-        manifest = manifestSrc #str(target[0])+'.manifest.embedded'
-        #ret = (embedManifestProgAction+SCons.Defaults.Touch(manifest)) ([target[0]],None,env)
-        ret = (embedManifestProgAction) ([target[0]],None,env)
-        #env.File(manifest)
-        #env.Depends(manifest,target)
-        if ret:
-            raise SCons.Errors.UserError, "Unable to embed manifest into %s" % (target[0])
-        else:
-            print "Embedded %(target)s.manifest successfully into %(target)s" %{'target':target[0]}
-        return ret
-    return 0
-
-registerServerAction = SCons.Action.Action ("REGISTERSVRCOM", "$REGISTERSVRCOMSTR")
-registerServerCheck = SCons.Action.Action (RegServerFunc, None)
-embedManifestProgAction = SCons.Action.Action ("$EMBEDMANIFESTPROGCOM", "$EMBEDMANIFESTPROGCOMSTR")
-embedManifestProgCheck = SCons.Action.Action (EmbedManifestProgFunc, None)
-progLinkAction = SCons.Action.Action ('${TEMPFILE("$LINK $LINKFLAGS /OUT:$TARGET.windows $( $_LIBDIRFLAGS $) $_LIBFLAGS $_PDB $SOURCES.windows")}')
-compositeLinkAction = progLinkAction + registerServerCheck + embedManifestProgCheck
-
-
-def generate(env, version=None, abi=None, topdir=None, verbose=0):
+def generate(env,version=None,arch=None,use_bat=False,**kw):
     """Add Builders and construction variables for ar to an Environment."""
-    #print "my mslink called"
     SCons.Tool.createSharedLibBuilder(env)
     SCons.Tool.createProgBuilder(env)
 
@@ -270,12 +171,12 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
     env['SHLINKFLAGS'] = SCons.Util.CLVar('$LINKFLAGS /dll')
     env['_SHLINK_TARGETS'] = windowsShlinkTargets
     env['_SHLINK_SOURCES'] = windowsShlinkSources
-    env['SHLINKCOM']   =  compositeDLLLinkAction
+    env['SHLINKCOM']   =  compositeLinkAction
     env.Append(SHLIBEMITTER = [windowsLibEmitter])
     env['LINK']        = 'link'
-    env['LINKFLAGS']   = SCons.Util.CLVar('/nologo /MANIFEST')
+    env['LINKFLAGS']   = SCons.Util.CLVar('/nologo')
     env['_PDB'] = pdbGenerator
-    env['LINKCOM'] = compositeLinkAction
+    env['LINKCOM'] = '${TEMPFILE("$LINK $LINKFLAGS /OUT:$TARGET.windows $( $_LIBDIRFLAGS $) $_LIBFLAGS $_PDB $SOURCES.windows")}'
     env.Append(PROGEMITTER = [prog_emitter])
     env['LIBDIRPREFIX']='/LIBPATH:'
     env['LIBDIRSUFFIX']=''
@@ -303,34 +204,9 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
     env['REGSVR'] = os.path.join(SCons.Platform.win32.get_system_root(),'System32','regsvr32')
     env['REGSVRFLAGS'] = '/s '
     env['REGSVRCOM'] = '$REGSVR $REGSVRFLAGS ${TARGET.windows}'
-    
-    env['REGISTERSVRCOM'] = '${TARGET.windows} /regserver'
-    env['MT'] = 'mt'
-    env['MTFLAGS'] = '-nologo'
-    env['EMBEDMANIFESTDLLCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};2 -manifest ${TARGET}.manifest'
-    env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
-    env['SN'] = 'sn'
-    env['SNFLAGS'] = '-q'
-    env['SIGNDLLCOM'] ='sn ${SNFLAGS} -R "${TARGET}" "${SOURCE}"'
-    
-    try:
-        if version == None:
-            version = SCons.Tool.msvs.get_default_visualstudio_version(env)
-        if abi == None:
-            abi = 'x86'
 
-        if env.has_key('MSVS_IGNORE_IDE_PATHS') and env['MSVS_IGNORE_IDE_PATHS']:
-            include_path, lib_path, exe_path = parts.tools.msvc.get_msvc_default_paths(env,version,abi)
-        else:
-            include_path, lib_path, exe_path = parts.tools.msvc.get_msvc_paths(env,version,abi)
-
-        # since other tools can set these, we just make sure that the
-        # relevant stuff from MSVS is in there somewhere.
-        env.PrependENVPath('INCLUDE', include_path)
-        env.PrependENVPath('LIB', lib_path)
-        env.PrependENVPath('PATH', exe_path)
-    except (SCons.Util.RegError, SCons.Errors.InternalError):
-        pass
+    # Set-up ms tools paths for default version
+    setup_env(env,version,arch,use_bat)
 
     # For most platforms, a loadable module is the same as a shared
     # library.  Platforms which are different can override these, but
@@ -344,17 +220,7 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
     # action list on expansion, and will then try to execute expanded
     # strings, with the upshot that it would try to execute RegServerFunc
     # as a command.
-    env['LDMODULECOM'] = compositeDLLLinkAction
+    env['LDMODULECOM'] = compositeLinkAction
 
 def exists(env):
-    platform = env.get('PLATFORM', '')
-    if SCons.Tool.msvs.is_msvs_installed():
-        # there's at least one version of MSVS installed.
-        return 1
-    elif platform in ('win32', 'cygwin'):
-        # Only explicitly search for a 'link' executable on Windows
-        # systems.  Some other systems (e.g. Ubuntu Linux) have an
-        # executable named 'link' and we don't want that to make SCons
-        # think Visual Studio is installed.
-        return env.Detect('link')
-    return None
+    return msvc_exists(env,'link')

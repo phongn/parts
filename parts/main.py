@@ -22,10 +22,11 @@ from core import is_parts_version_beta as IsPartsExtensionVersionBeta
 from core import PartsExtensionVersion as PartsExtensionVersion
 from platform_info import ChipArchitecture as ChipArchitecture
 from platform_info import OSBit as OSBit
+from platform_info import HostSystem as HostSystem
 
 ### import the configurations
 # this action does the dynamic load of a configurations
-import configurations
+#import configurations
 import pieces
 
 

@@ -15,6 +15,8 @@ import version
 import mappers
 import functors
 
+import platform_info
+
 def parts_version_text():
     import parts_version
     return 'Parts extension for SCons, Version '+parts_version._PARTS_VERSION
@@ -203,13 +205,14 @@ def generate_config(prepend,append,replace):
     #combine all maps with config settings
     cfg_map=process_conf_map(prepend,append,replace)  
     #This is the tools list we need look up
-    tool_list=cfg_map['tools'] 
+    tool_list=cfg_map['tool_set'] #cfg_map['tools'] 
+    del cfg_map['tool_set']
     # might need to map config in a different way later
     cfg_map['CONFIG']=cfg_map['config']
     
     # overwrite the tools key so SCon does not get upset
     # note the default is defined... needs to be defined first
-    cfg_map['tools']=['default','packaging']    
+    cfg_map['TOOLS']=[]#['default','packaging']    
     # add our mapper objects
     cfg_map['PARTS']=mappers.part_mapper
     cfg_map['PARTID']=mappers.part_id_mapper
@@ -218,56 +221,104 @@ def generate_config(prepend,append,replace):
     cfg_map['PARTSHORTNAME']=mappers.part_shortname_mapper
     cfg_map['ABSPATH']=mappers.abspath_mapper
     cfg_map['RELPATH']=mappers.relpath_mapper
-    
-    
-    for t in tool_list:
-        #print t[0],t[1]
-        cfg=config.get_config(cfg_map['CONFIG'],t[0],t[1])
-        
-        for ci in cfg.keys():
-            if ci=='prepend_env':
-                prepend_env.extend(cfg[ci])
-            elif ci=='append_env':
-                append_env.extend(cfg[ci])
-            elif ci=='post_config':
-                post_config.extend(cfg[ci])
-            elif type(cfg[ci]) == type([]) and cfg_map.has_key(ci):
-                cfg_map[ci]=common.make_unique(cfg_map[ci]+cfg[ci])
-            elif type(cfg[ci]) == type({}) and cfg_map.has_key(ci):
-                cfg_map[ci].update(cfg[ci]) # might not be the best choice?
-            else:
-                cfg_map[ci]=cfg[ci] # might not be the best choice?
-                
-    arch = cfg_map.get('ARCHITECTURE')
-    if arch == None:
-        arch = common.g_args['ARCHITECTURE']
-    cfg_map['ARCHITECTURE'] = arch
 
-    if arch != None:
-        arch_tools = []
-        for t in cfg_map['tools']:
-            # Check if tool supports abi parameter and if it does
-            # initialize the parameter.
-            if type(t) == type(()) and type(t[1]) == type({}):
-                if t[1].has_key('abi'):
-                    t[1]['abi'] = arch
-            arch_tools += [t]
-        cfg_map['tools'] = arch_tools
+    # the new logic is to setup the tools via the Tools object after we make an empty env
+    tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
+    env=SCons.Script.Environment(**cfg_map)
+
+    #add tools
+    env['CONFIGURED_TOOLS']=[]
+    for t in tool_list:
+        try:
+            # try standard Parts Tool
+            tl=SCons.Tool.Tool(t[0],toolpath=tool_path,version=t[1],arch=env['TARGET_SYSTEM'].arch)
+            tl(env)
+            env['CONFIGURED_TOOLS'].append((t[0],t[1]))
+        except:
+            # this will handle most of the default tool in SCons that Parts did not override yet
+            tl=SCons.Tool.Tool(t[0])
+            tl(env)
+    print env['TARGET_SYSTEM']
+    print env.Dump('ENV')
+    config.apply_config(env)            
     
-    # post config stuff that needs to be based on everything else being done.
-    # useful for setting up compatiblity flags on tools that might have been
-    # set up before the dependent tool was.  For example, the Intel compiler
-    # has flags to set up binary compatiblity with different VC and GCC versions.
-    for i in post_config:
-        i(cfg_map)
-    env=SCons.Script.Environment(toolpath=[os.path.join(os.path.split(__file__)[0],'tools')],**cfg_map)
     
-    # should not be needed most of the time, but it is useful
-    # for old setups that need some extra care to build correctly.
-    for i in prepend_env:
-        env.PrependENVPath(i[0],i[1])
-    for i in append_env:
-        env.AppendENVPath(i[0],i[1])
+    #configurations.configuration('default')
+    #configurations.configuration('debug')
+    
+    #config.load_tool_config('default','cl','8.0',platform_info.system_config(),platform_info.system_config())
+    #env.BasicEnvironment()
+    #toolset=env.ToolSet(cc=('Intel',ToolSettings(version=11.0) )
+    #env.ToolChain(toolset,host,target)
+    #env.Configuation(cfg_name,host,target)
+    
+    # then for each tool we add the configuration setting
+##    for t in tool_list:
+##        cfg=get_config(cfg_map['CONFIG'],t[0],t[1],host=env['HOST_SYSTEM'],target=env['TARGET_SYSTEM'])
+##        for ci in cfg.keys():
+##            if ci=='prepend_env':
+##                env.PrependENVPath(ci,cfg[ci])
+##            elif ci=='append_env':
+##                AppendENVPath(ci,cfg[ci])
+##            elif ci=='post_config':
+##                post_config.extend(cfg[ci])
+##            elif type(cfg[ci]) == type([]) and env.has_key(ci):
+##                env[ci]=common.make_unique(env[ci]+cfg[ci])
+##            elif type(cfg[ci]) == type({}) and env.has_key(ci):
+##                env[ci].update(cfg[ci]) # might not be the best choice?
+##            else:
+##                env[ci]=cfg[ci] # might not be the best choice?
+    
+##    ########################
+##    ### some old logic
+##    for t in tool_list:
+##        #print t[0],t[1]
+##        cfg=config.get_config(cfg_map['CONFIG'],t[0],t[1])
+##        
+##        for ci in cfg.keys():
+##            if ci=='prepend_env':
+##                prepend_env.extend(cfg[ci])
+##            elif ci=='append_env':
+##                append_env.extend(cfg[ci])
+##            elif ci=='post_config':
+##                post_config.extend(cfg[ci])
+##            elif type(cfg[ci]) == type([]) and cfg_map.has_key(ci):
+##                cfg_map[ci]=common.make_unique(cfg_map[ci]+cfg[ci])
+##            elif type(cfg[ci]) == type({}) and cfg_map.has_key(ci):
+##                cfg_map[ci].update(cfg[ci]) # might not be the best choice?
+##            else:
+##                cfg_map[ci]=cfg[ci] # might not be the best choice?
+##                
+##    arch = cfg_map.get('ARCHITECTURE')
+##    if arch == None:
+##        arch = common.g_args['ARCHITECTURE']
+##    cfg_map['ARCHITECTURE'] = arch
+##
+##    if arch != None:
+##        arch_tools = []
+##        for t in cfg_map['tools']:
+##            # Check if tool supports abi parameter and if it does
+##            # initialize the parameter.
+##            if type(t) == type(()) and type(t[1]) == type({}):
+##                if t[1].has_key('abi'):
+##                    t[1]['abi'] = arch
+##            arch_tools += [t]
+##        cfg_map['tools'] = arch_tools
+##    
+##    # post config stuff that needs to be based on everything else being done.
+##    # useful for setting up compatiblity flags on tools that might have been
+##    # set up before the dependent tool was.  For example, the Intel compiler
+##    # has flags to set up binary compatiblity with different VC and GCC versions.
+##    for i in post_config:
+##        i(cfg_map)
+##    #env=SCons.Script.Environment(toolpath=[os.path.join(os.path.split(__file__)[0],'tools')],**cfg_map)
+##    
+##    # should not be needed most of the time, but it is useful
+##    # for old setups that need some extra care to build correctly.
+##    for i in prepend_env:
+##        env.PrependENVPath(i[0],i[1])
+##    for i in append_env:
+##        env.AppendENVPath(i[0],i[1])
     
     # this is a bit of a hack but it helps a lot .. here we append the system
     # path env value.. would be better if we did not do this but it helps with 
