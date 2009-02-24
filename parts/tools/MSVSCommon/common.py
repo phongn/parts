@@ -1,13 +1,17 @@
 import SCons.Util
 
-#try:
-    #from logging import debug
-#except ImportError:
-#    debug = lambda x : None
 
-def debug(x):
-    #print "L",x
-    pass
+logfile = os.environ.get('SCONS_MSCOMMON_DEBUG')
+if logfile:
+    try:
+        import logging
+    except ImportError:
+        debug = lambda x: open(logfile, 'a').write(x + '\n')
+    else:
+        logging.basicConfig(filename=logfile, level=logging.DEBUG)
+        debug = logging.debug
+else:
+    debug = lambda x: None
 
 # this is basic cache of known data
 FOUND_VC={
@@ -40,6 +44,13 @@ def is_win64():
         return True
 
 #print 'is win64',is_win64()
+
+def _subst_(value,pmap):
+
+    # make an Env with no tools ( would like better way to do subst.. not sure how)
+    env=SCons.Script.Environment(tools=[],**pmap) 
+    #print  env.subst(value[0])
+    return env.subst(value)
 
 def read_reg(value):
     return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]
