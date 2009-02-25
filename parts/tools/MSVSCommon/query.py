@@ -4,9 +4,7 @@ import SCons.Util
 import default_setting,common
 
 ''' This file contains functions required to query the for existance of 
-different version of VC. In general it is VC based, however it could be extended
-With the ability to handle general .net stuff like C#. I am currently skipping 
-this for the time being.
+different version of VC. In general it is VC based.
 '''
 
 # used to see if this is query for known has been run already
@@ -20,12 +18,11 @@ def query_for_known():
     global _is_known
     if _is_known==False:
         _is_known=True
-        for v in common.SUPPORTED_VERSIONSSTR:
-            for arch in ['x86','x86_64']:
-                val=_msvc_exists('cl',v,arch,True)
+        for vs in SupportedVCList:
+            for arch in vs['support_arch']:
+                val=_msvc_exists('cl',arch,True)
                 if val == True:
-                    common.FOUND_VC[arch].append(v)
-        
+                    common.FOUND_VC[arch].append(VisualStudio(vs))
 
 def is_vc_known(version,arch):
     ''' 
@@ -42,7 +39,7 @@ def get_lastest_version(arch):
     '''
     query_for_known()
     try:
-        ret=common.FOUND_VC.get(arch,[None])[0]
+        ret=common.FOUND_VC.get(arch,[None])[0].version
     except Exception,ec:
         return None
     return ret
@@ -65,17 +62,14 @@ def _msvc_exists(tool,version=None,arch=None,strict=False):
     Arch is the architecture to try given default architechture
     string only valid is version is not None. will do simple check to see if
     the tools is in a 64-bit path not a 32-bit one.
-        
-    Other forms of this 
-    may be created to help with C# or other languages that can be built with MSVS
     
     NOTE!! the env here is ment to be const, "read only" as we are find if something
     is true. We are not setting values yet
     '''
     if arch==None:
         arch=common.ChipArchitecture()
-    if arch != 'x86' and arch != 'x86_64':
-        raise ValueError("Invalid architecture %s, only 'x86' or 'x86_64' is supported" % arch)
+    if arch != 'x86' and arch != 'x86_64' and arch != 'ia64':
+        raise ValueError("Invalid architecture %s, only 'x86' or 'x86_64' or 'ia64' is supported" % arch)
      
     
     if version == None and arch==None:
@@ -96,8 +90,11 @@ def _msvc_exists(tool,version=None,arch=None,strict=False):
         # Which means that two CL can exist on the path, but since the vcbin_arch 
         # form is first it is found first. if it was not there or installed we would
         # get a false postive.
-        if version != None and arch != 'x86':
+        if version != None and arch == 'x86_64':
             if tmp.find('amd64') == -1:
+                return False
+        elif version != None and arch == 'ia64':
+            if tmp.find('ia64') == -1:
                 return False
         return True
 

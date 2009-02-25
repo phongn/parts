@@ -72,22 +72,4 @@ def GetMSVCPath(version=None,arch=None):
 
 
 
-def get_shell_enviroment(env, ver, arch="x86"):
-    '''this function returns the shell environment for a give version and architecture
-    '''
-    #first we need to get certain varible
-    
-    env['VCINSTALL']=rootpath.msvc_root_dir(ver)
-    env['VSINSTALL']=rootpath.msvs_root_dir(ver)
-    env['FRAMEWORK_ROOT']=rootpath.framework_root()
-    env['FRAMEWORK_ROOT64']=rootpath.framework_root64()
-    
-    shellenv={
-    'PATH':env.subst(get_path(ver,arch)),
-    'INCLUDE':env.subst(get_include(ver,arch)),
-    'LIB':env.subst(get_lib(ver,arch)),
-    'LIBPATH':env.subst(get_libpath(ver,arch))
-    }
-
-    return shellenv
 
