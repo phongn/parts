@@ -17,41 +17,69 @@ class VisualStudio:
     def get_path(self):
         if self.__dict__.has_key('path_cache')==True:
             return self.path_cache
-        self.path_cache=vcbin_arch()+\
-                vcbin()+\
-                vcpackage()+\
-                vs_ide()+\
-                common_tools()+\
-                common_tools_bin()+\
-                frameworks_sdk_bin()
+        dict={
+            'VCINSTALL':rootpath.msvc_root_dir(version),
+            'VSINSTALL':rootpath.msvs_root_dir(version),
+            'FRAMEWORK_ROOT':rootpath.framework_root(),
+            'FRAMEWORK_ROOT64':rootpath.framework_root64()
+            }
+        s=vcbin_arch()+\
+            vcbin()+\
+            vcpackage()+\
+            vs_ide()+\
+            common_tools()+\
+            common_tools_bin()+\
+            frameworks_sdk_bin()
+        self.path_cache+=_subst_(s,dict)
         return self.path_cache
     
     def get_include(self):
         if self.__dict__.has_key('include_cache')==True:
             return self.include_cache
-        self.include_cache= atlmfc_include()+\
-                crt_include()+\
-                platformsdk_include()+\
-                framework_include()
+        dict={
+            'VCINSTALL':rootpath.msvc_root_dir(version),
+            'VSINSTALL':rootpath.msvs_root_dir(version),
+            'FRAMEWORK_ROOT':rootpath.framework_root(),
+            'FRAMEWORK_ROOT64':rootpath.framework_root64()
+            }
+        s=  atlmfc_include()+\
+            crt_include()+\
+            platformsdk_include()+\
+            framework_include()
+        self.include_cache+=_subst_(s,dict)
         return self.include_cache
         
     def get_lib(self):
         
         if self.__dict__.has_key('lib_cache')==True:
             return self.lib_cache
-        self.lib_cache= atlmfc_lib()+\
-                crt_lib()+\
-                platformsdk_lib()+\
-                frameworks_sdk_lib()
+        dict={
+            'VCINSTALL':rootpath.msvc_root_dir(version),
+            'VSINSTALL':rootpath.msvs_root_dir(version),
+            'FRAMEWORK_ROOT':rootpath.framework_root(),
+            'FRAMEWORK_ROOT64':rootpath.framework_root64()
+            }
+        s=  atlmfc_lib()+\
+            crt_lib()+\
+            platformsdk_lib()+\
+            frameworks_sdk_lib()
+        self.lib_cache+=_subst_(s,dict)
         return self.lib_cache
     
     def get_libpath(self):
         
         if self.__dict__.has_key('libpath_cache')==True:
             return self.libpath_cache
-        self.libpath_cache = atlmfc_lib()+\
-                platformsdk_lib()+\
-                frameworks_sdk_lib()
+        dict={
+            'VCINSTALL':rootpath.msvc_root_dir(version),
+            'VSINSTALL':rootpath.msvs_root_dir(version),
+            'FRAMEWORK_ROOT':rootpath.framework_root(),
+            'FRAMEWORK_ROOT64':rootpath.framework_root64()
+            }
+        s=  atlmfc_lib()+\
+            platformsdk_lib()+\
+            frameworks_sdk_lib()
+        self.libpath_cache+=_subst_(s,dict)
         return self.libpath_cache
     
     # path functions

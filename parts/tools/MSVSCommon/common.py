@@ -15,15 +15,16 @@ else:
 
 # this is basic cache of known data
 FOUND_VC={
-'x86':[],
-'x86_64':[]
+'x86':{},
+'x86_64':{},
+'ia64':{}
 }
 
-SUPPORTED_VERSIONS = [9.0, 8.0, 7.1, 7.0, 6.0]
-SUPPORTED_VERSIONSSTR = [str(i) for i in SUPPORTED_VERSIONS]
+##SUPPORTED_VERSIONS = [9.0, 8.0, 7.1, 7.0, 6.0]
+##SUPPORTED_VERSIONSSTR = [str(i) for i in SUPPORTED_VERSIONS]
 
-VSCOMNTOOL_VARNAME = dict([(str(v), 'VS%dCOMNTOOLS' % round(v * 10))
-                           for v in SUPPORTED_VERSIONS])
+##VSCOMNTOOL_VARNAME = dict([(str(v), 'VS%dCOMNTOOLS' % round(v * 10))
+##                           for v in SUPPORTED_VERSIONS])
 
 
 def is_win64():

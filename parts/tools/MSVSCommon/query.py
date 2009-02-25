@@ -18,11 +18,13 @@ def query_for_known():
     global _is_known
     if _is_known==False:
         _is_known=True
-        for vs in SupportedVCList:
+        for v in SupportedVCList:
             for arch in vs['support_arch']:
-                val=_msvc_exists('cl',arch,True)
+                vs=VisualStudio(target_arch=arch,**v)
+                val=vs.cl_exists()#_msvc_exists('cl',arch,True)
                 if val == True:
-                    common.FOUND_VC[arch].append(VisualStudio(vs))
+                    FOUND_VC[arch]
+                    FOUND_VC[arch][v['version']]=vs
 
 def is_vc_known(version,arch):
     ''' 
@@ -70,15 +72,17 @@ def _msvc_exists(tool,version=None,arch=None,strict=False):
         arch=common.ChipArchitecture()
     if arch != 'x86' and arch != 'x86_64' and arch != 'ia64':
         raise ValueError("Invalid architecture %s, only 'x86' or 'x86_64' or 'ia64' is supported" % arch)
-     
     
     if version == None and arch==None:
-        # GetMSVCPath() will return all known defaults based on current "build host" architecture
-        p=default_setting.GetMSVCPath()
+        # Get all known paths
+        for v in FOUND_VC[arch].itervalues():
+            p+=v.get_path()
     else:
-        # we want a given version and target architecture
-        # Note if arch is None it will try to get the OS architure and use that
-        p=default_setting.GetMSVCPath(version,arch)
+        # Get path if found else return false
+        if FOUND_VC[arch].has_key(version):
+            p=FOUND_VC[arch][version].get_path()
+        else:
+            return False
     
     #try with the known paths and what ever is in the SCons enviroment
     tmp=SCons.Util.WhereIs(tool,path=p)
