@@ -1,4 +1,4 @@
-import default_setting,query,common
+import query,common,part_compat
 import SCons.Util
 
 
@@ -26,56 +26,56 @@ Does not contain 64-bit compilers
 
 '''
 
-SupportedVCList=[
+common.SupportedVCList=[
     {
-    version:'6.0',
-    hkey_root_vc:["Software%sMicrosoft\\VisualStudio\\6.0\\Setup\\Microsoft Visual C++\\ProductDir"],
-    default_install_vc:'%s\\Microsoft Visual Studio\\VC98\\',
-    common_tools_var:'VS60COMNTOOLS',
-    vc_sub_dir:'VC98\\',
-    batch_file:'vcvars32.bat',
-    support_arch:['x86']
+    'version':'6.0',
+    'hkey_root_vc':["Software%sMicrosoft\\VisualStudio\\6.0\\Setup\\Microsoft Visual C++\\ProductDir"],
+    'default_install_vc':'%s\\Microsoft Visual Studio\\VC98\\',
+    'common_tools_var':'VS60COMNTOOLS',
+    'vc_sub_dir':'VC98\\',
+    'batch_file_base':'vcvars',
+    'support_arch':['x86']
     },
     {
-    version:'7.0',
-    hkey_root_vc:["Software%sMicrosoft\\VisualStudio\\7.0\\Setup\\VC\\ProductDir"],
-    default_install_vc:'%s\\Microsoft Visual Studio .NET\\VC7\\',
-    common_tools_var:'VS70COMNTOOLS',
-    vc_sub_dir:'VC7\\',
-    batch_file:'vcvars32.bat',
-    support_arch:['x86']
+    'version':'7.0',
+    'hkey_root_vc':["Software%sMicrosoft\\VisualStudio\\7.0\\Setup\\VC\\ProductDir"],
+    'default_install_vc':'%s\\Microsoft Visual Studio .NET\\VC7\\',
+    'common_tools_var':'VS70COMNTOOLS',
+    'vc_sub_dir':'VC7\\',
+    'batch_file_base':'vcvars',
+    'support_arch':['x86']
     },
     {
-    version:'7.1',
-    hkey_root_vc:["Software%sMicrosoft\\VisualStudio\\7.1\\Setup\\VC\\ProductDir"],
-    default_install_vc:'%s\\Microsoft Visual Studio 7.1.NET 2003\\VC7\\',
-    common_tools_var:'VS71COMNTOOLS',
-    vc_sub_dir:'VC7\\',
-    batch_file:'vcvars32.bat',
-    support_arch:['x86']
+    'version':'7.1',
+    'hkey_root_vc':["Software%sMicrosoft\\VisualStudio\\7.1\\Setup\\VC\\ProductDir"],
+    'default_install_vc':'%s\\Microsoft Visual Studio 7.1.NET 2003\\VC7\\',
+    'common_tools_var':'VS71COMNTOOLS',
+    'vc_sub_dir':'VC7\\',
+    'batch_file_base':'vcvars',
+    'support_arch':['x86']
     },
     {
-    version:'8.0',
-    hkey_root_vc:[
+    'version':'8.0',
+    'hkey_root_vc':[
         "Software%sMicrosoft\\VisualStudio\\8.0\\Setup\\VC\\ProductDir",
         "Software%sMicrosoft\\VCExpress\\8.0\\Setup\\VS\\ProductDir"],
-    default_install_vc:'%s\\Microsoft Visual Studio 8\\VC\\',
-    common_tools_var:'VS80COMNTOOLS',
-    vc_sub_dir:'VC\\',
-    batch_file:'vcvars32.bat',
-    support_arch:['x86','x86_64','ia64']
+    'default_install_vc':'%s\\Microsoft Visual Studio 8\\VC\\',
+    'common_tools_var':'VS80COMNTOOLS',
+    'vc_sub_dir':'VC\\',
+    'batch_file_base':'vcvars',
+    'support_arch':['x86','x86_64','ia64']
     },
     {
-    version:'9.0',
-    hkey_root_vc:[
+    'version':'9.0',
+    'hkey_root_vc':[
         "Software%sMicrosoft\\VisualStudio\\9.0\\Setup\\VC\\ProductDir",
         "Software%sMicrosoft\\VCExpress\\9.0\\Setup\\VS\\ProductDir"
     ],
-    default_install_vc:'%s\\Microsoft Visual Studio 9.0\\VC\\',
-    common_tools_var:'VS90COMNTOOLS',
-    vc_sub_dir:'VC\\',
-    batch_file:'vcvars32.bat',
-    support_arch:['x86','x86_64','ia64']
+    'default_install_vc':'%s\\Microsoft Visual Studio 9.0\\VC\\',
+    'common_tools_var':'VS90COMNTOOLS',
+    'vc_sub_dir':'VC\\',
+    'batch_file_base':'vcvars',
+    'support_arch':['x86','x86_64','ia64']
     }
 ]
 
@@ -83,63 +83,47 @@ SupportedVCList=[
 
 class tool_settings:
     def __init__(self,env,version,use_bat,**kw):
+
+        ## first validate we can build on platform cases
+        # validate host build cases.
+        host=env['HOST_SYSTEM']
+        if host.Platform() not in ['win32']:
+            raise ValueError("Invalid Host Platform %s, only 'win32' is supported" % host.Platform())
+        if host.Architecture() not in ['x86','x86_64']:
+            raise ValueError("Invalid Host Architecture %s, only 'x86' or 'x86_64' is supported" % host.Architecture())
+        
+        # validate cross build cases.. easy for windows in general
+        target=env['TARGET_SYSTEM']
+        if target.Platform() not in ['win32']:
+            raise ValueError("Invalid Target Platform %s, only 'win32' is supported" % target.Platform())
+        if target.Architecture() not in ['x86','x86_64']:
+            raise ValueError("Invalid Target Architecture %s, only 'x86' or 'x86_64' is supported" % target.Architecture())
+        self.target=target        
+        
+        # get correct version
         if version == None:
             v1=env.get('MSVC_VERSION',env.get('MSVS_VERSION',None))
+            v1=None
             if v1 != None:
                 self.version=v1
             else:
-                self.ver=query.get_lastest_version(arch)
+                self.version=query.get_lastest_version(self.target.Architecture())
         elif SCons.Util.is_String(version)==False:
             self.version=str(version)
         else:
             self.version = version
-        
-        ## first validate we can build on platform cases
-        # validate host build cases.
-        host=env['HOST_SYSTEM']
-        if host.Platform() in ['win32']:
-            raise ValueError("Invalid Host Platform %s, only 'win32' is supported" % target.Platform())
-        if host.Architecture() in ['x86','x86_64']:
-            raise ValueError("Invalid Host Architecture %s, only 'x86' or 'x86_64' is supported" % target.Architecture())
-        
-        # validate cross build cases.. easy for windows in general
-        target=env['TARGET_SYSTEM']
-        if target.Platform() in ['win32']:
-            raise ValueError("Invalid Target Platform %s, only 'win32' is supported" % target.Platform())
-        if target.Architecture() in ['x86','x86_64']:
-            raise ValueError("Invalid Target Architecture %s, only 'x86' or 'x86_64' is supported" % target.Architecture())
-        self.target=target
-
-        # validate this as a supported version
-        if ver not in SUPPORTED_VERSIONS: 
-            raise ValueError("Microsoft Version '%s', is not supported or invalid" % (ver))
-        # check that this combo is found
-        elif query.is_vc_known(ver,target.Architecture())==False:
-            raise ValueError("Microsoft Version '%s', Architecture '%s' not found on system" % (ver,arch))        
-        
+            
         self.use_bat=use_bat
         
 
-def get_shell_enviroment(env, ver, arch="x86"):
-    '''this function returns the shell environment for a give version and architecture
-    '''
-    #first we need to get certain varible
-    
-    env['VCINSTALL']=rootpath.msvc_root_dir(ver)
-    env['VSINSTALL']=rootpath.msvs_root_dir(ver)
-    env['FRAMEWORK_ROOT']=rootpath.framework_root()
-    env['FRAMEWORK_ROOT64']=rootpath.framework_root64()
-    
-    shellenv={
-    'PATH':env.subst(get_path(ver,arch)),
-    'INCLUDE':env.subst(get_include(ver,arch)),
-    'LIB':env.subst(get_lib(ver,arch)),
-    'LIBPATH':env.subst(get_libpath(ver,arch))
-    }
-
-    return shellenv
-
-
+        # check that this combo is found
+        if query.is_vc_known(self.version,target.Architecture())==False and SCons.Util.is_String(use_bat)==False:
+            raise ValueError("Microsoft Version '%s', Architecture '%s' not found on system" % (self.version,target.Architecture()))        
+        
+        
+ 
+   
+   
     
 ''' basic logic
 if version == None find lastest version, or check on path in env if the CL exists
@@ -150,12 +134,11 @@ if use_bat == (string) assume it point to cmd file to use
 
 
 '''
-
 def _setup_env(env,ts):
     # since in Parts we can have the orginal exist test happen instead of our
     # We need to verify that "smarter" test ran to setup the needed state
-    if query.is_known == False:
-        query.query_for_known()
+    
+    query.query_for_known()
     # this will be the ENV setup prepended to the shell
     shell_env=None
     #first we need to know the architechture
@@ -165,19 +148,22 @@ def _setup_env(env,ts):
       
     # Next we need to know if we should call a batch file or use default setting
     if ts.use_bat == False or ts.use_bat==None:
-        shell_env = default_setting.get_shell_enviroment(env,ver,arch)       
+        shell_env = common.FOUND_VC[arch][ver].get_shell_enviroment()
+        print ts.version,common.FOUND_VC[arch][ver].get_batch_file()
+        print common.script_env(env,common.FOUND_VC[arch][ver].get_batch_file())
         
     elif ts.use_bat==True:
         # in this case we need to get the path to the bat file
         # and run the script to get the env info
-        pass
-    elif is_string(ts.use_bat):
+        shell_env = script_env(env,common.FOUND_VC[arch][ver].get_batch_file())
+    elif SCons.Util.is_String(ts.use_bat):
         #in this case we just check to see if the file exists
         #if so run script to get the Env values.
-        pass
+        if not os.path.isfile(use_script):
+            raise ValueError("use_script file %s was not found"%use_script)    
+        shell_env = common.script_env(env,use_script)
     else:
-        # we have a bad value type
-        # report error
+        raise ValueError("use_script must be a True, False or string path to the script to run")
         pass
     #take known info, get data, and set up env
     
@@ -193,8 +179,14 @@ def _setup_env(env,ts):
     env['MSVS']={'FOUND_VC':common.FOUND_VC}
     
         
-def setup_env(env,version=None,use_bat=False,**kw):
-    _setup_env(env,tool_settings(version,arch,use_bat,**kw))
+def setup_env(env,version=None,target_arch=None,use_bat=False,**kw):
+    if env.has_key('HOST_SYSTEM') == False:
+        env['HOST_SYSTEM'] = part_compat.system_config()
+    if env.has_key('TARGET_SYSTEM') == False:
+        env['TARGET_SYSTEM'] = part_compat.system_config()
+        if target_arch!=None:
+            env['TARGET_SYSTEM'].arch=target_arch
+    _setup_env(env,tool_settings(env,version,use_bat,**kw))
     
     
     

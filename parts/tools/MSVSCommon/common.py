@@ -1,3 +1,9 @@
+
+import copy
+import os
+import subprocess
+import re
+
 import SCons.Util
 
 
@@ -12,6 +18,8 @@ if logfile:
         debug = logging.debug
 else:
     debug = lambda x: None
+    #def debug(s):
+    #    print s
 
 # this is basic cache of known data
 FOUND_VC={
@@ -19,6 +27,7 @@ FOUND_VC={
 'x86_64':{},
 'ia64':{}
 }
+SupportedVCList=[]
 
 ##SUPPORTED_VERSIONS = [9.0, 8.0, 7.1, 7.0, 6.0]
 ##SUPPORTED_VERSIONSSTR = [str(i) for i in SUPPORTED_VERSIONS]
@@ -26,6 +35,12 @@ FOUND_VC={
 ##VSCOMNTOOL_VARNAME = dict([(str(v), 'VS%dCOMNTOOLS' % round(v * 10))
 ##                           for v in SUPPORTED_VERSIONS])
 
+def program_files_dir():
+    # we need the 32-bit key as all VS version are 32-bit for the forseeable future
+    key='Software\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir'
+    if is_win64():
+        key='Software\\Microsoft\\Windows\\CurrentVersion\\ProgramFilesDir (x86)'
+    return read_reg(key)
 
 def is_win64():
     """Return true if running on windows 64-bits OS."""
@@ -56,49 +71,118 @@ def _subst_(value,pmap):
 def read_reg(value):
     return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]
 
-def ChipArchitecture():
-    ''' 
-        ChipArchitecture
-        
-        returns the chip archecture
-        Returns High level value for the archecture being used
-        which is often more useful. Knowing if you have a 
-        ia32, x64, ia64 in general is more intertesting
-        than know if it is an P3 or P4
-        
-        x86 -- Intel(r) line of compatible 32-bit chips 
-        x86_64 -- The 64-bit extended memory form of x86 (AMD64 or em64t)
-        ia64 -- 
-    
-        # to add other system here
-        
-    '''
-    arch_map = {
-    'x86':'x86',
-    'i386':'x86',
-    'i486':'x86',
-    'i586':'x86',
-    'i686':'x86',
-    'x64':'x86_64',
-    'AMD64':'x86_64',
-    'amd64':'x86_64',
-    'em64t':'x86_64',
-    'EM64T':'x86_64',
-    'x86_64':'x86_64',
-    'IA64':'ia64',
-    'ia64':'ia64'
-    }
-    #if win32
-    import sys
-    if sys.platform == 'win32':
-        import os
-        val=os.environ.get('PROCESSOR_ARCHITEW6432','')
-        if val=='':
-            val=os.environ['PROCESSOR_ARCHITECTURE']
-        return arch_map.get(val,'')
-    
-    #else we just assume the python code will work at this time
-    else:
-        import platform
-        return arch_map.get(platform.machine(),'')
+# Functions for fetching environment variable settings from batch files.
 
+def normalize_env(env, keys):
+    """Given a dictionary representing a shell environment, add the variables
+    from os.environ needed for the processing of .bat files; the keys are
+    controlled by the keys argument.
+
+    It also makes sure the environment values are correctly encoded.
+
+    Note: the environment is copied"""
+    normenv = {}
+    if env:
+        for k in env.keys():
+            normenv[k] = copy.deepcopy(env[k]).encode('mbcs')
+
+        for k in keys:
+            if os.environ.has_key(k):
+                normenv[k] = os.environ[k].encode('mbcs')
+
+    return normenv
+
+def get_output(vcbat, args = None, env = None):
+    """Parse the output of given bat file, with given args."""
+    if args:
+        debug("Calling '%s %s'" % (vcbat, args))
+        popen = subprocess.Popen('"%s" %s & set' % (vcbat, args),
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 env=env)
+    else:
+        debug("Calling '%s'" % vcbat)
+        popen = subprocess.Popen('"%s" & set' % vcbat,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 env=env)
+
+    # Use the .stdout and .stderr attributes directly because the
+    # .communicate() method uses the threading module on Windows
+    # and won't work under Pythons not built with threading.
+    stdout = popen.stdout.read()
+    if popen.wait() != 0:
+        raise IOError(popen.stderr.read().decode("mbcs"))
+
+    output = stdout.decode("mbcs")
+    return output
+
+def parse_output(output, keep = ("INCLUDE", "LIB", "LIBPATH", "PATH")):
+    # dkeep is a dict associating key: path_list, where key is one item from
+    # keep, and pat_list the associated list of paths
+
+    # TODO(1.5):  replace with the following list comprehension:
+    #dkeep = dict([(i, []) for i in keep])
+    dkeep = dict(map(lambda i: (i, []), keep))
+
+    # rdk will  keep the regex to match the .bat file output line starts
+    rdk = {}
+    for i in keep:
+        rdk[i] = re.compile('%s=(.*)' % i, re.I)
+
+    def add_env(rmatch, key):
+        plist = rmatch.group(1).split(os.pathsep)
+        for p in plist:
+            # Do not add empty paths (when a var ends with ;)
+            if p:
+                p = p.encode('mbcs')
+                # XXX: For some reason, VC98 .bat file adds "" around the PATH
+                # values, and it screws up the environment later, so we strip
+                # it. 
+                p = p.strip('"')
+                dkeep[key].append(p)
+
+    for line in output.splitlines():
+        for k,v in rdk.items():
+            m = v.match(line)
+            if m:
+                add_env(m, k)
+
+    return dkeep
+
+def script_env(env,batfilename):
+
+    vars = ('LIB', 'LIBPATH', 'PATH', 'INCLUDE')
+
+    nenv = common.normalize_env(env['ENV'], ['COMSPEC'])
+    output = common.get_output(batfilename, env=nenv)
+    vars = common.parse_output(output, vars)
+    
+    return vars
+
+# TODO(sgk): unused
+def output_to_dict(output):
+    """Given an output string, parse it to find env variables.
+
+    Return a dict where keys are variables names, and values their content"""
+    envlinem = re.compile(r'^([a-zA-z0-9]+)=([\S\s]*)$')
+    parsedenv = {}
+    for line in output.splitlines():
+        m = envlinem.match(line)
+        if m:
+            parsedenv[m.group(1)] = m.group(2)
+    return parsedenv
+
+# TODO(sgk): unused
+def get_new(l1, l2):
+    """Given two list l1 and l2, return the items in l2 which are not in l1.
+    Order is maintained."""
+
+    # We don't try to be smart: lists are small, and this is not the bottleneck
+    # is any case
+    new = []
+    for i in l2:
+        if i not in l1:
+            new.append(i)
+
+    return new
