@@ -84,6 +84,12 @@ class system_config:
     
     def __hash__(self):
         return hash(str(self))
+    
+    def Architecture(self):
+        return self.arch
+    
+    def Platform(self):
+        return self.platform
 
 _host_sys=system_config()
     
