@@ -228,13 +228,14 @@ def generate_config(prepend,append,replace):
 
     #add tools
     env['CONFIGURED_TOOLS']=[]
+    env['TARGET_SYSTEM'].arch='x86'
     for t in tool_list:
         try:
             # try standard Parts Tool
-            tl=SCons.Tool.Tool(t[0],toolpath=tool_path,version=t[1],arch=env['TARGET_SYSTEM'].arch)
+            tl=SCons.Tool.Tool(t[0],toolpath=tool_path,version=t[1],arch=env['TARGET_SYSTEM'].Architecture())
             tl(env)
             env['CONFIGURED_TOOLS'].append((t[0],t[1]))
-        except:
+        except TypeError,ec:
             # this will handle most of the default tool in SCons that Parts did not override yet
             tl=SCons.Tool.Tool(t[0])
             tl(env)

@@ -1,5 +1,6 @@
 
 from setup import setup_env
+from sdk import setup_sdk_env,detect_sdk
 from query import msvc_exists
 from common import is_win64
 

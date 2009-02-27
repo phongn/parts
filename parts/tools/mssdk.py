@@ -33,15 +33,13 @@ It will usually be imported through the generic SCons.Tool.Tool()
 selection method.
 """
 
-from SCons.Tool.MSCommon.sdk import detect_sdk, \
-                                    set_default_sdk, \
-                                    set_sdk_by_directory, \
-                                    set_sdk_by_version
+from MSCommon import setup_sdk_env,detect_sdk
+
 
 def generate(env,version=None,target_arch=None,use_script=False,**kw):
     """Add construction variables for an MS SDK to an Environment."""
 
-    setup_sdk_env(version,target_arch,use_script,**kw)
+    setup_sdk_env(env,version,target_arch,use_script,**kw)
     return
 
 def exists(env,version=None):

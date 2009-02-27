@@ -79,7 +79,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['MIDLFLAGS']     = SCons.Util.CLVar('/nologo')
     env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE 2> NUL'
     env['BUILDERS']['TypeLibrary'] = midl_builder
-    setup_env(env,version,arch,use_bat)
+    setup_env(env,version,arch,use_script)
 
 def exists(env):
     return msvc_exists(env,'midl')

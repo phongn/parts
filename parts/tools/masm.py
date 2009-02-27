@@ -68,7 +68,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['ASCOM']     = '$AS $ASFLAGS /c /Fo$TARGET $SOURCES'
     env['ASPPCOM']   = '$CC $ASPPFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c /Fo$TARGET $SOURCES'
     env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
-    setup_env(env,version,arch,use_bat)
+    setup_env(env,version,arch,use_script)
 
 def exists(env):
     ret=False

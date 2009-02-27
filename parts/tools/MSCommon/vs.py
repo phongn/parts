@@ -140,6 +140,10 @@ class VisualStudio:
             ret = '${VCINSTALL}BIN\\amd64'+';'+'${VCINSTALL}BIN\\x86_amd64'+';'
         elif self.target_arch == 'x86_64' and common.is_win64()==False:
             ret = '${VCINSTALL}BIN\\x86_amd64'+';'
+        elif self.target_arch == 'ia64' and common.is_win64()==True:
+            ret = '${VCINSTALL}BIN\\ia64'+';'
+        elif self.target_arch == 'ia64' and common.is_win64()==False:
+            ret = '${VCINSTALL}BIN\\x86_ia64'+';'
         return ret
     
     def frameworks_sdk_bin(self):
@@ -219,10 +223,14 @@ class VisualStudio:
             ret='${VCINSTALL}ATLMFC\\LIB'+';'
         elif self.version=='8.0' and self.target_arch=='x86_64':
             ret='${VCINSTALL}ATLMFC\\LIB\\amd64'+';'
+        elif self.version=='8.0' and self.target_arch=='ia64':
+            ret='${VCINSTALL}ATLMFC\\LIB\\ia64'+';'
         elif self.version=='9.0' and self.target_arch=='x86':
             ret='${VCINSTALL}ATLMFC\\LIB'+';'
         elif self.version=='9.0' and self.target_arch=='x86_64':
             ret='${VCINSTALL}ATLMFC\\LIB\\amd64'+';'
+        elif self.version=='9.0' and self.target_arch=='ia64':
+            ret='${VCINSTALL}ATLMFC\\LIB\\ia64'+';'
 
         return ret
 
@@ -230,8 +238,12 @@ class VisualStudio:
         ret=''
         if self.version=='8.0' and self.target_arch=='x86_64':
             ret='${VCINSTALL}LIB\\amd64'+';'
+        elif self.version=='8.0' and self.target_arch=='ia64':
+            ret='${VCINSTALL}LIB\\ia64'+';'
         elif self.version=='9.0' and self.target_arch=='x86_64':
             ret='${VCINSTALL}LIB\\amd64'+';'
+        elif self.version=='9.0' and self.target_arch=='ia64':
+            ret='${VCINSTALL}LIB\\ia64'+';'
         else:
             ret='${VCINSTALL}LIB'+';'
         return ret
@@ -277,9 +289,11 @@ class VisualStudio:
             ret='${VSINSTALL}SDK\\v2.0\\lib'+';'+'${FRAMEWORK_ROOT}v2.0.50727'+';'
         elif self.version=='8.0' and self.target_arch=='x86_64':
             ret='${VSINSTALL}SDK\\v2.0\\lib\AMD64'+';'+'${FRAMEWORK_ROOT64}v2.0.50727'+';'
+        elif self.version=='8.0' and self.target_arch=='ia64':
+            ret='${VSINSTALL}SDK\\v2.0\\lib\ia64'+';'+'${FRAMEWORK_ROOT64}v2.0.50727'+';'
         elif self.version=='9.0' and self.target_arch=='x86':
             ret='${FRAMEWORK_ROOT}v3.5'+';'+'${FRAMEWORK_ROOT}v2.0.50727'+';'
-        elif self.version=='9.0' and self.target_arch=='x86_64':
+        elif self.version=='9.0' and self.target_arch!='x86':
             ret='${FRAMEWORK_ROOT64}v3.5'+';'+'${FRAMEWORK_ROOT64}v2.0.50727'+';'
         return ret
 
@@ -288,7 +302,7 @@ class VisualStudio:
     def msvc_reg_root(self):
         ''' 
         gets the roots msvc path, based on version
-        version is a float from 6.0 or better (up to 9.0 currently)
+        version is a str from 6.0 or better (up to 9.0 currently)
         returns None if we can find this version in the registry
         '''
         

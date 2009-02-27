@@ -1401,7 +1401,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['MSVSENCODING'] = 'Windows-1252'
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_bat)
+    setup_env(env,version,arch,use_script)
 
     version_num, suite = msvs_parse_version(env['MSVS_VERSION'])
     if (version_num < 7.0):

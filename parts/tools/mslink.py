@@ -239,7 +239,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['REGSVRCOM'] = '$REGSVR $REGSVRFLAGS ${TARGET.windows}'
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_bat)
+    setup_env(env,version,arch,use_script)
 
     # Loadable modules are on Windows the same as shared libraries, but they
     # are subject to different build parameters (LDMODULE* variables).

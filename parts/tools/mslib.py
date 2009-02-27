@@ -46,7 +46,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     SCons.Tool.createStaticLibBuilder(env)
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_bat)
+    setup_env(env,version,arch,use_script)
 
     env['AR']          = 'lib'
     env['ARFLAGS']     = SCons.Util.CLVar('/nologo')

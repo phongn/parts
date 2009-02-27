@@ -233,7 +233,8 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['SHOBJSUFFIX']    = '$OBJSUFFIX'
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_bat)
+    print version,arch
+    setup_env(env,version,arch,use_script)
 
     env['CFILESUFFIX'] = '.c'
     env['CXXFILESUFFIX'] = '.cc'
