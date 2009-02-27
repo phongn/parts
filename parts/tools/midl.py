@@ -41,7 +41,7 @@ import SCons.Defaults
 import SCons.Scanner.IDL
 import SCons.Util
 
-from MSVSCommon import msvc_exists,setup_env
+from MSCommon import msvc_exists,setup_env,is_win64
 
 def midl_emitter(target, source, env):
     """Produces a list of outputs from the MIDL compiler"""
@@ -72,7 +72,7 @@ midl_builder = SCons.Builder.Builder(action = midl_action,
                                      emitter = midl_emitter,
                                      source_scanner = idl_scanner)
 
-def generate(env,version=None,arch=None,use_bat=False,**kw):
+def generate(env,version=None,arch=None,use_script=False,**kw):
     """Add Builders and construction variables for midl to an Environment."""
 
     env['MIDL']          = 'MIDL.EXE'
@@ -83,3 +83,9 @@ def generate(env,version=None,arch=None,use_bat=False,**kw):
 
 def exists(env):
     return msvc_exists(env,'midl')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

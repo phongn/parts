@@ -1,6 +1,7 @@
 from rootpath import *
 from query import *
 from setup import *
+from sdk import *
 import os
 
 print "start"
@@ -14,11 +15,12 @@ env=Environment()
 ##print msvc_exists(env,'cl')
 ##print msvc_exists(env,'link')
 ##
-setup_env(env.Clone(),'6.0',target_arch='x86')
+setup_env(env,'6.0',target_arch='x86')
 setup_env(env.Clone(),'7.1',target_arch='x86')
 setup_env(env.Clone(),'8.0')
 setup_env(env.Clone())
-#print env.Dump('ENV')
+setup_sdk_env(env,version='2003R2')
+print env.Dump('ENV')
 #setup_env(env,'7.0')
 
 print msvc_exists(env,'ml','6.0',arch='x86')

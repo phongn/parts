@@ -37,7 +37,7 @@ import SCons.Defaults
 import SCons.Tool
 import SCons.Util
 
-from MSVSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc_exists,setup_env,is_win64
 
 ASSuffixes = ['.s', '.asm', '.ASM']
 ASPPSuffixes = ['.spp', '.SPP', '.sx']
@@ -46,7 +46,7 @@ if SCons.Util.case_sensitive_suffixes('.s', '.S'):
 else:
     ASSuffixes.extend(['.S'])
 
-def generate(env,version=None,arch=None,use_bat=False,**kw):
+def generate(env,version=None,arch=None,use_script=False,**kw):
     """Add Builders and construction variables for masm to an Environment."""
     static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
 
@@ -77,3 +77,9 @@ def exists(env):
     else:
         ret=msvc_exists(env,'ml')
     return ret
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -35,7 +35,8 @@ __revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
 import base64
 import hashlib
-import os.path
+import ntpath
+import os
 import pickle
 import re
 import string
@@ -48,7 +49,7 @@ import SCons.Script.SConscript
 import SCons.Util
 import SCons.Warnings
 
-from MSVSCommon import msvc_exists,setup_env
+from MSCommon import msvc_exists,setup_env,is_win64
 
 ##############################################################################
 # Below here are the classes and functions for generation of
@@ -82,7 +83,10 @@ def _generateGUID(slnfile, name):
     the project.  It basically just needs to be unique, and not
     change with each invocation."""
     m = hashlib.md5()
-    m.update(str(slnfile) + str(name))
+    # Normalize the slnfile path to a Windows path (\ separators) so
+    # the generated file has a consistent GUID even if we generate
+    # it on a non-Windows platform.
+    m.update(ntpath.normpath(str(slnfile)) + str(name))
     # TODO(1.5)
     #solution = m.hexdigest().upper()
     solution = string.upper(_hexdigest(m.digest()))
@@ -580,7 +584,7 @@ V8DSPHeader = """\
 
 V8DSPConfiguration = """\
 \t\t<Configuration
-\t\t\tName="%(variant)s|Win32"
+\t\t\tName="%(variant)s|%(platform)s"
 \t\t\tConfigurationType="0"
 \t\t\tUseOfMFC="0"
 \t\t\tATLMinimizesCRunTimeLibraryUsage="false"
@@ -1362,7 +1366,7 @@ solutionBuilder = SCons.Builder.Builder(action = '$MSVSSOLUTIONCOM',
 
 default_MSVS_SConscript = None
 
-def generate(env):
+def generate(env,version=None,arch=None,use_script=False,**kw):
     """Add Builders and construction variables for Microsoft Visual
     Studio project files to an Environment."""
     try:
@@ -1397,7 +1401,7 @@ def generate(env):
     env['MSVSENCODING'] = 'Windows-1252'
 
     # Set-up ms tools paths for default version
-    setup_env(env)
+    setup_env(env,version,arch,use_bat)
 
     version_num, suite = msvs_parse_version(env['MSVS_VERSION'])
     if (version_num < 7.0):
@@ -1414,5 +1418,10 @@ def generate(env):
     env['SCONS_HOME'] = os.environ.get('SCONS_HOME')
 
 def exists(env):
-    #since we assume C++ project system
     return msvc_exists(env,'cl')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

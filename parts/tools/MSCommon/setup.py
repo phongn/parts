@@ -82,7 +82,7 @@ common.SupportedVCList=[
 
 
 class tool_settings:
-    def __init__(self,env,version,use_bat,**kw):
+    def __init__(self,env,version,use_script,**kw):
 
         ## first validate we can build on platform cases
         # validate host build cases.
@@ -113,11 +113,11 @@ class tool_settings:
         else:
             self.version = version
             
-        self.use_bat=use_bat
+        self.use_script=use_script
         
 
         # check that this combo is found
-        if query.is_vc_known(self.version,target.Architecture())==False and SCons.Util.is_String(use_bat)==False:
+        if query.is_vc_known(self.version,target.Architecture())==False and SCons.Util.is_String(use_script)==False:
             raise ValueError("Microsoft Version '%s', Architecture '%s' not found on system" % (self.version,target.Architecture()))        
         
         
@@ -128,9 +128,9 @@ class tool_settings:
 ''' basic logic
 if version == None find lastest version, or check on path in env if the CL exists
 if target_arch == None find current OS bitness and use that as target architechture 
-if use_bat == None or Bool(False) use default setting, 
-if use_bat == Bool(True) use default cmd file, with arch based flags
-if use_bat == (string) assume it point to cmd file to use
+if use_script == None or Bool(False) use default setting, 
+if use_script == Bool(True) use default cmd file, with arch based flags
+if use_script == (string) assume it point to cmd file to use
 
 
 '''
@@ -147,16 +147,13 @@ def _setup_env(env,ts):
     ver=ts.version
       
     # Next we need to know if we should call a batch file or use default setting
-    if ts.use_bat == False or ts.use_bat==None:
+    if ts.use_script == False or ts.use_script==None:
         shell_env = common.FOUND_VC[arch][ver].get_shell_enviroment()
-        print ts.version,common.FOUND_VC[arch][ver].get_batch_file()
-        print common.script_env(env,common.FOUND_VC[arch][ver].get_batch_file())
-        
-    elif ts.use_bat==True:
+    elif ts.use_script==True:
         # in this case we need to get the path to the bat file
         # and run the script to get the env info
         shell_env = script_env(env,common.FOUND_VC[arch][ver].get_batch_file())
-    elif SCons.Util.is_String(ts.use_bat):
+    elif SCons.Util.is_String(ts.use_script):
         #in this case we just check to see if the file exists
         #if so run script to get the Env values.
         if not os.path.isfile(use_script):
@@ -179,14 +176,14 @@ def _setup_env(env,ts):
     env['MSVS']={'FOUND_VC':common.FOUND_VC}
     
         
-def setup_env(env,version=None,target_arch=None,use_bat=False,**kw):
+def setup_env(env,version=None,target_arch=None,use_script=False,**kw):
     if env.has_key('HOST_SYSTEM') == False:
         env['HOST_SYSTEM'] = part_compat.system_config()
     if env.has_key('TARGET_SYSTEM') == False:
         env['TARGET_SYSTEM'] = part_compat.system_config()
         if target_arch!=None:
             env['TARGET_SYSTEM'].arch=target_arch
-    _setup_env(env,tool_settings(env,version,use_bat,**kw))
+    _setup_env(env,tool_settings(env,version,use_script,**kw))
     
     
     

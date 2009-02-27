@@ -1,13 +1,3 @@
-"""SCons.Tool.mslib
-
-Tool-specific initialization for lib (MicroSoft library archiver).
-
-There normally shouldn't be any need to import this module directly.
-It will usually be imported through the generic SCons.Tool.Tool()
-selection method.
-
-"""
-
 #
 # __COPYRIGHT__
 #
@@ -33,29 +23,29 @@ selection method.
 
 __revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
-import SCons.Defaults
-import SCons.Tool
-import SCons.Tool.msvs
-import SCons.Tool.msvc
-import SCons.Util
+"""engine.SCons.Tool.mssdk
 
-from MSCommon import msvc_exists,setup_env,is_win64
+Tool-specific initialization for Microsoft SDKs, both Platform
+SDKs and Windows SDKs.
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
-    """Add Builders and construction variables for lib to an Environment."""
-    SCons.Tool.createStaticLibBuilder(env)
+There normally shouldn't be any need to import this module directly.
+It will usually be imported through the generic SCons.Tool.Tool()
+selection method.
+"""
 
-    # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_bat)
+from SCons.Tool.MSCommon.sdk import detect_sdk, \
+                                    set_default_sdk, \
+                                    set_sdk_by_directory, \
+                                    set_sdk_by_version
 
-    env['AR']          = 'lib'
-    env['ARFLAGS']     = SCons.Util.CLVar('/nologo')
-    env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
-    env['LIBPREFIX']   = ''
-    env['LIBSUFFIX']   = '.lib'
+def generate(env,version=None,target_arch=None,use_script=False,**kw):
+    """Add construction variables for an MS SDK to an Environment."""
 
-def exists(env):
-    return msvc_exists(env,'lib')
+    setup_sdk_env(version,target_arch,use_script,**kw)
+    return
+
+def exists(env,version=None):
+    return detect_sdk(version)
 
 # Local Variables:
 # tab-width:4
