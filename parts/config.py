@@ -377,6 +377,7 @@ def load_tool_config(env,name,tool,ver,host,target):
     found=True
     for k in name_list:
         try:
+            
             mod=common.load_module('parts.configurations.'+name,k)
             print 'loaded cfg:',name,k
             #Map version if unknown
@@ -387,6 +388,7 @@ def load_tool_config(env,name,tool,ver,host,target):
             pass
         
     else:
+        
         found=False # nothing found
         
 
@@ -443,6 +445,7 @@ def apply_config(env,name=None,host=None,target=None):
     print "tools that have been configured",tools
     for t in tools:
         settings,setting_extra=get_config(env,name,t[0],t[1],host,target)
+        
         for flag,items in settings.iteritems():
             
             # replace values

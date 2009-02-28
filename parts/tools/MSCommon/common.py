@@ -18,8 +18,6 @@ if logfile:
         debug = logging.debug
 else:
     debug = lambda x: None
-    #def debug(s):
-    #    print s
 
 # this is basic cache of known data
 FOUND_VC={
@@ -29,11 +27,6 @@ FOUND_VC={
 }
 SupportedVCList=[]
 
-##SUPPORTED_VERSIONS = [9.0, 8.0, 7.1, 7.0, 6.0]
-##SUPPORTED_VERSIONSSTR = [str(i) for i in SUPPORTED_VERSIONS]
-
-##VSCOMNTOOL_VARNAME = dict([(str(v), 'VS%dCOMNTOOLS' % round(v * 10))
-##                           for v in SUPPORTED_VERSIONS])
 
 def program_files_dir():
     # we need the 32-bit key as all VS version are 32-bit for the forseeable future
@@ -59,11 +52,10 @@ def is_win64():
     else:
         return True
 
-#print 'is win64',is_win64()
-
 def _subst_(value,pmap):
 
     # make an Env with no tools ( would like better way to do subst.. not sure how)
+    # steve, I don't have a better way to do this with the current subst that i know of
     env=SCons.Script.Environment(tools=[],**pmap) 
     #print  env.subst(value[0])
     return env.subst(value)

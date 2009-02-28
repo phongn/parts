@@ -188,12 +188,57 @@ def RegServerFunc(target, source, env):
         return ret
     return 0
 
+def EmbedManifestDLLFunc(target,source,env):
+    
+    if(float(env['MSVC_VERSION']) < 8.0): return 0
+    insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
+    manifestSrc = str(target[0])+'.manifest'
+
+    if(insert_manifest and os.path.exists (manifestSrc)):
+        manifest = manifestSrc
+        ret = (embedManifestDLLAction) ([target[0]],None,env)        
+        if ret:
+            raise SCons.Errors.UserError, "Unable to embed manifest into %s" % (target[0])
+        else:
+            print "Embedded %(target)s.manifest successfully into %(target)s" %{'target':target[0]}
+        return ret
+    return 0
+
+
+def EmbedManifestProgFunc(target,source,env):
+    #test to see if the version of VC is greater than 8.0
+    # as this version requires that manifest be used
+    # need tests for no manifest cases for 8.0 and above (currently stupid on this)
+    if(float(env['MSVC_VERSION']) < 8.0): return 0
+    
+    insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
+    manifestSrc = str(target[0])+'.manifest'
+    
+    if insert_manifest and os.path.exists (manifestSrc):
+        manifest = manifestSrc 
+        ret = (embedManifestProgAction) ([target[0]],None,env)
+        if ret:
+            raise SCons.Errors.UserError, "Unable to embed manifest into %s" % (target[0])
+        else:
+            print "Embedded %(target)s.manifest successfully into %(target)s" %{'target':target[0]}
+        return ret
+    return 0
+
+
+
+embedManifestDLLAction = SCons.Action.Action("$EMBEDMANIFESTDLLCOM","$EMBEDMANIFESTDLLCOMSTR")
+embedManifestDLLCheck = SCons.Action.Action(EmbedManifestDLLFunc,None)
+
 regServerAction = SCons.Action.Action("$REGSVRCOM", "$REGSVRCOMSTR")
 regServerCheck = SCons.Action.Action(RegServerFunc, None)
+
 shlibLinkAction = SCons.Action.Action('${TEMPFILE("$SHLINK $SHLINKFLAGS $_SHLINK_TARGETS $_LIBDIRFLAGS $_LIBFLAGS $_PDB $_SHLINK_SOURCES")}')
-compositeShLinkAction = shlibLinkAction + regServerCheck
+compositeShLinkAction = shlibLinkAction + embedManifestDLLCheck +regServerCheck
+
+embedManifestProgAction = SCons.Action.Action ("$EMBEDMANIFESTPROGCOM", "$EMBEDMANIFESTPROGCOMSTR")
+embedManifestProgCheck = SCons.Action.Action (EmbedManifestProgFunc, None)
 ldmodLinkAction = SCons.Action.Action('${TEMPFILE("$LDMODULE $LDMODULEFLAGS $_LDMODULE_TARGETS $_LIBDIRFLAGS $_LIBFLAGS $_PDB $_LDMODULE_SOURCES")}')
-compositeLdmodAction = ldmodLinkAction + regServerCheck
+compositeLdmodAction = ldmodLinkAction + embedManifestDLLCheck + regServerCheck 
 
 def generate(env,version=None,arch=None,use_script=False,**kw):
     """Add Builders and construction variables for ar to an Environment."""
@@ -237,6 +282,11 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['REGSVR'] = os.path.join(SCons.Platform.win32.get_system_root(),'System32','regsvr32')
     env['REGSVRFLAGS'] = '/s '
     env['REGSVRCOM'] = '$REGSVR $REGSVRFLAGS ${TARGET.windows}'
+    
+    env['MT'] = 'mt'
+    env['MTFLAGS'] = '-nologo'
+    env['EMBEDMANIFESTDLLCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};2 -manifest ${TARGET}.manifest'
+    env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
 
     # Set-up ms tools paths for default version
     setup_env(env,version,arch,use_script)

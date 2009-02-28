@@ -148,11 +148,25 @@ def _setup_env(env,ts):
       
     # Next we need to know if we should call a batch file or use default setting
     if ts.use_script == False or ts.use_script==None:
-        shell_env = common.FOUND_VC[arch][ver].get_shell_enviroment()
+        tmp=common.FOUND_VC[arch][ver]
+        shell_env = tmp.get_shell_enviroment()
+        env['MSVS']={
+            'VCINSTALL':tmp.msvc_root_dir(),
+            'VSINSTALL':tmp.msvs_root_dir(),
+            'FRAMEWORK_ROOT':tmp.framework_root(),
+            'FRAMEWORK_ROOT64':tmp.framework_root64()
+        }
     elif ts.use_script==True:
         # in this case we need to get the path to the bat file
         # and run the script to get the env info
-        shell_env = script_env(env,common.FOUND_VC[arch][ver].get_batch_file())
+        tmp=common.FOUND_VC[arch][ver]
+        shell_env = script_env(env,tmp.get_batch_file())
+        env['MSVS']={
+            'VCINSTALL':tmp.msvc_root_dir(),
+            'VSINSTALL':tmp.msvs_root_dir(),
+            'FRAMEWORK_ROOT':tmp.framework_root(),
+            'FRAMEWORK_ROOT64':tmp.framework_root64()
+        }
     elif SCons.Util.is_String(ts.use_script):
         #in this case we just check to see if the file exists
         #if so run script to get the Env values.
@@ -171,8 +185,7 @@ def _setup_env(env,ts):
     # compatibility
     env['MSVC_VERSION']=ver 
     # just to be safe
-    env['MSVS_VERSION']=ver # might change meaning to mean VS shell env's
-    
+    env['MSVS_VERSION']=ver # might change meaning to mean VS shell env's    
     env['MSVS']={'FOUND_VC':common.FOUND_VC}
     
         
@@ -183,6 +196,9 @@ def setup_env(env,version=None,target_arch=None,use_script=False,**kw):
         env['TARGET_SYSTEM'] = part_compat.system_config()
         if target_arch!=None:
             env['TARGET_SYSTEM'].arch=target_arch
+        elif env.has_key('MS_ARCH'):
+            env['TARGET_SYSTEM'].arch=env.has_key('MS_ARCH')
+            
     _setup_env(env,tool_settings(env,version,use_script,**kw))
     
     

@@ -308,6 +308,8 @@ def setup_sdk_env(env,version=None,target_arch=None,use_script=False,**kw):
         env['TARGET_SYSTEM'] = part_compat.system_config()
         if target_arch!=None:
             env['TARGET_SYSTEM'].arch=target_arch
+        elif env.has_key('MS_ARCH'):
+            env['TARGET_SYSTEM'].arch=env.has_key('MS_ARCH')
     
     if use_script==False:
         # point to a custom location, or non-supported SDK
