@@ -62,13 +62,16 @@ class configuration:
         }
         
     def merge(self,ver,cfg):
-
+        
+        # need range to for store key later
+        ver_rng=version.version_range()
         for v_range,val in self.ver_rng.iteritems():
             if ver in v_range:        
                 mysetting=val
+                ver_rng=v_range
                 break
         else:
-            return cfg
+            return cfg,version.version_range()
         
         settings=cfg[0]
         settings_ex=cfg[1]
@@ -126,7 +129,7 @@ class configuration:
                     settings[k]={'append':[],'prepend':[]}
                 settings[k]['prepend']=v.extend(settings[k]['prepend'])
         
-        return (settings,settings_ex)
+        return (settings,settings_ex),ver_rng
         
 
 class _ConfigurationSet:
@@ -268,33 +271,33 @@ def load_cfg(name):
 
 def make_name_list(tool,host,target):
     nl=[
-    tool+"_"+host.platform+"-"+host.arch+"_"+target.platform+"-"+target.arch,
-    tool+"_"+host.platform+"-"+host.arch+"_"+target.platform+"-"+'unknown',
-    tool+"_"+host.platform+"-"+'unknown'+"_"+target.platform+"-"+target.arch,
-    tool+"_"+host.platform+"-"+'unknown'+"_"+target.platform+"-"+'unknown',
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture,
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown',
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+'unknown',
     
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown'+"-"+target.arch,
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown',
-    tool+"_"+host.platform+"-"+host.arch,
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown'+"-"+target.arch,
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown',
-    tool+"_"+host.platform+"-"+'unknown',
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+target.Architecture,
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+'unknown',
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown',
+    tool+"_"+host.Platform+"-"+host.Architecture,
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+target.Architecture,
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown',
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown',
+    tool+"_"+host.Platform+"-"+'unknown',
     
-    tool+"_"+'unknown'+"-"+host.arch+"_"+target.platform+"-"+target.arch,
-    tool+"_"+'unknown'+"-"+host.arch+"_"+target.platform+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.platform+"-"+target.arch,
-    tool+"_"+'unknown'+"_"+target.platform+"-"+target.arch,
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.platform+"-"+'unknown',
-    tool+"_"+'unknown'+"_"+target.platform+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture,
+    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
+    tool+"_"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+'unknown',
+    tool+"_"+'unknown'+"_"+target.Platform+"-"+'unknown',
     
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown'+"-"+target.arch,
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown'+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown',
-    tool+"_"+'unknown'+"-"+host.arch,
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.arch,
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.arch,
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+target.Architecture,
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown',
+    tool+"_"+'unknown'+"-"+host.Architecture,
+    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.Architecture,
+    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.Architecture,
     tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown',
     tool+'_unknown_unknown',
     tool+'_unknown',
@@ -304,57 +307,57 @@ def make_name_list(tool,host,target):
 
 def make_name_dict(tool,host,target):
     nl={
-    tool+"_"+host.platform+"-"+host.arch+"_"+target.platform+"-"+target.arch:
-    (tool,host.platform,host.arch,target.platform,target.arch),
-    tool+"_"+host.platform+"-"+host.arch+"_"+target.platform+"-"+'unknown':
-    (tool,host.platform,host.arch,target.platform,None),
-    tool+"_"+host.platform+"-"+'unknown'+"_"+target.platform+"-"+target.arch:
-    (tool,host.platform,None,target.platform,target.arch),
-    tool+"_"+host.platform+"-"+'unknown'+"_"+target.platform+"-"+'unknown':
-    (tool,host.platform,None,target.platform,None),
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture:
+    (tool,host.Platform,host.Architecture,target.Platform,target.Architecture),
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown':
+    (tool,host.Platform,host.Architecture,target.Platform,None),
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
+    (tool,host.Platform,None,target.Platform,target.Architecture),
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+'unknown':
+    (tool,host.Platform,None,target.Platform,None),
     
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown'+"-"+target.arch:
-    (tool,host.platform,host.arch,None,target.arch),
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown'+"-"+'unknown':
-    (tool,host.platform,host.arch,None,None),
-    tool+"_"+host.platform+"-"+host.arch+"_"+'unknown':
-    (tool,host.platform,host.arch,None,None),
-    tool+"_"+host.platform+"-"+host.arch:
-    (tool,host.platform,host.arch,None,None),
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown'+"-"+target.arch:
-    (tool,host.platform,None,None,target.arch),
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown':
-    (tool,host.platform,None,None,None),
-    tool+"_"+host.platform+"-"+'unknown'+"_"+'unknown':
-    (tool,host.platform,None,None,None),
-    tool+"_"+host.platform+"-"+'unknown':
-    (tool,host.platform,None,None,None),
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+target.Architecture:
+    (tool,host.Platform,host.Architecture,None,target.Architecture),
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+'unknown':
+    (tool,host.Platform,host.Architecture,None,None),
+    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown':
+    (tool,host.Platform,host.Architecture,None,None),
+    tool+"_"+host.Platform+"-"+host.Architecture:
+    (tool,host.Platform,host.Architecture,None,None),
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+target.Architecture:
+    (tool,host.Platform,None,None,target.Architecture),
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown':
+    (tool,host.Platform,None,None,None),
+    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown':
+    (tool,host.Platform,None,None,None),
+    tool+"_"+host.Platform+"-"+'unknown':
+    (tool,host.Platform,None,None,None),
     
-    tool+"_"+'unknown'+"-"+host.arch+"_"+target.platform+"-"+target.arch:
-    (tool,None,host.arch,target.platform,target.arch),
-    tool+"_"+'unknown'+"-"+host.arch+"_"+target.platform+"-"+'unknown':
-    (tool,None,host.arch,target.platform,None),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.platform+"-"+target.arch:
-    (tool,None,None,target.platform,target.arch),
-    tool+"_"+'unknown'+"_"+target.platform+"-"+target.arch:
-    (tool,None,None,target.platform,target.arch),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.platform+"-"+'unknown':
-    (tool,None,None,target.platform,None),
-    tool+"_"+'unknown'+"_"+target.platform+"-"+'unknown':
-    (tool,None,None,target.platform,None),
+    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture:
+    (tool,None,host.Architecture,target.Platform,target.Architecture),
+    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown':
+    (tool,None,host.Architecture,target.Platform,None),
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
+    (tool,None,None,target.Platform,target.Architecture),
+    tool+"_"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
+    (tool,None,None,target.Platform,target.Architecture),
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+'unknown':
+    (tool,None,None,target.Platform,None),
+    tool+"_"+'unknown'+"_"+target.Platform+"-"+'unknown':
+    (tool,None,None,target.Platform,None),
     
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown'+"-"+target.arch:
-    (tool,None,host.arch,None,target.arch),
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown'+"-"+'unknown':
-    (tool,None,host.arch,None,None),
-    tool+"_"+'unknown'+"-"+host.arch+'_'+'unknown':
-    (tool,None,host.arch,None,None),
-    tool+"_"+'unknown'+"-"+host.arch:
-    (tool,None,host.arch,None,None),
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.arch:
-    (tool,None,None,None,target.arch),
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.arch:
-    (tool,None,None,None,target.arch),
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+target.Architecture:
+    (tool,None,host.Architecture,None,target.Architecture),
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+'unknown':
+    (tool,None,host.Architecture,None,None),
+    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown':
+    (tool,None,host.Architecture,None,None),
+    tool+"_"+'unknown'+"-"+host.Architecture:
+    (tool,None,host.Architecture,None,None),
+    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.Architecture:
+    (tool,None,None,None,target.Architecture),
+    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.Architecture:
+    (tool,None,None,None,target.Architecture),
     tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown':
     (tool,None,None,None,None),
     tool+'_unknown_unknown':
@@ -369,30 +372,9 @@ def make_name_dict(tool,host,target):
 
 
 
-def load_tool_config(env,name,tool,ver,host,target):
+def load_tool_config(env,name,tool,host,target):
     
-    ## Load our config data
-    
-    name_list=make_name_list(tool,host,target)
-    found=True
-    for k in name_list:
-        try:
-            
-            mod=common.load_module('parts.configurations.'+name,k)
-            print 'loaded cfg:',name,k
-            #Map version if unknown
-            if ver==None:
-                ver=mod.config.map_none_version(env)
-            break
-        except:
-            pass
-        
-    else:
-        
-        found=False # nothing found
-        
-
-    ## Next we need to start by loading base config
+    ## First we need to start by loading base config
     # get dependent confg
     dep=g_configuration[name].Dependent()
     base_settings=({},{})
@@ -401,21 +383,42 @@ def load_tool_config(env,name,tool,ver,host,target):
     if dep != None:
         if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
             # if not load it
-            load_tool_config(env,dep,tool,ver,host,target)    
-    
-        ## Last we merge settings and store        
+            load_tool_config(env,dep,tool,host,target)    
+
+    ## Load our config data, and map the version value
+    name_list=make_name_list(tool,host,target)
+    found=True
+    ver=None
+    for k in name_list:
+        try:
+            
+            mod=common.load_module('parts.configurations.'+name,k)
+            print 'Configurtation [',name,'] loaded file:',k
+            #Map version if unknown
+            ver=mod.config.map_none_version(env)
+            break
+        except:
+            pass
+        
+    else:
+        if dep == None:
+            print 'Configurtation [',name,'] found no configruation for tool:',k
+        found=False # nothing found
+
+    ## Last we merge settings and store
+    if dep != None:
         # Get base settings
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
-    
+        
     if found==True:
         # merge setting
-        settings=mod.config.merge(ver,base_settings)
+        settings,ver_rng=mod.config.merge(ver,base_settings)
         #store setting
-        g_configuration[name].add_config_setting(tool,ver,host,target,settings,mod.config.default_ver_func)
+        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func)
     else:
-        g_configuration[name].add_config_setting(tool,ver,host,target,base_settings,base_ver_mapper)
+        g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper)
 
-def get_config(env,name,tool,ver,host,target):
+def get_config(env,name,tool,host,target):
     # is "meta" config loaded
     if g_configuration.has_key(name)==False:
         #if not load it
@@ -424,7 +427,7 @@ def get_config(env,name,tool,ver,host,target):
     # is tool loaded?
     if config.has_tool_cfg(tool,host,target)==False:    
     #if not load it
-        ver=load_tool_config(env,name,tool,ver,host,target)
+        ver=load_tool_config(env,name,tool,host,target)
     # if version is None get a real version
     if ver==None:
         ver=config.resolve_version(tool,host,target,env)
@@ -441,10 +444,10 @@ def apply_config(env,name=None,host=None,target=None):
     target=env['TARGET_SYSTEM']
     if name==None:
         name=env['CONFIG']
-    print "appling cfg:",name
-    print "tools that have been configured",tools
+    print "Applying configuration:",name
+    #print "tools that have been configured",tools
     for t in tools:
-        settings,setting_extra=get_config(env,name,t[0],t[1],host,target)
+        settings,setting_extra=get_config(env,name,t,host,target)
         
         for flag,items in settings.iteritems():
             

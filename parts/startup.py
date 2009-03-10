@@ -320,11 +320,11 @@ def init_args():
     
     # set the preferred tools
     lst=[]
-    if SCons.Script.ARGUMENTS.has_key('tool_set'):
-        lst=string.split(SCons.Script.ARGUMENTS['tool_set'],',')
+    if SCons.Script.ARGUMENTS.has_key('tool_chain'):
+        lst=string.split(SCons.Script.ARGUMENTS['tool_chain'],',')
     else:
-        lst=common.g_args['tool_set']
-    common.g_args['tool_set']=common.process_tool_arg(lst)
+        lst=common.g_args['tool_chain']
+    common.g_args['tool_chain']=common.process_tool_arg(lst)
         
     if SCons.Script.ARGUMENTS.has_key('mode'):
         common.g_args['mode']=string.split(SCons.Script.ARGUMENTS['mode'],',')
@@ -335,10 +335,10 @@ def init_args():
     del common.def_args['cfg_file']
     # these can so i need to add these back in latter so SetDefault works
     # might want to rethink how SetDefault work latter as well.
-    tools_tmp = common.def_args['tool_set']
+    tools_tmp = common.def_args['tool_chain']
     mode_tmp = common.def_args['mode']
     
-    del common.def_args['tool_set']
+    del common.def_args['tool_chain']
     del common.def_args['mode']
     
     common.g_args['config']=SCons.Script.ARGUMENTS.get('config',
@@ -419,7 +419,7 @@ def SetOptionDefault(key,value):
 # add configuartion varaible needed for basic setup
 common.add_config_var('cfg_file','parts.cfg')
 common.add_config_var('default_config','debug')
-common.add_config_var('tool_set',[['default',None]])   
+common.add_config_var('tool_chain',[['default',None]])   
 
 common.add_config_var('show_progress',True)
 common.add_config_var('PROGRESS_STR',['scons: Evaluating |\r',

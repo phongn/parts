@@ -73,23 +73,34 @@ def ChipArchitecture():
 
 class system_config:
     def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-        self.platform=platform
-        self.arch=arch
+        
+        self.Platform=platform
+        self.Architecture=arch
     
     def __eq__ (self,rhs):
-        return self.platform==rhs.platform and self.arch == rhs.arch
+        return self.Platform==rhs.Platform and self.Architecture == rhs.Architecture
     
     def __str__(self):
-        return self.platform+"-"+self.arch
+        return self.Platform+"-"+self.Architecture
     
     def __hash__(self):
         return hash(str(self))
     
-    def Architecture(self):
-        return self.arch
+    def __getplat(self):
+        return self.__plat
+
+    def __setplat(self, x):
+        self.__plat = x
+        
+    def __getarch(self):
+        return self.__arch
+
+    def __setarch(self, x):
+        self.__arch = x
     
-    def Platform(self):
-        return self.platform
+    Architecture = property(__getarch,__setarch)
+    Platform = property(__getplat,__setplat)
+        
 
 _host_sys=system_config()
     

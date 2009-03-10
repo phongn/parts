@@ -41,6 +41,8 @@ class VisualStudio:
             }
         s=  self.vcbin_arch()+\
             self.vcbin()+\
+            self.platformsdk_bin_arch()+\
+            self.platformsdk_bin()+\
             self.vcpackage()+\
             self.vs_ide()+\
             self.common_tools()+\
@@ -103,6 +105,8 @@ class VisualStudio:
         ret='${VSINSTALL}Common7\\Tools\\bin'+';'
         if self.version=='6.0':
             ret='${VSINSTALL}Common\\TOOLS\\'+';'
+        if self.version=='9.0':
+            ret=''
         return ret
 
     def common_tools_bin(self):
@@ -145,6 +149,44 @@ class VisualStudio:
         elif self.target_arch == 'ia64' and common.is_win64()==False:
             ret = '${VCINSTALL}BIN\\x86_ia64'+';'
         return ret
+
+    def platformsdk_bin(self):
+        
+        ret=''
+        
+        # get the current SDK root based on a req key
+        # need for vc 9.0 and newer
+        sdk_root=self.get_current_sdk()
+        
+        # use default values
+        if self.version== '6.0' and self.target_arch=='x86':
+            #For this version it is already in the crt_include()
+            ret=''
+        elif self.version== '9.0':
+            ret=sdk_root+'bin'+';'
+            
+        return ret
+    
+    def platformsdk_bin_arch(self):
+        
+        ret=''
+        
+        # get the current SDK root based on a req key
+        # need for vc 9.0 and newer
+        sdk_root=self.get_current_sdk()
+        
+        # use default values
+        if self.version== '6.0' and self.target_arch=='x86':
+            #For this version it is already in the crt_include()
+            ret=''
+        elif self.version== '9.0'and self.target_arch=='x86':
+            ret=sdk_root+'lib'+';'
+        elif self.version== '9.0'and self.target_arch=='x86_64':
+            ret=sdk_root+'bin\\x64'+';'
+        elif self.version== '9.0'and self.target_arch=='ia64':
+            ret=sdk_root+'bin\\ia64'+';'
+            
+        return ret    
     
     def frameworks_sdk_bin(self):
         ret=''

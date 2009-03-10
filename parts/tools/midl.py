@@ -72,14 +72,14 @@ midl_builder = SCons.Builder.Builder(action = midl_action,
                                      emitter = midl_emitter,
                                      source_scanner = idl_scanner)
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
+def generate(env):
     """Add Builders and construction variables for midl to an Environment."""
 
     env['MIDL']          = 'MIDL.EXE'
     env['MIDLFLAGS']     = SCons.Util.CLVar('/nologo')
     env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE 2> NUL'
     env['BUILDERS']['TypeLibrary'] = midl_builder
-    setup_env(env,version,arch,use_script)
+    setup_env(env)
 
 def exists(env):
     return msvc_exists(env,'midl')

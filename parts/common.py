@@ -12,6 +12,7 @@ import sys
 import SCons.Script 
 import SCons.Errors
 import SCons.Tool
+import SCons.Util
 
 g_builders={}
 g_args={}
@@ -36,6 +37,11 @@ g_target_alias=set()
 g_build_as_sdk=set()
 #depends data we stored
 g_depends_data={}
+
+
+g_base_env= SCons.Script.Environment(tools=[])
+def get_basic_SCon_env(**kw):
+    return g_base_env.Clone(**kw)
 
 def add_parts_object(key,object):
     g_parts_objs[key]=object
@@ -152,16 +158,22 @@ def make_unique_str(obj):
     return tmp
 
 def is_list(obj):
-    import UserList
-    return type(obj) is type([]) or isinstance(obj,UserList.UserList)
-    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+    return SCons.Util.is_List(obj)
+
+def is_dictionary(obj):
+    return SCons.Util.is_Dict(obj)
 
 def is_string(obj):
-    return type(obj) is type('')
-    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+    return SCons.Util.is_String(obj)
 
 def is_bool(obj):
-    return type(obj) is type(True)
+    return obj is bool()
+
+def is_int(obj):
+    return type(obj) is int()
+
+def is_float(obj):
+    return type(obj) is float()
 
 def is_catagory_file(env,cat,file):
     ''' this function is the master function for finding a if a file matches a type pattern.'''

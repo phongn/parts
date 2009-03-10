@@ -36,10 +36,10 @@ selection method.
 from MSCommon import setup_sdk_env,detect_sdk
 
 
-def generate(env,version=None,target_arch=None,use_script=False,**kw):
+def generate(env):
     """Add construction variables for an MS SDK to an Environment."""
 
-    setup_sdk_env(env,version,target_arch,use_script,**kw)
+    setup_sdk_env(env)
     return
 
 def exists(env,version=None):

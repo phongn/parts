@@ -14,6 +14,7 @@ import common
 import version
 import mappers
 import functors
+import tool_mapping
 
 import platform_info
 
@@ -172,7 +173,6 @@ def process_conf_map(prepend,append,replace):
     
     return cfg_map
         
-    
 
 
 ### primary config stuff
@@ -205,8 +205,8 @@ def generate_config(prepend,append,replace):
     #combine all maps with config settings
     cfg_map=process_conf_map(prepend,append,replace)  
     #This is the tools list we need look up
-    tool_list=cfg_map['tool_set'] #cfg_map['tools'] 
-    del cfg_map['tool_set']
+    tool_list=cfg_map['tool_chain'] #cfg_map['tools'] 
+    del cfg_map['tool_chain']
     # might need to map config in a different way later
     cfg_map['CONFIG']=cfg_map['config']
     
@@ -222,24 +222,30 @@ def generate_config(prepend,append,replace):
     cfg_map['ABSPATH']=mappers.abspath_mapper
     cfg_map['RELPATH']=mappers.relpath_mapper
 
-    # the new logic is to setup the tools via the Tools object after we make an empty env
+    ## create a new environment
+    # get our toolpath 
     tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
-    env=SCons.Script.Environment(**cfg_map)
-
-    #add tools
+    # make the SCons environment
+    env=SCons.Script.Environment(toolpath=tool_path,**cfg_map)
+    
+    ## resolve tool chain into the list of tools to setup
+    tool_list=tool_mapping.get_tools(env,tool_list)
+    
+    ##add tools
     env['CONFIGURED_TOOLS']=[]
     for t in tool_list:
-        try:
-            # try standard Parts Tool
-            tl=SCons.Tool.Tool(t[0],toolpath=tool_path,version=t[1],arch=env['TARGET_SYSTEM'].Architecture())
-            tl(env)
-            env['CONFIGURED_TOOLS'].append((t[0],t[1]))
-        except TypeError,ec:
-            # this will handle most of the default tool in SCons that Parts did not override yet
-            tl=SCons.Tool.Tool(t[0])
-            tl(env)
-    #print env['TARGET_SYSTEM']
-    #print env.Dump('ENV')
+        # apply pre tool configurtation part so the tool will setup correctly
+        if t[1]==None:
+            pass
+        elif common.is_dictionary(t[1]):
+            env.Replace(**t[1])
+        else:
+            t[1](env)
+        # apply the tool to the enviroment
+        env['CONFIGURED_TOOLS'].append(t[0])        
+        env.Tool(t[0])
+    
+    ## apply the configuration for the tool    
     config.apply_config(env)            
     
     

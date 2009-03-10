@@ -174,7 +174,7 @@ ShCXXAction = SCons.Action.Action("$SHCXXCOM", "$SHCXXCOMSTR",
                                   batch_key=msvc_batch_key,
                                   targets='$CHANGED_TARGETS')
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
+def generate(env,version=None,use_script=False,script_args=None,**kw):
     """Add Builders and construction variables for MSVC++ to an Environment."""
     static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
 
@@ -233,8 +233,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['SHOBJSUFFIX']    = '$OBJSUFFIX'
 
     # Set-up ms tools paths for default version
-    print version,arch
-    setup_env(env,version,arch,use_script)
+    setup_env(env)
 
     env['CFILESUFFIX'] = '.c'
     env['CXXFILESUFFIX'] = '.cc'

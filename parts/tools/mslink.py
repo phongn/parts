@@ -240,7 +240,7 @@ embedManifestProgCheck = SCons.Action.Action (EmbedManifestProgFunc, None)
 ldmodLinkAction = SCons.Action.Action('${TEMPFILE("$LDMODULE $LDMODULEFLAGS $_LDMODULE_TARGETS $_LIBDIRFLAGS $_LIBFLAGS $_PDB $_LDMODULE_SOURCES")}')
 compositeLdmodAction = ldmodLinkAction + embedManifestDLLCheck + regServerCheck 
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
+def generate(env):
     """Add Builders and construction variables for ar to an Environment."""
     SCons.Tool.createSharedLibBuilder(env)
     SCons.Tool.createProgBuilder(env)
@@ -289,7 +289,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_script)
+    setup_env(env)
 
     # Loadable modules are on Windows the same as shared libraries, but they
     # are subject to different build parameters (LDMODULE* variables).

@@ -46,7 +46,7 @@ if SCons.Util.case_sensitive_suffixes('.s', '.S'):
 else:
     ASSuffixes.extend(['.S'])
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
+def generate(env):
     """Add Builders and construction variables for masm to an Environment."""
     static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
 
@@ -68,7 +68,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['ASCOM']     = '$AS $ASFLAGS /c /Fo$TARGET $SOURCES'
     env['ASPPCOM']   = '$CC $ASPPFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c /Fo$TARGET $SOURCES'
     env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
-    setup_env(env,version,arch,use_script)
+    setup_env(env)
 
 def exists(env):
     ret=False

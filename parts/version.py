@@ -93,7 +93,7 @@ class version_range(versionobject.VersionObject):
     help clarify useage, over what I think become confusng with what Albert
     tried to do.
     '''
-    def __init__(self,include,exclude=None):
+    def __init__(self,include='*',exclude=None):
         rstr=''
         if isinstance(include,version_range) or isinstance(include,version):
             rstr=include.ToString()

@@ -1366,7 +1366,7 @@ solutionBuilder = SCons.Builder.Builder(action = '$MSVSSOLUTIONCOM',
 
 default_MSVS_SConscript = None
 
-def generate(env,version=None,arch=None,use_script=False,**kw):
+def generate(env):
     """Add Builders and construction variables for Microsoft Visual
     Studio project files to an Environment."""
     try:
@@ -1401,7 +1401,7 @@ def generate(env,version=None,arch=None,use_script=False,**kw):
     env['MSVSENCODING'] = 'Windows-1252'
 
     # Set-up ms tools paths for default version
-    setup_env(env,version,arch,use_script)
+    setup_env(env)
 
     version_num, suite = msvs_parse_version(env['MSVS_VERSION'])
     if (version_num < 7.0):

@@ -82,43 +82,39 @@ common.SupportedVCList=[
 
 
 class tool_settings:
-    def __init__(self,env,version,use_script,**kw):
+    def __init__(self,env):
 
         ## first validate we can build on platform cases
         # validate host build cases.
         host=env['HOST_SYSTEM']
-        if host.Platform() not in ['win32']:
-            raise ValueError("Invalid Host Platform %s, only 'win32' is supported" % host.Platform())
-        if host.Architecture() not in ['x86','x86_64']:
-            raise ValueError("Invalid Host Architecture %s, only 'x86' or 'x86_64' is supported" % host.Architecture())
+        if host.Platform not in ['win32']:
+            raise ValueError("Invalid Host Platform %s, only 'win32' is supported" % host.Platform)
+        if host.Architecture not in ['x86','x86_64']:
+            raise ValueError("Invalid Host Architecture %s, only 'x86' or 'x86_64' is supported" % host.Architecture)
         
         # validate cross build cases.. easy for windows in general
         target=env['TARGET_SYSTEM']
-        if target.Platform() not in ['win32']:
-            raise ValueError("Invalid Target Platform %s, only 'win32' is supported" % target.Platform())
-        if target.Architecture() not in ['x86','x86_64']:
-            raise ValueError("Invalid Target Architecture %s, only 'x86' or 'x86_64' is supported" % target.Architecture())
+        if target.Platform not in ['win32']:
+            raise ValueError("Invalid Target Platform %s, only 'win32' is supported" % target.Platform)
+        if target.Architecture not in ['x86','x86_64']:
+            raise ValueError("Invalid Target Architecture %s, only 'x86' or 'x86_64' is supported" % target.Architecture)
         self.target=target        
         
         # get correct version
-        if version == None:
-            v1=env.get('MSVC_VERSION',env.get('MSVS_VERSION',None))
-            v1=None
-            if v1 != None:
-                self.version=v1
-            else:
-                self.version=query.get_lastest_version(self.target.Architecture())
-        elif SCons.Util.is_String(version)==False:
-            self.version=str(version)
-        else:
-            self.version = version
             
-        self.use_script=use_script
+        v1=env.get('MSVC_VERSION',env.get('MSVS_VERSION',None))
+        v1=None
+        if v1 != None:
+            self.version=v1
+        else:
+            self.version=query.get_lastest_version(self.target.Architecture)
+            
+        self.use_script=env.get('MSVC_USE_SCRIPT',False)
         
 
         # check that this combo is found
-        if query.is_vc_known(self.version,target.Architecture())==False and SCons.Util.is_String(use_script)==False:
-            raise ValueError("Microsoft Version '%s', Architecture '%s' not found on system" % (self.version,target.Architecture()))        
+        if query.is_vc_known(self.version,target.Architecture)==False and SCons.Util.is_String(use_script)==False:
+            raise ValueError("Microsoft Version '%s', Architecture '%s' not found on system" % (self.version,target.Architecture))        
         
         
  
@@ -142,7 +138,7 @@ def _setup_env(env,ts):
     # this will be the ENV setup prepended to the shell
     shell_env=None
     #first we need to know the architechture
-    arch =ts.target.Architecture()
+    arch =ts.target.Architecture
     # next get the version
     ver=ts.version
       
@@ -189,17 +185,17 @@ def _setup_env(env,ts):
     env['MSVS']={'FOUND_VC':common.FOUND_VC}
     
         
-def setup_env(env,version=None,target_arch=None,use_script=False,**kw):
+def setup_env(env):
     if env.has_key('HOST_SYSTEM') == False:
         env['HOST_SYSTEM'] = part_compat.system_config()
     if env.has_key('TARGET_SYSTEM') == False:
         env['TARGET_SYSTEM'] = part_compat.system_config()
         if target_arch!=None:
-            env['TARGET_SYSTEM'].arch=target_arch
+            env['TARGET_SYSTEM'].Architecture=target_arch
         elif env.has_key('MS_ARCH'):
-            env['TARGET_SYSTEM'].arch=env.has_key('MS_ARCH')
+            env['TARGET_SYSTEM'].Architecture=env.has_key('MS_ARCH')
             
-    _setup_env(env,tool_settings(env,version,use_script,**kw))
+    _setup_env(env,tool_settings(env))
     
     
     
