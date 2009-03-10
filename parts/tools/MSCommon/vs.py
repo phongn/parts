@@ -527,6 +527,7 @@ class VisualStudio:
         # this mean the that default path will always be program file/xxx
         # even on 64-bit systems
         key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'
+        dir=''
         try:
             dir=SCons.Util.RegGetValue(SCons.Util.HKEY_CURRENT_USER, key)[0]
             debug('Found SDK dir in registry: %s' % dir)
@@ -537,6 +538,7 @@ class VisualStudio:
     
     def framework_root(self):
         VS_HKEY_BASE="\\"
+        comps=''
         if common.is_win64():
             VS_HKEY_BASE="\\Wow6432Node\\"
         key = 'Software%sMicrosoft\\.NETFramework\\InstallRoot' % (VS_HKEY_BASE)
@@ -553,7 +555,7 @@ class VisualStudio:
         ''' currently this value when added seem to be messed up in the scripts
         on 32-bit OS systems. Since this path is always bad, we don't add it in these
         cases'''
-             
+        comps=''     
         key = 'Software\\Microsoft\\.NETFramework\\InstallRoot'
         try:
             comps = common.read_reg(key)

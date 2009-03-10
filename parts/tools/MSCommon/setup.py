@@ -103,7 +103,6 @@ class tool_settings:
         # get correct version
             
         v1=env.get('MSVC_VERSION',env.get('MSVS_VERSION',None))
-        v1=None
         if v1 != None:
             self.version=v1
         else:
