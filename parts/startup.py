@@ -11,7 +11,7 @@ import exportitem
 import installs
 import logger
 import reporter
-
+import platform_info
 import os
 import string
 
@@ -197,19 +197,18 @@ def start():
     '''This function sets up all the data and objects needed to have everything work correctly'''
     # start off looking for options that we need to display extra data on
     def_env=SCons.Script.DefaultEnvironment()    
-    core.generate_help_text()
     
     import sys
     args = sys.argv[1:]
-    if def_env.GetOption('clean'):
+    if SCons.Script.GetOption('clean'):
         common.g_args["PARTS_MODE"]='clean'
-    elif def_env.GetOption('help'):
+    elif SCons.Script.GetOption('help'):
         common.g_args["PARTS_MODE"]='help'
-        core.generate_help_text()
+        #core.generate_help_text()
     else:
         common.g_args["PARTS_MODE"]='build'
         
-    if def_env.GetOption('keep_going'):
+    if SCons.Script.GetOption('keep_going'):
         common.g_args["CONTINUE_ON_EXCEPTION"]=True
     else:
         common.g_args["CONTINUE_ON_EXCEPTION"]=False
@@ -305,15 +304,16 @@ def init_args():
 
     ### Load config file ######    
     # Next get the config file settings, if any
-    common.g_args['cfg_file']=SCons.Script.ARGUMENTS.get('cfg_file',common.g_args['cfg_file'])
+    cfg_file=SCons.Script.GetOption('cfg_file')
+    #SCons.Script.ARGUMENTS.get('cfg_file',common.g_args['cfg_file'])
     
     # if we have a config file, load those values
     d1={}
-    if os.path.exists(common.g_args['cfg_file']):
-        print 'Loading config file [',common.g_args['cfg_file'],']'
-        execfile(common.g_args['cfg_file'], d1,common.g_args)
-    elif common.g_args['cfg_file']!=common.def_args['cfg_file']:
-        print "PARTS: Warning - cfg_file =",common.g_args['cfg_file'],"was not found! Ignoring file..."
+    if os.path.exists(cfg_file):
+        print 'Loading config file [',cfg_file,']'
+        execfile(cfg_file, d1,common.g_args)
+    elif cfg_file!='parts.cfg':
+        print "PARTS: Warning - cfg_file =",cfg_file,"was not found! Ignoring file..."
         
 
     ### override with any command line arguments #####
@@ -372,7 +372,7 @@ def SetOptionDefault(key,value):
     global def_args
     if (key=='config' or key=='mode') and common.is_string(value) and not common.is_list(value):
         value=string.split(value,',')
-    elif key=='tools' and common.is_string(value) and not common.is_list(value):
+    elif key=='tool_chain' and common.is_string(value) and not common.is_list(value):
         value=common.process_tool_arg(string.split(value,','))
     try:
         val=common.g_args[key]
@@ -415,6 +415,69 @@ def SetOptionDefault(key,value):
     except KeyError:
         rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
         common.g_args[key]=value
+
+
+def opt_chain(option, opt, value, parser):
+        import SCons.Script.Main
+        for o in string.split(value, ','):
+            parser.values.tool_chain.append(o)
+            
+def opt_target(option, opt, value, parser):
+        import SCons.Script.Main
+        lst=string.split(value, '-')
+        if len(lst) > 2:
+            raise OptionValueError("Warning:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % o)
+        if len(lst) == 1:
+            # nice to a have short cut
+            tmp=platform_info.MapArchitecture(lst[0])
+            if tmp == '':
+                #assume this was a platform
+                parser.values.target_platform=platform_info.system_config(
+                    lst[0],platform_info._host_sys.Architecture
+                    )
+            else:
+                #assume this is a architure
+                parser.values.target_platform=platform_info.system_config(
+                        platform_info._host_sys.Platform,lst[0]
+                        )
+        else:
+            p=lst[0]
+            a=lst[1]
+            if p == '':
+                p=platform_info._host_sys.Platform
+            if a == '':
+                a=platform_info._host_sys.Architecture
+            parser.values.target_platform=platform_info.system_config(p,a)
+
+
+SCons.Script.AddOption("--cfg_file",
+            dest='cfg_file',
+            default='parts.cfg',
+            nargs=1, type='string',
+            action='store',
+            help='Configuration file used to store common settings')
+##            
+##SCons.Script.AddOption("--tool_chain",
+##            dest='tool_chain',
+##            default=[],#'default',
+##            nargs=1,
+##            callback=opt_chain,
+##            type='string',
+##            action='callback',
+##            help='Tool chains to use for build')
+            
+SCons.Script.AddOption("--target","--target_platform",
+            dest='target_platform',
+            default=platform_info.system_config(platform_info._host_sys.Platform,platform_info._host_sys.Architecture),#'default',
+            nargs=1,
+            callback=opt_target,
+            type='string',
+            action='callback',
+            help='Sets the default TARGET_PLATFORM use for cross builds')
+        
+#print SCons.Script.GetOption('cfg_file')
+#print SCons.Script.GetOption('tool_chain')
+print SCons.Script.GetOption('target_platform')
 
 # add configuartion varaible needed for basic setup
 common.add_config_var('cfg_file','parts.cfg')

@@ -52,3 +52,29 @@ def get_tools(env,tlset):
         return get_tools(env,new_list)
     # returns in the end [(tool_str,{of what to apply first} or functor(env)),...]
     return new_list
+
+def _ToolChain(env,chainlist):
+    ## resolve tool chain into the list of tools to setup
+    tool_list=get_tools(env,chainlist)
+    
+    ##add tools
+    if not env.has_key('CONFIGURED_TOOLS'):
+        env['CONFIGURED_TOOLS']=[]
+    for t in tool_list:
+        # apply pre tool configurtation part so the tool will setup correctly
+        if t[1]==None:
+            pass
+        elif common.is_dictionary(t[1]):
+            env.Replace(**t[1])
+        else:
+            t[1](env)
+        # apply the tool to the enviroment
+        env['CONFIGURED_TOOLS'].append(t[0])        
+        env.Tool(t[0])
+        
+# This is what we want to be setup in parts
+from SCons.Script.SConscript import SConsEnvironment
+
+# adding logic to Scons Enviroment object
+
+SConsEnvironment.ToolChain=_ToolChain

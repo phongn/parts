@@ -43,7 +43,7 @@ def PartsExtensionVersion():
 def PartsExtensionVersion_env(env):
     return PartsExtensionVersion()
 
-def generate_help_text():
+def generate_help_text2():
     ''' The function defines the help text'''
     
     help='\n'+parts_version_text()+'''
@@ -193,170 +193,76 @@ def generate_config(prepend,append,replace):
     normalize_map(append)
     normalize_map(replace)
     cache_key=str(prepend)+str(append)+str(replace)
-    cenv=common.g_env_cache.get(cache_key,None)
+    env=common.g_env_cache.get(cache_key,None)
     
-    if isinstance(cenv,SCons.Script.Environment):
-        #print "using cached version"
-        return cenv.Clone()
-    else:
-        #print "creating new env"
-        pass
-    
-    #combine all maps with config settings
-    cfg_map=process_conf_map(prepend,append,replace)  
-    #This is the tools list we need look up
-    tool_list=cfg_map['tool_chain'] #cfg_map['tools'] 
-    del cfg_map['tool_chain']
-    # might need to map config in a different way later
-    cfg_map['CONFIG']=cfg_map['config']
-    
-    # overwrite the tools key so SCon does not get upset
-    # note the default is defined... needs to be defined first
-    cfg_map['TOOLS']=[]#['default','packaging']    
-    # add our mapper objects
-    cfg_map['PARTS']=mappers.part_mapper
-    cfg_map['PARTID']=mappers.part_id_mapper
-    cfg_map['PARTSUB']=mappers.part_subst_mapper
-    cfg_map['PARTNAME']=mappers.part_name_mapper
-    cfg_map['PARTSHORTNAME']=mappers.part_shortname_mapper
-    cfg_map['ABSPATH']=mappers.abspath_mapper
-    cfg_map['RELPATH']=mappers.relpath_mapper
+    if not isinstance(env,SCons.Script.Environment):
+        
+        #combine all maps with config settings
+        cfg_map=process_conf_map(prepend,append,replace)  
+        #This is the tools list we need look up
+        tl_chain=cfg_map['tool_chain'] #cfg_map['tools'] 
+        del cfg_map['tool_chain']
+        # might need to map config in a different way later
+        cfg_map['CONFIG']=cfg_map['config']
+        
+        # overwrite the tools key so SCon does not get upset
+        # note the default is defined... needs to be defined first
+        cfg_map['TOOLS']=[]#['default','packaging']    
+        # add our mapper objects
+        cfg_map['PARTS']=mappers.part_mapper
+        cfg_map['PARTID']=mappers.part_id_mapper
+        cfg_map['PARTSUB']=mappers.part_subst_mapper
+        cfg_map['PARTNAME']=mappers.part_name_mapper
+        cfg_map['PARTSHORTNAME']=mappers.part_shortname_mapper
+        cfg_map['ABSPATH']=mappers.abspath_mapper
+        cfg_map['RELPATH']=mappers.relpath_mapper
+        
+        # set readonly values
+        cfg_map['HOST_PLATFORM']=platform_info._host_sys
 
-    ## create a new environment
-    # get our toolpath 
-    tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
-    # make the SCons environment
-    env=SCons.Script.Environment(toolpath=tool_path,**cfg_map)
-    
-    ## resolve tool chain into the list of tools to setup
-    tool_list=tool_mapping.get_tools(env,tool_list)
-    
-    ##add tools
-    env['CONFIGURED_TOOLS']=[]
-    for t in tool_list:
-        # apply pre tool configurtation part so the tool will setup correctly
-        if t[1]==None:
-            pass
-        elif common.is_dictionary(t[1]):
-            env.Replace(**t[1])
-        else:
-            t[1](env)
-        # apply the tool to the enviroment
-        env['CONFIGURED_TOOLS'].append(t[0])        
-        env.Tool(t[0])
-    
-    ## apply the configuration for the tool    
-    config.apply_config(env)            
-    
-    
-    #configurations.configuration('default')
-    #configurations.configuration('debug')
-    
-    #config.load_tool_config('default','cl','8.0',platform_info.system_config(),platform_info.system_config())
-    #env.BasicEnvironment()
-    #toolset=env.ToolSet(cc=('Intel',ToolSettings(version=11.0) )
-    #env.ToolChain(toolset,host,target)
-    #env.Configuation(cfg_name,host,target)
-    
-    # then for each tool we add the configuration setting
-##    for t in tool_list:
-##        cfg=get_config(cfg_map['CONFIG'],t[0],t[1],host=env['HOST_SYSTEM'],target=env['TARGET_SYSTEM'])
-##        for ci in cfg.keys():
-##            if ci=='prepend_env':
-##                env.PrependENVPath(ci,cfg[ci])
-##            elif ci=='append_env':
-##                AppendENVPath(ci,cfg[ci])
-##            elif ci=='post_config':
-##                post_config.extend(cfg[ci])
-##            elif type(cfg[ci]) == type([]) and env.has_key(ci):
-##                env[ci]=common.make_unique(env[ci]+cfg[ci])
-##            elif type(cfg[ci]) == type({}) and env.has_key(ci):
-##                env[ci].update(cfg[ci]) # might not be the best choice?
-##            else:
-##                env[ci]=cfg[ci] # might not be the best choice?
-    
-##    ########################
-##    ### some old logic
-##    for t in tool_list:
-##        #print t[0],t[1]
-##        cfg=config.get_config(cfg_map['CONFIG'],t[0],t[1])
-##        
-##        for ci in cfg.keys():
-##            if ci=='prepend_env':
-##                prepend_env.extend(cfg[ci])
-##            elif ci=='append_env':
-##                append_env.extend(cfg[ci])
-##            elif ci=='post_config':
-##                post_config.extend(cfg[ci])
-##            elif type(cfg[ci]) == type([]) and cfg_map.has_key(ci):
-##                cfg_map[ci]=common.make_unique(cfg_map[ci]+cfg[ci])
-##            elif type(cfg[ci]) == type({}) and cfg_map.has_key(ci):
-##                cfg_map[ci].update(cfg[ci]) # might not be the best choice?
-##            else:
-##                cfg_map[ci]=cfg[ci] # might not be the best choice?
-##                
-##    arch = cfg_map.get('ARCHITECTURE')
-##    if arch == None:
-##        arch = common.g_args['ARCHITECTURE']
-##    cfg_map['ARCHITECTURE'] = arch
-##
-##    if arch != None:
-##        arch_tools = []
-##        for t in cfg_map['tools']:
-##            # Check if tool supports abi parameter and if it does
-##            # initialize the parameter.
-##            if type(t) == type(()) and type(t[1]) == type({}):
-##                if t[1].has_key('abi'):
-##                    t[1]['abi'] = arch
-##            arch_tools += [t]
-##        cfg_map['tools'] = arch_tools
-##    
-##    # post config stuff that needs to be based on everything else being done.
-##    # useful for setting up compatiblity flags on tools that might have been
-##    # set up before the dependent tool was.  For example, the Intel compiler
-##    # has flags to set up binary compatiblity with different VC and GCC versions.
-##    for i in post_config:
-##        i(cfg_map)
-##    #env=SCons.Script.Environment(toolpath=[os.path.join(os.path.split(__file__)[0],'tools')],**cfg_map)
-##    
-##    # should not be needed most of the time, but it is useful
-##    # for old setups that need some extra care to build correctly.
-##    for i in prepend_env:
-##        env.PrependENVPath(i[0],i[1])
-##    for i in append_env:
-##        env.AppendENVPath(i[0],i[1])
-    
-    # this is a bit of a hack but it helps a lot .. here we append the system
-    # path env value.. would be better if we did not do this but it helps with 
-    # missing or other common tool issues at the current moment.. would like a
-    # better solution when one has to use "other" non-python based solutions
-    # like a way for us to extend the standard tools with our own.
-    
-    ## second note:  we want this to be at the end so we don't mess up the
-    ## normal auto configuration stuff done by SCons for us!!!
-    # we have to get the real scons path as for some reason appending does some 
-    # unwanted behavior.. this fixes an issue with to compilers version paths
-    # being on the PATH and the wrong one being first.. probably a feature
-    # of scons for some linux users
-    good_path=env['ENV']['PATH']
-    env.AppendENVPath('PATH', os.environ['PATH'])
-    # append the true path in front
-    env.PrependENVPath('PATH', good_path)
-    
-    env.Append(BUILDERS = common.g_builders)
-    
-    if bool(env['use_env']) == True:
-        env['ENV']=os.environ
-    # current "cache"
-    common.g_env_cache[cache_key]=env
+        ## create a new environment
+        # get our toolpath 
+        tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
+        # make the SCons environment
+        env=SCons.Script.Environment(toolpath=tool_path,BUILDERS = common.g_builders,**cfg_map)
 
-    ## this is for fixing an issue with the scanners in which one item in a env
-    ## does not have the $vars fully expanded, which causes an issue with in the
-    ## dependency tree. This leads to a false rebuild of few files
-    for k in SCons.Tool.SourceFileScanner.function.keys():
-        if isinstance(SCons.Tool.SourceFileScanner.function[k].path_function,SCons.Scanner.FindPathDirs):
-            SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
-            SCons.Tool.SourceFileScanner.function[k].path_function)
+        ## apply tool chain
+        env.ToolChain(tl_chain)
+
+        ## apply the configuration for the tool    
+        config.apply_config(env)            
+        
+        # this is a bit of a hack but it helps a lot .. here we append the system
+        # path env value.. would be better if we did not do this but it helps with 
+        # missing or other common tool issues at the current moment.. would like a
+        # better solution when one has to use "other" non-python based solutions
+        # like a way for us to extend the standard tools with our own.
+        
+        ## second note:  we want this to be at the end so we don't mess up the
+        ## normal auto configuration stuff done by SCons for us!!!
+        # we have to get the real scons path as for some reason appending does some 
+        # unwanted behavior.. this fixes an issue with to compilers version paths
+        # being on the PATH and the wrong one being first.. probably a feature
+        # of scons for some linux users
+    ##    good_path=env['ENV']['PATH']
+    ##    env.AppendENVPath('PATH', os.environ['PATH'])
+    ##    # append the true path in front
+    ##    env.PrependENVPath('PATH', good_path)
+    ##    
+
+        if bool(env['use_env']) == True:
+            env['ENV']=os.environ
+
+        ## this is for fixing an issue with the scanners in which one item in a env
+        ## does not have the $vars fully expanded, which causes an issue with in the
+        ## dependency tree. This leads to a false rebuild of few files
+        for k in SCons.Tool.SourceFileScanner.function.keys():
+            if isinstance(SCons.Tool.SourceFileScanner.function[k].path_function,SCons.Scanner.FindPathDirs):
+                SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
+                SCons.Tool.SourceFileScanner.function[k].path_function)
+        
+        # Add this to cache
+        common.g_env_cache[cache_key]=env    
     
     #return the cached env
     return env.Clone()
