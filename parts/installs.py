@@ -367,44 +367,34 @@ SConsEnvironment.InstallItem=InstallItem
 
 # add configuartion variable
 
-common.add_config_var('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}')
+common.AddVariable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
 
-common.add_config_var('INSTALL_ROOT','#install/${CONFIG}_${PLATFORM}_${ARCHITECTURE}')
-#common.add_config_var('INSTALL_ROOT','#install')
-
-# these are old and to be removed.. left around to not break existing code
-common.add_config_var('OUT_LIB_ROOT','${INSTALL_ROOT}/lib')
-common.add_config_var('OUT_BIN_ROOT','${INSTALL_ROOT}/bin')
-#common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}${OSBITNESS}')
-#common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}${OSBITNESS}')
-common.add_config_var('OUT_BIN','${OUT_BIN_ROOT}')
-common.add_config_var('OUT_LIB','${OUT_LIB_ROOT}')
+common.AddVariable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_SYSTEM}','')
 
 #these are the replacements
-common.add_config_var('INSTALL_LIB','$OUT_LIB')
-common.add_config_var('INSTALL_BIN','$OUT_BIN')
+common.AddVariable('INSTALL_LIB','${INSTALL_ROOT}/lib','')
+common.AddVariable('INSTALL_BIN','${INSTALL_ROOT}/bin','')
 
-common.add_config_var('INSTALL_API','${INSTALL_ROOT}/API')
-common.add_config_var('INSTALL_INCLUDE','${INSTALL_ROOT}/include')
-common.add_config_var('INSTALL_CONFIG','${INSTALL_ROOT}/config')
-common.add_config_var('INSTALL_DOC','${INSTALL_ROOT}/doc')
-common.add_config_var('INSTALL_HELP','${INSTALL_ROOT}/help')
-common.add_config_var('INSTALL_MESSAGE','${INSTALL_ROOT}/message')
-common.add_config_var('INSTALL_RESOURCE','${INSTALL_ROOT}/resource')
-common.add_config_var('INSTALL_SAMPLE','${INSTALL_ROOT}/sample')
-common.add_config_var('INSTALL_DATA','${INSTALL_ROOT}/data')
-common.add_config_var('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/')
-common.add_config_var('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL')
+common.AddVariable('INSTALL_API','${INSTALL_ROOT}/API','')
+common.AddVariable('INSTALL_INCLUDE','${INSTALL_ROOT}/include','')
+common.AddVariable('INSTALL_CONFIG','${INSTALL_ROOT}/config','')
+common.AddVariable('INSTALL_DOC','${INSTALL_ROOT}/doc','')
+common.AddVariable('INSTALL_HELP','${INSTALL_ROOT}/help','')
+common.AddVariable('INSTALL_MESSAGE','${INSTALL_ROOT}/message','')
+common.AddVariable('INSTALL_RESOURCE','${INSTALL_ROOT}/resource','')
+common.AddVariable('INSTALL_SAMPLE','${INSTALL_ROOT}/sample','')
+common.AddVariable('INSTALL_DATA','${INSTALL_ROOT}/data','')
+common.AddVariable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
+common.AddVariable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
 
 #file patterns
-common.add_config_var('INSTALL_LIB_PATTERN',['*.so','*.sl'])
-#common.add_config_var('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM'])
-common.add_config_var('INSTALL_API_LIB_PATTERN',['*.lib','*.a'])
+common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*'],'')
+common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
 
 if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
-    common.add_config_var('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'])
+    common.AddListVariable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
 else:
-    common.add_config_var('INSTALL_BIN_PATTERN',['*'])
+    common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')
 
 
 # vim: set et ts=4 sw=4 ai ft=python :

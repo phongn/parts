@@ -125,7 +125,7 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     if def_env['PART_INFO'].has_key(alias):
         rpt.part_warning(env,'Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
         #print 'Parts: Warning= Overriding predefined alias [',alias,'] file=[',def_env['PART_INFO'][alias]['FILE'],'] with data from part file=[',part_info['FILE'],']'
-
+    
     return part_info
     
 
@@ -140,7 +140,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
             append={},prepend={},create_sdk=True,**kw):
     start_time=time.time()
     #print "defining" ,alias
-    if common.g_args['PARTS_MODE']=='help':
+    if common.g_part_mode=='help':
         return
 
     def_env=SCons.Script.DefaultEnvironment()
@@ -259,7 +259,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     # exist, except when we are cleaning and the checked out version
     # does not exists
     ret=None
-    if (common.g_args["PARTS_MODE"]=='build') or (os.path.exists(parts_file.srcnode().abspath)==True):
+    if (common.g_part_mode=='build') or (os.path.exists(parts_file.srcnode().abspath)==True):
         if os.path.exists(parts_file.srcnode().abspath)==False:
             rpt.part_warning(env,'Parts file '+parts_file.srcnode().abspath+" was not found. The build may fail")
             #print 'Parts: Warning -- Parts file',parts_file.srcnode().abspath,'was not found. The build may fail'
@@ -424,12 +424,12 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.Part=Part_method
 
 # add configuartion varaible needed for part
-common.add_config_var('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}')
+common.AddVariable('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}','Namespace used to just build a a given target')
 
-common.add_config_var('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}')
-common.add_config_var('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}')
-common.add_config_var('BUILD_DIR_ROOT','#build')
-common.add_config_var('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${PLATFORM}_${ARCHITECTURE}/$ALIAS')
-common.add_config_var('use_env',False)
-common.add_config_var('duplicate_build',False)
-common.add_config_var('mode',['default'])
+common.AddVariable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to express building via an Alias target')
+common.AddVariable('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}','Namespace to express building via a Part Name and possible version')
+common.AddVariable('BUILD_DIR_ROOT','#build', 'Root directory for building a given build configuration/variant')
+common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_SYSTEM}/$ALIAS', 'Full path used to for building a given build configuration/variant')
+common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
+common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
+common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')

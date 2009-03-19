@@ -8,6 +8,8 @@ import os
 import imp
 import sys
 
+import Variables
+
 # import Scons stuff
 import SCons.Script 
 import SCons.Errors
@@ -15,9 +17,11 @@ import SCons.Tool
 import SCons.Util
 
 g_builders={}
-g_args={}
+#g_args={}
 g_env_cache={}
 g_parts_objs={}
+
+g_part_mode=''
 
 # node we have processed
 #g_parts_node=set()
@@ -25,8 +29,9 @@ g_parts_objs={}
 # or ones that are used created by the part call which we always assume to have one
 #g_env_w_builders=set()
 
-def_args={}
-
+#def_args={}
+def_vars=[]
+g_defaultoverides={}
 # holds the set of alias that are created by parts
 g_name_alias_map={}
 # set of the part we know we want to build
@@ -37,55 +42,41 @@ g_target_alias=set()
 g_build_as_sdk=set()
 #depends data we stored
 g_depends_data={}
+# custom data mappers
+g_mappers={}
 
 
 g_base_env= SCons.Script.Environment(tools=[])
 def get_basic_SCon_env(**kw):
     return g_base_env.Clone(**kw)
 
+def add_mapper(mapper):
+    g_mappers[mapper.name]=mapper
+
 def add_parts_object(key,object):
     g_parts_objs[key]=object
     # add code to for help generation
 
-def add_config_var(key,default,help=''):
-    def_args[key]=default
-    # add code to for help generation
+def AddVariable(key,default,help,validator=None,converter=None):
+    '''Generic varible addition'''
+    #def_args[key]=default
+    def_vars.append((key,help,default,validator,converter))
+
+def AddBoolVariable(key,default,help):
+    '''Generic varible addition'''
+    def_vars.append(SCons.Script.BoolVariable(key,help,default))    
+
+def AddEnumVariable(key,default,help,allowed_values,map={},ignorecase=1):
+    '''Generic varible addition'''
+    def_vars.append(SCons.Script.EnumVariable(key,help,default))
+
+def AddListVariable(key,default,help,allowed_values=[],map={}):
+    '''Generic varible addition'''
+    def_vars.append(Variables.ListVariable2(key,help,default,allowed_values,map))    
 
 ##########################################################
 
-def make_list_converter(val, allowedElems=[], mapdict={}):
-    """
-    """
-    # make the list
-    val = filter(None, string.split(val, ','))
-    # map values
-    val = map(lambda v, m=mapdict: m.get(v, v), val)
-    if allowedElems != []:
-        # validate if we have bad elements
-        notAllowed = filter(lambda v, aE=allowedElems: not v in aE, val)
-        if notAllowed:
-            raise ValueError("Invalid value(s) for option: %s" %
-                        string.join(notAllowed, ','))
-    # see if we have duplicate elements
-    notAllowed = filter(lambda v,lst=val: lst.count(v)>1, val)
-    if notAllowed:
-        raise ValueError("Value(s) are entered more then once for option: %s" %
-                    string.join(make_unique(notAllowed), ','))
-    return val
 
-
-def ListOption2(key, help, default=[], names=[], map={}):
-    """
-    """
-    names_str = 'allowed names: %s' % string.join(names, ' ')
-    if SCons.Util.is_List(default):
-        default = string.join(default, ',')
-    help = string.join(
-        (help, '(all|none|comma-separated list of names)', names_str),
-        '\n    ')
-    return (key, help, default,
-            None, #_validator,
-            lambda val, elems=names, m=map: make_list_converter(val, elems, m))
 ###############
 
 def process_tool_arg(lst):
@@ -495,4 +486,4 @@ def load_module(root,name):
 
     return sys.modules[full_name]
 
-add_config_var('ALIAS_SEPARTATOR','::')
+AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')

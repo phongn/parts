@@ -266,7 +266,9 @@ def load_cfg(name):
     configurations.configuration(name)
     # make sure any dependent config is loaded as well
     dep=g_configuration[name].Dependent()
-    if g_configuration.has_key(dep)==False:
+    
+    if g_configuration.has_key(dep)==False and dep is not None:
+    
         load_cfg(dep)
 
 def make_name_list(tool,host,target):
@@ -393,7 +395,7 @@ def load_tool_config(env,name,tool,host,target):
         try:
             
             mod=common.load_module('parts.configurations.'+name,k)
-            print 'Configurtation [',name,'] loaded file:',k
+            #print 'Configurtation [',name,'] loaded file:',k
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break
@@ -401,18 +403,19 @@ def load_tool_config(env,name,tool,host,target):
             pass
         
     else:
-        if dep == None:
-            print 'Configurtation [',name,'] found no configruation for tool:',k
+        #if dep == None:
+        #    print 'Configurtation [',name,'] found no configruation for tool:',k
         found=False # nothing found
 
     ## Last we merge settings and store
     if dep != None:
         # Get base settings
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
-        
+    
     if found==True:
         # merge setting
         settings,ver_rng=mod.config.merge(ver,base_settings)
+        
         #store setting
         g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func)
     else:
@@ -425,6 +428,7 @@ def get_config(env,name,tool,host,target):
         load_cfg(name)
     config=g_configuration[name]
     # is tool loaded?
+    ver=None
     if config.has_tool_cfg(tool,host,target)==False:    
     #if not load it
         ver=load_tool_config(env,name,tool,host,target)
@@ -440,10 +444,12 @@ def get_config(env,name,tool,host,target):
 def apply_config(env,name=None,host=None,target=None):
     # get tools set to configure
     tools=env['CONFIGURED_TOOLS']
-    host=env['HOST_PLATFORM']
-    target=env['TARGET_PLATFORM']
+    host=env['HOST_SYSTEM']
+    target=env['TARGET_SYSTEM']
     if name==None:
+        env['CONFIG']=env.subst('${CONFIG}')
         name=env['CONFIG']
+        
     print "Applying configuration:",name
     #print "tools that have been configured",tools
     for t in tools:
@@ -475,5 +481,6 @@ def apply_config(env,name=None,host=None,target=None):
             f(env)
                 
         
-        
+common.AddVariable(['CONFIG','config'],'${default_config}','The configuration to use')
+common.AddVariable('default_config','debug','The configuration to use by default')
 

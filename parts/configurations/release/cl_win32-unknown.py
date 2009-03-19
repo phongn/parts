@@ -21,7 +21,7 @@ config.VersionRange("6.0",
                     )
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/Zc:wchar_t','/RTC1'],
+                        CCFLAGS=['/nologo','/Ox','/MD','/W3','/Zc:wchar_t'],
                         CXXFLAGS=['$CCFLAGS','/EHsc','/GR']
                         )
                     )

@@ -498,40 +498,38 @@ common.AddBuilder('__CreateSDKBuilder__',SCons.Builder.Builder(
         ))
 import datetime        
 # add configuartion varaible
-common.add_config_var("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%H%M'))
+common.AddVariable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%H%M'),'')
 
-common.add_config_var('PART_SDK_CONCEPT','sdk${ALIAS_SEPARTATOR}')
+common.AddVariable('PART_SDK_CONCEPT','sdk${ALIAS_SEPARTATOR}','')
 
 #common.add_config_var('SDK_ROOT','#sdks/${PART_ROOT_NAME}_${PART_VERSION}${SVN_REVISION==None and DATE_TIME_STAMP or SVN_REVISION}_${ARCHITECTURE}')
-common.add_config_var('SDK_ROOT','#sdks/${CONFIG}_${PLATFORM}_${ARCHITECTURE}/${PART_ROOT_NAME}_${SVN_REVISION==None and PART_VERSION or PART_VERSION+"."+SVN_REVISION}')
-common.add_config_var('SDK_LIB_ROOT','$SDK_ROOT/lib')
-common.add_config_var('SDK_BIN_ROOT','$SDK_ROOT/bin')
-common.add_config_var('SDK_INCLUDE_ROOT','$SDK_ROOT/include')
-common.add_config_var('SDK_LIB','$SDK_LIB_ROOT')
-common.add_config_var('SDK_BIN','$SDK_BIN_ROOT')
-common.add_config_var('SDK_INCLUDE','$SDK_INCLUDE_ROOT')
-common.add_config_var('SDK_API','$SDK_ROOT/API')
-common.add_config_var('SDK_CONFIG','$SDK_ROOT/config')
-common.add_config_var('SDK_DOC','$SDK_ROOT/doc')
-common.add_config_var('SDK_HELP','$SDK_ROOT/help')
-common.add_config_var('SDK_DATA','$SDK_ROOT/data')
-common.add_config_var('SDK_MESSAGE','$SDK_ROOT/message')
-common.add_config_var('SDK_RESOURCE','$SDK_ROOT/resource')
-common.add_config_var('SDK_SAMPLE','$SDK_ROOT/sample')
-common.add_config_var('SDK_TOP_LEVEL','$SDK_ROOT/TOP_LEVEL')
-common.add_config_var('SDK_NO_INSTALL','$SDK_ROOT/NO_INSTALL')
+common.AddVariable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_SYSTEM}/${PART_ROOT_NAME}_${SVN_REVISION==None and PART_VERSION or PART_VERSION+"."+SVN_REVISION}',
+					'Root Directory used for copy SDKs to')
+common.AddVariable('SDK_LIB_ROOT','$SDK_ROOT/lib','Full SDK directory for the lib concept')
+common.AddVariable('SDK_BIN_ROOT','$SDK_ROOT/bin','Full SDK directory for the bin concept')
+common.AddVariable('SDK_INCLUDE_ROOT','$SDK_ROOT/include','Full SDK directory for the include or header concept')
+common.AddVariable('SDK_LIB','$SDK_LIB_ROOT','Full SDK directory for the lib concept')
+common.AddVariable('SDK_BIN','$SDK_BIN_ROOT','Full SDK directory for the bin concept')
+common.AddVariable('SDK_INCLUDE','$SDK_INCLUDE_ROOT','Full SDK directory for the include or header concept')
+common.AddVariable('SDK_API','$SDK_ROOT/API','Full SDK directory for the API concept')
+common.AddVariable('SDK_CONFIG','$SDK_ROOT/config','Full SDK directory for the configuration file concept')
+common.AddVariable('SDK_DOC','$SDK_ROOT/doc','Full SDK directory for the documenation concept')
+common.AddVariable('SDK_HELP','$SDK_ROOT/help','Full SDK directory for the help concept')
+common.AddVariable('SDK_DATA','$SDK_ROOT/data','Full SDK directory for the generic data concept')
+common.AddVariable('SDK_MESSAGE','$SDK_ROOT/message','Full SDK directory for the messages (catalogs) concept')
+common.AddVariable('SDK_RESOURCE','$SDK_ROOT/resource','Full SDK directory for the resource concept')
+common.AddVariable('SDK_SAMPLE','$SDK_ROOT/sample','Full SDK directory for the sample concept')
+common.AddVariable('SDK_TOP_LEVEL','$SDK_ROOT/TOP_LEVEL','Full SDK directory for the file that get installed as the top level (such readme.txt)')
+common.AddVariable('SDK_NO_INSTALL','$SDK_ROOT/NO_INSTALL','For files needed for the product in some way, but should not be added in the final install package')
 
-#common.add_config_var('OUT_INCLUDE_ROOT','#include')
-#common.add_config_var('OUT_INCLUDE','$OUT_INCLUDE_ROOT/${PART_ROOT_NAME}_${PART_VERSION}')
+common.AddBoolVariable('USE_SRC_DIR',False,'Controls is the SDK or Src directory of the Part is passed to dependent parts, useful for debug builds')
+common.AddBoolVariable('CREATE_SDK',True,'Controls if the SDK should be created and used') 
 
-common.add_config_var('USE_SRC_DIR',False)
-common.add_config_var('CREATE_SDK',True) 
-
-common.add_config_var('SDK_LIB_PATTERN',['*.lib','*.LIB','*.a','*.A','*.so','*.sl'])
+common.AddListVariable('SDK_LIB_PATTERN',['*.lib','*.LIB','*.a','*.A','*.so','*.sl','*.so.*','*.sl.*'],'filter of file patterns use to match lib type files')
 if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
-    common.add_config_var('SDK_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'])
+    common.AddListVariable('SDK_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'filter of file patterns use to match bin type files')
 else:
-    common.add_config_var('SDK_BIN_PATTERN',['*'])
+    common.AddListVariable('SDK_BIN_PATTERN',['*'],'filter of file patterns use to match lib type files')
 
 
 

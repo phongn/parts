@@ -76,4 +76,4 @@ class reporter:
 
 
 
-common.add_config_var('STREAM_WARNING_AS_ERROR',False)
+common.AddBoolVariable('STREAM_WARNING_AS_ERROR',False, 'Controls is warning based messages are treated as errors')

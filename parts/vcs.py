@@ -9,15 +9,15 @@ import os,sys,shutil,filecmp,time,stat
 import SCons.Script 
 
 # add configuartion varaible needed for part
-common.add_config_var('SVN_SERVER','')
-common.add_config_var('CVS_SERVER','')
-common.add_config_var('PREBUILT_SERVER','')
-common.add_config_var('PROCESS_VCS',False) # deprecated; use UPDATE_ALL
-common.add_config_var('UPDATE_ALL',False)
-common.add_config_var('UPDATE_FROM_SVN',False)
-common.add_config_var('SVN_REVISION',None)
-common.add_config_var('CHECK_OUT_ROOT','#repository')
-common.add_config_var('CHECK_OUT_DIR','$CHECK_OUT_ROOT/$ALIAS')
+common.AddVariable('SVN_SERVER','','Value of SVN server to use')
+common.AddVariable('CVS_SERVER','','Value of CVS server to use')
+common.AddVariable('PREBUILT_SERVER','','Path to location of prebuilt data')
+#common.AddVariable('PROCESS_VCS',False) # deprecated; use UPDATE_ALL
+common.AddBoolVariable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
+common.AddBoolVariable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
+common.AddVariable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
+common.AddVariable('CHECK_OUT_ROOT','#repository','Root directory to place checked out data')
+common.AddVariable('CHECK_OUT_DIR','$CHECK_OUT_ROOT/$ALIAS','Full path used for any given checked out item')
 
 SCons.Script.Alias('extract_sources')
 
@@ -42,9 +42,6 @@ def process_vcs(env,name,part_file,vcs_type):
     # we do some setup work 
     # here we get the check out directory
     
-    if common.g_args['PROCESS_VCS']==True: # DEPRECATED!
-        common.g_args['UPDATE_ALL'] = True
-
     node=env.Dir(env.subst('$CHECK_OUT_DIR'))
     out_dir=node.path
     node=node.File(part_file)#,env.subst('$CHECK_OUT_DIR'))
@@ -57,17 +54,17 @@ def process_vcs(env,name,part_file,vcs_type):
     # if the parts_file already exists, that implies the out_dir is in place; if
     # they don't ask us to do anything, we assume the sources are correctly
     # checked out and the user does not want us to update at all
-    elif (common.g_args['UPDATE_ALL']==False and
-          common.g_args['UPDATE_FROM_SVN']==False and
+    elif (env['UPDATE_ALL']==False and
+          env['UPDATE_FROM_SVN']==False and
           os.path.exists(filename)==True):
         return retf
     # it is more complicated if the parts_file already exists (which implies
     # out_dir exists) and they ask us to do something, so defer that while we
     # handle the simpler case of there not being a parts file
     elif os.path.exists(filename)==False:
-        if (common.g_args['UPDATE_ALL']==False and
-            common.g_args['UPDATE_FROM_SVN']==False and
-            common.g_args["PARTS_MODE"]=='build'):
+        if (env['UPDATE_ALL']==False and
+            env['UPDATE_FROM_SVN']==False and
+            env["PARTS_MODE"]=='build'):
             # print message on why we ignored the update flags
             print "Warning! Sources do not seem to exist, but no update flags given."
             print "Overriding flags to get sources."
@@ -125,15 +122,15 @@ class vcs:
     and interface functionality needed for all VCS objects
     '''
     def __init__(self,repository,server=''):
-        if server == '':
-            server=self.default_server()
+        #if server == '':
+        #    server=self.default_server()
         if server != '' and server[-1]!='/':
             server+='/'
         self.repos=repository
         self.server=server
 
     def __call__(self,out_dir,env,name):
-        if common.g_args["PARTS_MODE"]=='clean':
+        if common.g_part_mode=='clean':
             self.clean_step(out_dir)
             ret = True
         elif os.path.exists(out_dir):
@@ -151,8 +148,10 @@ class vcs_svn(vcs):
     def __init__(self,repository,server='',revision=None):
         self.revision = revision
         vcs.__init__(self,repository,server)
-    def default_server(self):
-        return common.g_args['SVN_SERVER']
+    def default_server(self,env):
+        if self.server != '':
+            return self.server
+        return env['SVN_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
         # update command in SVN updates a given location... in reality we may
         # want to say update this area with a different version; the switch
@@ -164,27 +163,27 @@ class vcs_svn(vcs):
         rev_string = ' '
         if self.revision != None:
             rev_string = ' -r ' + self.revision + ' '
-        elif common.def_args['SVN_REVISION'] != common.g_args['SVN_REVISION']:
-            rev_string = ' -r ' + common.g_args['SVN_REVISION'] + ' '
-        ret = SysCall("svn switch --non-interactive"+rev_string+self.server+self.repos+' "'+out_dir+'"')
+        elif env['SVN_REVISION'] != '':
+            rev_string = ' -r ' + env['SVN_REVISION'] + ' '
+        ret = SysCall("svn switch --non-interactive"+rev_string+self.default_server(env)+self.repos+' "'+out_dir+'"')
         if ret:
             # What if 'forced' here??
-            if (common.g_args['UPDATE_ALL']==True or common.g_args['UPDATE_FROM_SVN']==True):
+            if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
                 env.Clean(env.Alias(name),env.Dir(out_dir))
                 #could be dangerous if mapped badly by user
                 # next check should prevent common case
-                if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-                    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
+                #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
+                #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
         return ret
     def checkout_cmd(self,out_dir,env,name):
         rev_string = ' '
         if self.revision != None:
             rev_string = ' -r ' + self.revision + ' '
-        elif common.def_args['SVN_REVISION'] != common.g_args['SVN_REVISION']:
-            rev_string = ' -r ' + common.g_args['SVN_REVISION'] + ' '
-        ret = SysCall("svn checkout --non-interactive"+rev_string+self.server+self.repos+' "'+out_dir+'"')
+        elif env['SVN_REVISION'] != '':
+            rev_string = ' -r ' + env['SVN_REVISION'] + ' '
+        ret = SysCall("svn checkout --non-interactive"+rev_string+self.default_server(env)+self.repos+' "'+out_dir+'"')
         if ret:
-            if (common.g_args['UPDATE_ALL']==True or common.g_args['UPDATE_FROM_SVN']==True):
+            if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
                 env.Clean(env.Alias(name),env.Dir(out_dir))
                 #could be dangerous if mapped badly by user
                 # next check should prevent common case
@@ -206,57 +205,61 @@ class vcs_svn(vcs):
                 os.chmod(source, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
     
 class vcs_cvs(vcs):
-    def default_server(self):
-        return common.g_args['CVS_SERVER']
+    def default_server(self,env):
+        if self.server != '':
+            return self.server
+        return env['CVS_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
         #'cvs -z' + str (cvsCompressLevel) + ' up -d -r ' + componentVersion
-        return SysCall("echo cvs update")
+        return SysCall("echo cvs update FILL IN CODE")
     def checkout_cmd(self,out_dir,env,name):
         #'cvs -z' + str (cvsCompressLevel) + ' -d:pserver:' + userName + '@' + component.server + ':' 
         #+ component.repos + ' co -d ' + componentVersion + ' -r ' + componentVersion + ' ' + component.path
-        return SysCall("echo cvs checkout")
+        return SysCall("echo cvs checkout FILL IN CODE")
 
 class vcs_Prebuilts(vcs):
-    def default_server(self):
-        return common.g_args['PREBUILT_SERVER']
+    def default_server(self,env):
+        if self.server != '':
+            return self.server
+        return env['PREBUILT_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
         # we get here because out_dir already exists but the part_file doesn't
         # in which case we should proceed, or else because out_dir already
         # exists and they asked us to do something ... if UPDATE_FROM_SVN only,
         # we don't want to do anything for PRE-BUILTS!
-        if force==False and common.g_args['UPDATE_ALL']==False:
+        if force==False and env['UPDATE_ALL']==False:
             return True
-        print 'Updating Prebuilts from ' + self.server+self.repos + ' to ' + out_dir
+        print 'Updating Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         try: 
             copier = PyRobocopier ()
-            copier.parse_args ([self.server+self.repos, out_dir, '-s', '-p', '-f'])
+            copier.parse_args ([self.default_server(env)+self.repos, out_dir, '-s', '-p', '-f'])
             copier.do_work ()
         except Exception,e:
             print e
             return False
-        if common.g_args['UPDATE_ALL']==True: # What if 'forced' here?
+        if env['UPDATE_ALL']==True: # What if 'forced' here?
             env.Clean(env.Alias(name),env.Dir(out_dir))
             #could be dangerous if mapped badly by user
             # next check should prevent common case
-            if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-                env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
+            #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
+            #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
         return True
     def checkout_cmd(self,out_dir,env,name):
-        #print 'Copying Prebuilts from ' + self.server+self.repos + ' to ' + out_dir
+        #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         try:
-            p=os.path.normpath(self.server+self.repos)
+            p=os.path.normpath(self.default_server(env)+self.repos)
             if os.path.exists(p):
                 print 'Copying Prebuilts from ' + p + ' to ' + out_dir
             shutil.copytree (p, out_dir)
         except Exception,e:
             print e
             return False
-        if common.g_args['UPDATE_ALL']==True: # What if 'forced' here?
+        if env['UPDATE_ALL']==True: # What if 'forced' here?
             env.Clean(env.Alias(name),env.Dir(out_dir))
             #could be dangerous if mapped badly by user
             # next check should prevent common case
-            if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-                env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
+            #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
+            #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
         return True
         
     

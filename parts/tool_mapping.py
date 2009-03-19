@@ -28,7 +28,6 @@ def get_tools(env,tlset):
     new_list=[]
     repeat=False
     for t in tlset:
-        # test if tool has been seen to prevent loops
         if t[1] == None or common.is_string(t[1]):
             #get the list subst for the value
             repeat=True
@@ -55,7 +54,10 @@ def get_tools(env,tlset):
 
 def _ToolChain(env,chainlist):
     ## resolve tool chain into the list of tools to setup
-    tool_list=get_tools(env,chainlist)
+    # normalize for of all tools requested
+    tlset=common.process_tool_arg(chainlist)
+    # get the list
+    tool_list=get_tools(env,tlset)
     
     ##add tools
     if not env.has_key('CONFIGURED_TOOLS'):

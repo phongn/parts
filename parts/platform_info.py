@@ -154,12 +154,40 @@ _host_sys=system_config_r()
 def HostSystem():
     return _host_sys
 
-# add configuartion varaible
-common.add_config_var('ARCHITECTURE',_host_sys.Architecture)
-common.add_config_var('OSBITNESS',str(OSBit()))
+def target_convert(str_val, raw_val):
+    lst=str_val.split('-')
+    if len(lst) > 2:
+        raise ValueError("Warning:  %s is not a valid target_system value\nValue must be in form of <Plaform>-<Architecture>" % o)
+    if len(lst) == 1:
+        # nice to a have short cut
+        tmp=MapArchitecture(lst[0])
+        if tmp == '':
+            #assume this was a platform
+            ret=system_config(
+                lst[0],_host_sys.Architecture
+                )
+        else:
+            #assume this is a architure
+            ret=system_config(
+                    _host_sys.Platform,lst[0]
+                    )
+    else:
+        p=lst[0]
+        a=lst[1]
+        if p == '':
+            p=_host_sys.Platform
+        if a == '':
+            a=_host_sys.Architecture
+        ret=system_config(p,a)
 
-#common.add_config_var('HOST_PLATFORM',_host_sys)
-common.add_config_var('TARGET_PLATFORM',system_config(_host_sys.Platform,_host_sys.Architecture))
+    return ret
+
+# add configuartion varaible
+common.AddVariable('OSBITNESS',str(OSBit()),'to be removed??')
+
+common.AddVariable(['TARGET_SYSTEM','target_platform','target'],system_config(_host_sys.Platform,_host_sys.Architecture), 
+        'Value of what to type of system to target build for, used to control cross builds',
+        converter=target_convert)
 
 common.add_parts_object('ChipArchitecture',ChipArchitecture)
 common.add_parts_object('OSBit',OSBit)

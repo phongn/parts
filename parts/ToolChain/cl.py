@@ -2,9 +2,12 @@
 
 
 def cl_setup(env,ver):
+    
     env['MSVC_VERSION']=ver
+    env['MSVS_VERSION']=ver
 
 def resolve(env,version):
+    
     func=lambda x : cl_setup(x,version)
     return [
                 ('cl',func),

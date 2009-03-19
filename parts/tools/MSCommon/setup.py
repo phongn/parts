@@ -87,14 +87,14 @@ class tool_settings:
 
         ## first validate we can build on platform cases
         # validate host build cases.
-        host=env['HOST_PLATFORM']
+        host=env['HOST_SYSTEM']
         if host.Platform not in ['win32']:
             raise ValueError("Invalid Host Platform %s, only 'win32' is supported" % host.Platform)
         if host.Architecture not in ['x86','x86_64']:
             raise ValueError("Invalid Host Architecture %s, only 'x86' or 'x86_64' is supported" % host.Architecture)
         
         # validate cross build cases.. easy for windows in general
-        target=env['TARGET_PLATFORM']
+        target=env['TARGET_SYSTEM']
         if target.Platform not in ['win32']:
             raise ValueError("Invalid Target Platform %s, only 'win32' is supported" % target.Platform)
         if target.Architecture not in ['x86','x86_64']:
@@ -108,7 +108,6 @@ class tool_settings:
             self.version=v1
         else:
             self.version=query.get_lastest_version(self.target.Architecture)
-            
         self.use_script=env.get('MSVC_USE_SCRIPT',False)
         
 
@@ -186,14 +185,14 @@ def _setup_env(env,ts):
     
         
 def setup_env(env):
-    if env.has_key('HOST_PLATFORM') == False:
-        env['HOST_PLATFORM'] = part_compat.system_config()
-    if env.has_key('TARGET_PLATFORM') == False:
-        env['TARGET_PLATFORM'] = part_compat.system_config()
+    if env.has_key('HOST_SYSTEM') == False:
+        env['HOST_SYSTEM'] = part_compat.system_config()
+    if env.has_key('TARGET_SYSTEM') == False:
+        env['TARGET_SYSTEM'] = part_compat.system_config()
         if target_arch!=None:
-            env['TARGET_PLATFORM'].Architecture=target_arch
+            env['TARGET_SYSTEM'].Architecture=target_arch
         elif env.has_key('MS_ARCH'):
-            env['TARGET_PLATFORM'].Architecture=env.has_key('MS_ARCH')
+            env['TARGET_SYSTEM'].Architecture=env.has_key('MS_ARCH')
             
     _setup_env(env,tool_settings(env))
     

@@ -77,7 +77,7 @@ class map_rpath_link_part:
         self.env=env
         self.add_self=add_self
     def __call__(self):
-        if common.g_args['AUTO_RPATH']==True:
+        if env['AUTO_RPATH']==True:
             import mappers
             def_env=SCons.Script.DefaultEnvironment()
             #alias=self.env['ALIAS']
@@ -109,7 +109,7 @@ class map_rpath_part:
         self.env=env
         self.add_self=add_self
     def __call__(self):
-        if common.g_args['AUTO_RPATH']==True:
+        if env['AUTO_RPATH']==True:
             import mappers
             rlst=self.env.get('RPATH',[])
             def_env=SCons.Script.DefaultEnvironment()
@@ -137,4 +137,4 @@ class map_rpath_part:
             #print 'RPATH LIST',self.env['RPATH']
           
 # add configuartion varaible
-common.add_config_var('AUTO_RPATH',True)
+common.AddBoolVariable('AUTO_RPATH',True,'Controls if RPath values are automatically added to path')

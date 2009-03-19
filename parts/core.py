@@ -15,6 +15,7 @@ import version
 import mappers
 import functors
 import tool_mapping
+import Variables
 
 import platform_info
 
@@ -146,91 +147,107 @@ def normalize_map(m):
     if common.is_string(value) and not common.is_list(value):
         m[key]=string.split(value,',')
     
-    key='tools'
+    key='tool_chain'
     value=m.get(key,None)    
     if common.is_string(value) and not common.is_list(value):
         m[key]=common.process_tool_arg(string.split(value,','))
-
-def process_conf_map(prepend,append,replace):
-    '''make the config map we will use to create the Env
-    it replaces then append and prepends data'''
     
-    cfg_map={}
-    cfg_map.update(common.g_args)
-    cfg_map.update(replace)
-    
-    for i in append.keys():
-        if cfg_map.has_key(i)==False:
-            cfg_map[i]=append[i]
-        else:
-            cfg_map[i]+=append[i]
-            
-    for i in prepend.keys():
-        if cfg_map.has_key(i)==False:
-            cfg_map[i]=prepend[i]
-        else:
-            cfg_map[i]=append[i]+cfg_map[i]
-    
-    return cfg_map
-        
+    return m
 
 
 ### primary config stuff
 
 
 def generate_config(prepend,append,replace):
-    # get the tool list
-    prepend_env=[]
-    append_env=[]
-    post_config=[] # these are settings that need to be tweaked after the 
     
     ## see if this was cached... seems to take long time to create an env
-    ## so this is a big time saver.
-    ## a big note should be given that this is not the best way to cache most
-    ## likely but it is safe which is more important at the time of implementing this
-    #global common.g_env_cache
-    normalize_map(prepend)
-    normalize_map(append)
-    normalize_map(replace)
-    cache_key=str(prepend)+str(append)+str(replace)
+    ## so this is a big time saver as most of the time we only need a copy of the 
+    ## same setup
+    ## NOTE!! should be given that this is not the best way to cache most likely
+    ## but it is safe which is more important at the time of implementing this
+
+    cache_key=str(normalize_map(prepend))+\
+                str(normalize_map(append))+\
+                str(normalize_map(replace))+\
+                str(normalize_map(common.g_defaultoverides))
+                
     env=common.g_env_cache.get(cache_key,None)
     
-    if not isinstance(env,SCons.Script.Environment):
+    #if not isinstance(env,SCons.Script.Environment):
+    if env is None:
         
-        #combine all maps with config settings
-        cfg_map=process_conf_map(prepend,append,replace)  
-        #This is the tools list we need look up
-        tl_chain=cfg_map['tool_chain'] #cfg_map['tools'] 
-        del cfg_map['tool_chain']
-        # might need to map config in a different way later
-        cfg_map['CONFIG']=cfg_map['config']
-        
-        # overwrite the tools key so SCon does not get upset
-        # note the default is defined... needs to be defined first
-        cfg_map['TOOLS']=[]#['default','packaging']    
-        # add our mapper objects
-        cfg_map['PARTS']=mappers.part_mapper
-        cfg_map['PARTID']=mappers.part_id_mapper
-        cfg_map['PARTSUB']=mappers.part_subst_mapper
-        cfg_map['PARTNAME']=mappers.part_name_mapper
-        cfg_map['PARTSHORTNAME']=mappers.part_shortname_mapper
-        cfg_map['ABSPATH']=mappers.abspath_mapper
-        cfg_map['RELPATH']=mappers.relpath_mapper
-        
-        # set readonly values
-        cfg_map['HOST_PLATFORM']=platform_info._host_sys
+        ## basic setup
+        cfg_map={}
+        overrides=SCons.Script.ARGUMENTS.copy()
+        overrides.update(replace)
+        # minor messing around with tools still need 
+        pre_tools=prepend.get('tool_chain',[])
+        if pre_tools:
+            del prepend['tool_chain']
+        post_tools=append.get('tool_chain',[])
+        if post_tools:
+            del append['tool_chain']
+        # add stuff in SCons that are tools, that are needed
+        # this is needed for Tag for Install()
+        post_tools.append('packaging')
 
+        ## setup the SCons Variable
+        cfg_files=[SCons.Script.GetOption('cfg_file')]
+        vars=Variables.Variables(cfg_files,args=overrides,user_defaults=common.g_defaultoverides)
+        vars.AddVariables(*common.def_vars)
+        
+        ## set readonly values
+        # add our mapper objects
+        cfg_map.update(common.g_mappers)
+        # random data
+        cfg_map['HOST_SYSTEM']=platform_info._host_sys
+        cfg_map["PARTS_MODE"]=common.g_part_mode
+        if SCons.Script.GetOption('keep_going'):
+            cfg_map["CONTINUE_ON_EXCEPTION"]=True
+        else:
+            cfg_map["CONTINUE_ON_EXCEPTION"]=False
+        
         ## create a new environment
         # get our toolpath 
         tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
         # make the SCons environment
-        env=SCons.Script.Environment(toolpath=tool_path,BUILDERS = common.g_builders,**cfg_map)
+        env=SCons.Script.Environment(
+                                variables = vars,
+                                TOOLS=[],
+                                toolpath=tool_path,
+                                BUILDERS = common.g_builders,
+                                **cfg_map
+                                )
+        # core variable remapings
+        #env['CONFIG']=env.subst('${config}')
 
         ## apply tool chain
-        env.ToolChain(tl_chain)
+        env.ToolChain(pre_tools+env['tool_chain']+post_tools)#tl_chain)
 
         ## apply the configuration for the tool    
+        #config.Configuration(env)
         config.apply_config(env)            
+        
+        #append any data or prepend any data as needed
+        #will probally need better error handling later
+        for k,v in append.iteritems():
+            has_hey=env.has_key(k)
+            if common.is_list(v) and has_hey:
+                env.AppendUnique(**{k:v})
+            elif common.is_list(v) and not has_hey:
+                env[k]=v
+            else:
+                print "error",k,"is not a list"
+        
+        for k,v in prepend.iteritems():
+            has_hey=env.has_key(k)
+            if common.is_list(v) and has_hey:
+                env.PrependUnique(**{k:v})
+            elif common.is_list(v) and not has_hey:
+                env[k]=v
+            else:
+                print "error",k,"is not a list"
+                
         
         # this is a bit of a hack but it helps a lot .. here we append the system
         # path env value.. would be better if we did not do this but it helps with 
@@ -288,27 +305,6 @@ class PartPathDirsWrapper:
         return self.obj(env,dir,target,source,argument)
 
 
-##def my_decider(dependency, target, prev_ni):
-##    '''this function is used to decide if a node shoudl rebuild. The way we use it
-##    is to add it to a value node, which has no value on disk to test for. We then
-##    add this to a node, as a dependence, that is to be build so this value node
-##    will call this function to decide if it needs to be built. Do this allow us to
-##    set call a list of functors that will pre setup more dependencies to Scons, 
-##    before Scons start to process them. This allow use to make a consistant
-##    Enviroment to all node ( prevents false rebuilds) and allow use to set high 
-##    level targets, map setting or what ever we need to do.'''
-##    
-##    print "MY DECIDER",dependency, target#, prev_ni.__dict__
-##    def_env=SCons.Script.DefaultEnvironment()
-##    if def_env['PREPROCESS_LOGIC_QUEUE']!=[]:
-##        print "PARTS: Mapping version information"
-##        for i in def_env['PREPROCESS_LOGIC_QUEUE']:
-##            i()
-##        def_env['PREPROCESS_LOGIC_QUEUE']=[]
-##        print "PARTS: Done -- Mapping version information"
-##    if common.g_args.get('REBUILD_ALL',False):
-##        return True  
-##    return False
 
 def get_file_main_script(def_env):
     if def_env.GetOption('file')!=[]:
@@ -380,7 +376,7 @@ def store_depends_data():
     import cPickle
     tmp=make_depends_map()
     # if we are not using SDK and we are reading everything, just re-write the whole file 
-    if (common.g_args['use_sdk']==False and common.g_buildable_part == set()):
+    if (common.g_part_mode==False and common.g_buildable_part == set()):
         common.g_depends_data=tmp
     else:
         #else we only update what we know is safe.
@@ -441,7 +437,7 @@ SConsEnvironment.PartVersionString=parts_version_text_env
 SConsEnvironment.IsPartsExtensionVersionBeta=is_parts_version_beta_env
 SConsEnvironment.PartsExtensionVersion=PartsExtensionVersion_env
 
-common.add_config_var('REBUILD_ALL',False)
+common.AddBoolVariable('REBUILD_ALL',False,'')
 
 common.add_parts_object('PartVersionString',parts_version_text)
 common.add_parts_object('IsPartsExtensionVersionBeta',is_parts_version_beta)

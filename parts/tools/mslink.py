@@ -116,7 +116,7 @@ def _dllEmitter(target, source, env, paramtp):
                             "WINDOWSDEFPREFIX", "WINDOWSDEFSUFFIX"))
 
     version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
-    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 0):
+    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
         # MSVC 8 automatically generates .manifest files that must be installed
         extratargets.append(
             env.ReplaceIxes(dll,
@@ -164,7 +164,7 @@ def prog_emitter(target, source, env):
         raise SCons.Errors.UserError, "An executable should have exactly one target with the suffix: %s" % env.subst("$PROGSUFFIX")
 
     version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
-    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 0):
+    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
         # MSVC 8 automatically generates .manifest files that have to be installed
         extratargets.append(
             env.ReplaceIxes(exe,
@@ -189,7 +189,7 @@ def RegServerFunc(target, source, env):
     return 0
 
 def EmbedManifestDLLFunc(target,source,env):
-    
+
     if(float(env['MSVC_VERSION']) < 8.0): return 0
     insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
     manifestSrc = str(target[0])+'.manifest'
@@ -209,6 +209,7 @@ def EmbedManifestProgFunc(target,source,env):
     #test to see if the version of VC is greater than 8.0
     # as this version requires that manifest be used
     # need tests for no manifest cases for 8.0 and above (currently stupid on this)
+
     if(float(env['MSVC_VERSION']) < 8.0): return 0
     
     insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
