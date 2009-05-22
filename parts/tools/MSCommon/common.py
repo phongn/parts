@@ -1,0 +1,91 @@
+import os
+import SCons.Util
+from parts.tools.Common.ToolSetting import ToolSetting
+
+logfile = os.environ.get('SCONS_MSCOMMON_DEBUG')
+if logfile:
+    try:
+        import logging
+    except ImportError:
+        debug = lambda x: open(logfile, 'a').write(x + '\n')
+    else:
+        logging.basicConfig(filename=logfile, level=logging.DEBUG)
+        debug = logging.debug
+else:
+    debug = lambda x: None
+
+
+def is_win64():
+    """Return true if running on windows 64-bits OS."""
+    # Unfortunately, python does not provide any way to tell if the OS itself
+    # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
+    # the value Python might return. This tell us nothing of the current system
+    # The test below returns
+    value = "Software\Wow6432Node"
+    yo=None
+    try:
+        yo = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)
+    except:
+        pass
+    if yo is None:
+        return False
+    else:
+        return True
+
+def read_reg(value):
+    return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]
+
+def get_current_sdk():
+    ''' get SDK path based on reg key used for vc 9.0 and newer'''
+    # note this key is used for both 32-bit and 64-bit systems
+    # this mean the that default path will always be program file/xxx
+    # even on 64-bit systems
+    key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'
+    dir=''
+    try:
+        dir=SCons.Util.RegGetValue(SCons.Util.HKEY_CURRENT_USER, key)[0]
+        debug('Found SDK dir in registry: %s' % dir)
+    except WindowsError, e:
+        debug('Did not find SDK dir key %s in registry' % \
+              (key))
+    return dir
+
+def framework_root():
+    VS_HKEY_BASE="\\"
+    comps=''
+    if is_win64():
+        VS_HKEY_BASE="\\Wow6432Node\\"
+    key = 'Software%sMicrosoft\\.NETFramework\\InstallRoot' % (VS_HKEY_BASE)
+    try:
+        comps = read_reg(key)
+        debug('Found framework dir in registry: %s' % comps)
+    except WindowsError, e:
+        debug('Did not find framework dir key %s in registry' % \
+              (key))
+        return ''
+    return comps
+        
+def framework_root64():
+    ''' currently this value when added seem to be messed up in the scripts
+    on 32-bit OS systems. Since this path is always bad, we don't add it in these
+    cases'''
+    comps=''     
+    key = 'Software\\Microsoft\\.NETFramework\\InstallRoot'
+    try:
+        comps = read_reg(key)
+        if comps[-3:] != '64\\':
+            comps=comps[:-1]+'64\\'
+            if os.path.exists(comps) == False:
+                debug('Did not find framework64 dir')
+                return ''
+        debug('Found framework64 dir in registry: %s' % comps)
+    except WindowsError, e:
+        debug('Did not find framework64 dir key %s in registry' % \
+              (key))
+        return ''
+    return comps
+
+## setup the tools we know about
+
+
+msvc=ToolSetting('MSVC')
