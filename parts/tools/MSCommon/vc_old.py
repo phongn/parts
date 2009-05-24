@@ -142,10 +142,10 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS60COMNTOOLS'
-                ],'../../'),
+                ],'../../VC98'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio',
-                    r'C:\Program Files\Microsoft Visual Studio'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio/VC98',
+                    r'C:\Program Files\Microsoft Visual Studio/VC98'
                 ])
             ],
             script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),

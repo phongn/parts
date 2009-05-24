@@ -33,9 +33,22 @@ class ToolInfo:
         self.test_file=test_file
         
         self.shell_cache={}
+        
+        #state value for when we add data to the tool setting object
+        # this allow use to make sure we overide certain toolinfo objects
+        # when the host they are bound to is native over item that are not
+        self.is_native=False
     
     def version_set(self):
         return [self.version]
+    
+    def make_ver_shell_env_set(self,ver,env):
+        ret={}
+        tmp=ver.split('.')
+        for i in range (0,len(tmp)):
+            # add path data
+            ret[".".join(tmp[:i+1])]=env
+        return ret
 
     def get_script(self,env):
         for i in self.script:
@@ -45,7 +58,6 @@ class ToolInfo:
         return None
 
     def get_root(self,version):
-
         if SCons.Util.is_List(self.install_root):
             for i in self.install_root:
                 ret=i()
@@ -59,6 +71,13 @@ class ToolInfo:
 
     def get_shell_env(self,env,namespace,version,install_root,script):
         ret={}
+        if install_root is None:
+            # get the install_root
+            install_root=self.get_root(version)
+        #Setup namespaced varibles
+        env[namespace]=self.get_namespace(env,
+            INSTALL_ROOT=install_root,
+            VERSION=version)
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)]
         except KeyError:
@@ -70,14 +89,8 @@ class ToolInfo:
                     # error as no file exits   
                     pass
             elif script==True:
+                
                 #get the default script if one exists and use it
-                if install_root is None:
-                    # get the install_root
-                    install_root=self.get_root(version)
-                env[namespace]=parts.common.namespace(env,
-                    INSTALL_ROOT=install_root,
-                    VERSION=version,
-                    **self.subst_vars)
                 script_data=self.get_script(env)
                 if script_data is None:
                     # we have an error as sccript was not found
@@ -86,33 +99,34 @@ class ToolInfo:
                 ret=merge_script.get_script_env(env,script_data[0],script_data[1])
                 
             else: # script is False
-                if install_root is None:
-                    # get the install_root
-                    install_root=self.get_root(version)
-                shell_env=self.shell_vars
-                env[namespace]=parts.common.namespace(env,
-                    INSTALL_ROOT=install_root,
-                    VERSION=version,
-                    TEST='${MSVC.VCINSTALL}',
-                    **self.subst_vars)
-                
                 # subst data
-                for k, v in shell_env.items():
+                for k, v in self.shell_vars.items():
                     ret[k]=os.path.normpath(env.subst(v))
+                    
         self.shell_cache[str(version)+str(install_root)+str(script)]=ret
         return ret
+
+    def get_namespace(self,env,**kw):
+        kw.update(self.subst_vars)
+        return parts.common.namespace(env,
+                    **kw)
 
     def query(self,env,namespace,root_path,use_script):
         
         if SCons.Util.is_List(self.install_root) or SCons.Util.is_String(use_script):
-            tmp=self.exists(env,namespace,self.version,root_path,use_script)
-            if tmp is None:
-                return None
-            return {
-                self.version:
-                tmp
-            }
-        return self.install_root.scan()
+            found={self.version:root_path}
+        else:
+            found=self.install_root.scan()
+        
+        if found is None:
+            return None
+
+        ret={}
+        for v,p in found.items():
+            tmp=self.exists(env,namespace,v,p,use_script)
+            if tmp is not None:
+                ret.update(self.make_ver_shell_env_set(v,tmp))
+        return ret
 
     ## general case
     def exists(self,env,namespace,version,root_path,use_script):
@@ -130,29 +144,6 @@ class ToolInfo:
             pass
         #print "NOT FOUND"
         return None
-
-
-  ####  
-    ##.. special MS case
-    def _exists(self,tool,strict_64=False):
-        tmp=SCons.Util.WhereIs(tool,path=self.get_path())
-        if tmp!=None:
-            # This if block validates that in the case of finding the x86_64
-            # version of the tool, we don't get a false positive of a 32-bit version
-            # This happens because the path is in the general form of (for 64-bit only)
-            # vcbin_arch;vcbin;...   
-            # Which means that two CL can exist on the path, but since the vcbin_arch 
-            # form is first it is found first. if it was not there or installed we would
-            # get a false postive.
-            if strict_64==True:
-                if self.target_arch == 'x86_64':
-                    if tmp.find('amd64') == -1:
-                        return False
-                elif self.target_arch == 'ia64':
-                    if tmp.find('ia64') == -1:
-                        return False
-            return True
-        return False  
 
 
 

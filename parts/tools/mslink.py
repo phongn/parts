@@ -40,11 +40,9 @@ import SCons.Defaults
 import SCons.Errors
 import SCons.Platform.win32
 import SCons.Tool
-import SCons.Tool.msvc
-import SCons.Tool.msvs
 import SCons.Util
 
-from MSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc,validate_vars
 
 def pdbGenerator(env, target, source, for_signature):
     try:
@@ -94,7 +92,7 @@ def _windowsLdmodSources(target, source, env, for_signature):
 
 def _dllEmitter(target, source, env, paramtp):
     """Common implementation of dll emitter."""
-    SCons.Tool.msvc.validate_vars(env)
+    validate_vars(env)
 
     extratargets = []
     extrasources = []
@@ -115,7 +113,10 @@ def _dllEmitter(target, source, env, paramtp):
                             '%sPREFIX' % paramtp, '%sSUFFIX' % paramtp,
                             "WINDOWSDEFPREFIX", "WINDOWSDEFSUFFIX"))
 
-    version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
+    tmp=env.get('MSVS_VERSION', '6.0')
+    if tmp is None:
+        tmp=6.0
+    version_num=float(tmp)
     if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
         # MSVC 8 automatically generates .manifest files that must be installed
         extratargets.append(
@@ -155,15 +156,18 @@ def ldmodEmitter(target, source, env):
     return _dllEmitter(target, source, env, 'LDMODULE')
 
 def prog_emitter(target, source, env):
-    SCons.Tool.msvc.validate_vars(env)
+    validate_vars(env)
 
     extratargets = []
 
     exe = env.FindIxes(target, "PROGPREFIX", "PROGSUFFIX")
     if not exe:
         raise SCons.Errors.UserError, "An executable should have exactly one target with the suffix: %s" % env.subst("$PROGSUFFIX")
-
-    version_num, suite = SCons.Tool.msvs.msvs_parse_version(env.get('MSVS_VERSION', '6.0'))
+    
+    tmp=env.get('MSVS_VERSION', '6.0')
+    if tmp is None:
+        tmp=6.0
+    version_num=float(tmp)
     if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
         # MSVC 8 automatically generates .manifest files that have to be installed
         extratargets.append(
@@ -258,7 +262,7 @@ def generate(env):
     env['SHLINKCOM']   =  compositeShLinkAction
     env.Append(SHLIBEMITTER = [windowsLibEmitter])
     env['LINK']        = 'link'
-    env['LINKFLAGS']   = SCons.Util.CLVar('/nologo')
+    #env['LINKFLAGS']   = SCons.Util.CLVar('/nologo')
     env['_PDB'] = pdbGenerator
     env['LINKCOM'] = compositelinkcomAction
     env.Append(PROGEMITTER = [prog_emitter])
@@ -296,7 +300,7 @@ def generate(env):
     env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
 
     # Set-up ms tools paths for default version
-    setup_env(env)
+    msvc.MergeShellEnv(env)
 
     # Loadable modules are on Windows the same as shared libraries, but they
     # are subject to different build parameters (LDMODULE* variables).
@@ -313,7 +317,7 @@ def generate(env):
     env['LDMODULECOM'] = compositeLdmodAction
 
 def exists(env):
-    return msvc_exists(env,'link')
+    return msvc.Exists(env,'link')
 
 # Local Variables:
 # tab-width:4

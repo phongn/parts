@@ -1,0 +1,194 @@
+
+import SCons.Util
+import sys
+import re
+import parts.tools.Common.Finders as Finders
+from parts.tools.Common.ToolSetting import ToolSetting
+from parts.tools.Common.ToolInfo import ToolInfo
+from parts.version import version_range
+
+intel_9='([9])([0-1])'
+intel_10='([0-9][0])([0-9]).([0-9][0-9][0-9])'
+intel_11='([0-9][1])([0-9]).([0-9][0-9][0-9])'
+#different layout in registry
+intel_11_1='[0-9][0-9][0-9]'
+
+#this is a general scanner for all version till version 11.1
+class reg_scanner:
+    def __init__(self,regkeys,pattern,arch,env,ver):
+        self.pattern=pattern
+        self.reg_keys=regkeys
+        self.arch=arch
+        self.env_var=Finders.EnvFinder(env,arch)
+        self.cache=None
+        self.ver=ver
+
+    def scan(self):
+        # search for all known location for a give version
+        if self.cache is None:
+            # what we will want to return
+            ret={}
+            # pattern to match on
+            reg=re.compile(self.pattern, re.I)
+            # The erg key we will open
+            k=None
+            # for each key location
+            for key in self.reg_keys:
+                try:
+                    # try to open key
+                    k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE,
+                                                key)
+                    keyname=key
+                    break
+                except WindowsError:
+                    # if not try again
+                    pass
+            #if this is none we have an error        
+            if k is None:
+                print "Error 1... No Intel compilers found via std install means"
+                return 
+            
+            i = 0
+            try:
+                while i < 50: #Don't loop forever, just in case of massive failure
+                    # iterate over the key to get valid version numbers
+                    subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
+                    #parse to see if we got match
+                    result=reg.match(subkey)
+                    if result:                
+                        # form up full key name to test for install
+                        keyname=keyname+"\\"+subkey+"\\"+self.arch+"\\ProductDir"
+                        
+                        try:
+                            #try to get value
+                            path = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
+                                             keyname)[0]
+                            
+                            ret[".".join(result.groups())]=path
+                        except WindowsError:
+                            #key not registry.. so we ignore
+                            pass
+                    i=i+1
+            except EnvironmentError:
+            # no more subkeys
+                pass
+            if ret =={}:
+                # ctest env
+                ret = self.env_var()
+                if ret is not None:
+                    ret[self.ver]=ret
+            self.cache=ret
+        return self.cache
+        
+    def resolve(self,ver):
+        tmp=self.scan()
+        try:
+            ver=tmp.keys()[-1]
+        except:
+            return None
+        return tmp[ver]
+
+
+#this is a general scanner for all version at version 11.1 (and beyond??)
+class reg_scanner2:
+    def __init__(self,regkeys,pattern,arch,env,ver):
+        self.pattern=pattern
+        self.reg_keys=regkeys
+        self.arch=arch
+        self.env_var=Finders.EnvFinder(env,arch)
+        self.cache=None
+        self.ver=ver
+
+    
+    def scan(self):
+        # search for all known location for a give version
+        if self.cache is None:
+            # what we will want to return
+            ret={}
+            # pattern to match on
+            reg=re.compile(self.pattern, re.I)
+            # The erg key we will open
+            k=None
+            # for each key location
+            for key in self.reg_keys:
+                try:
+                    # try to open key
+                    k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE,
+                                                key)
+                    keyname=key
+                    break
+                except WindowsError:
+                    # if not try again
+                    pass
+            #if this is none we have an error        
+            if k is None:
+                print "Error 1... No Intel compilers found via std install means"
+                return 
+            
+            i = 0
+            try:
+                while i < 50: #Don't loop forever, just in case of massive failure
+                    # iterate over the key to get valid version numbers
+                    subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
+                    #parse to see if we got match
+                    result=reg.match(subkey)
+                    if result:                
+                        # form up full key name to test for install
+                        #keyname=keyname+"\\"+subkey+"\\C++\\"+self.arch+"\\ProductDir"
+                        keyname1=keyname+"\\"+subkey+"\\C++\\ProductDir"
+                        
+                        try:
+                            #try to get value
+                            path = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
+                                             keyname1)[0]
+                            
+                            
+                            # and check to see if we have this arch version installed
+                            keyname1=keyname+"\\"+subkey+"\\C++\\"+self.arch+"\\DisplayString"
+                            SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
+                                             keyname1)
+                            # got value so we make up all version that this could match on
+                            keyname1=keyname+"\\"+subkey+"\\C++\\Major Version"
+                            va=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
+                                             keyname1)[0]
+                            keyname1=keyname+"\\"+subkey+"\\C++\\Minor Version"
+                            vb=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
+                                             keyname1)[0]
+                            vc=subkey
+                            tmp=".".join(str(va),str(vb),vc)
+                            
+                            ret[tmp]=path
+                        except WindowsError:
+                            #key not registry.. so we ignore
+                            pass
+                    i=i+1
+            except EnvironmentError:
+            # no more subkeys
+                pass
+            if ret =={}:
+                # ctest env
+                ret = self.env_var()
+                if ret is not None:
+                    ret[self.ver]=ret
+            self.cache=ret
+        return self.cache
+        
+    def resolve(self,ver):
+        tmp=self.scan()
+        try:
+            ver=tmp.keys()[-1]
+        except:
+            return None
+        return tmp[ver]
+
+class IntelcInfo(ToolInfo):
+    def __init__(self,version,install_scanner,script,subst_vars,shell_vars,test_file):
+        ToolInfo.__init__(self,version,install_scanner,script,subst_vars,shell_vars,test_file)
+        self.version=version_range(version)
+    
+    def version_set(self):
+        return self.version
+
+
+Intelc=ToolSetting('INTELC')
+

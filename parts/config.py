@@ -77,15 +77,16 @@ class configuration:
         settings_ex=cfg[1]
         
         # setup settings_ex
-        tmp= mysetting['post_process_func']
-        settings_ex['post_process_func']=[]
-        if tmp!=None:
+        tmp = mysetting['post_process_func']
+        if settings_ex.has_key('post_process_func')==False:
+            settings_ex['post_process_func']=[]
+        if tmp is not None:
             settings_ex['post_process_func'].append(tmp)
-        if self.post_process_func != None:
+        if self.post_process_func is not None:
             settings_ex['post_process_func'].append(self.post_process_func)
         
         settings_ex['default_ver_func']=[]
-        if self.default_ver_func != None: # should not be None.. clean up latter
+        if self.default_ver_func is not None: # should not be None.. clean up latter
             settings_ex['default_ver_func'].append(self.default_ver_func)
         
         tmp= mysetting['prepend_env']
@@ -395,7 +396,7 @@ def load_tool_config(env,name,tool,host,target):
         try:
             
             mod=common.load_module('parts.configurations.'+name,k)
-            #print 'Configurtation [',name,'] loaded file:',k
+            print 'Configurtation [',name,'] loaded file:',k
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break
@@ -415,7 +416,7 @@ def load_tool_config(env,name,tool,host,target):
     if found==True:
         # merge setting
         settings,ver_rng=mod.config.merge(ver,base_settings)
-        
+        #print settings
         #store setting
         g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func)
     else:
@@ -444,6 +445,7 @@ def get_config(env,name,tool,host,target):
 def apply_config(env,name=None,host=None,target=None):
     # get tools set to configure
     tools=env['CONFIGURED_TOOLS']
+    #print "Configured Tool to get configuration from",tools
     host=env['HOST_SYSTEM']
     target=env['TARGET_SYSTEM']
     if name==None:
@@ -454,7 +456,7 @@ def apply_config(env,name=None,host=None,target=None):
     #print "tools that have been configured",tools
     for t in tools:
         settings,setting_extra=get_config(env,name,t,host,target)
-        
+        #print t,settings,setting_extra
         for flag,items in settings.iteritems():
             
             # replace values

@@ -101,7 +101,14 @@ class system_config:
         self.Architecture=arch
     
     def __eq__ (self,rhs):
-        return self.Platform==rhs.Platform and self.Architecture == rhs.Architecture
+        return (self.Platform==rhs.Platform or\
+                'any'==rhs.Platform or\
+                'any'==self.Platform) and\
+            (self.Architecture==rhs.Architecture or\
+                'any'==rhs.Architecture or\
+                'any'==self.Architecture)
+    def __repr__(self):
+        return self.Platform+"-"+self.Architecture
     
     def __str__(self):
         return self.Platform+"-"+self.Architecture
@@ -120,6 +127,9 @@ class system_config:
 
     def __setarch(self, x):
         self.__arch = x
+        
+    def is_native(self):
+        return 'any'!= self.Platform and 'any' != self.Architecture
     
     Architecture = property(__getarch,__setarch)
     Platform = property(__getplat,__setplat)
@@ -130,8 +140,13 @@ class system_config_r:
         self.__plat=platform
         self.__arch=arch
     
-    def __eq__ (self,rhs):
-        return self.Platform==rhs.Platform and self.Architecture == rhs.Architecture
+    def __eq__ (self,rhs):        
+        return (self.Platform==rhs.Platform or\
+                'any'==rhs.Platform or\
+                'any'==self.Platform) and\
+            (self.Architecture==rhs.Architecture or\
+                'any'==rhs.Architecture or\
+                'any'==self.Architecture)
     
     def __str__(self):
         return self.Platform+"-"+self.Architecture
@@ -144,6 +159,9 @@ class system_config_r:
 
     def __getarch(self):
         return self.__arch
+    
+    def is_native(self):
+        return 'any'!= self.Platform and 'any' != self.Architecture
 
     Architecture = property(__getarch)
     Platform = property(__getplat)

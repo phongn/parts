@@ -49,7 +49,7 @@ import SCons.Script.SConscript
 import SCons.Util
 import SCons.Warnings
 
-from MSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc
 
 ##############################################################################
 # Below here are the classes and functions for generation of
@@ -1401,7 +1401,7 @@ def generate(env):
     env['MSVSENCODING'] = 'Windows-1252'
 
     # Set-up ms tools paths for default version
-    setup_env(env)
+    msvc.MergeShellEnv(env)
 
     version_num, suite = msvs_parse_version(env['MSVS_VERSION'])
     if (version_num < 7.0):
@@ -1418,7 +1418,7 @@ def generate(env):
     env['SCONS_HOME'] = os.environ.get('SCONS_HOME')
 
 def exists(env):
-    return msvc_exists(env,'cl')
+    return msvc.Exists(env,'cl')
 
 # Local Variables:
 # tab-width:4

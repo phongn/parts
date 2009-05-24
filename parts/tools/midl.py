@@ -41,7 +41,7 @@ import SCons.Defaults
 import SCons.Scanner.IDL
 import SCons.Util
 
-from MSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc
 
 def midl_emitter(target, source, env):
     """Produces a list of outputs from the MIDL compiler"""
@@ -79,10 +79,10 @@ def generate(env):
     env['MIDLFLAGS']     = SCons.Util.CLVar('/nologo')
     env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE 2> NUL'
     env['BUILDERS']['TypeLibrary'] = midl_builder
-    setup_env(env)
+    msvc.MergeShellEnv(env)
 
 def exists(env):
-    return msvc_exists(env,'midl')
+    return msvc.Exists(env,'midl')
 
 # Local Variables:
 # tab-width:4

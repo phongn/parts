@@ -49,18 +49,11 @@ import SCons.Warnings
 import SCons.Scanner.RC
 
 #from MSCommon import msvc_exists,setup_env,is_win64
-from MSCommon2 import *
+from MSCommon import msvc,validate_vars
 
 CSuffixes = ['.c', '.C']
 CXXSuffixes = ['.cc', '.cpp', '.cxx', '.c++', '.C++']
 
-def validate_vars(env):
-    """Validate the PCH and PCHSTOP construction variables."""
-    if env.has_key('PCH') and env['PCH']:
-        if not env.has_key('PCHSTOP'):
-            raise SCons.Errors.UserError, "The PCHSTOP construction must be defined if PCH is defined."
-        if not SCons.Util.is_String(env['PCHSTOP']):
-            raise SCons.Errors.UserError, "The PCHSTOP construction variable must be a string: %r"%env['PCHSTOP']
 
 def pch_emitter(target, source, env):
     """Adds the object file target."""
@@ -197,6 +190,9 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
         static_obj.add_emitter(suffix, static_object_emitter)
         shared_obj.add_emitter(suffix, shared_object_emitter)
 
+    # Set-up ms tools paths for default version
+    msvc.MergeShellEnv(env)
+
     env['CCPDBFLAGS'] = SCons.Util.CLVar(['${(PDB and "/Z7") or ""}'])
     env['CCPCHFLAGS'] = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}'])
     env['_MSVC_OUTPUT_FLAG'] = msvc_output_flag
@@ -232,10 +228,6 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['OBJSUFFIX']      = '.obj'
     env['SHOBJPREFIX']    = '$OBJPREFIX'
     env['SHOBJSUFFIX']    = '$OBJSUFFIX'
-
-    # Set-up ms tools paths for default version
-    msvc.MergeShellEnv(env)
-    #setup_env(env)
 
     env['CFILESUFFIX'] = '.c'
     env['CXXFILESUFFIX'] = '.cc'

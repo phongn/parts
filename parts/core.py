@@ -213,17 +213,17 @@ def generate_config(prepend,append,replace):
         # make the SCons environment
         env=SCons.Script.Environment(
                                 variables = vars,
-                                TOOLS=[],
+                                tools=[],
                                 toolpath=tool_path,
                                 BUILDERS = common.g_builders,
                                 **cfg_map
                                 )
         # core variable remapings
         #env['CONFIG']=env.subst('${config}')
-
+        
         ## apply tool chain
+        #print env['tool_chain']
         env.ToolChain(pre_tools+env['tool_chain']+post_tools)#tl_chain)
-
         ## apply the configuration for the tool    
         #config.Configuration(env)
         config.apply_config(env)            

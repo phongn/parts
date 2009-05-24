@@ -14,12 +14,14 @@ config=configuration(map_default_version)
 
 config.VersionRange("6.0",
                     append=ConfigValues(
-                        CPPDEFINES=['WIN32','_WINDOWS','_WIN32_WINNT=0x500']
+                        CPPDEFINES=['WIN32','_WINDOWS','_WIN32_WINNT=0x500'],
+                        CCFLAGS=['/DMSVC_VERSION=$MSVC_VERSION']
                         )
                     )
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        CPPDEFINES=['WIN32','_WINDOWS','_WIN32_WINNT=0x501']
+                        CPPDEFINES=['WIN32','_WINDOWS','_WIN32_WINNT=0x501'],
+                        CCFLAGS=['/DMSVC_VERSION=$MSVC_VERSION']
                         )
                     )
     

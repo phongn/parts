@@ -79,6 +79,37 @@ def AddListVariable(key,default,help,allowed_values=[],map={}):
 
 ###############
 
+class namespace(dict):
+    ''' helper class to allow making subst varaible in SCons to allow a clean
+    form of $a.b
+    '''
+    def __init__(self,env,**kw):
+        dict.__init__(self,kw)
+        self.__dict__['env']=env
+        
+    def __getattr__(self,name):
+        ''' This is ugly but because SCons does not have a good recursive subst
+        code, I need to subst stuff here before SCons can try to, else it will
+        try to set this object to Null string, causing an unwanted error'''
+        #print "Get **************", name,self[name]
+        return self.env.subst(self[name])
+    def __setattr__(self,name,value):
+        self[name]=value
+    def __delattr__(self,name):
+        del self[name]
+        
+    def rebind(self,env):
+        '''
+        Rebind the environment to a new one.
+        There does not seem a way to have this happen in a clone
+        as from what i can see semi_deep_copy does not pass a new env
+        However I can do this in cases when i do a copy, which is not as
+        bad as not doing it at all
+        '''
+        return namespace(env,**self.copy())
+
+
+
 def process_tool_arg(lst):
     tmplst=[]
     for i in lst:
@@ -93,6 +124,7 @@ def process_tool_arg(lst):
             print "Invalid tool defined [",tmp,']'
             Exit(1)
         tmplst.append(tmp)
+    tmplst.reverse()
     return tmplst
 
 def AddBuilder(name,builder):
@@ -117,6 +149,15 @@ def matches(value, includes, excludes=None):
                match = 0
                break
     return match
+
+def make_list(obj):
+    ''' 
+    The purpose of thsi function is to make the obj into a list if it is not
+    already one. It will flatten as well    
+    '''
+    if SCons.Util.is_List(obj):
+        return SCons.Util.flatten(obj)
+    return [obj]
 
 def make_unique(obj):
     ''' The purpose of this object is to make a list

@@ -20,10 +20,10 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 8',
-                    r'C:\Program Files\Microsoft Visual Studio 8'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 8\VC',
+                    r'C:\Program Files\Microsoft Visual Studio 8\VC'
                 ])
             ],
             script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
@@ -81,9 +81,9 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 8'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 8\VC'
                     
                 ])
             ],
@@ -138,14 +138,15 @@ msvc.Register(
             version='8.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
                     
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 8'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 8\VC'
                     
                 ])
             ],
@@ -205,9 +206,9 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 8'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 8\VC'
                     
                 ])
             ],
@@ -267,9 +268,9 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 8'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 8\VC'
                     
                 ])
             ],

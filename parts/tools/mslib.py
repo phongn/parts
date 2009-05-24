@@ -39,14 +39,14 @@ import SCons.Tool.msvs
 import SCons.Tool.msvc
 import SCons.Util
 
-from MSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc
 
 def generate(env):
     """Add Builders and construction variables for lib to an Environment."""
     SCons.Tool.createStaticLibBuilder(env)
 
     # Set-up ms tools paths for default version
-    setup_env(env)
+    msvc.MergeShellEnv(env)
 
     env['AR']          = 'lib'
     env['ARFLAGS']     = SCons.Util.CLVar('/nologo')
@@ -55,7 +55,7 @@ def generate(env):
     env['LIBSUFFIX']   = '.lib'
 
 def exists(env):
-    return msvc_exists(env,'lib')
+    return msvc.Exists(env,'lib')
 
 # Local Variables:
 # tab-width:4

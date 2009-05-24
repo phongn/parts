@@ -1,9 +1,23 @@
 
+import IntelCommon
+import SCons.Util
+import SCons.Warnings
+import os
 
+
+# Exceptions for this tool
+class IntelCError(SCons.Errors.InternalError):
+    pass
+class MissingRegistryError(IntelCError): # missing registry entry
+    pass
+class MissingDirError(IntelCError):     # dir not found
+    pass
+class NoRegistryModuleError(IntelCError): # can't read registry at all
+    pass
 
 def generate(env):
     
-
+    is_windows=env['TARGET_SYSTEM'].Platform=='win32'
     if is_windows:
         env['CC']        = 'icl'
         env['CXX']       = 'icl'
@@ -20,22 +34,16 @@ def generate(env):
     
     if is_windows:
         # Look for license file dir
-        # in system environment, registry, and default location.
+        # in system environment, and default location.
         envlicdir = os.environ.get("INTEL_LICENSE_FILE", '')
-        K = ('SOFTWARE\Intel\Licenses')
-        try:
-            k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
-            reglicdir = SCons.Util.RegQueryValueEx(k, "w_cpp")[0]
-        except (AttributeError, SCons.Util.RegError):
-            reglicdir = ""
         defaultlicdir = r'C:\Program Files\Common Files\Intel\Licenses'
 
         licdir = None
-        for ld in [envlicdir, reglicdir]:
+        for ld in [envlicdir]:
             if ld and os.path.exists(ld):
                 licdir = ld
                 break
-        if not licdir:
+        if licdir is None:
             licdir = defaultlicdir
             if not os.path.exists(licdir):
                 class ICLLicenseDirWarning(SCons.Warnings.Warning):
@@ -43,27 +51,14 @@ def generate(env):
                 SCons.Warnings.enableWarningClass(ICLLicenseDirWarning)
                 SCons.Warnings.warn(ICLLicenseDirWarning,
                                     "Intel license dir was not found."
-                                    "  Tried using the INTEL_LICENSE_FILE environment variable (%s), the registry (%s) and the default path (%s)."
+                                    "  Tried using the INTEL_LICENSE_FILE environment variable (%s) and the default path (%s)."
                                     "  Using the default path as a last resort."
-                                        % (envlicdir, reglicdir, defaultlicdir))
+                                        % (envlicdir, defaultlicdir))
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
+        
+        IntelCommon.Intelc.MergeShellEnv(env)
 
 def exists(env):
-    if not (is_linux or is_windows):
-        # can't handle this platform
-        return 0
-
-    try:
-        versions = get_all_compiler_versions()
-    except (SCons.Util.RegError, IntelCError):
-        versions = None
-    detected = versions is not None and len(versions) > 0
-    if not detected:
-        # try env.Detect, maybe that will work
-        if is_windows:
-            return env.Detect('icl')
-        elif is_linux:
-            return env.Detect('icc')
-    return detected
+    return IntelCommon.Intelc.Exists(env)
 
 # end of file

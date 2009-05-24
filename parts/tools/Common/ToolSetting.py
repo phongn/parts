@@ -1,7 +1,8 @@
-
+import SCons.Util
 import parts.platform_info as platform_info
 import parts.common as common
 import copy
+import SCons.Errors
 
 '''
 This class handles mangament of tool info objects based on HOST and TARGET 
@@ -19,7 +20,8 @@ a seperate items value is saved to say if the cache is a full query or not.
 This allow the ability to retest 
 
 '''
-
+class ToolSetupError(SCons.Errors.InternalError):
+    pass
 
 class ToolSetting:
     def __init__(self,name):
@@ -58,7 +60,8 @@ class ToolSetting:
         # Scons 1.3 should be moving to TARGET_OS and TARGET_ARCH.. so we check 
         # for them as well
         target=env.get('TARGET_SYSTEM',env.get('TARGET_OS',"")+'-'+env.get('TARGET_ARCH',""))
-        return str(version)+root_path+use_script+str(target)
+        #return str(version)+root_path+use_script+str(target)
+        return root_path+use_script+str(target)
     
     def get_latest_known_version(self,cache_key): 
         try:
@@ -124,7 +127,7 @@ class ToolSetting:
                     for ver,senv in tmp.items():
                         self.found[key].append(ver)
                         cache_key=str(version)+key
-                        self.shell_cache[cache_key]=senv
+                        #self.shell_cache[cache_key]=(senv,env[self.name].rebind(None))
         #test for <platform>-any
         if self.tools.has_key(t1):
             for k,v in self.tools[target].items():
@@ -133,7 +136,7 @@ class ToolSetting:
                     for ver,senv in tmp.items():
                         self.found[key].append(ver)
                         cache_key=str(version)+key
-                        self.shell_cache[cache_key]=senv
+                        #self.shell_cache[cache_key]=(senv,env[self.name].rebind(None))
         #test for any-<Arch>
         if self.tools.has_key(t2):
             for k,v in self.tools[target].items():
@@ -142,7 +145,7 @@ class ToolSetting:
                     for ver,senv in tmp.items():
                         self.found[key].append(ver)
                         cache_key=str(version)+key
-                        self.shell_cache[cache_key]=senv
+                        #self.shell_cache[cache_key]=(senv,env[self.name].rebind(None))
         #test for any-any
         if self.tools.has_key(t3):
             for k,v in self.tools[target].items():
@@ -151,7 +154,7 @@ class ToolSetting:
                     for ver,senv in tmp.items():
                         self.found[key].append(ver)
                         cache_key=str(version)+key
-                        self.shell_cache[cache_key]=senv                    
+                        #self.shell_cache[cache_key]=(senv,env[self.name].rebind(None))                    
         self.found[key].sort(reverse=True)
         
         
@@ -197,7 +200,8 @@ class ToolSetting:
                     tmp=v.exists(env,self.name,version,root_path,use_script)
                     if tmp is not None:
                         self.found[key].append(version)
-                        self.shell_cache[cache_key]=tmp
+                        cache_key2=version+self.get_cache_key(env)
+                        self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
                         self.found[key].sort(reverse=True)
                         return
                         
@@ -208,7 +212,8 @@ class ToolSetting:
                     tmp=v.exists(env,self.name,version,root_path,use_script)
                     if tmp is not None:
                         self.found[key].append(version)
-                        self.shell_cache[cache_key]=tmp
+                        cache_key2=version+self.get_cache_key(env)
+                        self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
                         self.found[key].sort(reverse=True)
                         return
         #test for any-<Arch>
@@ -218,7 +223,8 @@ class ToolSetting:
                     tmp=v.exists(env,self.name,version,root_path,use_script)
                     if tmp is not None:
                         self.found[key].append(version)
-                        self.shell_cache[cache_key]=tmp
+                        cache_key2=version+self.get_cache_key(env)
+                        self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
                         self.found[key].sort(reverse=True)
                         return
         #test for any-any
@@ -228,7 +234,8 @@ class ToolSetting:
                     tmp=v.exists(env,self.name,version,root_path,use_script)
                     if tmp is not None:
                         self.found[key].append(version)
-                        self.shell_cache[cache_key]=tmp
+                        cache_key2=version+self.get_cache_key(env)
+                        self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
                         self.found[key].sort(reverse=True)
                         return                   
         self.not_found[key].append(version)
@@ -238,11 +245,11 @@ class ToolSetting:
         '''
         primary user function to see if what we want exists
         '''
+
         # clone env so we test with out messing up current state
         tenv=env.Clone(**kw)
         #get cache key for this enviroment setup
         key=self.get_cache_key(tenv)
-
         #Get version value
         version=env.get(self.version_tag,None)
         if version is None:
@@ -259,8 +266,9 @@ class ToolSetting:
         found=self.is_version_known(version,key)
         if tool is not None and found == True:
             try:
-                tpath=self.get_shell_env(env)['PATH']
+                tpath=self.get_shell_env(env)[0]['PATH']
                 tmp=SCons.Util.WhereIs(tool,path=tpath)
+                print tool,tmp
                 if tmp is not None:
                     found = True
             except:
@@ -303,6 +311,28 @@ class ToolSetting:
                         pass
         return None
         
+
+    def merge_tools(self,target,tools):
+        
+        try:
+            #get the existing item in target
+            items=self.tools[target]
+        except KeyError:
+            # not defined so we just add the set and return
+            self.tools[target]=tools       
+            return
+        
+        for key,val in tools.items():
+                        
+            # if we have this version already
+            if items.has_key(key):
+                # only add it if the key is native
+                if val.is_native:
+                    items[key]=val
+            else:
+                items[key]=val
+        
+        
     def Register(self,hosts,targets,info):
         '''
         Called by user to register a given set of Tool Information objects
@@ -315,21 +345,17 @@ class ToolSetting:
         
         # iterate all the hosts ignore items that are no supported on current host
         for h in hosts:
-            # only need to find first match as all other host would be different
+            # only need to update Hosts that match this system, ignore the rest
             if h == platform_info.HostSystem():
                 tmp={}
                 # orginize the versions for easy access later
                 for i in info:
+                    i.is_native=h.is_native()
                     tmp[i.version]=i
                 #add info sorted in to correct target buckets
-                for t in targets:  
-                    try:
-                        self.tools[t].update(tmp)
-                    except KeyError:
-                        self.tools[t]=tmp
-                    
-                    
-                break
+                for t in targets: 
+                    self.merge_tools(t,tmp) 
+                
     
     def get_shell_env(self,env):
         ''' 
@@ -342,13 +368,15 @@ class ToolSetting:
         the cache_key adds the version
         '''
         
-        
         #get cache key for this enviroment setup
         key=self.get_cache_key(env)
         version=env.get(self.version_tag,None)
         cache_key=str(version)+key
-        self.query_for_known(env,key)
-
+                
+        if version is not None:
+            self.query_for_exact(env,key,version)
+        else:
+            self.query_for_known(env,key)
         try:
             return self.shell_cache[cache_key]
         except KeyError:
@@ -359,10 +387,10 @@ class ToolSetting:
             use_script=env.get(self.script_tag,False)
             target=env['TARGET_SYSTEM']
             ##get the tool info for the host-target combo for the requested version
-            #print "**",self.found
             #get latest found version if not provided
             if version is None:
                 version=self.get_latest_known_version(key)
+                
 
             # see if we know if the give version exists
             if self.is_version_known(version,key):
@@ -371,7 +399,13 @@ class ToolSetting:
                 # this is an error, nothing found
                 # report that version is not found and the versions if any that
                 # have been found
-                raise ValueError("Version of "+str(version)+" not found. Known version are "+str(self.found[key]))
+                
+                if version is None:
+                    raise ToolSetupError("No version of %s was found on the system for target %s"%(self.name,target))
+                if self.not_found[key] is not None:
+                    
+                    self.query_for_known(env,key)
+                raise ToolSetupError("Version of %s of %s not found for target %s. Found version are %s"%(version,self.name,target,self.found[key]))
                 
                 
             ##got the tool info now get the data
@@ -380,30 +414,34 @@ class ToolSetting:
             shell_env=tinfo.get_shell_env(env,self.name,version,root_path,use_script)
             
             # store it in cache
-            self.shell_cache[cache_key]=shell_env
+            ret=(shell_env,env[self.name].rebind(None))
+            self.shell_cache[cache_key]=ret
                 
-        return shell_env
+        return ret
             
     def MergeShellEnv(self,env):
-        import pprint
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(self.__dict__)
-
+##        import pprint
+##        pp = pprint.PrettyPrinter(indent=4)
+##        pp.pprint(self.__dict__)
+        
         version=env.get(self.version_tag,None)
-        shell_env=self.get_shell_env(env)
-        if shell_env is None:
-            #report error
-            pass
-            
+        root_path=env.get(self.rootpath_tag,None)
+        use_script=env.get(self.script_tag,False)
+        tmp=self.get_shell_env(env)
+        
+        if tmp is None:
+            raise ValueError("No shell environment defined for %s, VERSION=%s,\
+                    INSTALL_ROOT=%s, Script= %s"%(self.name,version,root_path,use_script))            
+        #print tmp
+        shell_env,ns=tmp
         # Add data to env
         for k, v in shell_env.items():
             env.PrependENVPath(k, v, delete_existing=1)
         
         ## setup any common state
         #setup version info
-        ##if version is None:
-        ##    env[self.version_tag]=env[self.name]['VERSION']
-        ##if version is None:
-        ##    env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
+        env[self.name]=ns.rebind(env)
+        env[self.version_tag]=env[self.name]['VERSION']
+        env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
     
     

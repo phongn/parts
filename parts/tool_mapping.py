@@ -70,8 +70,9 @@ def _ToolChain(env,chainlist):
             env.Replace(**t[1])
         else:
             t[1](env)
+            
         # apply the tool to the enviroment
-        env['CONFIGURED_TOOLS'].append(t[0])        
+        env['CONFIGURED_TOOLS'].append(t[0])
         env.Tool(t[0])
         
 # This is what we want to be setup in parts

@@ -37,7 +37,7 @@ import SCons.Defaults
 import SCons.Tool
 import SCons.Util
 
-from MSCommon import msvc_exists,setup_env,is_win64
+from MSCommon import msvc,is_win64
 
 ASSuffixes = ['.s', '.asm', '.ASM']
 ASPPSuffixes = ['.spp', '.SPP', '.sx']
@@ -68,14 +68,14 @@ def generate(env):
     env['ASCOM']     = '$AS $ASFLAGS /c /Fo$TARGET $SOURCES'
     env['ASPPCOM']   = '$CC $ASPPFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c /Fo$TARGET $SOURCES'
     env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
-    setup_env(env)
+    msvc.MergeShellEnv(env)
 
 def exists(env):
     ret=False
     if is_win64():
-        ret=msvc_exists(env,'ml64')
+        ret=msvc.Exists(env,'ml64')
     else:
-        ret=msvc_exists(env,'ml')
+        ret=msvc.Exists(env,'ml')
     return ret
 
 # Local Variables:

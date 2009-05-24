@@ -19,10 +19,10 @@ msvc.Register(
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0',
-                    r'C:\Program Files\Microsoft Visual Studio 9.0'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC',
+                    r'C:\Program Files\Microsoft Visual Studio 9.0\VC'
                 ])
             ],
             script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
@@ -74,13 +74,14 @@ msvc.Register(
             version='9.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC'
                 ])
             ],
             script=ScriptFinder('${MSVC.VCINSTALL}/bin/AMD64/vcvarsamd64.bat'),
@@ -109,7 +110,7 @@ msvc.Register(
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/lib'+os.pathsep+
+                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
                             get_current_sdk()+'lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
@@ -133,15 +134,15 @@ msvc.Register(
             version='9.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
                     r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0'
-                    r'C:\Program Files\Microsoft Visual Studio 9.0'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC'
+                    r'C:\Program Files\Microsoft Visual Studio 9.0\VC'
                 ])
             ],
             script=ScriptFinder('${MSVC.VCINSTALL}/bin/x86_amd64/vcvarsx86_amd64.bat'),
@@ -171,7 +172,7 @@ msvc.Register(
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}lib'+os.pathsep+
+                            '${MSVC.VCINSTALL}lib/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
@@ -196,15 +197,15 @@ msvc.Register(
             version='9.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
                     r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
-                ],'../../'),
+                ],'../../VC'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0'
-                    r'C:\Program Files\Microsoft Visual Studio 9.0'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC'
+                    r'C:\Program Files\Microsoft Visual Studio 9.0\VC'
                 ])
             ],
             script=ScriptFinder('${MSVC.VCINSTALL}/bin/x86_ia64/vcvarsx86_ia64.bat'),
@@ -233,7 +234,7 @@ msvc.Register(
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/lib'+os.pathsep+
+                            '${MSVC.VCINSTALL}/lib/ia64'+os.pathsep+
                             get_current_sdk()+'/lib/ia64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'

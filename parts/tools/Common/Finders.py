@@ -48,6 +48,9 @@ class RegFinder:
     def __init__(self,keys,rel_path=None):
         self.keys=keys
         self.rel_path=rel_path
+        
+        if self.keys is None or self.keys == []:
+            print "RegFinder was given not passed any values to find"
 
     def read_reg(self,value):
         ret=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)
