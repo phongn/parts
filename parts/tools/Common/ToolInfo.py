@@ -40,7 +40,12 @@ class ToolInfo:
         self.is_native=False
     
     def version_set(self):
-        return [self.version]
+        ret=[]
+        tmp=self.version.split('.')
+        for i in range (0,len(tmp)):
+            # add path data
+            ret.append(".".join(tmp[:i+1]))
+        return ret
     
     def make_ver_shell_env_set(self,ver,env):
         ret={}

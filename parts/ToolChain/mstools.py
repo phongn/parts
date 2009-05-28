@@ -12,7 +12,7 @@ def resolve(env,version):
     
     func=lambda x : cl_setup(x,version)
     return [
-                ('cl',func), # see if we can remove the CL compiler later??
+                ('msvc',func), # see if we can remove the CL compiler later??
                 ('mslink',func),
                 ('masm',func),
                 ('mslib',func),

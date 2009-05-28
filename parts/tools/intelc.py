@@ -5,15 +5,6 @@ import SCons.Warnings
 import os
 
 
-# Exceptions for this tool
-class IntelCError(SCons.Errors.InternalError):
-    pass
-class MissingRegistryError(IntelCError): # missing registry entry
-    pass
-class MissingDirError(IntelCError):     # dir not found
-    pass
-class NoRegistryModuleError(IntelCError): # can't read registry at all
-    pass
 
 def generate(env):
     

@@ -13,8 +13,8 @@ Intelc.Register(
         IntelcInfo(
             version='11.1.*',
             install_scanner=common.reg_scanner2(
-                [r'Software\Wow6432Node\Intel\Compilers\C++',
-                r'Software\Intel\Compilers\C++'],
+                [r'Software\Wow6432Node\Intel\Suites\1.0',
+                r'Software\Intel\Suites\1.0'],
                 common.intel_11_1,
                 'ia32',
                 'ICPP_COMPILER11','11.1'),
@@ -32,7 +32,7 @@ Intelc.Register(
         ]
     )   
     
-# 64-bit 11.1 ( composer mainstream)
+# 64-bit 11.1 ( composer mainstream )
 Intelc.Register(
     hosts=[system_config('win32','any')],
     targets=[system_config('win32','x86_64')],
@@ -40,10 +40,10 @@ Intelc.Register(
         IntelcInfo(
             version='11.1.*',
             install_scanner=common.reg_scanner2(
-                [r'Software\Wow6432Node\Intel\Compilers\C++',
-                r'Software\Intel\Compilers\C++'],
-                common.intel_11,
-                'IA32_Intel64',
+                [r'Software\Wow6432Node\Intel\Suites\1.0',
+                r'Software\Intel\Suites\1.0'],
+                common.intel_11_1,
+                'EM64T',
                 'ICPP_COMPILER11','11.1'),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/IA32_Intel64/iclvars_IA32_intel64.bat'),
             subst_vars={
@@ -124,7 +124,7 @@ Intelc.Register(
                 [r'Software\Wow6432Node\Intel\Compilers\C++',
                 r'Software\Intel\Compilers\C++'],
                 common.intel_11,
-                'EM64T',
+                'EM64T_NATIVE',
                 'ICPP_COMPILER11','11'),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/intel64/iclvars_intel64.bat'),
             subst_vars={

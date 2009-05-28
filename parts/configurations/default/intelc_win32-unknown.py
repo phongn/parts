@@ -13,7 +13,10 @@ def map_default_version(env):
 def post_process_func(env):
     # does not care if Intel Compiler version can or cannot
     # support given version. Compiler will complain if it can't
-    ver=float(env['MSVC_VERSION'])
+    try:
+        ver=float(env['MSVC_VERSION'])
+    except:
+        raise RuntimeError("You need to define mstools or compatible tool chain with Intel tool chain")
     if ver >=10:
         env.Append(CCFLAGS=['/Qvc10'])
     elif ver >=9:

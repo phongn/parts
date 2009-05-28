@@ -132,6 +132,7 @@ class reg_scanner2:
                     subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
                     #parse to see if we got match
                     result=reg.match(subkey)
+                    
                     if result:                
                         # form up full key name to test for install
                         #keyname=keyname+"\\"+subkey+"\\C++\\"+self.arch+"\\ProductDir"
@@ -155,7 +156,7 @@ class reg_scanner2:
                             vb=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
                                              keyname1)[0]
                             vc=subkey
-                            tmp=".".join(str(va),str(vb),vc)
+                            tmp=".".join([str(va),str(vb),vc])
                             
                             ret[tmp]=path
                         except WindowsError:
