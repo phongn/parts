@@ -7,10 +7,10 @@ import os
 
 
 
-# 32-bit 11.1 ( composer mainstream)
+# 32-bit 11.1 
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','x86')],
     info=[
         IntelcInfo(
             version='11.1.*',
@@ -34,10 +34,10 @@ Intelc.Register(
         ]
     )   
     
-# 64-bit 11.1 ( composer mainstream )
+# 64-bit 11.1
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[system_config('posix','x86_64')],
+    targets=[system_config('posix','x86_64')],
     info=[
         IntelcInfo(
             version='11.1.*',
@@ -63,8 +63,8 @@ Intelc.Register(
 
 # 32-bit 11.0
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','x86')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -90,8 +90,8 @@ Intelc.Register(
     
 # 64-bit cross 11.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','x86_64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -117,8 +117,8 @@ Intelc.Register(
     
 # 64-bit native 11.x
 Intelc.Register(
-    hosts=[system_config('win32','x86_64')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[system_config('posix','x86_64')],
+    targets=[system_config('posix','x86_64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -144,8 +144,8 @@ Intelc.Register(
     
 # 64-bit ia64 11.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','ia64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -171,8 +171,8 @@ Intelc.Register(
 
 # 32-bit 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','x86')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -198,8 +198,8 @@ Intelc.Register(
     
 # 64-bit 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','x86_64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -225,8 +225,8 @@ Intelc.Register(
     
 # 64-bit ia64 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[system_config('posix','any')],
+    targets=[system_config('posix','ia64')],
     info=[
         IntelcInfo(
             version='10.*',

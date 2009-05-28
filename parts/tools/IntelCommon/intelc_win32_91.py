@@ -1,4 +1,4 @@
-from common import Intelc,reg_scanner,reg_scanner2
+from common import Intelc
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import system_config
