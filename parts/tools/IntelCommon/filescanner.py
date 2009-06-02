@@ -1,18 +1,20 @@
 import SCons.Util
 import sys
 import re
+import os
 import parts.tools.Common.Finders as Finders
-
+import common
 
 # for version 11.x
 class file_scanner11:
-    def __init__(self,path,pattern,arch,env,ver):
+    def __init__(self,path,pattern,pattern2,arch,env):
+        self.path=path
         self.pattern=pattern
-        self.reg_keys=regkeys
+        self.pattern2=pattern2
         self.arch=arch
         self.env_var=Finders.EnvFinder(env,arch)
         self.cache=None
-        self.ver=ver
+
 
     def scan(self):
         # search for all known location for a give version
@@ -21,14 +23,22 @@ class file_scanner11:
             ret={}
             # pattern to match on
             reg=re.compile(self.pattern, re.I)
-            # interate directorys for match
-            for item in os.listdir(path):
-                if os.path.isdir(item):
-                    result=reg.match(item)
-                    if result:
-                        version=".".join([self.version,item])
-                        path=os.path.join(self.path,item)
-                        ret[version]=path
+            reg2=re.compile(self.pattern2, re.I)
+            # interate outer directories for match
+            for item0 in os.listdir(self.path):
+                fullpath0=os.path.join(self.path,item0)
+                # if this is a directory
+                if os.path.isdir(fullpath0):
+                    # if this is a directory
+                    result0=reg.match(item0)
+                    # iterate the inner directories
+                    for item in os.listdir(fullpath0):
+                        fullpath=os.path.join(fullpath0,item)
+                        if os.path.isdir(fullpath):
+                            result=reg2.match(item)
+                            if result:
+                                version=".".join([item0,item])
+                                ret[version]=fullpath
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
@@ -37,22 +47,22 @@ class file_scanner11:
             self.cache=ret
         return self.cache
         
-    def resolve(self,ver):
+    def resolve(self,version):
         tmp=self.scan()
-        try:
-            ver=tmp.keys()[-1]
-        except:
-            return None
-        return tmp[ver]
+        k=tmp.keys()
+        k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return tmp[i]
+        return None
     
-class file_scanner10:
-    def __init__(self,path,pattern,arch,env,ver):
+class file_scanner9_10:
+    def __init__(self,path,pattern,arch,env):
+        self.path=path
         self.pattern=pattern
-        self.reg_keys=regkeys
         self.arch=arch
         self.env_var=Finders.EnvFinder(env,arch)
         self.cache=None
-        self.ver=ver
 
     def scan(self):
         # search for all known location for a give version
@@ -62,12 +72,13 @@ class file_scanner10:
             # pattern to match on
             reg=re.compile(self.pattern, re.I)
             # interate directorys for match
-            for item in os.listdir(path):
-                if os.path.isdir(item):
+            for item in os.listdir(self.path):
+                fullpath=os.path.join(self.path,item)
+                if os.path.isdir(fullpath):
                     result=reg.match(item)
                     if result:
-                        path=os.path.join(self.path,item)
-                        ret[".".join(result.groups())]=path
+                        version=".".join(result.groups())
+                        ret[version]=fullpath
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
@@ -78,8 +89,11 @@ class file_scanner10:
         
     def resolve(self,ver):
         tmp=self.scan()
-        try:
-            ver=tmp.keys()[-1]
-        except:
-            return None
-        return tmp[ver]    
+        k=tmp.keys()
+        k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return tmp[i]
+        return None  
+        
+        

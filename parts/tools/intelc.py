@@ -47,7 +47,7 @@ def generate(env):
                                         % (envlicdir, defaultlicdir))
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
         
-        IntelCommon.Intelc.MergeShellEnv(env)
+    IntelCommon.Intelc.MergeShellEnv(env)
 
 def exists(env):
     return IntelCommon.Intelc.Exists(env)

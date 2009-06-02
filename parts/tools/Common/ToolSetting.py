@@ -389,29 +389,34 @@ class ToolSetting:
         t1.Architecture='any'
         t2=copy.copy(target)
         t2.Platform='any'
+        t3=copy.copy(t2)
+        t3.Architecture='any'  
         # we try to get the supported information
         # based on best match. 
         #Platform is given priority to architecture
         ret=None
-        try:
-            #Platform-Architecture
-             return self.tools[target][version][0]
-        except KeyError:
-            try:
-                #Platform-any
-                return self.tools[t1][version][0]
-            except KeyError:
-                try:
-                    #any-Architecture
-                    return self.tools[t2][version][0]
-                except KeyError:
-                    try:
-                        #any-any
-                        t2.Architecture='any'
-                        return self.tools[t2][version][0]
-                    except KeyError:
-                        pass
-        return None
+        if self.tools.has_key(target):
+            for k,vl in self.tools[target].items():
+                for v in vl:
+                    if version in v.version_set():
+                        return v
+        if self.tools.has_key(t1):
+            for k,vl in self.tools[t1].items():
+                for v in vl:
+                    if version in v.version_set():
+                        return v
+        if self.tools.has_key(t2):
+            for k,vl in self.tools[t2].items():
+                for v in vl:
+                    if version in v.version_set():
+                        return v
+        if self.tools.has_key(t3):
+            for k,vl in self.tools[t3].items():
+                for v in vl:
+                    if version in v.version_set():
+                        return v                                                
+        
+        return ret
         
 
     def merge_tools(self,target,tools):
@@ -476,12 +481,11 @@ class ToolSetting:
         key=self.get_cache_key(env)
         version=env.get(self.version_tag,None)
         cache_key=str(version)+key
-                
+              
         if version is not None:
             self.query_for_exact(env,key,version)
         else:
             self.query_for_known(env,key)
-        self.query_for_known(env,key)
         try:
             return self.shell_cache[cache_key]
         except KeyError:
@@ -494,7 +498,6 @@ class ToolSetting:
             #get latest found version if not provided
             if version is None:
                 version=self.get_latest_known_version(key)
-            
             # see if we know if the give version exists
             if self.is_version_known(version,key):
                 tinfo=self.GetInfo(version,target)
@@ -509,8 +512,9 @@ class ToolSetting:
                     # make sure all version are queried so we can report correctly
                     self.query_for_known(env,key)
                 raise ToolSetupError("Version of %s of %s not found for target %s. Found version are %s"%(version,self.name,target,self.found[key]))
-                
-                
+
+            if tinfo is None:
+                raise ToolSetupError('ToolSettings failed to load infomation about tool with version: %s and target: %s'%(version,target))
             ##got the tool info now get the data
             
             #get the shell environment
@@ -519,7 +523,6 @@ class ToolSetting:
             # store it in cache
             ret=(shell_env,env[self.name].rebind(None))
             self.shell_cache[cache_key]=ret
-                
         return ret
             
     def MergeShellEnv(self,env):
@@ -543,8 +546,13 @@ class ToolSetting:
         
         ## setup any common state
         #setup version info
+        version=env[self.name]['VERSION']
         env[self.name]=ns.rebind(env)
-        env[self.version_tag]=env[self.name]['VERSION']
+        env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
+        
+        print "Tool",self.name,"configured to version:",version
+        
+
     
     

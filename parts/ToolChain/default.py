@@ -84,6 +84,13 @@ def resolve(env,version):
 ##
 
     return [
+                ('gcc',None),
+                ('gnulink',None),
+                ('ar',None),
+                ('g++',None)
+            ]
+
+    return [
                 ('cl',None),
                 ('mslink',None),
                 ('masm',None),

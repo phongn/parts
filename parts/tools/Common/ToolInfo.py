@@ -74,15 +74,18 @@ class ToolInfo:
         # this is probally an error
         return None
 
-    def get_shell_env(self,env,namespace,version,install_root,script):
+    def get_shell_env(self,env,namespace,version,install_root,script,tool=None):
         ret={}
+        if tool is None:
+            tool=self.test_file
         if install_root is None:
             # get the install_root
             install_root=self.get_root(version)
         #Setup namespaced varibles
         env[namespace]=self.get_namespace(env,
             INSTALL_ROOT=install_root,
-            VERSION=version)
+            VERSION=version,
+            TOOL=tool)
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)]
         except KeyError:
@@ -118,8 +121,10 @@ class ToolInfo:
 
     def query(self,env,namespace,root_path,use_script):
         
-        if SCons.Util.is_List(self.install_root) or SCons.Util.is_String(use_script):
-            found={self.version:root_path}
+        if SCons.Util.is_List(self.install_root):
+            found={self.version:root_path}        
+        elif SCons.Util.is_String(use_script):
+            found={'0.0.0':None}
         else:
             found=self.install_root.scan()
         
@@ -134,19 +139,20 @@ class ToolInfo:
         return ret
 
     ## general case
-    def exists(self,env,namespace,version,root_path,use_script):
-        shell_env=self.get_shell_env(env,namespace,version,root_path,use_script)
+    def exists(self,env,namespace,version,root_path,use_script,tool=None):
+        shell_env=self.get_shell_env(env,namespace,version,root_path,use_script,tool)
         try:
             tpath=shell_env['PATH']
             #print "tpath=",tpath
-            tmp=SCons.Util.WhereIs(self.test_file,path=tpath)
+            #print env.subst("${"+namespace+".TOOL}")
+            tmp=SCons.Util.WhereIs(env.subst("${"+namespace+".TOOL}"),path=tpath)
             #print tmp
-            if tmp is not None:
-                #print "FOUND"
-                return shell_env
-        except:
-            print "ERROR! exception hit"
-            pass
+        except KeyError:
+            # this is probally wrong test to have happen
+            tmp=SCons.Util.WhereIs(self.test_file)
+        if tmp is not None:
+            #print "FOUND"
+            return shell_env
         #print "NOT FOUND"
         return None
 

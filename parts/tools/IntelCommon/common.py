@@ -4,11 +4,40 @@ from parts.tools.Common.ToolInfo import ToolInfo
 from parts.version import version_range
 
 intel_9='([9])([0-1])'
-intel_10='([0-9][0])([0-9]).([0-9][0-9][0-9])'
-intel_11='([0-9][1])([0-9]).([0-9][0-9][0-9])'
+intel_10='([1][0])([0-9]).([0-9][0-9][0-9])'
+intel_10_posix='([1][0]).([0-9]).([0-9][0-9][0-9])'
+intel_11='([1][1])([0-9]).([0-9][0-9][0-9])'
+intel_11_outer='([1][1]).([0-9])'
+intel_11_inner='([0-9][0-9][0-9])'
+
 #different layout in registry
 intel_11_1='[0-9][0-9][0-9]'
 
+
+def MatchVersionNumbers(verStr1, verStr2):
+
+    major1, minor1, rev1, junk = (verStr1+'.-1.-1').split('.',3)
+    major1=int(major1)
+    minor1=int(minor1)
+    rev1=int(rev1)
+
+    major2, minor2, rev2, junk = (verStr2+'.-1.-1').split('.',3)
+    major2=int(major2)
+    minor2=int(minor2)
+    rev2=int(rev2)
+
+    if major1 != major2:
+        return False
+    if major1 == major2 and (minor1 == -1 or minor2 == -1):
+        return True
+    if minor1 != minor2:
+        return False
+    if minor1 == minor2 and (rev1 == -1 or rev2 == -1):
+        return True
+    if rev1 == rev2:
+        return True
+
+    return False
 
 
 class IntelcInfo(ToolInfo):

@@ -2,6 +2,7 @@ import SCons.Util
 import sys
 import re
 import parts.tools.Common.Finders as Finders
+import common
 
 # this are primary for finding Intel compilers on windows platforms
 # file_scanner is for finding files on Posix/Linux systems
@@ -76,11 +77,12 @@ class reg_scanner:
         
     def resolve(self,ver):
         tmp=self.scan()
-        try:
-            ver=tmp.keys()[-1]
-        except:
-            return None
-        return tmp[ver]
+        k=tmp.keys()
+        k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return tmp[i]
+        return None  
 
 
 #this is a general scanner for all version at version 11.1 (and beyond??)
@@ -170,8 +172,9 @@ class reg_scanner2:
         
     def resolve(self,ver):
         tmp=self.scan()
-        try:
-            ver=tmp.keys()[-1]
-        except:
-            return None
-        return tmp[ver]
+        k=tmp.keys()
+        k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return tmp[i]
+        return None  
