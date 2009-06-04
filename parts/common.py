@@ -78,20 +78,19 @@ def AddListVariable(key,default,help,allowed_values=[],map={}):
 
 
 ###############
-
-class namespace(dict):
+import env_overrides
+class namespace(dict,env_overrides.bindable):
     ''' helper class to allow making subst varaible in SCons to allow a clean
     form of $a.b
     '''
-    def __init__(self,env,**kw):
+    def __init__(self,**kw):
         dict.__init__(self,kw)
-        self.__dict__['env']=env
-        
+
     def __getattr__(self,name):
         ''' This is ugly but because SCons does not have a good recursive subst
         code, I need to subst stuff here before SCons can try to, else it will
         try to set this object to Null string, causing an unwanted error'''
-        #print "Get **************", name,self[name]
+        #print "Get **************", name, self[name]
         return self.env.subst(self[name])
     def __setattr__(self,name,value):
         self[name]=value
@@ -106,7 +105,11 @@ class namespace(dict):
         However I can do this in cases when i do a copy, which is not as
         bad as not doing it at all
         '''
-        return namespace(env,**self.copy())
+        tmp=namespace(**self.copy())
+        tmp.bind(env)
+        return tmp
+    def bind(self,env):
+        self.__dict__['env']=env
 
 
 

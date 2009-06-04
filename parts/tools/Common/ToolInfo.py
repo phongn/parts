@@ -82,10 +82,9 @@ class ToolInfo:
             # get the install_root
             install_root=self.get_root(version)
         #Setup namespaced varibles
-        env[namespace]=self.get_namespace(env,
-            INSTALL_ROOT=install_root,
-            VERSION=version,
-            TOOL=tool)
+        env[namespace]=self.get_namespace(INSTALL_ROOT=install_root,
+                                VERSION=version,
+                                TOOL=tool)
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)]
         except KeyError:
@@ -114,10 +113,9 @@ class ToolInfo:
         self.shell_cache[str(version)+str(install_root)+str(script)]=ret
         return ret
 
-    def get_namespace(self,env,**kw):
+    def get_namespace(self,**kw):
         kw.update(self.subst_vars)
-        return parts.common.namespace(env,
-                    **kw)
+        return parts.common.namespace(**kw)
 
     def query(self,env,namespace,root_path,use_script):
         
