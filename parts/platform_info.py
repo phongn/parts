@@ -7,6 +7,7 @@ var defined to to tell what has been targeted as the build env.
 '''
 import common
 import SCons.Platform
+import env_overrides
 
 def OSBit():
     ''' 
@@ -94,80 +95,146 @@ def ChipArchitecture():
         return MapArchitecture(platform.machine()) 
 
 
-class system_config:
-    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+class SystemPlatform(env_overrides.bindable):
+    def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+        self.key="_parts_"
+        self._env={
+                self.key+"_OS":os,
+                self.key+"_ARCH":arch
+            }
         
-        self.Platform=platform
-        self.Architecture=arch
-    
+    def _getOS(self):
+        return self._env[self.key+"_OS"]
+
+    def _setOS(self, x):
+        self._env[self.key+"_OS"]= x
+        
+    def _getArch(self):
+        return self._env[self.key+"_ARCH"]
+
+    def _setArch(self, x):
+        self._env[self.key+"_ARCH"]= x        
+        
+    ARCH = property(_getArch,_setArch)
+    OS = property(_getOS,_setOS)
+
+    def _bind(self,env,key):
+        # this is a bit of a hack to forward stuff in SCons as it should be in 1.3
+        if key == "TARGET_PLATFORM" or key == "HOST_PLATFORM":
+            tkey = key[:-9]
+            env[tkey+"_ARCH"] = self.ARCH != 'any' and self.ARCH or env.has_key(tkey+"_ARCH") and env[tkey+"_ARCH"] or ChipArchitecture() # getArch
+            env[tkey+"_OS"]= self.OS != 'any' and self.OS or env.has_key(tkey+"_OS") and env[tkey+"_OS"] or SCons.Platform.platform_default() # getPlatform
+            self.key=tkey
+            self._env=env
+        
+    def _rebind(self,env,key):
+        tmp=SystemPlatform(os=self.OS,arch=self.ARCH)
+        tmp._bind(env,key)
+        return tmp
+
     def __eq__ (self,rhs):
-        return (self.Platform==rhs.Platform or\
-                'any'==rhs.Platform or\
-                'any'==self.Platform) and\
-            (self.Architecture==rhs.Architecture or\
-                'any'==rhs.Architecture or\
-                'any'==self.Architecture)
+        return (self.OS==rhs.OS or\
+                'any'==rhs.OS or\
+                'any'==self.OS) and\
+            (self.ARCH==rhs.ARCH or\
+                'any'==rhs.ARCH or\
+                'any'==self.ARCH)
+
+    def __str__(self):
+        return self.OS+"-"+self.ARCH
+    
     def __repr__(self):
-        return self.Platform+"-"+self.Architecture
-    
-    def __str__(self):
-        return self.Platform+"-"+self.Architecture
+        return self.OS+"-"+self.ARCH
     
     def __hash__(self):
         return hash(str(self))
-    
-    def __getplat(self):
-        return self.__plat
 
-    def __setplat(self, x):
-        self.__plat = x
-        
-    def __getarch(self):
-        return self.__arch
+    def _is_native(self):
+        return 'any'!= self.OS and 'any' != self.ARCH 
+    
+    #because of the mapping to ENV we have to do our own copy
+    def __copy__(self):
+        return SystemPlatform(self.OS,self.ARCH)
+    
+    def __deepcopy__(self):
+        return SystemPlatform(self.OS,self.ARCH)
+            
 
-    def __setarch(self, x):
-        self.__arch = x
-        
-    def is_native(self):
-        return 'any'!= self.Platform and 'any' != self.Architecture
-    
-    Architecture = property(__getarch,__setarch)
-    Platform = property(__getplat,__setplat)
-    
-class system_config_r:
-    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-        
-        self.__plat=platform
-        self.__arch=arch
-    
-    def __eq__ (self,rhs):        
-        return (self.Platform==rhs.Platform or\
-                'any'==rhs.Platform or\
-                'any'==self.Platform) and\
-            (self.Architecture==rhs.Architecture or\
-                'any'==rhs.Architecture or\
-                'any'==self.Architecture)
-    
-    def __str__(self):
-        return self.Platform+"-"+self.Architecture
-    
-    def __hash__(self):
-        return hash(str(self))
-    
-    def __getplat(self):
-        return self.__plat
 
-    def __getarch(self):
-        return self.__arch
-    
-    def is_native(self):
-        return 'any'!= self.Platform and 'any' != self.Architecture
+##class system_config:
+##    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+##        
+##        self.Platform=platform
+##        self.Architecture=arch
+##    
+##    def __eq__ (self,rhs):
+##        return (self.Platform==rhs.Platform or\
+##                'any'==rhs.Platform or\
+##                'any'==self.Platform) and\
+##            (self.Architecture==rhs.Architecture or\
+##                'any'==rhs.Architecture or\
+##                'any'==self.Architecture)
+##    def __repr__(self):
+##        return self.Platform+"-"+self.Architecture
+##    
+##    def __str__(self):
+##        return self.Platform+"-"+self.Architecture
+##    
+##    def __hash__(self):
+##        return hash(str(self))
+##    
+##    def __getplat(self):
+##        return self.__plat
+##
+##    def __setplat(self, x):
+##        self.__plat = x
+##        
+##    def __getarch(self):
+##        return self.__arch
+##
+##    def __setarch(self, x):
+##        self.__arch = x
+##        
+##    def is_native(self):
+##        return 'any'!= self.Platform and 'any' != self.Architecture
+##    
+##    Architecture = property(__getarch,__setarch)
+##    Platform = property(__getplat,__setplat)
+##    
+##class system_config_r:
+##    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+##        
+##        self.__plat=platform
+##        self.__arch=arch
+##    
+##    def __eq__ (self,rhs):        
+##        return (self.Platform==rhs.Platform or\
+##                'any'==rhs.Platform or\
+##                'any'==self.Platform) and\
+##            (self.Architecture==rhs.Architecture or\
+##                'any'==rhs.Architecture or\
+##                'any'==self.Architecture)
+##    
+##    def __str__(self):
+##        return self.Platform+"-"+self.Architecture
+##    
+##    def __hash__(self):
+##        return hash(str(self))
+##    
+##    def __getplat(self):
+##        return self.__plat
+##
+##    def __getarch(self):
+##        return self.__arch
+##    
+##    def is_native(self):
+##        return 'any'!= self.Platform and 'any' != self.Architecture
+##
+##    Architecture = property(__getarch)
+##    Platform = property(__getplat)
+##        
 
-    Architecture = property(__getarch)
-    Platform = property(__getplat)
-        
-
-_host_sys=system_config_r()
+_host_sys=SystemPlatform()
     
 def HostSystem():
     return _host_sys
@@ -181,33 +248,33 @@ def target_convert(str_val, raw_val):
         tmp=MapArchitecture(lst[0])
         if tmp == '':
             #assume this was a platform
-            ret=system_config(
-                lst[0],_host_sys.Architecture
+            ret=SystemPlatform(
+                lst[0],_host_sys.ARCH
                 )
         else:
             #assume this is a architure
-            ret=system_config(
-                    _host_sys.Platform,lst[0]
+            ret=SystemPlatform(
+                    _host_sys.OS,lst[0]
                     )
     else:
         p=lst[0]
         a=lst[1]
         if p == '':
-            p=_host_sys.Platform
+            p=_host_sys.OS
         if a == '':
-            a=_host_sys.Architecture
-        ret=system_config(p,a)
+            a=_host_sys.ARCH
+        ret=SystemPlatform(p,a)
 
     return ret
 
 # add configuartion varaible
 common.AddVariable('OSBITNESS',str(OSBit()),'to be removed??')
 
-common.AddVariable(['TARGET_SYSTEM','target_platform','target'],system_config(_host_sys.Platform,_host_sys.Architecture), 
+common.AddVariable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform(_host_sys.OS,_host_sys.ARCH), 
         'Value of what to type of system to target build for, used to control cross builds',
         converter=target_convert)
 
 common.add_parts_object('ChipArchitecture',ChipArchitecture)
 common.add_parts_object('OSBit',OSBit)
-common.add_parts_object('HostPlatform',HostSystem)
+#common.add_parts_object('Host_Platform',HostSystem)
 

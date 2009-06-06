@@ -2,15 +2,15 @@ from common import Intelc,IntelcInfo
 import common
 import filescanner
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 import os
 
 
 
 # 32-bit 11.1 
 Intelc.Register(
-    hosts=[system_config('posix','any')],
-    targets=[system_config('posix','x86')],
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('posix','x86')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -36,8 +36,8 @@ Intelc.Register(
     
 # 64-bit 11.1
 Intelc.Register(
-    hosts=[system_config('posix','x86_64')],
-    targets=[system_config('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('posix','x86_64')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -65,8 +65,8 @@ Intelc.Register(
     
 # 64-bit ia64 11.x todo
 #Intelc.Register(
-#    hosts=[system_config('posix','any')],
-#    targets=[system_config('posix','ia64')],
+#    hosts=[SystemPlatform('posix','any')],
+#    targets=[SystemPlatform('posix','ia64')],
 #    info=[
 #        IntelcInfo(
 #            version='11.*',
@@ -92,8 +92,8 @@ Intelc.Register(
 
 # 32-bit 10.x
 Intelc.Register(
-    hosts=[system_config('posix','any')],
-    targets=[system_config('posix','x86')],
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('posix','x86')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -118,8 +118,8 @@ Intelc.Register(
     
 # 64-bit 10.x
 Intelc.Register(
-    hosts=[system_config('posix','x86_64')],
-    targets=[system_config('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('posix','x86_64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -144,8 +144,8 @@ Intelc.Register(
     
 # 64-bit ia64 10.x
 #Intelc.Register(
-#    hosts=[system_config('posix','any')],
-#    targets=[system_config('posix','ia64')],
+#    hosts=[SystemPlatform('posix','any')],
+#    targets=[SystemPlatform('posix','ia64')],
 #    info=[
 #        IntelcInfo(
 #            version='10.*',

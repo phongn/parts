@@ -274,33 +274,33 @@ def load_cfg(name):
 
 def make_name_list(tool,host,target):
     nl=[
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture,
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown',
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'unknown',
+    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+'unknown',
     
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+target.Architecture,
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown',
-    tool+"_"+host.Platform+"-"+host.Architecture,
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+target.Architecture,
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown',
-    tool+"_"+host.Platform+"-"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH,
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+'unknown',
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown',
+    tool+"_"+host.OS+"-"+'unknown',
     
-    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture,
-    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
-    tool+"_"+'unknown'+"_"+target.Platform+"-"+target.Architecture,
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+'unknown',
-    tool+"_"+'unknown'+"_"+target.Platform+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'unknown'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+'unknown',
+    tool+"_"+'unknown'+"_"+target.OS+"-"+'unknown',
     
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+target.Architecture,
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown',
-    tool+"_"+'unknown'+"-"+host.Architecture,
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.Architecture,
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.Architecture,
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+target.ARCH,
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+'unknown',
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown',
+    tool+"_"+'unknown'+"-"+host.ARCH,
+    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.ARCH,
+    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.ARCH,
     tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown',
     tool+'_unknown_unknown',
     tool+'_unknown',
@@ -310,57 +310,57 @@ def make_name_list(tool,host,target):
 
 def make_name_dict(tool,host,target):
     nl={
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture:
-    (tool,host.Platform,host.Architecture,target.Platform,target.Architecture),
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown':
-    (tool,host.Platform,host.Architecture,target.Platform,None),
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
-    (tool,host.Platform,None,target.Platform,target.Architecture),
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+target.Platform+"-"+'unknown':
-    (tool,host.Platform,None,target.Platform,None),
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH:
+    (tool,host.OS,host.ARCH,target.OS,target.ARCH),
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'unknown':
+    (tool,host.OS,host.ARCH,target.OS,None),
+    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    (tool,host.OS,None,target.OS,target.ARCH),
+    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+'unknown':
+    (tool,host.OS,None,target.OS,None),
     
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+target.Architecture:
-    (tool,host.Platform,host.Architecture,None,target.Architecture),
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown'+"-"+'unknown':
-    (tool,host.Platform,host.Architecture,None,None),
-    tool+"_"+host.Platform+"-"+host.Architecture+"_"+'unknown':
-    (tool,host.Platform,host.Architecture,None,None),
-    tool+"_"+host.Platform+"-"+host.Architecture:
-    (tool,host.Platform,host.Architecture,None,None),
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+target.Architecture:
-    (tool,host.Platform,None,None,target.Architecture),
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown'+"-"+'unknown':
-    (tool,host.Platform,None,None,None),
-    tool+"_"+host.Platform+"-"+'unknown'+"_"+'unknown':
-    (tool,host.Platform,None,None,None),
-    tool+"_"+host.Platform+"-"+'unknown':
-    (tool,host.Platform,None,None,None),
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+target.ARCH:
+    (tool,host.OS,host.ARCH,None,target.ARCH),
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+'unknown':
+    (tool,host.OS,host.ARCH,None,None),
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown':
+    (tool,host.OS,host.ARCH,None,None),
+    tool+"_"+host.OS+"-"+host.ARCH:
+    (tool,host.OS,host.ARCH,None,None),
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+target.ARCH:
+    (tool,host.OS,None,None,target.ARCH),
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+'unknown':
+    (tool,host.OS,None,None,None),
+    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown':
+    (tool,host.OS,None,None,None),
+    tool+"_"+host.OS+"-"+'unknown':
+    (tool,host.OS,None,None,None),
     
-    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+target.Architecture:
-    (tool,None,host.Architecture,target.Platform,target.Architecture),
-    tool+"_"+'unknown'+"-"+host.Architecture+"_"+target.Platform+"-"+'unknown':
-    (tool,None,host.Architecture,target.Platform,None),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
-    (tool,None,None,target.Platform,target.Architecture),
-    tool+"_"+'unknown'+"_"+target.Platform+"-"+target.Architecture:
-    (tool,None,None,target.Platform,target.Architecture),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.Platform+"-"+'unknown':
-    (tool,None,None,target.Platform,None),
-    tool+"_"+'unknown'+"_"+target.Platform+"-"+'unknown':
-    (tool,None,None,target.Platform,None),
+    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH:
+    (tool,None,host.ARCH,target.OS,target.ARCH),
+    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+'unknown':
+    (tool,None,host.ARCH,target.OS,None),
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    (tool,None,None,target.OS,target.ARCH),
+    tool+"_"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    (tool,None,None,target.OS,target.ARCH),
+    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+'unknown':
+    (tool,None,None,target.OS,None),
+    tool+"_"+'unknown'+"_"+target.OS+"-"+'unknown':
+    (tool,None,None,target.OS,None),
     
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+target.Architecture:
-    (tool,None,host.Architecture,None,target.Architecture),
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown'+"-"+'unknown':
-    (tool,None,host.Architecture,None,None),
-    tool+"_"+'unknown'+"-"+host.Architecture+'_'+'unknown':
-    (tool,None,host.Architecture,None,None),
-    tool+"_"+'unknown'+"-"+host.Architecture:
-    (tool,None,host.Architecture,None,None),
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.Architecture:
-    (tool,None,None,None,target.Architecture),
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.Architecture:
-    (tool,None,None,None,target.Architecture),
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+target.ARCH:
+    (tool,None,host.ARCH,None,target.ARCH),
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+'unknown':
+    (tool,None,host.ARCH,None,None),
+    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown':
+    (tool,None,host.ARCH,None,None),
+    tool+"_"+'unknown'+"-"+host.ARCH:
+    (tool,None,host.ARCH,None,None),
+    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.ARCH:
+    (tool,None,None,None,target.ARCH),
+    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.ARCH:
+    (tool,None,None,None,target.ARCH),
     tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown':
     (tool,None,None,None,None),
     tool+'_unknown_unknown':
@@ -446,8 +446,8 @@ def apply_config(env,name=None,host=None,target=None):
     # get tools set to configure
     tools=env['CONFIGURED_TOOLS']
     #print "Configured Tool to get configuration from",tools
-    host=env['HOST_SYSTEM']
-    target=env['TARGET_SYSTEM']
+    host=env['HOST_PLATFORM']
+    target=env['TARGET_PLATFORM']
     if name==None:
         env['CONFIG']=env.subst('${CONFIG}')
         name=env['CONFIG']

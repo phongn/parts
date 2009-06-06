@@ -1,12 +1,12 @@
 from common import gcc, GnuInfo
 from parts.tools.Common.Finders import PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
-    hosts=[system_config('posix','x86'),system_config('posix','x86_64')],
-    targets=[system_config('posix','x86'),system_config('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
     info=[
     GnuInfo(
         #standard location, however there might be
@@ -29,8 +29,8 @@ gcc.Register(
 gcc.Register(
     # we assume that the system has teh correct libraies installed to do a cross build
     # or that the user add theh extra check for the stuff the need
-    hosts=[system_config('cygwin','x86'),system_config('cygwin','x86_64')],
-    targets=[system_config('cygwin','x86'),system_config('cygwin','x86_64')],
+    hosts=[SystemPlatform('cygwin','x86'),SystemPlatform('cygwin','x86_64')],
+    targets=[SystemPlatform('cygwin','x86'),SystemPlatform('cygwin','x86_64')],
     info=[
     GnuInfo(
         #standard location, however there might be
@@ -53,8 +53,8 @@ gcc.Register(
 gcc.Register(
     # we assume that the system has teh correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
-    hosts=[system_config('cygwin','ia64')],
-    targets=[system_config('cygwin','ia64')],
+    hosts=[SystemPlatform('cygwin','ia64')],
+    targets=[SystemPlatform('cygwin','ia64')],
     info=[
     GnuInfo(
         #standard location, however there might be

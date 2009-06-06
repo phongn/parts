@@ -97,7 +97,7 @@ class namespace(dict,env_overrides.bindable):
     def __delattr__(self,name):
         del self[name]
         
-    def rebind(self,env):
+    def _rebind(self,env,key):
         '''
         Rebind the environment to a new one.
         There does not seem a way to have this happen in a clone
@@ -106,9 +106,9 @@ class namespace(dict,env_overrides.bindable):
         bad as not doing it at all
         '''
         tmp=namespace(**self.copy())
-        tmp.bind(env)
+        tmp._bind(env,key)
         return tmp
-    def bind(self,env):
+    def _bind(self,env,key):
         self.__dict__['env']=env
 
 

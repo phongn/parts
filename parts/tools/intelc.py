@@ -8,7 +8,7 @@ import os
 
 def generate(env):
     
-    is_windows=env['TARGET_SYSTEM'].Platform=='win32'
+    is_windows=env['TARGET_PLATFORM'].OS=='win32'
     if is_windows:
         env['CC']        = 'icl'
         env['CXX']       = 'icl'

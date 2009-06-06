@@ -25,7 +25,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
     pinfo=None
     ret=None
     last_ver=None
-    arch=env['TARGET_SYSTEM'].Architecture
+    arch=env['TARGET_PLATFORM'].ARCH
     rpt=def_env['PARTS_REPORTER']
     try:
         for i in alias_lst[id]:
@@ -42,7 +42,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
                     # else we assume this is a version object
                     this_ver=tmp
                 
-                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['ENV']['TARGET_SYSTEM'].Architecture:
+                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['ENV']['TARGET_PLATFORM'].ARCH:
                     last_ver=this_ver
                     ret=pinfo
                             

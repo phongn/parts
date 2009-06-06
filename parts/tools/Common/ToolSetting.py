@@ -59,7 +59,7 @@ class ToolSetting:
         use_script=str(env.get(self.script_tag,'False'))
         # Scons 1.3 should be moving to TARGET_OS and TARGET_ARCH.. so we check 
         # for them as well
-        target=env.get('TARGET_SYSTEM',env.get('TARGET_OS',"")+'-'+env.get('TARGET_ARCH',""))
+        target=env['TARGET_PLATFORM']
         #return str(version)+root_path+use_script+str(target)
         return root_path+use_script+str(target)
     
@@ -103,13 +103,14 @@ class ToolSetting:
         self.found[key]=[]
         self.not_found[key]=None # set this to fully queried
         # setup target to test for
-        target=env['TARGET_SYSTEM']
+        target=env['TARGET_PLATFORM']
+        
         t1=copy.copy(target)
-        t1.Architecture='any'
+        t1.ARCH='any'
         t2=copy.copy(target)
-        t2.Platform='any'
+        t2.OS='any'
         t3=copy.copy(t2)
-        t3.Architecture='any'            
+        t3.ARCH='any'            
         
         # test values    
         
@@ -125,12 +126,12 @@ class ToolSetting:
                 swap=False
                 for v in vl:
                     tmp=v.query(env,self.name,root_path,use_script)
+                        
                     # if we find anything
                     if tmp is not None:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
                             self.found[key].append(ver)
-                            cache_key=str(version)+key
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -139,8 +140,8 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-
-        #test for <platform>-any
+            del env[self.name]
+        #test for <OS>-any
         if self.tools.has_key(t1):
             for k,vl in self.tools[t1].items():
                 swap=False
@@ -151,7 +152,6 @@ class ToolSetting:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
                             self.found[key].append(ver)
-                            cache_key=str(version)+key
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -160,7 +160,7 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-                        
+            del env[self.name]
         #test for any-<Arch>
         if self.tools.has_key(t2):
             for k,vl in self.tools[t2].items():
@@ -172,7 +172,6 @@ class ToolSetting:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
                             self.found[key].append(ver)
-                            cache_key=str(version)+key
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -181,7 +180,7 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-                        
+            del env[self.name]                
         #test for any-any
         if self.tools.has_key(t3):
             for k,vl in self.tools[t3].items():
@@ -193,7 +192,6 @@ class ToolSetting:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
                             self.found[key].append(ver)
-                            cache_key=str(version)+key
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -202,7 +200,7 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-                        
+            del env[self.name]                
         self.found[key].sort(reverse=True)
         
         
@@ -228,13 +226,14 @@ class ToolSetting:
             self.not_found[key]=[]
             
         # setup target to test for
-        target=env['TARGET_SYSTEM']
+        target=env['TARGET_PLATFORM']
+        
         t1=copy.copy(target)
-        t1.Architecture='any'
+        t1.ARCH='any'
         t2=copy.copy(target)
-        t2.Platform='any'
+        t2.OS='any'
         t3=copy.copy(t2)
-        t3.Architecture='any'            
+        t3.ARCH='any'            
         
         # test values    
         cache_key=str(version)+key
@@ -260,13 +259,13 @@ class ToolSetting:
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
+                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
                     swap=True
                         
-        #test for <platform>-any
+        #test for <OS>-any
         if self.tools.has_key(t1):
             for k,vl in self.tools[t1].items():
                 swap = False
@@ -285,7 +284,7 @@ class ToolSetting:
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
+                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -309,7 +308,7 @@ class ToolSetting:
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
+                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -333,7 +332,7 @@ class ToolSetting:
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name].rebind(None))
+                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -386,11 +385,11 @@ class ToolSetting:
         '''
         import copy
         t1=copy.copy(target)
-        t1.Architecture='any'
+        t1.ARCH='any'
         t2=copy.copy(target)
-        t2.Platform='any'
+        t2.OS='any'
         t3=copy.copy(t2)
-        t3.Architecture='any'  
+        t3.ARCH='any'  
         # we try to get the supported information
         # based on best match. 
         #Platform is given priority to architecture
@@ -459,7 +458,7 @@ class ToolSetting:
                 tmp={}
                 # orginize the versions for easy access later
                 for i in info:
-                    i.is_native=h.is_native()
+                    i.is_native=h._is_native()
                     tmp[i.version]=[i]
                 #add info sorted in to correct target buckets
                 for t in targets: 
@@ -481,8 +480,8 @@ class ToolSetting:
         key=self.get_cache_key(env)
         version=env.get(self.version_tag,None)
         cache_key=str(version)+key
-              
-        if version is not None:
+           
+        if version is not None:    
             self.query_for_exact(env,key,version)
         else:
             self.query_for_known(env,key)
@@ -493,7 +492,8 @@ class ToolSetting:
             tinfo=None
             root_path=env.get(self.rootpath_tag,None)
             use_script=env.get(self.script_tag,False)
-            target=env['TARGET_SYSTEM']
+            target=env['TARGET_PLATFORM']
+            
             ##get the tool info for the host-target combo for the requested version
             #get latest found version if not provided
             if version is None:
@@ -521,7 +521,7 @@ class ToolSetting:
             shell_env=tinfo.get_shell_env(env,self.name,version,root_path,use_script)
             
             # store it in cache
-            ret=(shell_env,env[self.name].rebind(None))
+            ret=(shell_env,env[self.name]._rebind(None,None))
             self.shell_cache[cache_key]=ret
         return ret
             
@@ -547,7 +547,7 @@ class ToolSetting:
         ## setup any common state
         #setup version info
         version=env[self.name]['VERSION']
-        env[self.name]=ns.rebind(env)
+        env[self.name]=ns._rebind(env,self.name)
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         

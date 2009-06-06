@@ -429,7 +429,7 @@ common.AddVariable('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}','Namespace us
 common.AddVariable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to express building via an Alias target')
 common.AddVariable('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}','Namespace to express building via a Part Name and possible version')
 common.AddVariable('BUILD_DIR_ROOT','#build', 'Root directory for building a given build configuration/variant')
-common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_SYSTEM}/$ALIAS', 'Full path used to for building a given build configuration/variant')
+common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$ALIAS', 'Full path used to for building a given build configuration/variant')
 common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
 common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')

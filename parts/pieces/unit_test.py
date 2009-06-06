@@ -405,7 +405,7 @@ common.AddVariable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all d
 
 common.AddVariable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
 common.AddVariable('UNIT_TEST_DIR',
-			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_SYSTEM}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
+			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
 			'Full directory used for a given unit test run'
 			)
 common.AddVariable('UNIT_TEST_ENV',

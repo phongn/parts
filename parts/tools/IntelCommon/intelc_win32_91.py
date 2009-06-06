@@ -1,13 +1,13 @@
 from common import Intelc
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 import os
 
 # 32-bit 9.1
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         ToolInfo(
             version='9.1',
@@ -40,8 +40,8 @@ Intelc.Register(
     
 #64-bit cross
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         ToolInfo(
             version='9.1',
@@ -74,8 +74,8 @@ Intelc.Register(
     
 #64-bit-ia64 cross
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','ia64')],
     info=[
         ToolInfo(
             version='9.1',

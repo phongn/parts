@@ -267,7 +267,7 @@ def start():
         add_dirty_parts(def_env)
         reduce_target_alias_set(def_env)
         create_sdk_set(def_env)
-    print env['TARGET_SYSTEM']
+    print env['TARGET_PLATFORM']
     # turn off all default building of any items without a target, or until
     # default is called again to set one. ( ie the default by Scons is '.' which is everything)
     def_env.Default('')
@@ -439,22 +439,22 @@ def opt_target(option, opt, value, parser):
             tmp=platform_info.MapArchitecture(lst[0])
             if tmp == '':
                 #assume this was a platform
-                parser.values.target_platform=platform_info.system_config(
-                    lst[0],platform_info._host_sys.Architecture
+                parser.values.target_platform=platform_info.SystemPlatform(
+                    lst[0],platform_info._host_sys.ARCH
                     )
             else:
                 #assume this is a architure
-                parser.values.target_platform=platform_info.system_config(
-                        platform_info._host_sys.Platform,lst[0]
+                parser.values.target_platform=platform_info.SystemPlatform(
+                        platform_info._host_sys.OS,lst[0]
                         )
         else:
             p=lst[0]
             a=lst[1]
             if p == '':
-                p=platform_info._host_sys.Platform
+                p=platform_info._host_sys.OS
             if a == '':
                 a=platform_info._host_sys.Architecture
-            parser.values.target_platform=platform_info.system_config(p,a)
+            parser.values.target_platform=platform_info.SystemPlatform(p,a)
 
 
 SCons.Script.AddOption("--cfg_file",
@@ -483,7 +483,7 @@ SCons.Script.AddOption("--verbose",
             
 SCons.Script.AddOption("--target","--target_platform",
             dest='target_platform',
-            default=platform_info.system_config(platform_info._host_sys.Platform,platform_info._host_sys.Architecture),#'default',
+            default=platform_info.SystemPlatform(platform_info._host_sys.OS,platform_info._host_sys.ARCH),#'default',
             nargs=1,
             callback=opt_target,
             type='string',

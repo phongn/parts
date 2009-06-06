@@ -2,15 +2,15 @@ from common import Intelc,IntelcInfo
 import common
 import regscanner
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 import os
 
 
 
 # 32-bit 11.1 ( composer mainstream)
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         IntelcInfo(
             version='11.1.*',
@@ -36,8 +36,8 @@ Intelc.Register(
     
 # 64-bit 11.1 ( composer mainstream )
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
             version='11.1.*',
@@ -63,8 +63,8 @@ Intelc.Register(
 
 # 32-bit 11.0
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -90,8 +90,8 @@ Intelc.Register(
     
 # 64-bit cross 11.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -117,8 +117,8 @@ Intelc.Register(
     
 # 64-bit native 11.x
 Intelc.Register(
-    hosts=[system_config('win32','x86_64')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -144,8 +144,8 @@ Intelc.Register(
     
 # 64-bit ia64 11.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','ia64')],
     info=[
         IntelcInfo(
             version='11.0.*',
@@ -171,8 +171,8 @@ Intelc.Register(
 
 # 32-bit 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -198,8 +198,8 @@ Intelc.Register(
     
 # 64-bit 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -225,8 +225,8 @@ Intelc.Register(
     
 # 64-bit ia64 10.x
 Intelc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','ia64')],
     info=[
         IntelcInfo(
             version='10.*',

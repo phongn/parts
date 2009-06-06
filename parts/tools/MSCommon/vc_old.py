@@ -1,15 +1,15 @@
 from common import msvc, framework_root, framework_root64
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 import os
 
 # version 7.1 2003
 
 # 32-bit
 msvc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         ToolInfo(
             version='7.1',
@@ -70,8 +70,8 @@ msvc.Register(
 
 # 32-bit
 msvc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         ToolInfo(
             version='7.0',
@@ -130,8 +130,8 @@ msvc.Register(
 
 # 32-bit
 msvc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         ToolInfo(
             version='6.0',

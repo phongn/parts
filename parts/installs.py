@@ -369,7 +369,7 @@ SConsEnvironment.InstallItem=InstallItem
 
 common.AddVariable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
 
-common.AddVariable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_SYSTEM}','')
+common.AddVariable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_PLATFORM}','')
 
 #these are the replacements
 common.AddVariable('INSTALL_LIB','${INSTALL_ROOT}/lib','')

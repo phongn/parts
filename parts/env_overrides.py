@@ -14,7 +14,7 @@ def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
     if hasattr(self, 'bindable_vars'):
         for i in self.bindable_vars:
             clone_env.bindable_vars.append(i)
-            clone_env[i]=clone_env[i].rebind(clone_env)
+            clone_env[i]=clone_env[i]._rebind(clone_env,i)
     return clone_env
         
 
@@ -25,7 +25,7 @@ def Parts__setitem__(self,key,val):
             self.bindable_vars.append(key)
         except:
             self.bindable_vars=[key]
-        val.bind(self)
+        val._bind(self,key)
 
 
 from SCons.Script.SConscript import SConsEnvironment

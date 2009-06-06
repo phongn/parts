@@ -200,7 +200,6 @@ def generate_config(prepend,append,replace):
         # add our mapper objects
         cfg_map.update(common.g_mappers)
         # random data
-        cfg_map['HOST_SYSTEM']=platform_info._host_sys
         cfg_map["PARTS_MODE"]=common.g_part_mode
         if SCons.Script.GetOption('keep_going'):
             cfg_map["CONTINUE_ON_EXCEPTION"]=True
@@ -218,9 +217,13 @@ def generate_config(prepend,append,replace):
                                 BUILDERS = common.g_builders,
                                 **cfg_map
                                 )
+        # since we don't have overides in the __init__call??
+        env['HOST_PLATFORM']=platform_info._host_sys
+        
         # core variable remapings
         #env['CONFIG']=env.subst('${config}')
-        
+        #print env.Dump("TARGET_PLATFORM")
+        #print cfg_map
         ## apply tool chain
         #print env['tool_chain']
         env.ToolChain(pre_tools+env['tool_chain']+post_tools)#tl_chain)

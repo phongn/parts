@@ -1,14 +1,14 @@
 from common import msvc,framework_root,framework_root64,get_current_sdk
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
-from parts.platform_info import system_config
+from parts.platform_info import SystemPlatform
 import os
 
 ## version 9 .. 2008
 # 32-bit
 msvc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','x86')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
     info=[
         ToolInfo(
             version='9.0',
@@ -67,8 +67,8 @@ msvc.Register(
     
 # 64-bit native
 msvc.Register(
-    hosts=[system_config('win32','x86_64')],
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         ToolInfo(
             version='9.0',
@@ -127,8 +127,8 @@ msvc.Register(
     )
 #cross - 64-bit. This also works for ia64
 msvc.Register(
-    hosts=[system_config('win32','any')],# say 'any' as the code will preffer this less than a native version
-    targets=[system_config('win32','x86_64')],
+    hosts=[SystemPlatform('win32','any')],# say 'any' as the code will preffer this less than a native version
+    targets=[SystemPlatform('win32','x86_64')],
     info=[
         ToolInfo(
             version='9.0',
@@ -190,8 +190,8 @@ msvc.Register(
 # ia64 native .. support gone.. or only installed with server 2008 sdk on ia64 boxes?
 # ia64 cross 
 msvc.Register(
-    hosts=[system_config('win32','any')],
-    targets=[system_config('win32','ia64')],
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','ia64')],
     info=[
         ToolInfo(
             version='9.0',
