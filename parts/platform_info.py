@@ -160,80 +160,6 @@ class SystemPlatform(env_overrides.bindable):
         return SystemPlatform(self.OS,self.ARCH)
             
 
-
-##class system_config:
-##    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-##        
-##        self.Platform=platform
-##        self.Architecture=arch
-##    
-##    def __eq__ (self,rhs):
-##        return (self.Platform==rhs.Platform or\
-##                'any'==rhs.Platform or\
-##                'any'==self.Platform) and\
-##            (self.Architecture==rhs.Architecture or\
-##                'any'==rhs.Architecture or\
-##                'any'==self.Architecture)
-##    def __repr__(self):
-##        return self.Platform+"-"+self.Architecture
-##    
-##    def __str__(self):
-##        return self.Platform+"-"+self.Architecture
-##    
-##    def __hash__(self):
-##        return hash(str(self))
-##    
-##    def __getplat(self):
-##        return self.__plat
-##
-##    def __setplat(self, x):
-##        self.__plat = x
-##        
-##    def __getarch(self):
-##        return self.__arch
-##
-##    def __setarch(self, x):
-##        self.__arch = x
-##        
-##    def is_native(self):
-##        return 'any'!= self.Platform and 'any' != self.Architecture
-##    
-##    Architecture = property(__getarch,__setarch)
-##    Platform = property(__getplat,__setplat)
-##    
-##class system_config_r:
-##    def __init__(self,platform=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-##        
-##        self.__plat=platform
-##        self.__arch=arch
-##    
-##    def __eq__ (self,rhs):        
-##        return (self.Platform==rhs.Platform or\
-##                'any'==rhs.Platform or\
-##                'any'==self.Platform) and\
-##            (self.Architecture==rhs.Architecture or\
-##                'any'==rhs.Architecture or\
-##                'any'==self.Architecture)
-##    
-##    def __str__(self):
-##        return self.Platform+"-"+self.Architecture
-##    
-##    def __hash__(self):
-##        return hash(str(self))
-##    
-##    def __getplat(self):
-##        return self.__plat
-##
-##    def __getarch(self):
-##        return self.__arch
-##    
-##    def is_native(self):
-##        return 'any'!= self.Platform and 'any' != self.Architecture
-##
-##    Architecture = property(__getarch)
-##    Platform = property(__getplat)
-##        
-
 _host_sys=SystemPlatform()
     
 def HostSystem():
@@ -277,4 +203,8 @@ common.AddVariable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform
 common.add_parts_object('ChipArchitecture',ChipArchitecture)
 common.add_parts_object('OSBit',OSBit)
 #common.add_parts_object('Host_Platform',HostSystem)
+
+common.add_global_value('ChipArchitecture',ChipArchitecture)
+common.add_global_value('OSBit',OSBit)
+common.add_global_value('Host_Platform',HostSystem)
 

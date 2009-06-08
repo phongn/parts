@@ -551,7 +551,7 @@ class ToolSetting:
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
-        print "Tool",self.name,"configured to version:",version
+        #print "Tool",self.name,"configured to version:",version
         
 
     

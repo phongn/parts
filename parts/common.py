@@ -44,6 +44,8 @@ g_build_as_sdk=set()
 g_depends_data={}
 # custom data mappers
 g_mappers={}
+# these are the global functions we define to the SConstruct
+g_globals={}
 
 
 g_base_env= SCons.Script.Environment(tools=[])
@@ -56,6 +58,9 @@ def add_mapper(mapper):
 def add_parts_object(key,object):
     g_parts_objs[key]=object
     # add code to for help generation
+    
+def add_global_value(key,object):
+    g_globals[key]=object
 
 def AddVariable(key,default,help,validator=None,converter=None):
     '''Generic varible addition'''

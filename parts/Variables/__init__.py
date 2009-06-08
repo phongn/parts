@@ -134,7 +134,7 @@ class Variables:
             values[k] = option.default
             #add any default overides
             if self.user_defaults.has_key(k):
-                values[k] = option.default
+                values[k] = self.user_defaults[k]
 
         # next set the value specified in the options file
         # keep as SCons has it orginally
@@ -275,7 +275,7 @@ class Variables:
 
         if sort:
             options = self.options.values()
-            options.sort(lambda x,y,func=sort: func(x.key,y.key))
+            options.sort(cmp=lambda x,y: cmp(x.key, y.key))
         else:
             options = self.options.values()
 

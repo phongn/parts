@@ -28,6 +28,36 @@ def Parts__setitem__(self,key,val):
         val._bind(self,key)
 
 
+class PartPathDirsWrapper:
+    """This is a wrapper class to work around a "bug" with the scanner in that
+    it tries to delay expand variables which might modify the Env. This
+    allows use to expand the area in the env before it tries to create the tuple
+    list of paths that it will use to scan with. """
+    def __init__(self, obj):
+        self.obj = obj
+        #print "$$$",obj.variable
+    def __call__(self, env, dir, target=None, source=None, argument=None):
+        def_env=SCons.Script.DefaultEnvironment()
+        prop_lst=env.get(self.obj.variable,[])
+        if prop_lst!=[]:
+            ret=mappers.sub_lst(env,prop_lst,def_env)
+            env[self.obj.variable]=ret
+        #print 'Scanner', target[0]        
+        return self.obj(env,dir,target,source,argument)
+
+
+def Scanner_override():
+    ## this is for fixing an issue with the scanners in which one item in a env
+    ## does not have the $vars fully expanded, which causes an issue with in the
+    ## dependency tree. This leads to a false rebuild of few files
+    for k in SCons.Tool.SourceFileScanner.function.keys():
+        if isinstance(SCons.Tool.SourceFileScanner.function[k].path_function,SCons.Scanner.FindPathDirs):
+            SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
+            SCons.Tool.SourceFileScanner.function[k].path_function)
+
+
+
+
 from SCons.Script.SConscript import SConsEnvironment
 
 # override Clone to deepcopy bindable objects

@@ -95,3 +95,4 @@ def validate_vars(env):
 
 
 msvc=ToolSetting('MSVC')
+mssdk=ToolSetting('MSSDK')

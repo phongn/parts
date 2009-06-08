@@ -14,6 +14,8 @@ import reporter
 import platform_info
 import os
 import string
+import Variables
+import version_info
 
 
 def target_to_alias(target,ret):    
@@ -204,7 +206,6 @@ def start():
         common.g_part_mode='clean'
     elif SCons.Script.GetOption('help'):
         common.g_part_mode='help'
-        #core.generate_help_text()
     else:
         common.g_part_mode='build'
         
@@ -226,6 +227,18 @@ def start():
     init_args() 
     env=core.generate_config({},{},{'tool_chain':[]})
     
+    # generate help text
+    if common.g_part_mode=='help':
+        starttext='\n'+version_info.parts_version_text()+'''
+Usage 'scons [scons options] [Parts options] [Targets]
+Example: scons config=release foo
+
+Use -H or --help-options for a list of scons options
+'''
+        cfg_files=[SCons.Script.GetOption('cfg_file')]
+        vars=Variables.Variables(cfg_files,args=SCons.Script.ARGUMENTS)
+        vars.AddVariables(*common.def_vars)
+        SCons.Script.Help(starttext+vars.GenerateHelpText(env,True))
     ## setup the reporter so we have a way to consitantly output and manage data
       
     log_obj=env['LOGGER']
@@ -294,69 +307,10 @@ def init_args():
     '''
     #''' Since the Option class does not work as we would like, we hard code some logic for the time being
     #This current revision loops over the options that have been set in def_args. Going forward we will still
-    #want to see what we can do to clean this up even more.
+    #want to see what we can do to clean this up even more. Leaving stub till I know 100% to delete this
     #'''
-    #start setup of the arguments    
-
-##    #for kv in def_args.items():
-##    #    common.g_args[kv[0]]=kv[1]
-##    common.g_args.update(common.def_args)
-##
-##    ### Load config file ######    
-##    # Next get the config file settings, if any
-##    cfg_file=SCons.Script.GetOption('cfg_file')
-##    #SCons.Script.ARGUMENTS.get('cfg_file',common.g_args['cfg_file'])
-##    
-##    # if we have a config file, load those values
-##    d1={}
-##    if os.path.exists(cfg_file):
-##        print 'Loading config file [',cfg_file,']'
-##        execfile(cfg_file, d1,common.g_args)
-##    elif cfg_file!='parts.cfg':
-##        print "PARTS: Warning - cfg_file =",cfg_file,"was not found! Ignoring file..."
-##        
-
-    ### override with any command line arguments #####
     
-##    # set the preferred tools
-##    lst=[]
-##    if SCons.Script.ARGUMENTS.has_key('tool_chain'):
-##        lst=string.split(SCons.Script.ARGUMENTS['tool_chain'],',')
-##    else:
-##        lst=common.g_args['tool_chain']
-##    common.g_args['tool_chain']=common.process_tool_arg(lst)
-##        
-##    if SCons.Script.ARGUMENTS.has_key('mode'):
-##        common.g_args['mode']=string.split(SCons.Script.ARGUMENTS['mode'],',')
-##    else:
-##        common.g_args['mode']=common.g_args['mode']
-##    
-####    # this value can't be overridden via SetDefaultOptions
-####    del common.def_args['cfg_file']
-##    # these can so i need to add these back in latter so SetDefault works
-##    # might want to rethink how SetDefault work latter as well.
-##    tools_tmp = common.def_args['tool_chain']
-##    mode_tmp = common.def_args['mode']
-##    
-##    del common.def_args['tool_chain']
-##    del common.def_args['mode']
-##    
-##    common.g_args['config']=SCons.Script.ARGUMENTS.get('config',
-##            common.g_args.get('config',common.g_args['default_config'])
-##            )
-##
-##    for key in common.def_args.keys():
-##        if common.is_bool(common.g_args[key]):
-##            common.g_args[key]=common.option_bool(SCons.Script.ARGUMENTS.get(key,common.g_args[key]),key,common.g_args[key])
-##        else:
-##            common.g_args[key]=SCons.Script.ARGUMENTS.get(key,common.g_args[key])
-##    
-##    common.def_args['tool_set']=tools_tmp
-##    common.def_args['mode']=mode_tmp
-##
-##    # set settings to the Scons Arguments list... is this needed????
-##    SCons.Script.ARGUMENTS.update(common.g_args)
-##        
+
    
     
 
@@ -374,59 +328,6 @@ def SetOptionDefault(key,value):
     rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
     common.g_defaultoverides[key]=value
     
-    
-    
-    
-##    if (key=='config' or key=='mode') and common.is_string(value) and not common.is_list(value):
-##        value=string.split(value,',')
-##    elif key=='tool_chain' and common.is_string(value) and not common.is_list(value):
-##        value=common.process_tool_arg(string.split(value,','))
-##    
-##    try:
-##        #get data so we can figure out type ( to handle correctly later)
-##        val=common.g_args[key]
-##        #get Def value
-##        def_val=common.def_args.get(key,None)
-##        
-##        #Based on type try to do correct logic
-##        if common.is_string(val):
-##            if val=='':
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##            elif val==def_val and def_val != None:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##            
-##        elif common.is_list(val):
-##            if val==[]:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##            elif val==def_val and def_val != None:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##
-##        elif common.is_bool(val):
-##            l=len(key)
-##            set=True
-##            for a in args:
-##                if a[:l] == key:
-##                    set=False
-##            if set==True:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##        elif type(val) is type({}):
-##            if val=={}:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##            elif val==def_val and def_val != None:
-##                rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##                common.g_args[key]=value
-##            
-##            
-##    except KeyError:
-##        rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-##        common.g_args[key]=value
-
 
             
 def opt_target(option, opt, value, parser):
@@ -522,3 +423,4 @@ common.AddVariable('use_source_for','','Controls what Part and dependents to bui
 common.AddBoolVariable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
 
 #common.AddVariable('cfg_file','parts.cfg')
+common.add_global_value('SetOptionDefault',SetOptionDefault)

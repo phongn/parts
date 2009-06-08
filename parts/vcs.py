@@ -8,17 +8,6 @@ import subprocess
 import os,sys,shutil,filecmp,time,stat
 import SCons.Script 
 
-# add configuartion varaible needed for part
-common.AddVariable('SVN_SERVER','','Value of SVN server to use')
-common.AddVariable('CVS_SERVER','','Value of CVS server to use')
-common.AddVariable('PREBUILT_SERVER','','Path to location of prebuilt data')
-#common.AddVariable('PROCESS_VCS',False) # deprecated; use UPDATE_ALL
-common.AddBoolVariable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
-common.AddBoolVariable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
-common.AddVariable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
-common.AddVariable('CHECK_OUT_ROOT','#repository','Root directory to place checked out data')
-common.AddVariable('CHECK_OUT_DIR','$CHECK_OUT_ROOT/$ALIAS','Full path used for any given checked out item')
-
 SCons.Script.Alias('extract_sources')
 
 def get_vcs_filename(env,part_file,vcs_type):
@@ -746,4 +735,21 @@ class PyRobocopier:
             print self.__numdeldfld, 'directories could not be purged.'
         if self.__numdelffld:
             print self.__numdelffld, 'files could not be purged.'
+
+
+# add configuartion varaible needed for part
+common.AddVariable('SVN_SERVER','','Value of SVN server to use')
+common.AddVariable('CVS_SERVER','','Value of CVS server to use')
+common.AddVariable('PREBUILT_SERVER','','Path to location of prebuilt data')
+#common.AddVariable('PROCESS_VCS',False) # deprecated; use UPDATE_ALL
+common.AddBoolVariable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
+common.AddBoolVariable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
+common.AddVariable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
+common.AddVariable('CHECK_OUT_ROOT','#repository','Root directory to place checked out data')
+common.AddVariable('CHECK_OUT_DIR','$CHECK_OUT_ROOT/$ALIAS','Full path used for any given checked out item')
+
+common.add_global_value('VcsSvn',vcs_svn)
+common.add_global_value('VcsCvs',vcs_cvs)
+common.add_global_value('VcsPreBuilt',vcs_Prebuilts)
+
 

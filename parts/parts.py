@@ -433,3 +433,6 @@ common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$AL
 common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
 common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')
+
+common.add_global_value('Part',Part)
+common.add_global_value('part',Part)
