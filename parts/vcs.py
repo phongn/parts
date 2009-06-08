@@ -113,7 +113,7 @@ class vcs:
     def __init__(self,repository,server=''):
         #if server == '':
         #    server=self.default_server()
-        if server != '' and server[-1]!='/':
+        if server is not None and server[-1]!='/':
             server+='/'
         self.repos=repository
         self.server=server
@@ -134,11 +134,11 @@ class vcs:
         
 
 class vcs_svn(vcs):
-    def __init__(self,repository,server='',revision=None):
+    def __init__(self,repository,server=None,revision=None):
         self.revision = revision
         vcs.__init__(self,repository,server)
     def default_server(self,env):
-        if self.server != '':
+        if self.server is not None:
             return self.server
         return env['SVN_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
@@ -168,7 +168,7 @@ class vcs_svn(vcs):
         rev_string = ' '
         if self.revision != None:
             rev_string = ' -r ' + self.revision + ' '
-        elif env['SVN_REVISION'] != '':
+        elif env['SVN_REVISION'] is not None:
             rev_string = ' -r ' + env['SVN_REVISION'] + ' '
         ret = SysCall("svn checkout --non-interactive"+rev_string+self.default_server(env)+self.repos+' "'+out_dir+'"')
         if ret:
