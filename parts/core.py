@@ -95,7 +95,7 @@ def generate_config(prepend,append,replace):
             del append['tool_chain']
         # add stuff in SCons that are tools, that are needed
         # this is needed for Tag for Install()
-        post_tools.append('packaging')
+        post_tools.extend(['packaging','install'])
 
         ## setup the SCons Variable
         cfg_files=[SCons.Script.GetOption('cfg_file')]

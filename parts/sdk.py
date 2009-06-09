@@ -295,6 +295,17 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
 ## SDK BUILDER -- this basically is like Install
 ## but does a copy... might be able to use newly added Copy builder...
 ################################################
+import tarfile
+def untar_print(target, source, env):
+    dest=str(source[0])
+    destination=os.path.split(dest)[0]
+    return  "Unpacking LibPackage files in "+destination
+def untar(target, source, env):
+    dest=str(source[0])
+    destination=os.path.split(dest)[0]    
+    tar=tarfile.open(dest,'r')
+    tar.extractall(destination)
+    tar.close()
 
 def SDKCOPYWrapper(env, target=None, source=None):
     import SCons.Script
@@ -312,7 +323,12 @@ def SDKCOPYWrapper(env, target=None, source=None):
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
             e=env.fs.Entry('.'+os.sep+src.name, dnode)
-            n_targets.extend(env.__SDKBuilder__(target=e,source=src))
+            tmp=env.__SDKBuilder__(target=e,source=src)
+            n_targets.extend(tmp)
+            # hack for gz-so file .. remove later 
+            if str(tmp[0]).endswith('.so-gz'):
+                n=env.fs.File(str(tmp[0])[:-3])
+                env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
     return n_targets
 
 
@@ -341,15 +357,28 @@ def sdkcopyFunc(dest, source, env):
                 os.makedirs(parent)
         shutil.copytree(source, dest)
     else:
-        shutil.copy2(source, dest)
-        st = os.stat(source)
-        os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-
+        if env['HOST_OS']=='win32':
+            import win32file
+            try:
+                win32file.CreateHardLink(dest,source)
+            except:
+                win32file.CopyFile(source,dest,False)
+        else:
+            try:
+                os.link(source,dest)
+            except:
+                try:
+                    os.symlink(source,dest)
+                except:
+                    shutil.copy2(source, dest)
+                    st = os.stat(source)
+                    os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        
     return 0
 
 def SDKFunc(target, source, env):
     
-    # get the logger for teh given part
+    # get the logger for the given part
     output=env["PART_LOG_MAPPER"]    
     # tell it we are starting a task
     id=output.TaskStart(SdkStringFunc(target,source,env)+"\n")

@@ -93,6 +93,9 @@ def validate_vars(env):
         if not SCons.Util.is_String(env['PCHSTOP']):
             raise SCons.Errors.UserError, "The PCHSTOP construction variable must be a string: %r"%env['PCHSTOP']
 
-
+#VC teh compiler and related tools
 msvc=ToolSetting('MSVC')
+# Microsft SDK (Platform)
 mssdk=ToolSetting('MSSDK')
+# Microsoft VS integration SDK (VSIP)
+vssdk=ToolSetting('VSSDK')

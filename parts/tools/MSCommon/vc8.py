@@ -16,6 +16,8 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\8.0\Setup\VC\ProductDir',
                     r'Software\Microsoft\VCExpress\8.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
@@ -76,8 +78,8 @@ msvc.Register(
             version='8.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
-                    
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\8.0\Setup\VC\ProductDir'                    
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
@@ -139,8 +141,9 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
-                    
+                    r'Software\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\8.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VCExpress\8.0\Setup\VC\ProductDir'                    
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
@@ -201,8 +204,8 @@ msvc.Register(
             version='8.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
-                    
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\8.0\Setup\VC\ProductDir',
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'
@@ -263,8 +266,10 @@ msvc.Register(
             version='8.0',
             install_scanner=[
                 RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir'
-                    
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\8.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\8.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VCExpress\8.0\Setup\VC\ProductDir'                    
                 ]),
                 EnvFinder([
                     'VS80COMNTOOLS'

@@ -15,6 +15,8 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\9.0\Setup\VC\ProductDir',
                     r'Software\Microsoft\VCExpress\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
@@ -75,7 +77,7 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Wow6432Node\Microsoft\VCExpress\9.0\Setup\VC\ProductDir',
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
@@ -135,7 +137,9 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\9.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VCExpress\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'
@@ -198,7 +202,9 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir'
+                    r'Software\Microsoft\VisualStudio\9.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\9.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VCExpress\9.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS90COMNTOOLS'

@@ -16,7 +16,7 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\7.1\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VCExpress\7.1\Setup\VC\ProductDir'
+                    r'Software\Microsoft\Microsoft\VisualStudio\7.1\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VS71COMNTOOLS'
@@ -78,7 +78,7 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\7.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VCExpress\7.0\Setup\VC\ProductDir'
+                    r'Software\Microsoft\Microsoft\VisualStudio\7.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
                     'VSCOMNTOOLS'
@@ -138,7 +138,7 @@ msvc.Register(
             install_scanner=[
                 RegFinder([
                     r'Software\Wow6432Node\Microsoft\VisualStudio\6.0\Setup\Microsoft Visual C++\ProductDir',
-                    r'Software\Microsoft\VCExpress\6.0\\Setup\Microsoft Visual C++\ProductDir'
+                    r'Software\Microsoft\Microsoft\VisualStudio\6.0\Setup\Microsoft Visual C++\ProductDir'
                 ]),
                 EnvFinder([
                     'VS60COMNTOOLS'

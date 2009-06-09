@@ -136,6 +136,7 @@ class configuration:
 class _ConfigurationSet:
     def __init__(self,name,dependsOn):
         self.name=name
+        # add note if depends on is a list.. only support single base
         self.depends=dependsOn
         self.map={}
         
@@ -168,6 +169,9 @@ class _ConfigurationSet:
     
     def Dependent(self):
         return self.depends
+    
+    def Name(self):
+        return self.name
             
     def add_config_setting(self,tool,ver_rng,host,target,settings,ver_mapper):
         
@@ -482,6 +486,24 @@ def apply_config(env,name=None,host=None,target=None):
         for f in tmp:
             f(env)
                 
+def _isconfigbasedon(env,name,config):                
+    tmp=g_configuration[config]
+    if tmp.Name() == name:
+        return True
+    if tmp.Dependent() is not None:
+        return _isconfigbasedon(env,name,tmp.Dependent())
+    else:
+        return False
+    
+def isConfigBasedOn(env,name):
+    config=env['CONFIG']
+    return _isconfigbasedon(env,name,config)
+            
+# This is what we want to be setup in parts
+from SCons.Script.SConscript import SConsEnvironment
+
+# adding logic to Scons Enviroment object
+SConsEnvironment.isConfigBasedOn=isConfigBasedOn
         
 common.AddVariable(['CONFIG','config'],'${default_config}','The configuration to use')
 common.AddVariable('default_config','debug','The configuration to use by default')
