@@ -70,6 +70,37 @@ vssdk.Register(
                             
                         },
             test_file='ctc.exe'
+            ),
+        ToolInfo(
+            version='9.0',
+            install_scanner=[
+                RegFinder([
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\VSIP\9.0\InstallDir',
+                    r'Software\Microsoft\VisualStudio\VSIP\9.0\InstallDir'
+                ]),
+                PathFinder([
+                    r'C:\Program Files (x86)\Visual Studio 2008 SDK',
+                    r'C:\Program Files\Visual Studio 2008 SDK'
+                ])
+            ],
+            script=None,
+            subst_vars={
+            },
+            shell_vars={
+                        'PATH':
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Tools/Bin'                                                       
+                            ,
+                        'INCLUDE':
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/IDL'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/Inc/office10'
+                            
+                        ,
+                        'LIB':
+                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/lib'# add some debug or release
+                            
+                        },
+            test_file='ctc.exe'
             )
         ]
     )
