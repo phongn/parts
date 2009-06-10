@@ -1,3 +1,5 @@
+#Obsolete file remove
+
 '''
 this file contains a set of varible used to hold default value for all platforms
 such as flags. These may or may not be used by a given configuration, but exist

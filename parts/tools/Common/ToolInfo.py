@@ -86,7 +86,7 @@ class ToolInfo:
                                 VERSION=version,
                                 TOOL=tool)
         try:
-            return self.shell_cache[str(version)+str(install_root)+str(script)]
+            return self.shell_cache[str(version)+str(install_root)+str(script)+env.subst("$CONFIG")]
         except KeyError:
             if SCons.Util.is_String(script):
                 # process the script directly

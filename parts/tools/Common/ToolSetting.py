@@ -61,7 +61,7 @@ class ToolSetting:
         # for them as well
         target=env['TARGET_PLATFORM']
         #return str(version)+root_path+use_script+str(target)
-        return root_path+use_script+str(target)
+        return root_path+use_script+str(target)+env.subst("$CONFIG")
     
     def get_latest_known_version(self,cache_key): 
         try:

@@ -95,5 +95,6 @@ def resolve(env,version):
                 ('mslink',None),
                 ('masm',None),
                 ('mslib',None),
-                ('midl',None)
+                ('midl',None),
+                ('vssdk',None)
             ]

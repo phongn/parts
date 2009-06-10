@@ -4,6 +4,10 @@ from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFind
 from parts.platform_info import SystemPlatform
 import os
 
+class MapLib():
+    def __call__(self, target, source, env, for_signature):
+        return env.isConfigBasedOn('debug') and 'debug' or 'retail'
+        
 
 vssdk.Register(
     hosts=[SystemPlatform('win32','any')],
@@ -23,6 +27,7 @@ vssdk.Register(
             ],
             script=None,
             subst_vars={
+            'MAPCONFIG':MapLib
             },
             shell_vars={
                         'PATH':
@@ -30,12 +35,12 @@ vssdk.Register(
                             ,
                         'INCLUDE':
                             '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/IDL'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/Inc/office10'
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/IDL'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc/office10'
                             
                         ,
                         'LIB':
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/lib'# add some debug or release
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/lib/${VSSDK.MAPCONFIG()}'
                             
                         },
             test_file='ctc.exe'
@@ -54,6 +59,7 @@ vssdk.Register(
             ],
             script=None,
             subst_vars={
+            'MAPCONFIG':MapLib
             },
             shell_vars={
                         'PATH':
@@ -61,12 +67,12 @@ vssdk.Register(
                             ,
                         'INCLUDE':
                             '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/IDL'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/Inc/office10'
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/IDL'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc/office10'
                             
                         ,
                         'LIB':
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/lib'# add some debug or release
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/lib/${VSSDK.MAPCONFIG()}'
                             
                         },
             test_file='ctc.exe'
@@ -84,7 +90,7 @@ vssdk.Register(
                 ])
             ],
             script=None,
-            subst_vars={
+            subst_vars={'MAPCONFIG':MapLib
             },
             shell_vars={
                         'PATH':
@@ -92,12 +98,12 @@ vssdk.Register(
                             ,
                         'INCLUDE':
                             '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/IDL'+os.pathsep+
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/Inc/office10'
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/IDL'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc/office10'
                             
                         ,
                         'LIB':
-                            '${VSSDK.INSTALL_ROOT}VisualStudioIntegration/Common/lib'# add some debug or release
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/lib/${VSSDK.MAPCONFIG()}'
                             
                         },
             test_file='ctc.exe'

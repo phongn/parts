@@ -96,7 +96,9 @@ class namespace(dict,env_overrides.bindable):
         code, I need to subst stuff here before SCons can try to, else it will
         try to set this object to Null string, causing an unwanted error'''
         #print "Get **************", name, self[name]
-        return self.env.subst(self[name])
+        tmp=self[name]
+        return is_string(tmp) and self.env.subst(self[name]) or self[name]
+    
     def __setattr__(self,name,value):
         self[name]=value
     def __delattr__(self,name):

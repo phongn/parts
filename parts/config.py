@@ -496,7 +496,7 @@ def _isconfigbasedon(env,name,config):
         return False
     
 def isConfigBasedOn(env,name):
-    config=env['CONFIG']
+    config=env.subst('$CONFIG')
     return _isconfigbasedon(env,name,config)
             
 # This is what we want to be setup in parts
