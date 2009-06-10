@@ -4,7 +4,7 @@
 
 
 def resolve(env,version):
-##    host=env['HOST_PLATFORM']
+    host=env['HOST_PLATFORM']
 ##    target=env['TARGET_PLATFORM']
 ##    
 ##    if host == 'win32-any' and target =='win32-any':
@@ -82,19 +82,23 @@ def resolve(env,version):
 ##
 ##
 ##
-
- #   return [
-                #('gcc',None),
-                #('gnulink',None),
-                #('ar',None),
-                #('g++',None)
-            #]
-
-    return [
+    if host.OS=='win32':
+        return [
                 ('cl',None),
                 ('mslink',None),
                 ('masm',None),
                 ('mslib',None),
-                ('midl',None),
-                ('vssdk',None)
+                ('midl',None)
             ]
+    elif host.OS=='posix':
+        return [
+                ('gcc',None),
+                ('g++',None),
+                ('gas',None),
+                ('gnulink',None),
+                ('ar',None)
+            ]
+    else:
+        print "Defaulting to Scons' default lookup"
+        return [('default',None)]
+            
