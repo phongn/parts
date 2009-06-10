@@ -165,7 +165,7 @@ def generate_config(prepend,append,replace):
         ## this is for fixing an issue with the scanners in which one item in a env
         ## does not have the $vars fully expanded, which causes an issue with in the
         ## dependency tree. This leads to a false rebuild of few files
-        env_overrides.Scanner_override
+        env_overrides.Scanner_override()
         
         # Add this to cache
         common.g_env_cache[cache_key]=env    

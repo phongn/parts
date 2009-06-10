@@ -37,6 +37,7 @@ class PartPathDirsWrapper:
         self.obj = obj
         #print "$$$",obj.variable
     def __call__(self, env, dir, target=None, source=None, argument=None):
+        import mappers
         def_env=SCons.Script.DefaultEnvironment()
         prop_lst=env.get(self.obj.variable,[])
         if prop_lst!=[]:
