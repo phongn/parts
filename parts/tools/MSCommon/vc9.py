@@ -45,22 +45,22 @@ msvc.Register(
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,
                         'INCLUDE':
-                            '${VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${VCINSTALL}/INCLUDE'+os.pathsep+
+                            '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
+                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             get_current_sdk()+'/include'
                         ,
                         'LIB':
-                            '${VCINSTALL}ATLMFC/LIB'+os.pathsep+
-                            '${VCINSTALL}.lib'+os.pathsep+
+                            '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
+                            '${MSVC.VCINSTALL}/lib'+os.pathsep+
                             get_current_sdk()+'/lib'+os.pathsep+
-                            '${FRAMEWORK_ROOT}/v3.5'+os.pathsep+
-                            '${FRAMEWORK_ROOT}/v2.0.50727'
+                            '${MSVC.FRAMEWORK_ROOT}/v3.5'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
                         ,
                         'LIBPATH':
-                            '${VCINSTALL}ATLMFC/LIB'+os.pathsep+
-                            get_current_sdk()+'.lib'+os.pathsep+
-                            '${FRAMEWORK_ROOT}/v3.5'+os.pathsep+
-                            '${FRAMEWORK_ROOT}/v2.0.50727'
+                            '${MSVC.VCINSTALL}ATLMFC/LIB'+os.pathsep+
+                            get_current_sdk()+'/lib'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT}/v3.5'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
                         },
             test_file='cl.exe'
             )
