@@ -97,7 +97,9 @@ class namespace(dict,env_overrides.bindable):
         try to set this object to Null string, causing an unwanted error'''
         #print "Get **************", name, self[name]
         tmp=self[name]
-        return is_string(tmp) and self.env.subst(self[name]) or self[name]
+        if is_string(tmp) or tmp is None:
+            return self.env.subst(tmp)
+        return tmp
     
     def __setattr__(self,name,value):
         self[name]=value
