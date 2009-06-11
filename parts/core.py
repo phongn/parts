@@ -61,6 +61,28 @@ def normalize_map(m):
 
 ### primary config stuff
 
+class deprecated:
+    def __init__(self,key,new_key,value):
+        self.key=key
+        self.new_key=new_key
+        self.value=value
+
+    def __str__(self):
+        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        return self.value
+
+    def __eq__(self,rhs):
+        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        return self.value == rhs
+
+    def __hash__(self):
+        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        return hash(str(self.value))
+    
+    def __len__(self):
+        return len(str(self.value))
+    def __getitem__(self,key):
+        return self.value[key]
 
 def generate_config(prepend,append,replace):
     
@@ -127,6 +149,8 @@ def generate_config(prepend,append,replace):
         
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
+        # stuff to zap
+        env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
     
         ## apply tool chain
         env.ToolChain(pre_tools+env['tool_chain']+post_tools)#tl_chain)

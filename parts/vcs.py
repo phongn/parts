@@ -110,9 +110,7 @@ class vcs:
     This object is the base for all vcs based objects. It provides base implementation
     and interface functionality needed for all VCS objects
     '''
-    def __init__(self,repository,server=''):
-        #if server == '':
-        #    server=self.default_server()
+    def __init__(self,repository,server=None):
         if server is not None and server[-1]!='/':
             server+='/'
         self.repos=repository
@@ -208,6 +206,7 @@ class vcs_cvs(vcs):
 
 class vcs_Prebuilts(vcs):
     def default_server(self,env):
+        
         if self.server != '':
             return self.server
         return env['PREBUILT_SERVER']

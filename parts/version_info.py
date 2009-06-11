@@ -32,9 +32,9 @@ common.add_parts_object('IsPartsExtensionVersionBeta',is_parts_version_beta)
 common.add_parts_object('PartsExtensionVersion',PartsExtensionVersion)
 
 #add to Sconsctruct as globals
-common.add_global_value('PartVersionString',parts_version_text_env)
-common.add_global_value('IsPartsExtensionVersionBeta',is_parts_version_beta_env)
-common.add_global_value('PartsExtensionVersion',PartsExtensionVersion_env)
+common.add_global_value('PartVersionString',parts_version_text)
+common.add_global_value('IsPartsExtensionVersionBeta',is_parts_version_beta)
+common.add_global_value('PartsExtensionVersion',PartsExtensionVersion)
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

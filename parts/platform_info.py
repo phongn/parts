@@ -206,5 +206,6 @@ common.add_parts_object('OSBit',OSBit)
 
 common.add_global_value('ChipArchitecture',ChipArchitecture)
 common.add_global_value('OSBit',OSBit)
-common.add_global_value('Host_Platform',HostSystem)
+common.add_global_value('Host_Platform',HostSystem)# zap this one
+common.add_global_value('SystemPlatform',SystemPlatform)
 

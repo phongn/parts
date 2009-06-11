@@ -546,8 +546,8 @@ class ToolSetting:
         
         ## setup any common state
         #setup version info
-        version=env[self.name]['VERSION']
         env[self.name]=ns._rebind(env,self.name)
+        version=env[self.name]['VERSION']
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
