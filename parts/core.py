@@ -104,27 +104,60 @@ def generate_config(prepend,append,replace):
         
         ## basic setup
         cfg_map={}
+        # get command line args
         overrides=SCons.Script.ARGUMENTS.copy()
+        ##################################
+        ## test for bad value.. remap is needed
+        tmp=overrides.get('tools',[])
+        if tmp!=[]:
+            print 'Parts Warning - tools is deprecated, use tool_chain'
+            if overrides.has_key('tool_chain')==False:
+                overrides['tool_chain']=tmp
+            del overrides['tools']
+
+        # test for bad value.. remap is needed
+        tmp=replace.get('tools',[])
+        if tmp!=[]:
+            print 'Parts Warning - tools is deprecated, use tool_chain'
+            if replace.has_key('tool_chain')==False:
+                replace['tool_chain']=tmp
+            del replace['tools']
+
+        tmp=prepend.get('tools',[])
+        if tmp!=[]:
+            print 'Parts Warning - tools is deprecated, use tool_chain'
+            if prepend.has_key('tool_chain')==False:
+                prepend['tool_chain']=tmp
+            del prepend['tools']
+
+        tmp=append.get('tools',[])
+        if tmp!=[]:
+            print 'Parts Warning - tools is deprecated, use tool_chain'
+            if append.has_key('tool_chain')==False:
+                append['tool_chain']=tmp
+            del append['tools']            
+            
+        ######################################            
         overrides.update(replace)
         
         # minor messing around with tools still need 
         # (replace should get the tool_chain of this)
         pre_tools=prepend.get('tool_chain',[])
-        if pre_tools:
+        if pre_tools!=[]:
             del prepend['tool_chain']
         post_tools=append.get('tool_chain',[])
-        if post_tools:
+        if post_tools!=[]:
             del append['tool_chain']
         # add stuff in SCons that are tools, that are needed
         # this is needed for Tag for Install()
-        post_tools.extend(['packaging','install'])
-
+        post_tools.extend(['packaging','install','zip'])
         ## setup the SCons Variable
         cfg_files=[SCons.Script.GetOption('cfg_file')]
         vars=Variables.Variables(cfg_files,args=overrides,user_defaults=common.g_defaultoverides)
         vars.AddVariables(*common.def_vars)
-        
-        ## set readonly values
+
+        # adds values that may not be set as an Varibiable        
+        cfg_map.update(common.g_defaultoverides)
         # add our mapper objects
         cfg_map.update(common.g_mappers)
         # random data
@@ -138,7 +171,7 @@ def generate_config(prepend,append,replace):
         ## create a new environment
         # get our toolpath 
         tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
-        # make the SCons environment
+        # make the SCons environment #############################
         env=SCons.Script.Environment(
                                 variables = vars,
                                 tools=[],
@@ -146,9 +179,15 @@ def generate_config(prepend,append,replace):
                                 BUILDERS = common.g_builders,
                                 **cfg_map
                                 )
-        
+        print "Unknowns *********************"
+        print vars.UnknownVariables()
+        print "******************************"
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
+        # update the missing arguments to enviroment stuff
+        # this is stuff that does not have a option defined for
+        #update_extra_options(env)
+        
         # stuff to zap
         env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
     

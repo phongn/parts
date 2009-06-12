@@ -125,6 +125,9 @@ class vcs:
         else:
             ret = self.checkout_cmd(out_dir,env,name)
         return ret
+
+    def full_path(self,env):
+        return os.path.join(self.default_server(env),self.repos).replace('\\','/')
         
     def clean_step(self,out_dir):
         #normally does nothing, but in special case permission might need to be set
@@ -150,9 +153,9 @@ class vcs_svn(vcs):
         rev_string = ' '
         if self.revision != None:
             rev_string = ' -r ' + self.revision + ' '
-        elif env['SVN_REVISION'] != '':
+        elif env['SVN_REVISION'] is not None:
             rev_string = ' -r ' + env['SVN_REVISION'] + ' '
-        ret = SysCall("svn switch --non-interactive"+rev_string+self.default_server(env)+self.repos+' "'+out_dir+'"')
+        ret = SysCall("svn switch --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"')
         if ret:
             # What if 'forced' here??
             if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
@@ -168,7 +171,7 @@ class vcs_svn(vcs):
             rev_string = ' -r ' + self.revision + ' '
         elif env['SVN_REVISION'] is not None:
             rev_string = ' -r ' + env['SVN_REVISION'] + ' '
-        ret = SysCall("svn checkout --non-interactive"+rev_string+self.default_server(env)+self.repos+' "'+out_dir+'"')
+        ret = SysCall("svn checkout --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"')
         if ret:
             if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
                 env.Clean(env.Alias(name),env.Dir(out_dir))
@@ -193,7 +196,7 @@ class vcs_svn(vcs):
     
 class vcs_cvs(vcs):
     def default_server(self,env):
-        if self.server != '':
+        if self.server is not None:
             return self.server
         return env['CVS_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
@@ -207,7 +210,7 @@ class vcs_cvs(vcs):
 class vcs_Prebuilts(vcs):
     def default_server(self,env):
         
-        if self.server != '':
+        if self.server is not None:
             return self.server
         return env['PREBUILT_SERVER']
     def update_cmd(self,out_dir,env,name,force=False):
@@ -217,10 +220,10 @@ class vcs_Prebuilts(vcs):
         # we don't want to do anything for PRE-BUILTS!
         if force==False and env['UPDATE_ALL']==False:
             return True
-        print 'Updating Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
+        print 'Updating Prebuilts from ' + self.full_path() + ' to ' + out_dir
         try: 
             copier = PyRobocopier ()
-            copier.parse_args ([self.default_server(env)+self.repos, out_dir, '-s', '-p', '-f'])
+            copier.parse_args ([self.full_path(env), out_dir, '-s', '-p', '-f'])
             copier.do_work ()
         except Exception,e:
             print e
@@ -235,7 +238,7 @@ class vcs_Prebuilts(vcs):
     def checkout_cmd(self,out_dir,env,name):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         try:
-            p=os.path.normpath(self.default_server(env)+self.repos)
+            p=os.path.normpath(self.full_path(env))
             if os.path.exists(p):
                 print 'Copying Prebuilts from ' + p + ' to ' + out_dir
             shutil.copytree (p, out_dir)

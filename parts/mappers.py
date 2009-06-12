@@ -132,7 +132,7 @@ class part_id_mapper:
             #first we need to get the id to alias map
             id_to_alias = def_env.get('PART_IDS',{})
             if self.part_id not in id_to_alias:
-                if common.g_args["PARTS_MODE"]=='build':
+                if env["PARTS_MODE"]=='build':
                     rpt.part_warning(env,self.name+" Did not find Part name ["+self.part_id+"] in name->alias dictionary",True)
                 return ''
             
@@ -140,7 +140,7 @@ class part_id_mapper:
             pinfo=find_matching_version(def_env,env,self.part_id,self.ver_range,id_to_alias)
                 
             if pinfo == None:
-                rpt.part_error(env,self.name+": Part name ["+self.part_id+"] did not define version that matches version range of ["+str(self.ver_range)+"] for "+env['ARCHITECTURE']+" ARCHITECTURE")
+                rpt.part_error(env,self.name+": Part name ["+self.part_id+"] did not define version that matches version range of ["+str(self.ver_range)+"] for "+env['TARGET_PLATFORM'].ARCH+" ARCHITECTURE")
                 exit(0)
             
             ret=pinfo.get(self.part_prop,None)

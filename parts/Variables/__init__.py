@@ -170,6 +170,7 @@ class Variables:
             else:
                 # no match was found so we store this in unknowns
                 self.unknown[arg] = value
+                print "^^^^",arg,value
 
         # at this point the values should up to date
         # we need to apply any convertion and validate the value after addition
@@ -182,7 +183,15 @@ class Variables:
             env[k] = v
         
         for k,v in values.iteritems():
-            tmp=self.options[k].converter
+            # There is a possiblility that unkown values have been read by the cfg file
+            # This code will rtry to get the option and if that fails adds it to the unknowns
+            tmp=self.options.get(k,None)
+            if tmp is None:
+                # This value was read in from a file most likely
+                print "****",k,v
+                self.unknown[k] = v
+                continue
+            tmp=tmp.converter
             
             if self.options[k].converter is not None:
                 # call converter
@@ -201,7 +210,7 @@ class Variables:
             
             if tmp is not None:
                 tmp(k, env.subst('${%s}'%k), env)
-
+        
     def UnknownVariables(self):
         """
         Returns any options in the specified arguments lists that
