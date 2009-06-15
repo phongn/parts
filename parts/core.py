@@ -83,6 +83,11 @@ class deprecated:
         return len(str(self.value))
     def __getitem__(self,key):
         return self.value[key]
+    
+    def __add__(self, other):
+        return self.value+other
+    def __radd__(self, other):
+        return other+self.value
 
 def generate_config(prepend,append,replace):
     
