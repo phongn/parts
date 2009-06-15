@@ -3,6 +3,7 @@ from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
 import os
+import SCons.Platform
 
 ## version 9 .. 2008
 # 32-bit
@@ -61,6 +62,8 @@ msvc.Register(
                             get_current_sdk()+'/lib'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='cl.exe'
             )
@@ -122,6 +125,8 @@ msvc.Register(
                             get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='AMD64/cl.exe'
             )
@@ -186,6 +191,8 @@ msvc.Register(
                             get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='x86_amd64/cl.exe'
             )
@@ -249,7 +256,9 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
                             get_current_sdk()+'/lib/ia64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'                        
+                            '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='x86_ia64/cl.exe'
             )

@@ -3,6 +3,7 @@ from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
 import os
+import SCons.Platform
 
 # version 7.1 2003
 
@@ -58,6 +59,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/lib'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v1.1/lib'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         
                         
                         },
@@ -116,8 +119,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/lib'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/lib'+os.pathsep+
                             '${MSVC.VSINSTALL}/FrameworkSDK/lib'
-                            
                         ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         
                         
                         },
@@ -169,6 +172,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/MFC/LIB'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib/'
                         ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                                                 
                         },
             test_file='cl.exe'

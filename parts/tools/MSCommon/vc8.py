@@ -3,7 +3,7 @@ from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
 import os
-
+import SCons.Platform
 # version 8 2005
 
 # 32-bit
@@ -63,6 +63,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/PlatformSDK/lib'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/lib'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='cl.exe'
             )
@@ -126,6 +128,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/PlatformSDK/lib/AMD64'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/libAMD64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='amd64/cl.exe'
             )
@@ -189,6 +193,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/PlatformSDK/lib/AMD64'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/lib/AMD64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='x86_amd64/cl.exe'
             )
@@ -251,6 +257,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/PlatformSDK/lib/ia64'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/lib/ia64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='cl.exe'
             )
@@ -313,6 +321,8 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/PlatformSDK/lib/ia64'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/lib/ia64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
+                        ,
+                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
             test_file='cl.exe'
             )
