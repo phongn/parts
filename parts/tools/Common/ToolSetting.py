@@ -57,11 +57,9 @@ class ToolSetting:
         version=env.get(self.version_tag,'None')
         root_path=env.get(self.rootpath_tag,'None')
         use_script=str(env.get(self.script_tag,'False'))
-        # Scons 1.3 should be moving to TARGET_OS and TARGET_ARCH.. so we check 
-        # for them as well
         target=env['TARGET_PLATFORM']
         #return str(version)+root_path+use_script+str(target)
-        return root_path+use_script+str(target)+env.subst("$CONFIG")
+        return root_path+str(use_script)+str(target)+env.subst("$CONFIG")
     
     def get_latest_known_version(self,cache_key): 
         try:
@@ -482,16 +480,18 @@ class ToolSetting:
         
         #get cache key for this enviroment setup
         key=self.get_cache_key(env)
-        version=env.get(self.version_tag,None)
+        _v=version=env.get(self.version_tag,None)
         cache_key=str(version)+key
            
-        if version is not None:    
-            self.query_for_exact(env,key,version)
-        else:
-            self.query_for_known(env,key)
         try:
             return self.shell_cache[cache_key]
         except KeyError:
+            # query data
+            if version is not None:    
+                self.query_for_exact(env,key,version)
+            else:
+                self.query_for_known(env,key)
+            
             # basic info we will need
             tinfo=None
             root_path=env.get(self.rootpath_tag,None)
@@ -527,6 +527,15 @@ class ToolSetting:
             # store it in cache
             ret=(shell_env,env[self.name]._rebind(None,None))
             self.shell_cache[cache_key]=ret
+            # test to see if orginal version and install_root are None is so make a special key for them
+            # this is case a tool chain uses the same setup, but they did not overide the install_Root and version
+            # in this case this run woudl store a key of version=None ans root=None but after this was applied
+            # this next run would have an install root, and a version of None ( given this was what they set in the toolchain
+            # teh tool setup would have reset teh version, but not the install root
+            if _v is None and env.get(self.rootpath_tag,None) is None:
+                root_path=ret[1]['INSTALL_ROOT']
+                key=root_path+str(use_script)+str(target)+env.subst("$CONFIG")
+                self.shell_cache[str(_v)+key]=ret
         return ret
             
     def MergeShellEnv(self,env):
