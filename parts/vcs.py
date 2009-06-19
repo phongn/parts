@@ -176,7 +176,7 @@ class vcs:
         ret=SysCall(cmd)
         if ret:
             # we had some failure
-            rpt.part_error(env,'The command "' + cmdStr + '" returned [ ' + str (ret)+' ]')
+            rpt.part_error(env,'The command "' + cmd + '" returned [ ' + str (ret)+' ]')
         #all ends well
         output.TaskEnd(id,ret)
         return ret
@@ -187,11 +187,11 @@ class vcs:
         rpt=def_env['PARTS_REPORTER']
         alias=env['PART_ALIAS']
         id=output.TaskStart("Checking out Sources for %s\n"%(alias))
-        cmd=self.update_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
+        cmd=self.checkout_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
         ret=SysCall(cmd)
         if ret:
             # we had some failure
-            rpt.part_error(env,'The command "' + cmdStr + '" returned [ ' + str (ret)+' ]')
+            rpt.part_error(env,'The command "' + cmd + '" returned [ ' + str (ret)+' ]')
         #all ends well
         output.TaskEnd(id,ret)
         return ret
