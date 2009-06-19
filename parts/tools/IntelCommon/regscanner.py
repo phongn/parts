@@ -77,10 +77,12 @@ class reg_scanner:
         
     def resolve(self,ver):
         tmp=self.scan()
+        if tmp is None:
+            return None
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver,i):
+            if common.MatchVersionNumbers(ver+".-1.-1",i):
                 return tmp[i]
         return None  
 
@@ -172,9 +174,11 @@ class reg_scanner2:
         
     def resolve(self,ver):
         tmp=self.scan()
+        if tmp is None:
+            return None
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver,i):
+            if common.MatchVersionNumbers(ver+".-1.-1",i):
                 return tmp[i]
         return None  
