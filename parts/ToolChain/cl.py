@@ -5,6 +5,7 @@ def cl_setup(env,ver):
     
     env['MSVC_VERSION']=ver
     env['MSVS_VERSION']=ver
+    env['MSVC_INSTALL_ROOT']=None
 
 def resolve(env,version):
     
