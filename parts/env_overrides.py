@@ -8,7 +8,7 @@ class bindable(object):
     pass
 
 def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
-    clone_env=SCons.Script.Environment._orig_Clone(self,tools,toolpath,parse_flags,**kw)
+    clone_env=self._orig_Clone(tools,toolpath,parse_flags,**kw)
     #rebind and bindable 
     clone_env.bindable_vars=[]
     if hasattr(self, 'bindable_vars'):
@@ -19,7 +19,7 @@ def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
         
 
 def Parts__setitem__(self,key,val):
-    SCons.Script.Environment._orig__setitem__(self,key,val)
+    self._orig__setitem__(key,val)
     if isinstance(val,bindable):
         try:
             self.bindable_vars.append(key)

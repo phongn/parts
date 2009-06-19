@@ -193,11 +193,11 @@ def RegServerFunc(target, source, env):
     return 0
 
 def EmbedManifestDLLFunc(target,source,env):
-
+    
     if(float(env['MSVC_VERSION']) < 8.0): return 0
     insert_manifest= env.get('WINDOWS_INSERT_MANIFEST',True)
     manifestSrc = str(target[0])+'.manifest'
-
+    
     if(insert_manifest and os.path.exists (manifestSrc)):
         manifest = manifestSrc
         ret = (embedManifestDLLAction) ([target[0]],None,env)        

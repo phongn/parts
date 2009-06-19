@@ -19,7 +19,7 @@ class ToolInfo:
         self.install_root=install_scanner
         
         # list of objects that test and handle script processing
-        self.script=parts.common.make_list(script)
+        self.script=script
         
         # the dictionary of value we need to add for correct subsitution of 
         # final value for the enviroment.. ignored in cases of script handling
@@ -98,12 +98,14 @@ class ToolInfo:
             elif script==True:
                 
                 #get the default script if one exists and use it
-                script_data=self.get_script(env)
-                if script_data is None:
-                    # we have an error as sccript was not found
-                    print "ERROR .. raise user error here"
-                    return None
-                ret=merge_script.get_script_env(env,script_data[0],script_data[1])
+                if self.script is not None:
+                    script_data=self.script.get_script(env)
+                    if script_data is None:
+                    # we have an error as script was not found                    
+                        return {}
+                    ret=merge_script.get_script_env(env,script_data[0],script_data[1])
+                else:
+                    return {}
                 
             else: # script is False
                 # subst data

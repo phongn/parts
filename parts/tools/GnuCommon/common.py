@@ -49,14 +49,18 @@ class GnuInfo(ToolInfo):
                                  #stdin = 'devnull',
                                  stderr=subprocess.STDOUT,
                                  stdout = subprocess.PIPE)
-            #line = pipe.stdout.read().strip()
-            #if line:
-            #    return line
+
             pipe.wait()  
             line = pipe.stdout.readline()# first line has version in??
-            match = re.search(r' ([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
+
+            try:
+                while line=='\r\n' or line=='\n':
+                    line = pipe.stdout.readline()
+            except:
+                pass
+            match = re.search(r'[vV ]([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
             if match:
-                line = match.group(0)
+                line = match.group(1)
                 return line
    
         return None         
@@ -68,15 +72,16 @@ class GnuInfo(ToolInfo):
         if self.found is None:
             root=ToolInfo.get_root(self,None)
             self.scan_query(root)
-            try:
-                k=self.found.keys()
-                k.sort()
-                k.reverse()
-                for i in k:
-                    if MatchVersionNumbers(version+".-1.-1",i):
-                        return self.found[i][0]
-            except KeyError:
-                pass
+            
+        try:
+            k=self.found.keys()
+            k.sort()
+            k.reverse()
+            for i in k:
+                if MatchVersionNumbers(version+".-1.-1",i):
+                    return self.found[i][0]
+        except KeyError:
+            pass
     
         # no root was found 
         # this is probally an error
@@ -127,8 +132,21 @@ class GnuInfo(ToolInfo):
         
         if self.found is None:
             ret={}         
-            reg=re.compile(self.test_file.replace('+',r'\+')+r'\-([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', re.I)
+            reg=re.compile(self.test_file.replace('+',r'\+')+r'\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)', re.I)
             if opt_scan==True:
+                #see if we can find a version in the optional directories provided
+                #based on pattern of dir-ver/bin/tool
+                # this can be /opt or any other user provided directory
+                for d in self.opt_paths:
+                    #check that is exists and is directory
+                    if os.path.isdir(d):                        
+                        result=reg.match(d)
+                        if result:
+                            fullpath=os.path.join(d,'bin')
+                            pathwtool=os.path.join(fullpath,self.test_file)
+                            tmp=self.get_default_ver(pathwtool)
+                            if tmp is not None:
+                                ret[tmp]=(fullpath,self.test_file)
                 #see if we can find a version in the optional directories provided
                 #based on pattern of dir/tool-ver/bin/tool
                 # this can be /opt or any other user provided directory
@@ -139,30 +157,31 @@ class GnuInfo(ToolInfo):
                         for item in os.listdir(d):
                             result=reg.match(item)
                             if result:
-                                fullpath=os.path.join(self.path,item,'bin')
+                                fullpath=os.path.join(d,item,'bin')
                                 pathwtool=os.path.join(fullpath,self.test_file)
                                 tmp=self.get_default_ver(pathwtool)
                                 if tmp is not None:
                                     ret[tmp]=(fullpath,self.test_file)
-                               
-            # see if in this area we have any possible matches of different versions
-            # using a convension of tool-ver ( ie gcc-3.4 or gcc-3 )
-            # overrides anything in /opt/...
-            for item in os.listdir(install_root):
-                result=reg.match(item)
-                if result:
-                    fullpath=os.path.join(install_root,item)
-                    tmp=self.get_default_ver(fullpath)
-                    if tmp is not None:
-                        ret[tmp]=(install_root,item)                    
+
+            if install_root is not None:                               
+                # see if in this area we have any possible matches of different versions
+                # using a convension of tool-ver ( ie gcc-3.4 or gcc-3 )
+                # overrides anything in /opt/...
+                for item in os.listdir(install_root):
+                    result=reg.match(item)
+                    if result:
+                        fullpath=os.path.join(install_root,item)
+                        tmp=self.get_default_ver(fullpath)
+                        if tmp is not None:
+                            ret[tmp]=(install_root,item)                    
                                 
-            #see if we can find a default version in the directories provided
-            # overrides any previous finds of same version
-        
-            tmp=self.get_default_ver(os.path.join(install_root,self.test_file))
-            if tmp is not None:
-                ret[tmp]=(install_root,self.test_file) 
-            self.found=ret
+                #see if we can find a default version in the directories provided
+                # overrides any previous finds of same version
+
+                tmp=self.get_default_ver(os.path.join(install_root,self.test_file))
+                if tmp is not None:
+                    ret[tmp]=(install_root,self.test_file) 
+                self.found=ret
         
         if self.found == {}:
             return None

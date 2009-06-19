@@ -80,7 +80,7 @@ class reg_scanner:
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(version,i):
+            if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
         return None  
 
@@ -175,6 +175,6 @@ class reg_scanner2:
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(version,i):
+            if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
         return None  

@@ -1,0 +1,62 @@
+from common import GnuInfo
+from parts.tools.Common.Finders import PathFinder,ScriptFinder
+from parts.platform_info import SystemPlatform
+from parts.tools.Common.ToolSetting import ToolSetting
+
+perl=ToolSetting('PERL')
+
+perl.Register(
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','any')],
+    info=[
+    GnuInfo(
+        install_scanner=[
+            PathFinder(['C:\\Perl\\bin'])
+            ],
+        opt_dirs=[                
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATHx86':'${PERL.INSTALL_ROOT}'},
+        test_file='perl.exe'
+        )
+    ]
+)
+
+perl.Register(
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86_64')],
+    info=[
+    GnuInfo(
+        install_scanner=[
+            PathFinder(['C:\\Perl64\\bin'])
+            ],
+        opt_dirs=[                
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATH64':'${PERL.INSTALL_ROOT}'},
+        test_file='perl.exe'
+        )
+    ]
+)
+
+##perl.Register(
+##    hosts=[SystemPlatform('any','any')],
+##    targets=[SystemPlatform('any','any')],
+##    info=[
+##    GnuInfo(
+##        install_scanner=[
+##            PathFinder(['/usr/bin'])
+##            ],
+##        opt_dirs=[
+##            '/opt/',
+##            '/opt/ActiveState',
+##            ],
+##        script=None,
+##        subst_vars={},
+##        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATHall':'${PERL.INSTALL_ROOT}'},
+##        test_file='perl'
+##        )
+##    ]
+##)

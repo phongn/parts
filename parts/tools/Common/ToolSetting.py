@@ -140,7 +140,8 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-            del env[self.name]
+            if env.has_key(self.name):
+                del env[self.name]
         #test for <OS>-any
         if self.tools.has_key(t1):
             for k,vl in self.tools[t1].items():
@@ -160,7 +161,8 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-            del env[self.name]
+            if env.has_key(self.name):
+                del env[self.name]
         #test for any-<Arch>
         if self.tools.has_key(t2):
             for k,vl in self.tools[t2].items():
@@ -180,7 +182,8 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-            del env[self.name]                
+            if env.has_key(self.name):
+                del env[self.name]               
         #test for any-any
         if self.tools.has_key(t3):
             for k,vl in self.tools[t3].items():
@@ -200,7 +203,8 @@ class ToolSetting:
                         # skip the rest
                         break
                     swap=True
-            del env[self.name]                
+            if env.has_key(self.name):
+                del env[self.name]              
         self.found[key].sort(reverse=True)
         
         

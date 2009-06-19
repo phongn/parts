@@ -21,8 +21,8 @@ def generate(env):#, version=None, abi=None, topdir=None, verbose=0):
     env['INCSUFFIX']  = ''
     env['_CTC_INCFLAGS'] = '$( ${_concat(INCPREFIX, CTC_INCLUDES, INCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
     env['CTC']='ctc'
-    env['CTC_INCLUDES']=['${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc','${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc\\office10']
-    env['CTC_FLAGS']=['-nologo','-Ccl']
+    env['CTC_INCLUDES']=SCons.Util.CLVar([])#['${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc','${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc\\office10']
+    env['CTC_FLAGS']=SCons.Util.CLVar(['-nologo','-Ccl'])
     env['CTC_COM'] = '$CTC $SOURCE $TARGET $CTC_FLAGS $_CTC_INCFLAGS'
     env['BUILDERS']['CTC'] = ctc_builder
         

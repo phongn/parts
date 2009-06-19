@@ -42,6 +42,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/bin'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,
@@ -107,6 +108,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/bin'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,
@@ -172,6 +174,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/bin'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,
@@ -236,6 +239,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/bin'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,
@@ -301,6 +305,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/bin'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'                            
                             ,

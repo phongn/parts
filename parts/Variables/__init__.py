@@ -170,7 +170,7 @@ class Variables:
             else:
                 # no match was found so we store this in unknowns
                 self.unknown[arg] = value
-                print "^^^^",arg,value
+                
 
         # at this point the values should up to date
         # we need to apply any convertion and validate the value after addition

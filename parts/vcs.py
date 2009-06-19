@@ -10,74 +10,98 @@ import SCons.Script
 
 SCons.Script.Alias('extract_sources')
 
-def get_vcs_filename(env,part_file,vcs_type):
-    
-    # if no vcs_type object is set we just return orginal file name, as we have
-    # no repositories to access
-    if vcs_type==None:
-        return part_file
-    out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
-    filename=env.File(os.path.join(out_dir,part_file)).abspath
-    return filename
 
-def process_vcs(env,name,part_file,vcs_type):
-    '''
-    This function is called by parts to allow process of any version control
-    system logic. This function will check setting to see if it need to process
-    and VCS objects, given that one is defined. It will returns the modifed parts
-    file name based on it location it would exist in the repository area we 
-    copied/checked out to.    
-    '''
-    # we do some setup work 
-    # here we get the check out directory
-    
-    node=env.Dir(env.subst('$CHECK_OUT_DIR'))
-    out_dir=node.path
-    node=node.File(part_file)#,env.subst('$CHECK_OUT_DIR'))
-    retf=node.path
-    filename=node.abspath
-    # if no vcs_type object is set we just return orginal file name, as we have
-    # no repositories to access
-    if vcs_type==None:
+def process_vcs(env,vcs_type,part_file):
+#output=env["PART_LOG_MAPPER"]
+    # see if we have a VCS_type to process
+    if vcs_type is None:
+        # have none just return the orginal file name as is
         return part_file
-    # if the parts_file already exists, that implies the out_dir is in place; if
-    # they don't ask us to do anything, we assume the sources are correctly
-    # checked out and the user does not want us to update at all
-    elif (env['UPDATE_ALL']==False and
-          env['UPDATE_FROM_SVN']==False and
-          os.path.exists(filename)==True):
-        return retf
-    # it is more complicated if the parts_file already exists (which implies
-    # out_dir exists) and they ask us to do something, so defer that while we
-    # handle the simpler case of there not being a parts file
-    elif os.path.exists(filename)==False:
-        if (env['UPDATE_ALL']==False and
-            env['UPDATE_FROM_SVN']==False and
-            env["PARTS_MODE"]=='build'):
-            # print message on why we ignored the update flags
-            print "Warning! Sources do not seem to exist, but no update flags given."
-            print "Overriding flags to get sources."
-            # given that the parts file doesn't exist, we either have to force
-            # an update (regardless of vcs_type) or we have to checkout clean
-            if os.path.exists(out_dir):
-                ret = vcs_type.update_cmd(out_dir,env,name,force=True)
-            else:
-                ret = vcs_type.checkout_cmd(out_dir,env,name)
-            if ret == False:
-                print "Failure detected during checkout/update"
-                print "You may need to manually delete the directory",out_dir
-                env.Exit(127)
-            return retf
-    
-    # if we get here we should let the VCS types process the checkout/update
-    # based on their type, whether the path already exists, and the flags set
-    if vcs_type(out_dir,env,name)==False:
-        print "Failure detected during checkout/update"
-        print "You may need to manually delete the directory",out_dir
-        env.Exit(126)
-    # set directory for Cleaning later
-    
-    return retf
+    def_env=SCons.Script.DefaultEnvironment()
+    rpt=def_env['PARTS_REPORTER']
+    # we are here we have soem sort of VCS object to process
+    # check to see if the file exists
+    if vcs_type.FileExists(env,part_file):
+        #this file exists. so we check to see if the user wants the sources updated
+        if env['UPDATE_ALL']==True or vcs_type.NeedsUpdate(env)==True:
+            # Flags had been set for this object to update
+            ret=vcs_type.Update(env)
+            if ret:
+                rpt.part_error(env,"Failure detected during updating sources")
+                env.Exit(100+ret)
+    else:
+        if env['UPDATE_ALL']==False or vcs_type.NeedsUpdate(env)==False:
+            # don't have the file and they did not ask to get it
+            # so we report a message and do a forced checkout
+            rpt.part_warning(env,"Sources do not seem to exist, and no update flags given. Doing forced checkout!",)
+        ret=vcs_type.CheckOut(env)
+        if ret:
+            rpt.part_error(env,"Failure detected during checkout sources")
+            env.Exit(100+ret)
+    return vcs_type.PartFileName(env,part_file)
+            
+            
+
+##def process_vcs(env,name,part_file,vcs_type):
+##    '''
+##    This function is called by parts to allow process of any version control
+##    system logic. This function will check setting to see if it need to process
+##    and VCS objects, given that one is defined. It will returns the modifed parts
+##    file name based on it location it would exist in the repository area we 
+##    copied/checked out to.    
+##    '''
+##    # we do some setup work 
+##    # here we get the check out directory
+##    #########################
+##    node=env.Dir(env.subst('$CHECK_OUT_DIR')).path
+##    out_dir=node.path
+##    node=node.File(part_file)#,env.subst('$CHECK_OUT_DIR'))
+##    retf=node.path
+##    filename=node.abspath
+##    ######################### with
+##    filename = vcs.get_filename(env)
+##    # if no vcs_type object is set we just return orginal file name, as we have
+##    # no repositories to access
+##    if vcs_type==None:
+##        return part_file
+##    # if the parts_file already exists, that implies the out_dir is in place; if
+##    # they don't ask us to do anything, we assume the sources are correctly
+##    # checked out and the user does not want us to update at all
+##    elif (env['UPDATE_ALL']==False and
+##          env['UPDATE_FROM_SVN']==False and
+##          os.path.exists(filename)==True):
+##        return retf
+##    # it is more complicated if the parts_file already exists (which implies
+##    # out_dir exists) and they ask us to do something, so defer that while we
+##    # handle the simpler case of there not being a parts file
+##    elif os.path.exists(filename)==False:
+##        if (env['UPDATE_ALL']==False and
+##            env['UPDATE_FROM_SVN']==False and
+##            env["PARTS_MODE"]=='build'):
+##            # print message on why we ignored the update flags
+##            print "Warning! Sources do not seem to exist, but no update flags given."
+##            print "Overriding flags to get sources."
+##            # given that the parts file doesn't exist, we either have to force
+##            # an update (regardless of vcs_type) or we have to checkout clean
+##            if os.path.exists(out_dir):
+##                ret = vcs_type.update_cmd(out_dir,env,name,force=True)
+##            else:
+##                ret = vcs_type.checkout_cmd(out_dir,env,name)
+##            if ret == False:
+##                print "Failure detected during checkout/update"
+##                print "You may need to manually delete the directory",out_dir
+##                env.Exit(127)
+##            return retf
+##    
+##    # if we get here we should let the VCS types process the checkout/update
+##    # based on their type, whether the path already exists, and the flags set
+##    if vcs_type(out_dir,env,name)==False:
+##        print "Failure detected during checkout/update"
+##        print "You may need to manually delete the directory",out_dir
+##        env.Exit(126)
+##    # set directory for Cleaning later
+##    
+##    return retf
 
 def SysCall (cmdStr):    
     '''
@@ -96,6 +120,7 @@ def SysCall (cmdStr):
         sys.stdout.write (proc.stdout.read ())
         print ''
         ret = proc.returncode
+        return ret
         if ret:
             print 'Error: The command "' + cmdStr + '" returned ' + str (ret)
             return False
@@ -132,6 +157,57 @@ class vcs:
     def clean_step(self,out_dir):
         #normally does nothing, but in special case permission might need to be set
         pass
+
+    def update_cmd(self,out_dir,env,name,force=False):
+        # this is what would be called for any updating of the location
+        # assume something already exists
+        pass
+    def checkout_cmd(self,out_dir,env,name):
+        # this is be called if the source has to be retrieved
+        # assumes the data does not exist locally yet
+        pass
+
+    def Update(self,env):
+        def_env=SCons.Script.DefaultEnvironment()
+        output=env["PART_LOG_MAPPER"]
+        rpt=def_env['PARTS_REPORTER']
+        id=output.TaskStart("Updating Sources\n")
+        cmd=self.update_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
+        ret=SysCall(cmd)
+        if ret:
+            # we had some failure
+            rpt.part_error(env,'The command "' + cmdStr + '" returned [ ' + str (ret)+' ]')
+        #all ends well
+        output.TaskEnd(id,ret)
+        return ret
+
+    def CheckOut(self,env):
+        def_env=SCons.Script.DefaultEnvironment()
+        output=env["PART_LOG_MAPPER"]
+        rpt=def_env['PARTS_REPORTER']
+        alias=env['PART_ALIAS']
+        id=output.TaskStart("Checking out Sources for %s\n"%(alias))
+        cmd=self.update_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
+        ret=SysCall(cmd)
+        if ret:
+            # we had some failure
+            rpt.part_error(env,'The command "' + cmdStr + '" returned [ ' + str (ret)+' ]')
+        #all ends well
+        output.TaskEnd(id,ret)
+        return ret
+
+    def PartFileName(self,env,file):
+        ret=env.Dir(env.subst('$CHECK_OUT_DIR')).File(file).abspath
+        return ret
+        
+    def FileExists(self,env,file):
+        return os.path.exists(self.PartFileName(env,file))
+
+    def NeedsUpdate(self,env):
+        alias=env['PART_ALIAS']
+        return env.get('UPDATE_'+alias.upper(),None) is not None
+        
+    
         
 
 class vcs_svn(vcs):
@@ -142,7 +218,7 @@ class vcs_svn(vcs):
         if self.server is not None:
             return self.server
         return env['SVN_SERVER']
-    def update_cmd(self,out_dir,env,name,force=False):
+    def update_cmd(self,env,out_dir):
         # update command in SVN updates a given location... in reality we may
         # want to say update this area with a different version; the switch
         # command is the more correct option in this case than the update command!
@@ -155,31 +231,16 @@ class vcs_svn(vcs):
             rev_string = ' -r ' + self.revision + ' '
         elif env['SVN_REVISION'] is not None:
             rev_string = ' -r ' + env['SVN_REVISION'] + ' '
-        ret = SysCall("svn switch --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"')
-        if ret:
-            # What if 'forced' here??
-            if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
-                env.Clean(env.Alias(name),env.Dir(out_dir))
-                #could be dangerous if mapped badly by user
-                # next check should prevent common case
-                #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-                #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
-        return ret
-    def checkout_cmd(self,out_dir,env,name):
+        return "svn switch --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"'
+        
+    def checkout_cmd(self,env,out_dir):
         rev_string = ' '
         if self.revision != None:
             rev_string = ' -r ' + self.revision + ' '
         elif env['SVN_REVISION'] is not None:
             rev_string = ' -r ' + env['SVN_REVISION'] + ' '
-        ret = SysCall("svn checkout --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"')
-        if ret:
-            if (env['UPDATE_ALL']==True or env['UPDATE_FROM_SVN']==True):
-                env.Clean(env.Alias(name),env.Dir(out_dir))
-                #could be dangerous if mapped badly by user
-                # next check should prevent common case
-                if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-                    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
-        return ret
+        return "svn checkout --non-interactive"+rev_string+self.full_path(env)+' "'+out_dir+'"'
+        
     def clean_step(self,out_dir):
         import stat
         # small Hack to turn off SVN read only access so we can delete
@@ -193,27 +254,32 @@ class vcs_svn(vcs):
                 source=os.path.join(root, f)
                 st = os.stat(source)
                 os.chmod(source, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+
+    def NeedsUpdate(self,env):
+        opt1=env.get('UPDATE_FROM_SVN',False)
+        opt2=env.get('UPDATE_'+env['PART_ALIAS'].upper(),False)
+        return opt1==True or opt2==True or vcs.NeedsUpdate(self,env)
     
 class vcs_cvs(vcs):
     def default_server(self,env):
         if self.server is not None:
             return self.server
         return env['CVS_SERVER']
-    def update_cmd(self,out_dir,env,name,force=False):
+    def update_cmd(self,env,out_dir):
         #'cvs -z' + str (cvsCompressLevel) + ' up -d -r ' + componentVersion
-        return SysCall("echo cvs update FILL IN CODE")
-    def checkout_cmd(self,out_dir,env,name):
+        return "echo cvs update FILL IN CODE"
+    def checkout_cmd(self,env,out_dir):
         #'cvs -z' + str (cvsCompressLevel) + ' -d:pserver:' + userName + '@' + component.server + ':' 
         #+ component.repos + ' co -d ' + componentVersion + ' -r ' + componentVersion + ' ' + component.path
-        return SysCall("echo cvs checkout FILL IN CODE")
+        return "echo cvs checkout FILL IN CODE"
 
 class vcs_Prebuilts(vcs):
     def default_server(self,env):
-        
         if self.server is not None:
             return self.server
         return env['PREBUILT_SERVER']
-    def update_cmd(self,out_dir,env,name,force=False):
+    
+    def Update(self,env,out_dir):
         # we get here because out_dir already exists but the part_file doesn't
         # in which case we should proceed, or else because out_dir already
         # exists and they asked us to do something ... if UPDATE_FROM_SVN only,
@@ -228,14 +294,10 @@ class vcs_Prebuilts(vcs):
         except Exception,e:
             print e
             return False
-        if env['UPDATE_ALL']==True: # What if 'forced' here?
-            env.Clean(env.Alias(name),env.Dir(out_dir))
-            #could be dangerous if mapped badly by user
-            # next check should prevent common case
-            #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-            #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
+        
         return True
-    def checkout_cmd(self,out_dir,env,name):
+    
+    def CheckOut(self,env,out_dir):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         try:
             p=os.path.normpath(self.full_path(env))
@@ -245,16 +307,40 @@ class vcs_Prebuilts(vcs):
         except Exception,e:
             print e
             return False
-        if env['UPDATE_ALL']==True: # What if 'forced' here?
-            env.Clean(env.Alias(name),env.Dir(out_dir))
-            #could be dangerous if mapped badly by user
-            # next check should prevent common case
-            #if common.def_args['CHECK_OUT_ROOT'] == env['CHECK_OUT_ROOT']:
-            #    env.Clean(env.Alias('all'),env.Dir('$CHECK_OUT_ROOT'))
+        
         return True
         
-    
-    
+class VcsUsePriorPart(vcs):
+    def __init__(self,alias):
+        vcs.__init__(self,None,None)
+        self.alias=alias
+
+    def Update(self,env):
+        return 0
+
+    def CheckOut(self,env):
+        return 0
+
+    def PartFileName(self,env,file):
+        # get current Alias
+        talias=env['PART_ALIAS']
+        #set Alias we are mapping to
+        env['PART_ALIAS']=self.alias
+        env['ALIAS']=self.alias
+        #get information
+        tmp=env.subst('$CHECK_OUT_DIR')
+        ret=env.Dir(tmp).File(file).abspath
+        #reset the alias information
+        env['PART_ALIAS']=talias
+        env['ALIAS']=talias
+        return ret
+        
+    def FileExists(self,env,file):
+        return os.path.exists(self.PartFileName(env,file))
+
+    def NeedsUpdate(self,env):
+        return False
+            
 
 """ The following class was copied from pyrobocopy.py -
 
@@ -753,5 +839,7 @@ common.AddVariable('CHECK_OUT_DIR','$CHECK_OUT_ROOT/$ALIAS','Full path used for 
 common.add_global_value('VcsSvn',vcs_svn)
 common.add_global_value('VcsCvs',vcs_cvs)
 common.add_global_value('VcsPreBuilt',vcs_Prebuilts)
+common.add_global_value('VcsUsePriorPart',VcsUsePriorPart)
+
 
 

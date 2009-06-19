@@ -68,25 +68,41 @@ class deprecated:
         self.value=value
 
     def __str__(self):
-        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return self.value
 
     def __eq__(self,rhs):
-        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return self.value == rhs
 
+    def __ne__(self,rhs):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value != rhs    
+    
     def __hash__(self):
-        print "Parts Warning - ["+self.key+"] is deprecated please use ["+self.new_key+"]"
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return hash(str(self.value))
     
     def __len__(self):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return len(str(self.value))
     def __getitem__(self,key):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return self.value[key]
     
     def __add__(self, other):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return self.value+other
     def __radd__(self, other):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return other+self.value
 
 def generate_config(prepend,append,replace):
@@ -103,10 +119,11 @@ def generate_config(prepend,append,replace):
                 str(normalize_map(common.g_defaultoverides))
                 
     env=common.g_env_cache.get(cache_key,None)
-    
+
     #if not isinstance(env,SCons.Script.Environment):
     if env is None:
-        
+        def_env=SCons.Script.DefaultEnvironment()
+        rpt=def_env.get('PARTS_REPORTER',None)
         ## basic setup
         cfg_map={}
         # get command line args
@@ -115,7 +132,7 @@ def generate_config(prepend,append,replace):
         ## test for bad value.. remap is needed
         tmp=overrides.get('tools',[])
         if tmp!=[]:
-            print 'Parts Warning - tools is deprecated, use tool_chain'
+            rpt.part_warning(env,'tools is deprecated, use tool_chain')
             if overrides.has_key('tool_chain')==False:
                 overrides['tool_chain']=tmp
             del overrides['tools']
@@ -123,24 +140,51 @@ def generate_config(prepend,append,replace):
         # test for bad value.. remap is needed
         tmp=replace.get('tools',[])
         if tmp!=[]:
-            print 'Parts Warning - tools is deprecated, use tool_chain'
+            rpt.part_warning(env,'tools is deprecated, use tool_chain')
             if replace.has_key('tool_chain')==False:
                 replace['tool_chain']=tmp
             del replace['tools']
 
         tmp=prepend.get('tools',[])
         if tmp!=[]:
-            print 'Parts Warning - tools is deprecated, use tool_chain'
+            rpt.part_warning(env,'tools is deprecated, use tool_chain')
             if prepend.has_key('tool_chain')==False:
                 prepend['tool_chain']=tmp
             del prepend['tools']
 
         tmp=append.get('tools',[])
         if tmp!=[]:
-            print 'Parts Warning - tools is deprecated, use tool_chain'
+            rpt.part_warning(env,'tools is deprecated, use tool_chain')
             if append.has_key('tool_chain')==False:
                 append['tool_chain']=tmp
-            del append['tools']            
+            del append['tools']
+
+        ## ARCH stuff
+
+        tmp=overrides.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if overrides.has_key('TARGET_ARCH')==False or overrides.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        # test for bad value.. remap is needed
+        tmp=replace.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if replace.has_key('TARGET_ARCH')==False or replace.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        tmp=append.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if append.has_key('TARGET_ARCH')==False or append.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        tmp=prepend.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if prepend.has_key('TARGET_ARCH')==False or prepend.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)        
             
         ######################################            
         overrides.update(replace)
@@ -184,9 +228,9 @@ def generate_config(prepend,append,replace):
                                 BUILDERS = common.g_builders,
                                 **cfg_map
                                 )
-        print "Unknowns *********************"
-        print vars.UnknownVariables()
-        print "******************************"
+        #print "Unknowns *********************"
+        #print vars.UnknownVariables()
+        #print "******************************"
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
         # update the missing arguments to enviroment stuff

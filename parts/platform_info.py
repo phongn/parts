@@ -158,6 +158,14 @@ class SystemPlatform(env_overrides.bindable):
     
     def __deepcopy__(self):
         return SystemPlatform(self.OS,self.ARCH)
+    
+    def __getitem__(self, key):
+        return self.__class__.__dict__[key.upper()].fget(self)
+    
+    def __setitem__(self, key,val):
+        if self.__class__.__dict__.has_key(key.upper()) == False:
+            raise KeyError('SystemPlatform has no member '+key.upper())
+        self.__class__.__dict__[key.upper()].fset(self,val)
             
 
 _host_sys=SystemPlatform()

@@ -46,6 +46,7 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     # Part Alias
     part_info['ALIAS']=alias
     env['ALIAS']=alias
+    env['PART_ALIAS']=alias
     # The Alias Parent
     part_info['PARENT_ALIAS']=parent_alias
     # The Alias Short Form
@@ -71,7 +72,7 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     
         # do any checkout/copy/updates needed
         # update the parts_file location
-        parts_file=vcs.process_vcs(env,alias,parts_file,vcs_type)
+        parts_file=vcs.process_vcs(env,vcs_type,parts_file)
 
         # work around in Scons bug
         if parts_file[1] == ':' or parts_file[0]=='/':
@@ -133,8 +134,12 @@ def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
                 append={},prepend={},create_sdk=True,**kw):
     
     new_kw=env1.get('PARTS_KW',{})
+    new_append=env1.get('PARTS_APPEND',{})
+    new_prepend=env1.get('PARTS_PREPEND',{})
     new_kw.update(kw)
-    Part(alias,parts_file,mode,vcs_type,default,append,prepend,create_sdk,**new_kw)
+    new_append.update(append)
+    new_prepend.update(prepend)
+    Part(alias,parts_file,mode,vcs_type,default,new_append,new_prepend,create_sdk,**new_kw)
     
 def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
             append={},prepend={},create_sdk=True,**kw):
@@ -169,12 +174,22 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     ## setup the basics
     # Get the enviroment to use
-    env=core.generate_config(prepend,append,kw)
+    env=core.generate_config(prepend.copy(),append.copy(),kw.copy())
+
+    ## logger and task spawners
+    spawn=env['PART_SPAWNER']
+    env['PART_LOG_MAPPER']=part_logger.part_logger(env,rpt.console)
+    env['SPAWN']=spawn(env)
 
     # add to our set of Env with builders
     #common.g_env_w_builders.add(id(env))
-    
-    env['PARTS_KW']=kw
+
+    if kw != {}:
+        env['PARTS_KW']=kw
+    if append != {}:
+        env['PARTS_APPEND']=append
+    if prepend != {}:
+        env['PARTS_PREPEND']=prepend
     # get our current ABS path for later use
     curr_path=env.Dir('.').srcnode().abspath
     ## Setup the global state 
@@ -215,17 +230,9 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     if mode == []:
         mode=env['mode']
-    env['MODE']=mode
-    
-    ## logger and task spawners
-    spawn=env['PART_SPAWNER']
- 
-    env['PART_LOG_MAPPER']=part_logger.part_logger(env,def_env['PARTS_REPORTER'].console)
-    env['SPAWN']=spawn(env)
-    
+    env['MODE']=mode  
     
     ##alias info
-    env['PART_ALIAS']=part_info['ALIAS']
     env['PART_ROOT_ALIAS']=part_info['ROOT_ALIAS']
     env['PART_PARENT_ALIAS']=part_info['PARENT_ALIAS']
     
@@ -405,7 +412,18 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
 ##    if common.def_args['BUILD_DIR_ROOT'] == env['BUILD_DIR_ROOT']:
 ##        #print env.Dir('$OUT_BIN').srcnode().abspath
 ##        env.Clean(env.Alias('all'),env.Dir('$BUILD_DIR_ROOT'))
-    
+
+    #double check that the Part name mapping has been defined
+    # if the user did not call PartName() then this would not be setup
+    if def_env.has_key('PART_IDS')==False:
+        def_env['PART_IDS']={}
+    # See that the ID Alias list exists
+    name=env.PartName()
+    if name not in def_env['PART_IDS']:
+        def_env['PART_IDS'][name]=[]
+        # Append to the ID list with new alias
+        def_env['PART_IDS'][name].append(alias)
+        pinfo['NAME']=name
 
     # must be last statement for this function
     if default==True:

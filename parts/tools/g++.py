@@ -1,9 +1,6 @@
-import os.path
-import re
-import subprocess
 
-import SCons.Tool
 import SCons.Util
+import SCons.Tool
 import GnuCommon
 
 # have to copy this file from Scons as I can't seem to get the import to get it from the standad SCons install

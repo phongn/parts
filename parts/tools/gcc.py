@@ -1,9 +1,6 @@
 
-
+import SCons.Util
 import SCons.Tool.cc
-import os
-import re
-import subprocess
 import GnuCommon
 
 

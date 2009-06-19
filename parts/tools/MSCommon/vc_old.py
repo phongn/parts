@@ -41,13 +41,14 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.VSINSTALL}/SDK/v1.1/bin'                            
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
+                            '${MSVC.VSINSTALL}/SDK/v1.1/Bin'                            
                             ,
                         'INCLUDE':
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v1.1/include'
+                            '${MSVC.VSINSTALL}/SDK/v1.1/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
@@ -105,6 +106,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
                             '${MSVC.VSINSTALL}/FrameworkSDK/Bin'                          
                             ,
                         'INCLUDE':

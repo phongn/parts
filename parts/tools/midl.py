@@ -77,7 +77,7 @@ def generate(env):
 
     env['MIDL']          = 'MIDL.EXE'
     env['MIDLFLAGS']     = SCons.Util.CLVar('/nologo')
-    env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE 2> NUL'
+    env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE'
     env['BUILDERS']['TypeLibrary'] = midl_builder
     msvc.MergeShellEnv(env)
 
