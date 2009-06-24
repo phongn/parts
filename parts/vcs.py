@@ -279,11 +279,12 @@ class vcs_Prebuilts(vcs):
             return self.server
         return env['PREBUILT_SERVER']
     
-    def Update(self,env,out_dir):
+    def Update(self,env):
         # we get here because out_dir already exists but the part_file doesn't
         # in which case we should proceed, or else because out_dir already
         # exists and they asked us to do something ... if UPDATE_FROM_SVN only,
         # we don't want to do anything for PRE-BUILTS!
+        out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         if force==False and env['UPDATE_ALL']==False:
             return True
         print 'Updating Prebuilts from ' + self.full_path() + ' to ' + out_dir
@@ -297,8 +298,9 @@ class vcs_Prebuilts(vcs):
         
         return True
     
-    def CheckOut(self,env,out_dir):
+    def CheckOut(self,env):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
+        out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         try:
             p=os.path.normpath(self.full_path(env))
             if os.path.exists(p):
