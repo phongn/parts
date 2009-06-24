@@ -6,10 +6,10 @@ def generate(env):
     # no builder yets.. add a PerlCommand()?
     
     # set up shell env for running compiler
-    GnuCommon.perl.MergeShellEnv(env)
+    GnuCommon.perl.perl.MergeShellEnv(env)
 
 def exists(env):
-    return GnuCommon.perl.Exists(env)
+    return GnuCommon.perl.perl.Exists(env)
 
 # Local Variables:
 # tab-width:4
