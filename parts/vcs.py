@@ -335,6 +335,8 @@ class VcsUsePriorPart(vcs):
         #reset the alias information
         env['PART_ALIAS']=talias
         env['ALIAS']=talias
+        env['CHECK_OUT_DIR']=tmp
+        
         return ret
         
     def FileExists(self,env,file):
