@@ -51,7 +51,7 @@ def normalize_map(m):
     if common.is_string(value) and not common.is_list(value):
         m[key]=string.split(value,',')
     
-    key='tool_chain'
+    key='toolchain'
     value=m.get(key,None)    
     if common.is_string(value) and not common.is_list(value):
         m[key]=common.process_tool_arg(string.split(value,','))
@@ -132,31 +132,31 @@ def generate_config(prepend,append,replace):
         ## test for bad value.. remap is needed
         tmp=overrides.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use tool_chain')
-            if overrides.has_key('tool_chain')==False:
-                overrides['tool_chain']=tmp
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if overrides.has_key('toolchain')==False:
+                overrides['toolchain']=tmp
             del overrides['tools']
 
         # test for bad value.. remap is needed
         tmp=replace.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use tool_chain')
-            if replace.has_key('tool_chain')==False:
-                replace['tool_chain']=tmp
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if replace.has_key('toolchain')==False:
+                replace['toolchain']=tmp
             del replace['tools']
 
         tmp=prepend.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use tool_chain')
-            if prepend.has_key('tool_chain')==False:
-                prepend['tool_chain']=tmp
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if prepend.has_key('toolchain')==False:
+                prepend['toolchain']=tmp
             del prepend['tools']
 
         tmp=append.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use tool_chain')
-            if append.has_key('tool_chain')==False:
-                append['tool_chain']=tmp
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if append.has_key('toolchain')==False:
+                append['toolchain']=tmp
             del append['tools']
 
         ## ARCH stuff
@@ -190,13 +190,13 @@ def generate_config(prepend,append,replace):
         overrides.update(replace)
         
         # minor messing around with tools still need 
-        # (replace should get the tool_chain of this)
-        pre_tools=prepend.get('tool_chain',[])
+        # (replace should get the toolchain of this)
+        pre_tools=prepend.get('toolchain',[])
         if pre_tools!=[]:
-            del prepend['tool_chain']
-        post_tools=append.get('tool_chain',[])
+            del prepend['toolchain']
+        post_tools=append.get('toolchain',[])
         if post_tools!=[]:
-            del append['tool_chain']
+            del append['toolchain']
         # add stuff in SCons that are tools, that are needed
         # this is needed for Tag for Install()
         post_tools.extend(['packaging','install','zip'])
@@ -241,7 +241,7 @@ def generate_config(prepend,append,replace):
         env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
     
         ## apply tool chain
-        env.ToolChain(pre_tools+env['tool_chain']+post_tools)#tl_chain)
+        env.ToolChain(pre_tools+env['toolchain']+post_tools)#tl_chain)
         
         ## apply the configuration for the tool    
         #config.Configuration(env)

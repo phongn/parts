@@ -408,7 +408,7 @@ def tool_converter(str_val, raw_val):
         return raw_val
     raise "Invalid tool value '%s'" % RawVal
     
-common.AddVariable('tool_chain',['default'],'The tool chain to use by default',converter=tool_converter)   
+common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter)   
 
 common.AddVariable('show_progress',True,'Controls is progress state is shown')
 common.AddVariable('PROGRESS_STR',['scons: Evaluating |\r',
