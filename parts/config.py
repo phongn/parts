@@ -279,35 +279,35 @@ def load_cfg(name):
 def make_name_list(tool,host,target):
     nl=[
     tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'unknown',
-    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH,
-    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'any',
+    tool+"_"+host.OS+"-"+'any'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+'any'+"_"+target.OS+"-"+'any',
     
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+target.ARCH,
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any'+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any'+"-"+'any',
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any',
     tool+"_"+host.OS+"-"+host.ARCH,
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+target.ARCH,
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+'unknown',
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown',
-    tool+"_"+host.OS+"-"+'unknown',
+    tool+"_"+host.OS+"-"+'any'+"_"+'any'+"-"+target.ARCH,
+    tool+"_"+host.OS+"-"+'any'+"_"+'any'+"-"+'any',
+    tool+"_"+host.OS+"-"+'any'+"_"+'any',
+    tool+"_"+host.OS+"-"+'any',
     
-    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
-    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH,
-    tool+"_"+'unknown'+"_"+target.OS+"-"+target.ARCH,
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+'unknown',
-    tool+"_"+'unknown'+"_"+target.OS+"-"+'unknown',
+    tool+"_"+'any'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'any'+"-"+host.ARCH+"_"+target.OS+"-"+'any',
+    tool+"_"+'any'+"-"+'any'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'any'+"_"+target.OS+"-"+target.ARCH,
+    tool+"_"+'any'+"-"+'any'+"_"+target.OS+"-"+'any',
+    tool+"_"+'any'+"_"+target.OS+"-"+'any',
     
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+target.ARCH,
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+'unknown',
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown',
-    tool+"_"+'unknown'+"-"+host.ARCH,
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.ARCH,
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.ARCH,
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown',
-    tool+'_unknown_unknown',
-    tool+'_unknown',
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any'+"-"+target.ARCH,
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any'+"-"+'any',
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any',
+    tool+"_"+'any'+"-"+host.ARCH,
+    tool+"_"+'any'+"-"+'any'+'_'+'any'+"-"+target.ARCH,
+    tool+"_"+'any'+'_'+'any'+"-"+target.ARCH,
+    tool+"_"+'any'+"-"+'any'+'_'+'any'+"-"+'any',
+    tool+'_any_any',
+    tool+'_any',
     tool
     ]
     return nl
@@ -316,60 +316,60 @@ def make_name_dict(tool,host,target):
     nl={
     tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH:
     (tool,host.OS,host.ARCH,target.OS,target.ARCH),
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'unknown':
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'any':
     (tool,host.OS,host.ARCH,target.OS,None),
-    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    tool+"_"+host.OS+"-"+'any'+"_"+target.OS+"-"+target.ARCH:
     (tool,host.OS,None,target.OS,target.ARCH),
-    tool+"_"+host.OS+"-"+'unknown'+"_"+target.OS+"-"+'unknown':
+    tool+"_"+host.OS+"-"+'any'+"_"+target.OS+"-"+'any':
     (tool,host.OS,None,target.OS,None),
     
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+target.ARCH:
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any'+"-"+target.ARCH:
     (tool,host.OS,host.ARCH,None,target.ARCH),
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown'+"-"+'unknown':
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any'+"-"+'any':
     (tool,host.OS,host.ARCH,None,None),
-    tool+"_"+host.OS+"-"+host.ARCH+"_"+'unknown':
+    tool+"_"+host.OS+"-"+host.ARCH+"_"+'any':
     (tool,host.OS,host.ARCH,None,None),
     tool+"_"+host.OS+"-"+host.ARCH:
     (tool,host.OS,host.ARCH,None,None),
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+target.ARCH:
+    tool+"_"+host.OS+"-"+'any'+"_"+'any'+"-"+target.ARCH:
     (tool,host.OS,None,None,target.ARCH),
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown'+"-"+'unknown':
+    tool+"_"+host.OS+"-"+'any'+"_"+'any'+"-"+'any':
     (tool,host.OS,None,None,None),
-    tool+"_"+host.OS+"-"+'unknown'+"_"+'unknown':
+    tool+"_"+host.OS+"-"+'any'+"_"+'any':
     (tool,host.OS,None,None,None),
-    tool+"_"+host.OS+"-"+'unknown':
+    tool+"_"+host.OS+"-"+'any':
     (tool,host.OS,None,None,None),
     
-    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH:
+    tool+"_"+'any'+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH:
     (tool,None,host.ARCH,target.OS,target.ARCH),
-    tool+"_"+'unknown'+"-"+host.ARCH+"_"+target.OS+"-"+'unknown':
+    tool+"_"+'any'+"-"+host.ARCH+"_"+target.OS+"-"+'any':
     (tool,None,host.ARCH,target.OS,None),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    tool+"_"+'any'+"-"+'any'+"_"+target.OS+"-"+target.ARCH:
     (tool,None,None,target.OS,target.ARCH),
-    tool+"_"+'unknown'+"_"+target.OS+"-"+target.ARCH:
+    tool+"_"+'any'+"_"+target.OS+"-"+target.ARCH:
     (tool,None,None,target.OS,target.ARCH),
-    tool+"_"+'unknown'+"-"+'unknown'+"_"+target.OS+"-"+'unknown':
+    tool+"_"+'any'+"-"+'any'+"_"+target.OS+"-"+'any':
     (tool,None,None,target.OS,None),
-    tool+"_"+'unknown'+"_"+target.OS+"-"+'unknown':
+    tool+"_"+'any'+"_"+target.OS+"-"+'any':
     (tool,None,None,target.OS,None),
     
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+target.ARCH:
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any'+"-"+target.ARCH:
     (tool,None,host.ARCH,None,target.ARCH),
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown'+"-"+'unknown':
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any'+"-"+'any':
     (tool,None,host.ARCH,None,None),
-    tool+"_"+'unknown'+"-"+host.ARCH+'_'+'unknown':
+    tool+"_"+'any'+"-"+host.ARCH+'_'+'any':
     (tool,None,host.ARCH,None,None),
-    tool+"_"+'unknown'+"-"+host.ARCH:
+    tool+"_"+'any'+"-"+host.ARCH:
     (tool,None,host.ARCH,None,None),
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+target.ARCH:
+    tool+"_"+'any'+"-"+'any'+'_'+'any'+"-"+target.ARCH:
     (tool,None,None,None,target.ARCH),
-    tool+"_"+'unknown'+'_'+'unknown'+"-"+target.ARCH:
+    tool+"_"+'any'+'_'+'any'+"-"+target.ARCH:
     (tool,None,None,None,target.ARCH),
-    tool+"_"+'unknown'+"-"+'unknown'+'_'+'unknown'+"-"+'unknown':
+    tool+"_"+'any'+"-"+'any'+'_'+'any'+"-"+'any':
     (tool,None,None,None,None),
-    tool+'_unknown_unknown':
+    tool+'_any_any':
     (tool,None,None,None,None),
-    tool+'_unknown':
+    tool+'_any':
     (tool,None,None,None,None),
     tool:
     (tool,None,None,None,None)
