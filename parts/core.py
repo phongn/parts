@@ -266,6 +266,12 @@ def generate_config(prepend,append,replace):
                 env[k]=v
             else:
                 print "error",k,"is not a list"
+
+        if env['HOST_PLATFORM']['OS'] =='win32':
+            # add certain paths for windows
+            env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root(), delete_existing=1)
+            env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root()+'\\system32', delete_existing=1)            
+            
         
         # this allow the user to set the enviroment to the user path
         # hopefully this is not needed 99.9% of the time.

@@ -144,6 +144,7 @@ def msvc_output_flag(target, source, env, for_signature):
     we return an /Fo string that just specifies the first target's
     directory (where the Visual C/C++ compiler will put the .obj files).
     """
+    print "called *************"
     b = env.subst('$MSVC_BATCH')
     if b in (None, '', '0') or len(source) == 1:
         return '/Fo$TARGET'
@@ -200,17 +201,17 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['CC']         = 'cl'
     env['CCFLAGS']    = SCons.Util.CLVar('/nologo')
     env['CFLAGS']     = SCons.Util.CLVar('')
-    env['CCCOM']      = '$CC $_MSVC_OUTPUT_FLAG /c $CHANGED_SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM'
+    env['CCCOM']      = '$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM'
     env['SHCC']       = '$CC'
     env['SHCCFLAGS']  = SCons.Util.CLVar('$CCFLAGS')
     env['SHCFLAGS']   = SCons.Util.CLVar('$CFLAGS')
-    env['SHCCCOM']    = '$SHCC $_MSVC_OUTPUT_FLAG /c $CHANGED_SOURCES $SHCFLAGS $SHCCFLAGS $_CCCOMCOM'
+    env['SHCCCOM']    = '$SHCC /Fo$TARGET /c $SOURCES $SHCFLAGS $SHCCFLAGS $_CCCOMCOM'
     env['CXX']        = '$CC'
     env['CXXFLAGS']   = SCons.Util.CLVar('$( /TP $)')
-    env['CXXCOM']     = '$CXX $_MSVC_OUTPUT_FLAG /c $CHANGED_SOURCES $CXXFLAGS $CCFLAGS $_CCCOMCOM'
+    env['CXXCOM']     = '$CXX /Fo$TARGET /c $SOURCES $CXXFLAGS $CCFLAGS $_CCCOMCOM'
     env['SHCXX']      = '$CXX'
     env['SHCXXFLAGS'] = SCons.Util.CLVar('$CXXFLAGS')
-    env['SHCXXCOM']   = '$SHCXX $_MSVC_OUTPUT_FLAG /c $CHANGED_SOURCES $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM'
+    env['SHCXXCOM']   = '$SHCXX /Fo$TARGET /c $SOURCES $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM'
     env['CPPDEFPREFIX']  = '/D'
     env['CPPDEFSUFFIX']  = ''
     env['INCPREFIX']  = '/I'
@@ -235,11 +236,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['PCHPDBFLAGS'] = SCons.Util.CLVar(['${(PDB and "/Yd") or ""}'])
     env['PCHCOM'] = '$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS'
     env['BUILDERS']['PCH'] = pch_builder
-
-    if not env.has_key('ENV'):
-        env['ENV'] = {}
-    if not env['ENV'].has_key('SystemRoot'):    # required for dlls in the winsxs folders
-        env['ENV']['SystemRoot'] = SCons.Platform.win32.get_system_root()
+    
 
 def exists(env):
     return msvc.Exists(env)#msvc_exists(env,'cl')
