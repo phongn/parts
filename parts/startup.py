@@ -327,6 +327,8 @@ def SetOptionDefault(key,value):
 
     rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
     common.g_defaultoverides[key]=value
+    #reset cache 
+    common.g_env_cache={}
     
 
             

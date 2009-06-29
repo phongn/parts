@@ -77,14 +77,25 @@ def copyFunc(dest, source, env):
                 os.makedirs(parent)
         shutil.copytree(source, dest)
     else:
-        shutil.copy2(source, dest)
-        st = os.stat(source)
-        os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-        if dest.endswith('.so-gz'):
-            n=env.fs.File(str(tmp[0])[:-3])
-            env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
-
+        if env['HOST_OS']=='win32':
+            import win32file
+            try:
+                win32file.CreateHardLink(dest,source)
+            except:
+                win32file.CopyFile(source,dest,False)
+        else:
+            try:
+                os.link(source,dest)
+            except:
+                try:
+                    os.symlink(source,dest)
+                except:
+                    shutil.copy2(source, dest)
+                    st = os.stat(source)
+                    os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        
     return 0
+
 
 def installFunc(target, source, env):
     """Install a source file into a target using the function specified
@@ -177,8 +188,13 @@ def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
             target = env.fs.Entry('.'+os.sep+src.name, dnode)
+            tmp=BaseInstallBuilder(env, target, src, **kw)
+            tgt.extend(tmp)
             #tgt.extend(BaseInstallBuilder(env, target, src, **kw))
-            tgt.extend(apply(BaseInstallBuilder, (env, target, src), kw))
+            #tgt.extend(apply(BaseInstallBuilder, (env, target, src), kw))
+            if str(tmp[0]).endswith('.so-gz'):
+                n=env.fs.File(str(tmp[0])[:-3])
+                env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
     return tgt
 
 def InstallAsBuilderWrapper(env, target=None, source=None, **kw):

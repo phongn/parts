@@ -138,7 +138,10 @@ class vcs:
     def __init__(self,repository,server=None):
         if server is not None and server[-1]!='/':
             server+='/'
-        self.repos=repository
+        if repository.startswith('/') or repository.startswith('\\'):
+            self.repos=repository[1:]
+        else:
+            self.repos=repository
         self.server=server
 
     def __call__(self,out_dir,env,name):
@@ -294,9 +297,9 @@ class vcs_Prebuilts(vcs):
             copier.do_work ()
         except Exception,e:
             print e
-            return False
+            return 1
         
-        return True
+        return 0
     
     def CheckOut(self,env):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
@@ -308,9 +311,9 @@ class vcs_Prebuilts(vcs):
             shutil.copytree (p, out_dir)
         except Exception,e:
             print e
-            return False
+            return 1
         
-        return True
+        return 0
         
 class VcsUsePriorPart(vcs):
     def __init__(self,alias):
