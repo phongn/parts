@@ -231,11 +231,13 @@ def generate_config(prepend,append,replace):
         #print "Unknowns *********************"
         #print vars.UnknownVariables()
         #print "******************************"
+    
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
         # update the missing arguments to enviroment stuff
         # this is stuff that does not have a option defined for
         #update_extra_options(env)
+        env.Replace(**vars.UnknownVariables())
         
         # stuff to zap
         env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
