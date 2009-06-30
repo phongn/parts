@@ -52,7 +52,7 @@ class file_scanner11:
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver,i):
+            if common.MatchVersionNumbers(version,i):
                 return tmp[i]
         return None
     
@@ -92,7 +92,7 @@ class file_scanner9_10:
         k=tmp.keys()
         k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver,i):
+            if common.MatchVersionNumbers(version,i):
                 return tmp[i]
         return None  
         

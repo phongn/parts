@@ -7,8 +7,5 @@ def icc_setup(env,ver):
 def resolve(env,version):
     func=lambda x : icc_setup(x,version)
     return [
-                ('g++',None),
-                ('gcc',None),
-                ('gnulink',None),
                 ('intelc',func)
         ]

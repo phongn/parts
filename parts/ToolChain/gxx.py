@@ -8,7 +8,8 @@ def resolve(env,version):
 
     return [
                 ('gcc',func),
-                ('gnulink',func),
-                ('ar',func),
                 ('g++',func)
+                ('gnulink',None),
+                ('ar',None),
+
             ]

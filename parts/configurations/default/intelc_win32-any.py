@@ -1,5 +1,5 @@
 ######################################
-### Microsoft compiler configurations default
+### Intel compiler configurations default
 ######################################
 
 import sys
