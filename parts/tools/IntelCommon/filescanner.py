@@ -25,20 +25,21 @@ class file_scanner11:
             reg=re.compile(self.pattern, re.I)
             reg2=re.compile(self.pattern2, re.I)
             # interate outer directories for match
-            for item0 in os.listdir(self.path):
-                fullpath0=os.path.join(self.path,item0)
-                # if this is a directory
-                if os.path.isdir(fullpath0):
+            if os.path.exists(self.path):
+                for item0 in os.listdir(self.path):
+                    fullpath0=os.path.join(self.path,item0)
                     # if this is a directory
-                    result0=reg.match(item0)
-                    # iterate the inner directories
-                    for item in os.listdir(fullpath0):
-                        fullpath=os.path.join(fullpath0,item)
-                        if os.path.isdir(fullpath):
-                            result=reg2.match(item)
-                            if result:
-                                version=".".join([item0,item])
-                                ret[version]=fullpath
+                    if os.path.isdir(fullpath0):
+                        # if this is a directory
+                        result0=reg.match(item0)
+                        # iterate the inner directories
+                        for item in os.listdir(fullpath0):
+                            fullpath=os.path.join(fullpath0,item)
+                            if os.path.isdir(fullpath):
+                                result=reg2.match(item)
+                                if result:
+                                    version=".".join([item0,item])
+                                    ret[version]=fullpath
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
@@ -72,13 +73,14 @@ class file_scanner9_10:
             # pattern to match on
             reg=re.compile(self.pattern, re.I)
             # interate directorys for match
-            for item in os.listdir(self.path):
-                fullpath=os.path.join(self.path,item)
-                if os.path.isdir(fullpath):
-                    result=reg.match(item)
-                    if result:
-                        version=".".join(result.groups())
-                        ret[version]=fullpath
+            if os.path.exists(self.path):
+                for item in os.listdir(self.path):
+                    fullpath=os.path.join(self.path,item)
+                    if os.path.isdir(fullpath):
+                        result=reg.match(item)
+                        if result:
+                            version=".".join(result.groups())
+                            ret[version]=fullpath
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
