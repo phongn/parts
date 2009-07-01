@@ -378,7 +378,7 @@ def load_tool_config(env,name,tool,host,target):
         try:
             
             mod=common.load_module('parts.configurations.'+name,k)
-            print 'Configurtation [',name,'] loaded file:',k
+            print 'Configuration [',name,'] loaded file:',k
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break
@@ -387,7 +387,7 @@ def load_tool_config(env,name,tool,host,target):
         
     else:
         #if dep == None:
-        #    print 'Configurtation [',name,'] found no configruation for tool:',k
+        #    print 'Configuration [',name,'] found no configruation for tool:',k
         found=False # nothing found
 
     ## Last we merge settings and store
