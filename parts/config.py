@@ -8,28 +8,6 @@ import version
 import SCons.Script
 import configurations,version
 
-##def default_tool_add(map,tool,ver,config):
-##    '''
-##    This is the default tool add function used by the configuration objects.
-##    It provides common basic functionality that shoudl be need by most common
-##    tools.
-##    '''
-##    if ver==None:
-##        map['tools']=[tool]
-##    else:
-##        map['tools']=[(tool,{'version':ver})] 
-##    return True   
-##
-##def config_default_tool(map,tool,ver,config):
-##    ''' 
-##    This tries to get the default configuration based what Scons says is the default compiler.
-##    We use this to get the best configurations setting to use.
-##    '''
-##    # try to see what the default env will be and set it up with predefined settings
-##    # currently we just base this off the C compiler, in the future it should do more
-##    cc=SCons.Script.DefaultEnvironment()['CC']
-##    map.update( get_config(config,cc,ver) )
-##    return True
 
 def null_ver_mapper(env):
     return '0.0.0'
@@ -467,20 +445,20 @@ def apply_config(env,name=None,host=None,target=None):
             if items.has_key('replace'):
                 env.Replace(**{flag:items['replace']})
             if items.has_key('append'):
-                env.Append(**{flag:items['append']})
+                env.AppendUnique(**{flag:items['append']})
             #prepend values in env
             if items.has_key('prepend'):
-                env.Prepend(**{flag:items['prepend']})
+                env.PrependUnique(**{flag:items['prepend']})
             
         tmp=setting_extra.get('prepend_env',{})
         for i in tmp:
             for k,v in i.iteritems():
-                env.PrependENVPath(k,v)
+                env.PrependENVPath(k,v,delete_existing=True)
         
         tmp=setting_extra.get('append_env',{})
         for i in tmp:
             for k,v in i.iteritems():
-                env.AppendENVPath(k,v)
+                env.AppendENVPath(k,v,delete_existing=True)
         
         tmp=setting_extra.get('post_process_func',[])
         for f in tmp:
