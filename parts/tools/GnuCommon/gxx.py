@@ -94,7 +94,7 @@ gxx.Register(
             ],
         script=None,
         subst_vars={},
-        shell_vars={'PATH':'${GCC.INSTALL_ROOT}'},
+        shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
         test_file='g++'
         )
     ]
