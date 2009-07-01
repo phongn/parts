@@ -108,8 +108,8 @@ def resolve(env,version):
             ]
     elif host.OS=='sunos':
         return [
-                ('g++',func),
-                ('gcc',func),
+                ('g++',None),
+                ('gcc',None),
                 ('ar',None),
                 ('gas',None),
                 ('gnulink',None)
