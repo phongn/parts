@@ -10,6 +10,7 @@ def generate(env):
     
     # set up shell env for running compiler
     GnuCommon.gcc.MergeShellEnv(env)
+    env['CC'] = env['GCC']['TOOL']
 
    # this setting is what SCons has.. It seem odd, I thought cygwin handled -fpic fine
     if env['PLATFORM'] in ['cygwin', 'win32']:

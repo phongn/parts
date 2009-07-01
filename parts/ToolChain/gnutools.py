@@ -11,7 +11,8 @@ def resolve(env,version):
                 ('g++',func),
                 ('gcc',func),
                 ('ar',None),
-                ('gnulink',None),
+                ('gas',None),
+                ('gnulink',None)
         ]
 
 

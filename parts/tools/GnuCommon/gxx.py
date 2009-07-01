@@ -76,6 +76,29 @@ gxx.Register(
 
 # add other combo later (sun, Mac, etc...)
 
+gxx.Register(
+    # we assume that the system has teh correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('sunos','any')],
+    targets=[SystemPlatform('sunos','any')],
+    info=[
+    GnuInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/sfw/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${GCC.INSTALL_ROOT}'},
+        test_file='g++'
+        )
+    ]
+)
 
 
 

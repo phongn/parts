@@ -7,9 +7,9 @@ def resolve(env,version):
     func=lambda x : gxx_setup(x,version)
 
     return [
+                ('g++',func),
                 ('gcc',func),
-                ('g++',func)
-                ('gnulink',None),
                 ('ar',None),
-
+                ('gas',None),
+                ('gnulink',None)
             ]

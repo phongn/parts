@@ -98,6 +98,22 @@ def resolve(env,version):
                 ('gnulink',None),
                 ('ar',None)
             ]
+    elif host.OS=='darwin':
+        return [
+                ('gcc',None),
+                ('g++',None),
+                ('gas',None),
+                ('gnulink',None),
+                ('ar',None)
+            ]
+    elif host.OS=='sunos':
+        return [
+                ('g++',func),
+                ('gcc',func),
+                ('ar',None),
+                ('gas',None),
+                ('gnulink',None)
+            ]
     else:
         print "Defaulting to Scons' default lookup"
         return [('default',None)]
