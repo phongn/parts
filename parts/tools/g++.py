@@ -29,7 +29,9 @@ def generate(env):
         env['SHOBJSUFFIX'] = '.pic.o'
     elif env['PLATFORM'] == 'sunos':
         env['SHOBJSUFFIX'] = '.pic.o'
-    
+
+    #Backward compatiblity
+    env['CXXVERSION']=env['GXX']['VERSION']   
 
 def exists(env):
     return GnuCommon.gxx.Exists(env)

@@ -17,6 +17,10 @@ def generate(env):
         env['SHCCFLAGS'] = SCons.Util.CLVar('$CCFLAGS')
     else:
         env['SHCCFLAGS'] = SCons.Util.CLVar('$CCFLAGS -fPIC')
+
+    #Backward compatiblity
+    env['CCVERSION']=env['GCC']['VERSION']
+        
     
 
 def exists(env):
