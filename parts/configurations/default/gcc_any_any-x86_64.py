@@ -14,7 +14,8 @@ config=configuration(map_default_version)
 
 config.VersionRange("3-*",
                     append=ConfigValues(
-                        CCFLAGS=['-m64']
+                        CCFLAGS=['-m64'],
+                        LINKFLAGS=['-m64']
                         )
                     )
     
