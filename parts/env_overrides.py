@@ -3,6 +3,7 @@
 ## where I need it. Hopefully most of these items will move into SCons in some form
 
 import SCons.Script
+import SCons.Util
 
 class bindable(object):
     pass
@@ -57,7 +58,14 @@ def Scanner_override():
             SCons.Tool.SourceFileScanner.function[k].path_function)
 
 
+def my_semi_deepcopy(x):
+    copier = SCons.Util._semi_deepcopy_dispatch.get(type(x))
+    if copier:
+        return copier(x)
+    else:
+        return SCons.Util._semi_deepcopy_inst(x)
 
+SCons.Util.semi_deepcopy=my_semi_deepcopy
 
 from SCons.Script.SConscript import SConsEnvironment
 

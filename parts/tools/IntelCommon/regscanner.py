@@ -40,7 +40,7 @@ class reg_scanner:
                     pass
             #if this is none we have an error        
             if k is None:
-                print "Error 1... No Intel compilers found via std install means"
+                #print "Error 1... No Intel compilers found via std install means"
                 return 
             
             i = 0
@@ -50,14 +50,14 @@ class reg_scanner:
                     subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
                     #parse to see if we got match
                     result=reg.match(subkey)
+                    print subkey
                     if result:                
                         # form up full key name to test for install
-                        keyname=keyname+"\\"+subkey+"\\"+self.arch+"\\ProductDir"
-                        
+                        keyname2=keyname+"\\"+subkey+"\\"+self.arch+"\\ProductDir"
                         try:
                             #try to get value
                             path = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
-                                             keyname)[0]
+                                             keyname2)[0]
                             
                             ret[".".join(result.groups())]=path
                         except WindowsError:
@@ -73,6 +73,7 @@ class reg_scanner:
                 if ret is not None:
                     ret[self.ver]=ret
             self.cache=ret
+        print self.cache
         return self.cache
         
     def resolve(self,ver):
@@ -120,7 +121,7 @@ class reg_scanner2:
                     pass
             #if this is none we have an error        
             if k is None:
-                print "Error 1... No Intel compilers found via std install means"
+                #print "Error 1... No Intel compilers found via std install means"
                 return 
             
             i = 0
