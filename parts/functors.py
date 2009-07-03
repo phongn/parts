@@ -53,20 +53,25 @@ def full_parts_depends_list(env):
     '''
     alias=env['ALIAS']
     def_env=SCons.Script.DefaultEnvironment()
-    dlst=def_env['PART_INFO'][alias]['DEPENDSON']
-    flst=[]
-    rpt=def_env['PARTS_REPORTER']
-    for d in dlst:
-        val=env.subst(d.alias_mapping_string())
-        if val == "":
-            #rpt.part_warning(env,"Was not able to map "+d.alias_mapping_string(),True)
-            rpt.part_warning(env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
-            continue
-        flst.append(val)
-        #print alias,d.alias_mapping_string()
-        tmp_env=def_env['PART_INFO'][val]['ENV']
-        tmp=full_parts_depends_list(tmp_env)
-        flst.extend(tmp)
+    cache_tmp=def_env['PART_INFO'][alias].get('FULL_DEPENDS',None)
+    if cache_tmp is None:
+        dlst=def_env['PART_INFO'][alias]['DEPENDSON']
+        flst=[]
+        rpt=def_env['PARTS_REPORTER']
+        for d in dlst:
+            val=env.subst(d.alias_mapping_string())
+            if val == "":
+                #rpt.part_warning(env,"Was not able to map "+d.alias_mapping_string(),True)
+                rpt.part_warning(env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
+                continue
+            flst.append(val)
+            #print alias,d.alias_mapping_string()
+            tmp_env=def_env['PART_INFO'][val]['ENV']
+            tmp=full_parts_depends_list(tmp_env)
+            flst.extend(tmp)
+            def_env['PART_INFO'][alias]['FULL_DEPENDS']=flst
+    else:
+        flst=cache_tmp
     return flst
 
 class map_rpath_link_part:
