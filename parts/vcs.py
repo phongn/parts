@@ -126,7 +126,7 @@ def SysCall (cmdStr):
             return False
         else:
             return True
-    except:
+    except OSError:
         print 'Error: exception encountered' #, sys.exc_type, sys.exc_value
         return False
 
@@ -149,7 +149,7 @@ class vcs:
             self.clean_step(out_dir)
             ret = True
         elif os.path.exists(out_dir):
-            ret = self.update_cmd(out_dir,env,name,force=False)
+            ret = self.update_cmd(out_dir,env,name)
         else:
             ret = self.checkout_cmd(out_dir,env,name)
         return ret
@@ -161,7 +161,7 @@ class vcs:
         #normally does nothing, but in special case permission might need to be set
         pass
 
-    def update_cmd(self,out_dir,env,name,force=False):
+    def update_cmd(self,out_dir,env,name):
         # this is what would be called for any updating of the location
         # assume something already exists
         pass
@@ -288,9 +288,8 @@ class vcs_Prebuilts(vcs):
         # exists and they asked us to do something ... if UPDATE_FROM_SVN only,
         # we don't want to do anything for PRE-BUILTS!
         out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
-        if force==False and env['UPDATE_ALL']==False:
-            return True
-        print 'Updating Prebuilts from ' + self.full_path() + ' to ' + out_dir
+        p=os.path.normpath(self.full_path(env))
+        print 'Updating Prebuilts from ' + p + ' to ' + out_dir
         try: 
             copier = PyRobocopier ()
             copier.parse_args ([self.full_path(env), out_dir, '-s', '-p', '-f'])
@@ -308,7 +307,10 @@ class vcs_Prebuilts(vcs):
             p=os.path.normpath(self.full_path(env))
             if os.path.exists(p):
                 print 'Copying Prebuilts from ' + p + ' to ' + out_dir
-            shutil.copytree (p, out_dir)
+            #shutil.copytree (p, out_dir)
+            copier = PyRobocopier ()
+            copier.parse_args ([p, out_dir, '-s', '-c', '-f'])
+            copier.do_work ()
         except Exception,e:
             print e
             return 1
