@@ -17,6 +17,6 @@ config.VersionRange("7-*",
                     append=ConfigValues(
                         CCFLAGS=['/nologo','/Ox','/MD','/W3','/Zc:wchar_t'],
                         CXXFLAGS=['/EHsc','/GR'],
-                        LINKFLAGS=['/nodefaultlib:"libmmdd.lib"']
+                        LINKFLAGS=['/nodefaultlib:"libmmd.lib"']
                         )
                     )

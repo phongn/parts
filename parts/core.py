@@ -61,6 +61,7 @@ def normalize_map(m):
 
 ### primary config stuff
 
+# class to handle old stuff that needs to change.. move to better location later
 class deprecated:
     def __init__(self,key,new_key,value):
         self.key=key
@@ -104,6 +105,12 @@ class deprecated:
         rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
         rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
         return other+self.value
+    def __contains__ (self,item):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return item in self.value
+        
+        
 
 def generate_config(prepend,append,replace):
     
@@ -239,10 +246,7 @@ def generate_config(prepend,append,replace):
         # this is stuff that does not have a option defined for
         #update_extra_options(env)
         env.Replace(**vars.UnknownVariables())
-        
-        # stuff to zap
-        env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
-    
+          
         ## apply tool chain
         env.ToolChain(pre_tools+env['toolchain']+post_tools)#tl_chain)
         
@@ -287,6 +291,10 @@ def generate_config(prepend,append,replace):
         ## does not have the $vars fully expanded, which causes an issue with in the
         ## dependency tree. This leads to a false rebuild of few files
         env_overrides.Scanner_override()
+
+        # stuff to zap
+        env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
+        env["config"]=deprecated("config","CONFIG",env['CONFIG'])
         
         # Add this to cache
         common.g_env_cache[cache_key]=env    

@@ -319,7 +319,7 @@ class vcs_Prebuilts(vcs):
         
 class VcsUsePriorPart(vcs):
     def __init__(self,alias):
-        vcs.__init__(self,None,None)
+        vcs.__init__(self,"",None)
         self.alias=alias
 
     def Update(self,env):

@@ -423,6 +423,34 @@ def get_config(env,name,tool,host,target):
     if settings==None:
         return ({},{})
     return settings
+
+## compatibility object
+import env_overrides
+class config_type_wrapper(str,env_overrides.bindable):
+    def __eq__(self,rhs):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(self.env,"Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test")
+        return self.env.isConfigBasedOn(rhs)
+
+    def __ne__(self,rhs):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(self.env,"Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for != test")
+        return self.env.isConfigBasedOn(rhs)==False
+       
+    def _rebind(self,env,key):
+        '''
+        Rebind the environment to a new one.
+        There does not seem a way to have this happen in a clone
+        as from what i can see semi_deep_copy does not pass a new env
+        However I can do this in cases when i do a copy, which is not as
+        bad as not doing it at all
+        '''
+        import copy
+        tmp=config_type_wrapper(copy.copy(self))
+        tmp._bind(env,key)
+        return tmp
+    def _bind(self,env,key):
+        self.__dict__['env']=env
     
 def apply_config(env,name=None,host=None,target=None):
     # get tools set to configure
@@ -433,6 +461,8 @@ def apply_config(env,name=None,host=None,target=None):
     if name==None:
         env['CONFIG']=env.subst('${CONFIG}')
         name=env['CONFIG']
+    env['CONFIG']=config_type_wrapper(name)
+    env['CONFIG']._bind(env,'CONFIG')
         
     print "Applying configuration:",name
     #print "tools that have been configured",tools
@@ -476,6 +506,7 @@ def _isconfigbasedon(env,name,config):
 def isConfigBasedOn(env,name):
     config=env.subst('$CONFIG')
     return _isconfigbasedon(env,name,config)
+
             
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
