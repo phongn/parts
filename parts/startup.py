@@ -280,7 +280,6 @@ Use -H or --help-options for a list of scons options
         add_dirty_parts(def_env)
         reduce_target_alias_set(def_env)
         create_sdk_set(def_env)
-    print env['TARGET_PLATFORM']
     # turn off all default building of any items without a target, or until
     # default is called again to set one. ( ie the default by Scons is '.' which is everything)
     def_env.Default('')

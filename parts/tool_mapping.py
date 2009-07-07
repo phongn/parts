@@ -25,6 +25,11 @@ def get_tools(env,tlset):
     # for each tool see if the value is a tool, or abstaction
     # this is done via testing is a tool exist with that name
     # this is to prevent loops like cl->msvc->cl->msvc etc...
+    # ("name",None) -> tool chain
+    # ("name","val") -> tool chain
+    # ("name",{}) ->tool
+    # ("name",functor) ->tool
+    
     new_list=[]
     repeat=False
     for t in tlset:

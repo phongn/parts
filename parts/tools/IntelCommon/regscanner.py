@@ -50,7 +50,6 @@ class reg_scanner:
                     subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
                     #parse to see if we got match
                     result=reg.match(subkey)
-                    print subkey
                     if result:                
                         # form up full key name to test for install
                         keyname2=keyname+"\\"+subkey+"\\"+self.arch+"\\ProductDir"
@@ -73,7 +72,6 @@ class reg_scanner:
                 if ret is not None:
                     ret[self.ver]=ret
             self.cache=ret
-        print self.cache
         return self.cache
         
     def resolve(self,ver):
@@ -171,6 +169,7 @@ class reg_scanner2:
                 if ret is not None:
                     ret[self.ver]=ret
             self.cache=ret
+            
         return self.cache
         
     def resolve(self,ver):

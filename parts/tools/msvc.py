@@ -237,6 +237,8 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['PCHCOM'] = '$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS'
     env['BUILDERS']['PCH'] = pch_builder
     
+    # fix this up so we can control its printing to screen better.
+    print "MSVC configured for version: %s target: %s"%(env['MSVC']['VERSION'],env['TARGET_PLATFORM'])
 
 def exists(env):
     return msvc.Exists(env)#msvc_exists(env,'cl')

@@ -13,7 +13,7 @@ Intelc.Register(
     targets=[SystemPlatform('win32','x86')],
     info=[
         IntelcInfo(
-            version='11.1.*',
+            version='11,11.1.*',
             install_scanner=regscanner.reg_scanner2(
                 [r'Software\Wow6432Node\Intel\Suites\1.0',
                 r'Software\Intel\Suites\1.0'],
@@ -40,7 +40,7 @@ Intelc.Register(
     targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
-            version='11.1.*',
+            version='11,11.1.*',
             install_scanner=regscanner.reg_scanner2(
                 [r'Software\Wow6432Node\Intel\Suites\1.0',
                 r'Software\Intel\Suites\1.0'],
@@ -67,7 +67,7 @@ Intelc.Register(
     targets=[SystemPlatform('win32','x86')],
     info=[
         IntelcInfo(
-            version='11.0.*',
+            version='11,11.0.*',
             install_scanner=regscanner.reg_scanner(
                 [r'Software\Wow6432Node\Intel\Compilers\C++',
                 r'Software\Intel\Compilers\C++'],
@@ -94,7 +94,7 @@ Intelc.Register(
     targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
-            version='11.0.*',
+            version='11,11.0.*',
             install_scanner=regscanner.reg_scanner(
                 [r'Software\Wow6432Node\Intel\Compilers\C++',
                 r'Software\Intel\Compilers\C++'],

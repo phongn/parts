@@ -370,7 +370,7 @@ class ToolSetting:
             try:
                 tpath=self.get_shell_env(env)[0]['PATH']
                 tmp=SCons.Util.WhereIs(tool,path=tpath)
-                print tool,tmp
+                
                 if tmp is not None:
                     found = True
             except:

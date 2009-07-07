@@ -18,8 +18,8 @@ def post_process_func(env):
     try:
         ver=parts.version.version(env['GCC_VERSION'])
         ver=str(ver.major())+str(ver.minor())+str(ver.revision())
-        print env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']
-        print env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']
+        #print env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']
+        #print env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']
            
         env.Append(CCFLAGS=['-gcc-name='+os.path.join(env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']),
             '-gxx-name='+os.path.join(env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']),

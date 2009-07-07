@@ -116,5 +116,5 @@ def resolve(env,version):
             ]
     else:
         print "Defaulting to Scons' default lookup"
-        return [('default',None)]
+        return [('default',{})]
             

@@ -48,6 +48,9 @@ def generate(env):
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
         
     IntelCommon.Intelc.MergeShellEnv(env)
+    
+    # fix this up so we can control its printing to screen better.
+    print "INTELC configured for version: %s target: %s"%(env['INTELC']['VERSION'],env['TARGET_PLATFORM'])
 
 def exists(env):
     return IntelCommon.Intelc.Exists(env)

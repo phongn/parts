@@ -89,7 +89,7 @@ class file_scanner9_10:
             self.cache=ret
         return self.cache
         
-    def resolve(self,ver):
+    def resolve(self,version):
         tmp=self.scan()
         k=tmp.keys()
         k.reverse()
