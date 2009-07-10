@@ -65,8 +65,10 @@ def export_file(env,targets,pinfo,prop):
             t=env.File(t)
         file=os.path.split(t.abspath)[1]
         ret.append(file)
-        if file[-3:]=='.so' or file[-3:]=='.sl':
+        if file.endswith('.so') or file.endswith('.sl'):
             file = file[:-3]
+        elif file.endswith('.so-gz'):
+            file = file[:-6]
         pinfo[prop].append(file)
     return ret
 
