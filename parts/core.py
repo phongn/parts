@@ -126,7 +126,7 @@ def generate_config(prepend,append,replace):
                 str(normalize_map(common.g_defaultoverides))
                 
     env=common.g_env_cache.get(cache_key,None)
-    
+        
     #if not isinstance(env,SCons.Script.Environment):
     if env is None:
         def_env=SCons.Script.DefaultEnvironment()

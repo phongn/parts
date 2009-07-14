@@ -388,7 +388,7 @@ common.AddVariable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
 common.AddVariable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
 
 #file patterns
-common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*'],'')
+common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz'],'')
 common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
 
 if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:

@@ -1,6 +1,5 @@
 
 import common
-import ToolChain
 import SCons.Tool
 import os
 
