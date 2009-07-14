@@ -2,6 +2,7 @@
 import common
 import ToolChain
 import SCons.Tool
+import os
 
 def get_tlset_module(tlchain,version):
     # first try to load exact match.. then general match
@@ -11,7 +12,7 @@ def get_tlset_module(tlchain,version):
         name_list=[tlchain]
     for k in name_list:
         try:
-            mod=common.load_module('parts.ToolChain',k)
+            mod=common.load_module(common.get_site_directories('toolchain'),k,'toolchain')
             #print 'Found ToolChain:',k
             return mod
         except:

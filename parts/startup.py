@@ -198,8 +198,6 @@ def create_sdk_set(def_env):
 def start():
     '''This function sets up all the data and objects needed to have everything work correctly'''
     # start off looking for options that we need to display extra data on
-    def_env=SCons.Script.DefaultEnvironment()    
-    
     import sys
     args = sys.argv[1:]
     if SCons.Script.GetOption('clean'):
@@ -226,6 +224,9 @@ def start():
     ## setup the command arguments
     init_args() 
     env=core.generate_config({},{},{'tool_chain':[]})
+    env._CacheDir_path=None
+    env.Decider('MD5-timestamp')
+    def_env=SCons.Defaults._default_env=env
     
     # generate help text
     if common.g_part_mode=='help':

@@ -7,6 +7,7 @@ import common
 import version
 import SCons.Script
 import configurations,version
+import os
 
 
 def null_ver_mapper(env):
@@ -377,7 +378,8 @@ def load_tool_config(env,name,tool,host,target):
     for k in name_list:
         try:
             
-            mod=common.load_module('parts.configurations.'+name,k)
+            #mod=common.load_module('parts.configurations.'+name,k)
+            mod=common.load_module(common.get_site_directories(os.path.join('configurations',name)),k,'config'+name)
             print 'Configuration [',name,'] loaded file:',k
             #Map version if unknown
             ver=mod.config.map_none_version(env)

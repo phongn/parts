@@ -127,7 +127,7 @@ def generate_config(prepend,append,replace):
                 
     env=common.g_env_cache.get(cache_key,None)
     # temp disabling of the cache as the Clone() has a leak in it
-
+    env=None
     #if not isinstance(env,SCons.Script.Environment):
     if env is None:
         def_env=SCons.Script.DefaultEnvironment()

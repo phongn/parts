@@ -47,6 +47,8 @@ g_mappers={}
 # these are the global functions we define to the SConstruct
 g_globals={}
 
+# path to where Parts is installed
+g_parts_path=os.path.split(__file__)[0]
 
 g_base_env= SCons.Script.Environment(tools=[])
 def get_basic_SCon_env(**kw):
@@ -509,8 +511,47 @@ def make_alias_tree(env,concept,
     
     return name_alias
 
+g_site_dir_cache={}
+def get_site_directories(subdir):
+    try:
+        return g_site_dir_cache[subdir]
+    except KeyError:
+        sitepaths=[
+            #current directory parts_site or user pointed site
+            os.path.join('.','parts-site',subdir),
+            #homedir/.parts-site
+            os.path.join(os.path.expanduser('~'),'parts-site',subdir),
+            # parts install
+            os.path.join(g_parts_path,subdir)
+        ]
+        g_site_dir_cache[subdir]=sitepaths
+    return g_site_dir_cache[subdir]
 
-def load_module(root,name):
+def load_module(path,name,type):
+    """Return the imported module
+    made more generic so Parts can reuse the logic
+    instead of using the C&P anit-patttern.
+    """
+    
+    modname='<'+type+'>'+name
+    
+    if not sys.modules.has_key(modname):
+        file, path1, desc = imp.find_module(name,path)
+        try:
+            mod = imp.load_module(modname, file, path1, desc)
+        except ImportError,e:
+            print e
+            if file:
+                file.close()
+            raise SCons.Errors.UserError, "No module named '%s'" % (name)
+        if file:
+            file.close()
+        
+    return sys.modules[modname]
+    
+
+
+def load_module5(root,name):
     """Return the imported module for some platform.
     
     Taken from SCons platform.. and made more generic so Parts can reuse the logic
