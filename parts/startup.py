@@ -206,6 +206,10 @@ def start():
         common.g_part_mode='help'
     else:
         common.g_part_mode='build'
+
+    if 'tools' in SCons.Script.ARGUMENTS.keys():
+        print "Command line option 'tools' is deprecated, use 'toolchain'"
+        exit(1)
         
     # options for dumping information about configurations
     list_tool=SCons.Script.ARGUMENTS.get('list_tool',None)

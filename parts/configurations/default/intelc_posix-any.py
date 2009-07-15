@@ -32,8 +32,6 @@ config=configuration(map_default_version,post_process_func)
 
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        #CPPDEFINES=[],
-                        CCFLAGS=[],
                         LINKFLAGS=['-i-static']
                         )
                     )

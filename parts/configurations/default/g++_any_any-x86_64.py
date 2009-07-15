@@ -8,7 +8,7 @@ from parts.config import *
 import SCons.Script
 
 def map_default_version(env):
-    return env['GCC_VERSION']
+    return env['GXX_VERSION']
 
 config=configuration(map_default_version)
 

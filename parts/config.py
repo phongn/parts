@@ -519,3 +519,5 @@ SConsEnvironment.isConfigBasedOn=isConfigBasedOn
 common.AddVariable(['CONFIG','config'],'${default_config}','The configuration to use')
 common.AddVariable('default_config','debug','The configuration to use by default')
 
+common.add_parts_object('ConfigValues',ConfigValues)
+common.add_global_value('ConfigValues',ConfigValues)
