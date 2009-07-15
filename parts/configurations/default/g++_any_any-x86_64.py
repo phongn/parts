@@ -3,7 +3,6 @@
 ######################################
 
 import sys
-from parts.config_base import *
 from parts.config import *
 import SCons.Script
 
