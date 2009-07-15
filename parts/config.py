@@ -454,7 +454,7 @@ class config_type_wrapper(str,env_overrides.bindable):
     def _bind(self,env,key):
         self.__dict__['env']=env
     
-def apply_config(env,name=None,host=None,target=None):
+def apply_config(env,name=None):
     # get tools set to configure
     tools=env['CONFIGURED_TOOLS']
     #print "Configured Tool to get configuration from",tools
@@ -515,6 +515,7 @@ from SCons.Script.SConscript import SConsEnvironment
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.isConfigBasedOn=isConfigBasedOn
+SConsEnvironment.Configuration=apply_config
         
 common.AddVariable(['CONFIG','config'],'${default_config}','The configuration to use')
 common.AddVariable('default_config','debug','The configuration to use by default')
