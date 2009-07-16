@@ -212,8 +212,8 @@ def depends_on(env,depends):
     pinfo['CXXFLAGS'].extend(cxxflags)
     pinfo['CPPDEFINES'].extend(cppdefines)
     
-    #map up rpath with this..
-    if def_env['PLATFORM']!='win32':
+    #map up rpath with this.. ( need to fix up the Mac)
+    if def_env['PLATFORM']!='win32' and def_env['PLATFORM'] != 'darwin':
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_part(env))
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_link_part(env))
         

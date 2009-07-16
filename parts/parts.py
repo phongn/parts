@@ -246,6 +246,9 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     env['PART_VERSION']="${PARTS('"+alias+"','VERSION')}"
     env['PART_SHORT_VERSION']="${PARTS('"+alias+"','SHORT_VERSION')}"
     
+    ## file info
+    env['PART_FILE']=parts_file
+    
     ##  some backward compatible stuff to later remove
     ## also we ahve some stuff for mapping the export var correctly while
     ## handling some ugly wrapper to ceratina object i would rather have as 
