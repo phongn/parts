@@ -17,7 +17,7 @@ perl.Register(
             ],
         script=None,
         subst_vars={},
-        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATHx86':'${PERL.INSTALL_ROOT}'},
+        shell_vars={'PATH':'${PERL.INSTALL_ROOT}'},
         test_file='perl.exe'
         )
     ]
@@ -35,28 +35,28 @@ perl.Register(
             ],
         script=None,
         subst_vars={},
-        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATH64':'${PERL.INSTALL_ROOT}'},
+        shell_vars={'PATH':'${PERL.INSTALL_ROOT}'},
         test_file='perl.exe'
         )
     ]
 )
 
-##perl.Register(
-##    hosts=[SystemPlatform('any','any')],
-##    targets=[SystemPlatform('any','any')],
-##    info=[
-##    GnuInfo(
-##        install_scanner=[
-##            PathFinder(['/usr/bin'])
-##            ],
-##        opt_dirs=[
-##            '/opt/',
-##            '/opt/ActiveState',
-##            ],
-##        script=None,
-##        subst_vars={},
-##        shell_vars={'PATH':'${PERL.INSTALL_ROOT}','PATHall':'${PERL.INSTALL_ROOT}'},
-##        test_file='perl'
-##        )
-##    ]
-##)
+perl.Register(
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('any','any')],
+    info=[
+    GnuInfo(
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+            '/opt/',
+            #'/opt/ActiveState',
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${PERL.INSTALL_ROOT}'},
+        test_file='perl'
+        )
+    ]
+)
