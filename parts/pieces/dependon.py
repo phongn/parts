@@ -212,15 +212,11 @@ def depends_on(env,depends):
     pinfo['CXXFLAGS'].extend(cxxflags)
     pinfo['CPPDEFINES'].extend(cppdefines)
     
-    #map up rpath with this..
-    if def_env['PLATFORM']=='posix':
+    #map up rpath with this.. ( need to fix up the Mac)
+    if def_env['PLATFORM']!='win32' and def_env['PLATFORM'] != 'darwin':
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_part(env))
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_link_part(env))
-    ## SUN OS seem correctly broken
-    #if def_env['PLATFORM']=='sunos':
-        #def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_part(env))
-        #def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_link_part(env))
-    
+        
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

@@ -5,20 +5,23 @@
 import fnmatch
 import string
 import os
+import imp
+import sys
 
-
-# test if bool is defined, define if not
-if not __builtins__.has_key('bool'):
-    True=1
-    False=0
+import Variables
 
 # import Scons stuff
 import SCons.Script 
+import SCons.Errors
+import SCons.Tool
+import SCons.Util
 
 g_builders={}
-g_args={}
+#g_args={}
 g_env_cache={}
 g_parts_objs={}
+
+g_part_mode=''
 
 # node we have processed
 #g_parts_node=set()
@@ -26,8 +29,9 @@ g_parts_objs={}
 # or ones that are used created by the part call which we always assume to have one
 #g_env_w_builders=set()
 
-def_args={}
-
+#def_args={}
+def_vars=[]
+g_defaultoverides={}
 # holds the set of alias that are created by parts
 g_name_alias_map={}
 # set of the part we know we want to build
@@ -38,51 +42,87 @@ g_target_alias=set()
 g_build_as_sdk=set()
 #depends data we stored
 g_depends_data={}
+# custom data mappers
+g_mappers={}
+# these are the global functions we define to the SConstruct
+g_globals={}
+
+# path to where Parts is installed
+g_parts_path=os.path.split(__file__)[0]
+
+g_base_env= SCons.Script.Environment(tools=[])
+def get_basic_SCon_env(**kw):
+    return g_base_env.Clone(**kw)
+
+def add_mapper(mapper):
+    g_mappers[mapper.name]=mapper
 
 def add_parts_object(key,object):
     g_parts_objs[key]=object
     # add code to for help generation
+    
+def add_global_value(key,object):
+    g_globals[key]=object
 
-def add_config_var(key,default,help=''):
-    def_args[key]=default
-    # add code to for help generation
+def AddVariable(key,default,help,validator=None,converter=None):
+    '''Generic varible addition'''
+    #def_args[key]=default
+    def_vars.append((key,help,default,validator,converter))
+
+def AddBoolVariable(key,default,help):
+    '''Generic varible addition'''
+    def_vars.append(SCons.Script.BoolVariable(key,help,default))    
+
+def AddEnumVariable(key,default,help,allowed_values,map={},ignorecase=1):
+    '''Generic varible addition'''
+    def_vars.append(SCons.Script.EnumVariable(key,help,default))
+
+def AddListVariable(key,default,help,allowed_values=[],map={}):
+    '''Generic varible addition'''
+    def_vars.append(Variables.ListVariable2(key,help,default,allowed_values,map))    
 
 ##########################################################
 
-def make_list_converter(val, allowedElems=[], mapdict={}):
-    """
-    """
-    # make the list
-    val = filter(None, string.split(val, ','))
-    # map values
-    val = map(lambda v, m=mapdict: m.get(v, v), val)
-    if allowedElems != []:
-        # validate if we have bad elements
-        notAllowed = filter(lambda v, aE=allowedElems: not v in aE, val)
-        if notAllowed:
-            raise ValueError("Invalid value(s) for option: %s" %
-                        string.join(notAllowed, ','))
-    # see if we have duplicate elements
-    notAllowed = filter(lambda v,lst=val: lst.count(v)>1, val)
-    if notAllowed:
-        raise ValueError("Value(s) are entered more then once for option: %s" %
-                    string.join(make_unique(notAllowed), ','))
-    return val
 
-
-def ListOption2(key, help, default=[], names=[], map={}):
-    """
-    """
-    names_str = 'allowed names: %s' % string.join(names, ' ')
-    if SCons.Util.is_List(default):
-        default = string.join(default, ',')
-    help = string.join(
-        (help, '(all|none|comma-separated list of names)', names_str),
-        '\n    ')
-    return (key, help, default,
-            None, #_validator,
-            lambda val, elems=names, m=map: make_list_converter(val, elems, m))
 ###############
+import env_overrides
+class namespace(dict,env_overrides.bindable):
+    ''' helper class to allow making subst varaible in SCons to allow a clean
+    form of $a.b
+    '''
+    def __init__(self,**kw):
+        dict.__init__(self,kw)
+
+    def __getattr__(self,name):
+        ''' This is ugly but because SCons does not have a good recursive subst
+        code, I need to subst stuff here before SCons can try to, else it will
+        try to set this object to Null string, causing an unwanted error'''
+        #print "Get **************", name, self[name]
+        tmp=self[name]
+        if is_string(tmp) or tmp is None:
+            return self.env.subst(tmp)
+        return tmp
+    
+    def __setattr__(self,name,value):
+        self[name]=value
+    def __delattr__(self,name):
+        del self[name]
+        
+    def _rebind(self,env,key):
+        '''
+        Rebind the environment to a new one.
+        There does not seem a way to have this happen in a clone
+        as from what i can see semi_deep_copy does not pass a new env
+        However I can do this in cases when i do a copy, which is not as
+        bad as not doing it at all
+        '''
+        tmp=namespace(**self.copy())
+        tmp._bind(env,key)
+        return tmp
+    def _bind(self,env,key):
+        self.__dict__['env']=env
+
+
 
 def process_tool_arg(lst):
     tmplst=[]
@@ -98,6 +138,7 @@ def process_tool_arg(lst):
             print "Invalid tool defined [",tmp,']'
             Exit(1)
         tmplst.append(tmp)
+    tmplst.reverse()
     return tmplst
 
 def AddBuilder(name,builder):
@@ -122,6 +163,15 @@ def matches(value, includes, excludes=None):
                match = 0
                break
     return match
+
+def make_list(obj):
+    ''' 
+    The purpose of thsi function is to make the obj into a list if it is not
+    already one. It will flatten as well    
+    '''
+    if SCons.Util.is_List(obj):
+        return SCons.Util.flatten(obj)
+    return [obj]
 
 def make_unique(obj):
     ''' The purpose of this object is to make a list
@@ -154,16 +204,22 @@ def make_unique_str(obj):
     return tmp
 
 def is_list(obj):
-    import UserList
-    return type(obj) is type([]) or isinstance(obj,UserList.UserList)
-    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+    return SCons.Util.is_List(obj)
+
+def is_dictionary(obj):
+    return SCons.Util.is_Dict(obj)
 
 def is_string(obj):
-    return type(obj) is type('')
-    #return type(obj)==type([]) # same thing.. try out is operator for fun =-)
+    return SCons.Util.is_String(obj)
 
 def is_bool(obj):
-    return type(obj) is type(True)
+    return obj is bool()
+
+def is_int(obj):
+    return type(obj) is int()
+
+def is_float(obj):
+    return type(obj) is float()
 
 def is_catagory_file(env,cat,file):
     ''' this function is the master function for finding a if a file matches a type pattern.'''
@@ -455,4 +511,73 @@ def make_alias_tree(env,concept,
     
     return name_alias
 
-add_config_var('ALIAS_SEPARTATOR','::')
+g_site_dir_cache={}
+def get_site_directories(subdir):
+    try:
+        return g_site_dir_cache[subdir]
+    except KeyError:
+        sitepaths=[
+            #current directory parts_site or user pointed site
+            os.path.join('.','parts-site',subdir),
+            #homedir/.parts-site
+            os.path.join(os.path.expanduser('~'),'parts-site',subdir),
+            # parts install
+            os.path.join(g_parts_path,subdir)
+        ]
+        g_site_dir_cache[subdir]=sitepaths
+    return g_site_dir_cache[subdir]
+
+def load_module(path,name,type):
+    """Return the imported module
+    made more generic so Parts can reuse the logic
+    instead of using the C&P anit-patttern.
+    """
+    
+    modname='<'+type+'>'+name
+    
+    if not sys.modules.has_key(modname):
+        file, path1, desc = imp.find_module(name,path)
+        try:
+            mod = imp.load_module(modname, file, path1, desc)
+        except ImportError,e:
+            print e
+            if file:
+                file.close()
+            raise SCons.Errors.UserError, "No module named '%s'" % (name)
+        if file:
+            file.close()
+        
+    return sys.modules[modname]
+    
+
+
+def load_module5(root,name):
+    """Return the imported module for some platform.
+    
+    Taken from SCons platform.. and made more generic so Parts can reuse the logic
+    instead of using the C&P anit-patttern.
+
+    """
+    full_name = root+'.' + name
+    #print full_name,sys.modules.has_key(full_name)
+    if not sys.modules.has_key(full_name):
+        try:
+            file, path, desc = imp.find_module(name,
+                                sys.modules[root].__path__)
+            try:
+                mod = imp.load_module(full_name, file, path, desc)
+            finally:
+                if file:
+                    file.close()
+        except ImportError:
+            try:
+                import zipimport            
+                importer = zipimport.zipimporter( sys.modules[root].__path__[0] )
+                mod = importer.load_module(full_name)                    
+            except ImportError:
+                raise SCons.Errors.UserError, "No %s named '%s'" % (root,name)
+        #setattr(???, name, mod) # was in orginal SCons code.. however i don't get it
+
+    return sys.modules[full_name]
+
+AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')

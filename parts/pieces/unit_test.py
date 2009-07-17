@@ -395,18 +395,28 @@ common.AddBuilder('__UTEST__',SCons.Script.Builder(
 # add configuartion varaible
 #${BUILD_UTEST_CONCEPT}${ALIAS_SEPARTATOR}
 
-common.add_config_var('BUILD_UTEST_CONCEPT','utest${ALIAS_SEPARTATOR}')
-common.add_config_var('RUN_UTEST_CONCEPT','run_utest${ALIAS_SEPARTATOR}')
+common.AddVariable('BUILD_UTEST_CONCEPT','utest${ALIAS_SEPARTATOR}','Defines namespace for building a unit test')
+common.AddVariable('RUN_UTEST_CONCEPT','run_utest${ALIAS_SEPARTATOR}','Defines namespace for running a unit test')
 
-common.add_config_var('UTEST_PREFIX','utest@')
+common.AddVariable('UTEST_PREFIX','utest@','prefix used by UnitTest to prefix alias name')
 
-common.add_config_var('UTEST_ALL','$BUILD_UTEST_CONCEPT')
-common.add_config_var('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT')
+common.AddVariable('UTEST_ALL','$BUILD_UTEST_CONCEPT','Alias used to build all defined unit tests')
+common.AddVariable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all defined unit tests')
 
-common.add_config_var('UNIT_TEST_ROOT','#unit_tests')
-common.add_config_var('UNIT_TEST_DIR','$UNIT_TEST_ROOT/${CONFIG}_${PLATFORM}_${ARCHITECTURE}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/')
-common.add_config_var('UNIT_TEST_ENV',{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'})
-common.add_config_var('UNIT_TEST_TARGET_NAME','${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}')
-common.add_config_var('UNIT_TEST_RUN_SCRIPT_COMMAND','cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}')
-common.add_config_var('UNIT_TEST_RUN_COMMAND',
-    'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}')
+common.AddVariable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
+common.AddVariable('UNIT_TEST_DIR',
+			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
+			'Full directory used for a given unit test run'
+			)
+common.AddVariable('UNIT_TEST_ENV',
+			{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
+			'Default values add to default environment when running unit tests')
+common.AddVariable('UNIT_TEST_TARGET_NAME',
+			'${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',
+			'Default value of a given unit test executable')
+common.AddVariable('UNIT_TEST_RUN_SCRIPT_COMMAND',
+			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}',
+			'Command action used to run a unit test script in SCons')
+common.AddVariable('UNIT_TEST_RUN_COMMAND',
+		'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
+		'Command action used to run a unit test in SCons')

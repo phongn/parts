@@ -22,12 +22,14 @@ class reporter:
         self.silent=silent
     
     def part_warning(self,env,msg,print_once=False):
-        s="Parts: Warning - "+msg+"\n"
+        s="Parts: Warning : "+msg+"\n"
+        #s='Parts: Warning : %s(%d) : %s\n' % (caller_frame[1], caller_frame[2], msg)
 
         if type(env) is not type(None):
-            s+="                 Processing PART_NAME=["+env.subst(env.get("PART_NAME","unknown name"))+"]\n"
-            s+="                 Processing PART_VERSION=["+env.subst(env.get("PART_VERSION","unknown version"))+"]\n"
-            s+="                 Processing PART_ALIAS=["+env.subst(env.get("PART_ALIAS","unknown alias"))+"]\n"
+            s= 'Parts: Warning : In %s : %s\n' % (env.subst(env.get("PART_FILE","unknown file")), msg)
+            s+="        Processing PART_NAME=["+env.subst(env.get("PART_NAME","unknown name"))+"]\n"
+            s+="        Processing PART_VERSION=["+env.subst(env.get("PART_VERSION","unknown version"))+"]\n"
+            s+="        Processing PART_ALIAS=["+env.subst(env.get("PART_ALIAS","unknown alias"))+"]\n"
         
         if print_once ==True:
             if hash(s) not in self.already_printed:
@@ -38,12 +40,13 @@ class reporter:
         self.logger.logwrn(s)
         
     def part_error(self,env,msg):
-        s="Parts: ERROR! - "+msg+"\n"
+        s="Parts: ERROR! : "+msg+"\n"
         
         if type(env) is not type(None):
-            s+="                 Processing PART_NAME=["+env.subst(env.get("PART_NAME","unknown name"))+"]\n"
-            s+="                 Processing PART_VERSION=["+env.subst(env.get("PART_VERSION","unknown version"))+"]\n"
-            s+="                 Processing PART_ALIAS=["+env.subst(env.get("PART_ALIAS","unknown alias"))+"]\n"
+            s= 'Parts: ERROR! : In %s : %s\n' % (env.subst(env.get("PART_FILE","unknown file")), msg)
+            s+="        Processing PART_NAME=["+env.subst(env.get("PART_NAME","unknown name"))+"]\n"
+            s+="        Processing PART_VERSION=["+env.subst(env.get("PART_VERSION","unknown version"))+"]\n"
+            s+="        Processing PART_ALIAS=["+env.subst(env.get("PART_ALIAS","unknown alias"))+"]\n"
         
         self.console.Error.Write(s)
         self.logger.logerr(s)
@@ -76,4 +79,4 @@ class reporter:
 
 
 
-common.add_config_var('STREAM_WARNING_AS_ERROR',False)
+common.AddBoolVariable('STREAM_WARNING_AS_ERROR',False, 'Controls is warning based messages are treated as errors')

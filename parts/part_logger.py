@@ -338,9 +338,9 @@ class parts_text_logger:
             self.m_file.write(s)
         
         
-common.add_config_var('PART_SPAWNER',part_spawner)        
-common.add_config_var('PART_LOGGER','PART_NIL_LOGGER')
-common.add_config_var('PART_NIL_LOGGER',part_nil_logger)
-common.add_config_var('PART_TEXT_LOGGER',parts_text_logger)
-common.add_config_var('LOG_PART_DIR','${LOG_DIR}')
-common.add_config_var('LOG_PART_FILE_NAME','${PART_NAME}_${PART_VERSION}.log')
+common.AddVariable('PART_SPAWNER',part_spawner,'')        
+common.AddVariable('PART_LOGGER','PART_NIL_LOGGER','')
+common.AddVariable('PART_NIL_LOGGER',part_nil_logger,'')
+common.AddVariable('PART_TEXT_LOGGER',parts_text_logger,'')
+common.AddVariable('LOG_PART_DIR','${LOG_DIR}','')
+common.AddVariable('LOG_PART_FILE_NAME','${PART_NAME}_${PART_VERSION}.log','')

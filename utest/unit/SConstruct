@@ -1,0 +1,28 @@
+###################
+### for easy testing
+import sys
+sys.path = ['../../']+sys.path
+import parts
+################
+
+import unittest
+import test_support
+
+#for naming ease later
+ld=unittest.defaultTestLoader
+
+# search for all tests
+
+found_tests= test_support.find_tests()
+
+#create suite for tests to be added to
+suite = unittest.TestSuite()
+
+# add found tests
+for t in found_tests:  
+    r=ld.loadTestsFromModule(t)
+    suite.addTest(r)
+        
+print
+print "Running tests"
+unittest.TextTestRunner(verbosity=2).run(suite)

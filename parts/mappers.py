@@ -25,7 +25,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
     pinfo=None
     ret=None
     last_ver=None
-    arch=env['ARCHITECTURE']
+    arch=env['TARGET_PLATFORM'].ARCH
     rpt=def_env['PARTS_REPORTER']
     try:
         for i in alias_lst[id]:
@@ -42,7 +42,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
                     # else we assume this is a version object
                     this_ver=tmp
                 
-                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['ENV']['ARCHITECTURE']:
+                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['ENV']['TARGET_PLATFORM'].ARCH:
                     last_ver=this_ver
                     ret=pinfo
                             
@@ -58,9 +58,11 @@ class part_mapper:
     replace a the property in the actual Env else a SCons issue with subst and lists
     causes the subst to fail.
     '''
-    def __init__(self,part_name,part_prop):
+    name='PARTS'
+    def __init__(self,part_name,part_prop,ignore=False):
         self.part_name = part_name
         self.part_prop = part_prop
+        self.ignore=ignore
 
     def __call__(self, target, source, env, for_signature):
         try:
@@ -68,12 +70,12 @@ class part_mapper:
             rpt=def_env['PARTS_REPORTER']
             pinfo = def_env['PART_INFO'].get(self.part_name,None)
             if pinfo == None:
-                rpt.part_warning(env,"PART mapper: Part "+self.part_name+" was not defined")
+                rpt.part_warning(env,self.name+" mapper: Part "+self.part_name+" was not defined")
                 return ''
             ret=pinfo.get(self.part_prop,None)
             if ret== None:
-                if pinfo.has_key(self.part_prop)==False:
-                    rpt.part_warning(env,"PART mapper: Property "+self.part_name+'.'+self.part_prop+" was not defined")
+                if pinfo.has_key(self.part_prop)==False and self.ignore==False:
+                    rpt.part_warning(env,self.name+" mapper: Property "+self.part_name+'.'+self.part_prop+" was not defined")
                 return ''
             penv=pinfo['ENV']
             if common.is_list(ret):
@@ -82,7 +84,7 @@ class part_mapper:
                 pinfo[self.part_prop]=ret
                 if def_env["PARTS_COMPLEX_SUB"]==0:
                     #print "before PARTS()",env[self.part_prop],ret
-                    idx=env[self.part_prop].index("${PARTS('"+self.part_name+"','"+self.part_prop+"')}")
+                    idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+self.part_prop+"')}")
                     if common.is_list(env[self.part_prop]):
                         env[self.part_prop][idx:idx+1]=ret
                     else:
@@ -114,6 +116,7 @@ class part_id_mapper:
     It has to do a small hack to replace a the property in the actual Env else a SCons
     issue with subst and lists causes the subst to fail.
     '''
+    name='PARTID'
     def __init__(self,id,ver_range,part_prop,ignore=False):
         self.part_id = id
         self.ver_range = version.version_range(ver_range)
@@ -129,21 +132,21 @@ class part_id_mapper:
             #first we need to get the id to alias map
             id_to_alias = def_env.get('PART_IDS',{})
             if self.part_id not in id_to_alias:
-                if common.g_args["PARTS_MODE"]=='build':
-                    rpt.part_warning(env,"PARTID Did not find Part name ["+self.part_id+"] in name->alias dictionary",True)
+                if env["PARTS_MODE"]=='build':
+                    rpt.part_warning(env,self.name+" Did not find Part name ["+self.part_id+"] in name->alias dictionary",True)
                 return ''
             
             #Find matching verion pinfo
             pinfo=find_matching_version(def_env,env,self.part_id,self.ver_range,id_to_alias)
                 
             if pinfo == None:
-                rpt.part_error(env,"Part name ["+self.part_id+"] did not define version that matches version range of ["+str(self.ver_range)+"] for "+env['ARCHITECTURE']+" ARCHITECTURE")
+                rpt.part_error(env,self.name+": Part name ["+self.part_id+"] did not define version that matches version range of ["+str(self.ver_range)+"] for "+env['TARGET_PLATFORM'].ARCH+" ARCHITECTURE")
                 exit(0)
             
             ret=pinfo.get(self.part_prop,None)
             if ret== None:
                 if self.ignore==False:
-                    rpt.part_error(env,"Parts: Error -- Property"+pinfo["ALIAS"]+'.'+self.part_prop+"was not defined")
+                    rpt.part_error(env,self.name+": Error -- Property"+pinfo["ALIAS"]+'.'+self.part_prop+"was not defined")
                     env.Exit(0)
                 else:
                     ret= ""
@@ -157,7 +160,7 @@ class part_id_mapper:
                 
                 pinfo[self.part_prop]=ret
                 if def_env["PARTS_COMPLEX_SUB"]==0:
-                    key="${PARTID('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop
+                    key="${"+self.name+"('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop
                     if self.ignore==False:
                         key=key+"')}"
                     else:
@@ -187,7 +190,6 @@ class part_id_mapper:
             env.Exit(0)
         #print "PARTID resolving -- Done 4",ret
         return ret
-
 class part_subst_mapper:
     ''' This class maps the part vars in the Default enviroment to the actual 
     value stored the in default Env PART_INFO map. It then returns the value
@@ -196,6 +198,7 @@ class part_subst_mapper:
     used for delay substiution of more simple value such as $OUT_BIN which may contain
     values not fully filled in.
     '''
+    name='PARTSUB'
     def __init__(self,part_name,part_prop):
         self.part_name = part_name
         self.part_prop = part_prop
@@ -212,13 +215,14 @@ class part_subst_mapper:
             ret = penv.subst(self.part_prop)
             #print 'PARTS: Verbose -- PARTSUB MAPPED',"#${PARTSUB('"+self.part_name+"','"+self.part_prop+"')} to",ret
         except Exception,ec:
-            rpt.part_error(env,"Some exception in PARTID mapping happened")
+            rpt.part_error(env,"Some exception in "+self.name+" mapping happened")
             rpt.part_message(str(ec))
             env.Exit(0)
         return ret
     
 class part_name_mapper:
     ''' Allows for an easy fallback mapping between the part alias and name'''
+    name='PARTNAME'
     def __init__(self,part_alias):
         self.part_alias = part_alias
 
@@ -238,7 +242,7 @@ class part_name_mapper:
             import traceback,StringIO
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            rpt.part_error(env,"Exception in PARTNAME mapping happened\n"+ec_str.getvalue())
+            rpt.part_error(env,"Exception in "+self.name+" mapping happened\n"+ec_str.getvalue())
             env.Exit(0)
         return ret
 
@@ -247,6 +251,7 @@ class part_shortname_mapper:
     Allows for an easy fallback mapping between the part short alias 
     and short name
     '''
+    name='PARTSHORTNAME'
     def __init__(self,part_name):
         self.part_name = part_name
 
@@ -266,12 +271,13 @@ class part_shortname_mapper:
             import traceback,StringIO
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            rpt.part_error(env,"Exception in PARTSHORTNAME mapping happened\n"+ec_str.getvalue())
+            rpt.part_error(env,"Exception in "+self.name+" mapping happened\n"+ec_str.getvalue())
             env.Exit(0)
         return ret
 
 class abspath_mapper:
     ''' Allows for an easy expanding value as directory or files'''
+    name='ABSPATH'
     def __init__(self,value):
         self.value = value
 
@@ -282,6 +288,7 @@ class abspath_mapper:
 
 class relpath_mapper:
     ''' allows one to define a relative path'''
+    name='RELPATH'
     def __init__(self,_to,_from):
         self._to = _to
         self._from = _from
@@ -294,3 +301,12 @@ class relpath_mapper:
             f = env.Entry(env.subst(self._from)).abspath
         f = env.Entry(env.subst("${"+self._from+"}")).abspath
         return common.relpath(t,f)+os.sep
+    
+
+common.add_mapper(part_mapper)
+common.add_mapper(part_id_mapper)
+common.add_mapper(part_subst_mapper)
+common.add_mapper(part_name_mapper)
+common.add_mapper(part_shortname_mapper)
+common.add_mapper(abspath_mapper)
+common.add_mapper(relpath_mapper)

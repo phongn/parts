@@ -39,41 +39,39 @@ class Pattern:
 
     def files(self,directory=None):
         ''' basicly do a recursive glob '''
-        if self.map==None:
+        if self.map is None:
             self.generate()
-        if directory==None:
+        if directory is None:
             fl=[]
-            for k in self.map.keys():
-                temp=self.map[k]
-                #idx=len(Dir('.').srcnode().abspath)+1
-                root_path=SCons.Script.Dir('.').srcnode().abspath
-                for f in temp:
-                    #print relpath(os.path.join(k,f),root_path)
-                    #s=os.path.join(k,f)[idx:]
+            root_path=SCons.Script.Dir('.').srcnode().abspath
+            for k,v in self.map.iteritems():
+                for f in v:
                     s=common.relpath(os.path.join(k,f),root_path)
                     fl.append(s)
+            
             return fl
+        
         return self.map[directory]
 
     def target_source(self,root_target):
+        
         src_list=[]
         trg_list=[]
-        if self.map==None:
+        if self.map is None:
             self.generate()
-        for k in self.map.keys():
-            temp=self.map[k]
-            final_path=os.path.join(root_target,k)
-            #idx=len(Dir('.').srcnode().abspath)+1
-            root_path=SCons.Script.Dir('.').srcnode().abspath
-            for f in temp:
+        for k,v in self.map.iteritems():
+            final_path=os.path.join(root_target,k)            
+            for f in v:
                 trg_list.append(os.path.join(final_path,os.path.split(f)[1]))
                 src_list.append(f)
+        
         return (trg_list,src_list)
         
     ### code that originally updated the install tree,
     ### but refactored to be more python like. 
     ### made a matches function that is used in the logic below
     def generate(self,exclude_path=''):
+        
         m = {}
        # create base path
         base_path=self.src_dir.srcnode().abspath
@@ -108,6 +106,7 @@ class Pattern:
                         m[key]=[currpath]
                 #else we ignore the item
         self.map=m
+        
 
 
 

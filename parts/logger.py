@@ -40,10 +40,10 @@ class text_logger:
         self.m_file.close()
         
 
-common.add_config_var('LOGGER','NIL_LOGGER')
-common.add_config_var('NIL_LOGGER',nil_logger)
-common.add_config_var('TEXT_LOGGER',text_logger)        
-common.add_config_var('LOG_ROOT_DIR','#logs')
-common.add_config_var('LOG_DIR','${LOG_ROOT_DIR}')
-common.add_config_var('LOG_FILE_NAME','all.log')        
+common.AddVariable('LOGGER','NIL_LOGGER','')
+common.AddVariable('NIL_LOGGER',nil_logger,'')
+common.AddVariable('TEXT_LOGGER',text_logger,'')        
+common.AddVariable('LOG_ROOT_DIR','#logs','')
+common.AddVariable('LOG_DIR','${LOG_ROOT_DIR}','')
+common.AddVariable('LOG_FILE_NAME','all.log','')        
         

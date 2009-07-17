@@ -53,35 +53,40 @@ def full_parts_depends_list(env):
     '''
     alias=env['ALIAS']
     def_env=SCons.Script.DefaultEnvironment()
-    dlst=def_env['PART_INFO'][alias]['DEPENDSON']
-    flst=[]
-    rpt=def_env['PARTS_REPORTER']
-    for d in dlst:
-        val=env.subst(d.alias_mapping_string())
-        if val == "":
-            #rpt.part_warning(env,"Was not able to map "+d.alias_mapping_string(),True)
-            rpt.part_warning(env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
-            continue
-        flst.append(val)
-        #print alias,d.alias_mapping_string()
-        tmp_env=def_env['PART_INFO'][val]['ENV']
-        tmp=full_parts_depends_list(tmp_env)
-        flst.extend(tmp)
+    cache_tmp=def_env['PART_INFO'][alias].get('FULL_DEPENDS',None)
+    if cache_tmp is None:
+        dlst=def_env['PART_INFO'][alias]['DEPENDSON']
+        flst=[]
+        rpt=def_env['PARTS_REPORTER']
+        for d in dlst:
+            val=env.subst(d.alias_mapping_string())
+            if val == "":
+                #rpt.part_warning(env,"Was not able to map "+d.alias_mapping_string(),True)
+                rpt.part_warning(env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
+                continue
+            flst.append(val)
+            #print alias,d.alias_mapping_string()
+            tmp_env=def_env['PART_INFO'][val]['ENV']
+            tmp=full_parts_depends_list(tmp_env)
+            flst.extend(tmp)
+            def_env['PART_INFO'][alias]['FULL_DEPENDS']=flst
+    else:
+        flst=cache_tmp
     return flst
 
 class map_rpath_link_part:
-    ''' this class is used to map the rpath-link option to the LICKFLAGS on linux
+    ''' this class is used to map the rpath-link option to the LINKFLAGS on linux
     like systems by pulling information of the LIBPATH.
     '''
     def __init__(self,env,add_self=False):
         self.env=env
         self.add_self=add_self
     def __call__(self):
-        if common.g_args['AUTO_RPATH']==True:
+        if self.env['AUTO_RPATH']==True:
             import mappers
             def_env=SCons.Script.DefaultEnvironment()
             #alias=self.env['ALIAS']
-            rplst=self.env.get('LINKFLAGS',[])
+            rplst=[]#self.env.get('LINKFLAGS',[])
             #print 'rpath-link mapping of',alias
             dlst=full_parts_depends_list(self.env)
             if self.add_self==True:
@@ -89,27 +94,27 @@ class map_rpath_link_part:
             #print dlst
             for d in dlst:
                 tenv=def_env['PART_INFO'][d]['ENV']
-                #plist=mappers.sub_lst(self.env,["${PARTS('"+d+"','LIBPATH')}"],def_env)
-                plist=mappers.sub_lst(self.env,tenv['LIBPATH'],def_env)
+                plist=mappers.sub_lst(self.env,tenv.get('LIBPATH',[]),def_env)
+                #print alias ,plist
                 for p in plist:
                     rp='-Wl,-rpath-link='+self.env.Dir(p).path
-                    if rp not in rplst:
+                    if rp not in rplst: # bug in old version of AppendUnique.. clean up later
                         rplst.append(rp)
                         #print ' \t',rp
-            rplst=common.make_unique(rplst)
-            self.env.Replace(LINKFLAGS=rplst)
-            #print 'LINKFLAGS LIST',self.env['LINKFLAGS']
+
+            self.env.AppendUnique(LINKFLAGS=rplst,delete_existing=True)
+            #print 'LINKFLAGS LIST for',self.env['ALIAS'],self.env['LINKFLAGS']
 
 
 class map_rpath_part:
     '''This class adds to the RPATH value based on location of where there .SO
-    are stored.. classically in a seperate OUT_LIB directory. This allow for correct
+    are stored.. classically in a seperate INSTALL_LIB directory. This allow for correct
     running of the program after a build without special setup'''
     def __init__(self,env,add_self=False):
         self.env=env
         self.add_self=add_self
     def __call__(self):
-        if common.g_args['AUTO_RPATH']==True:
+        if self.env['AUTO_RPATH']==True:
             import mappers
             rlst=self.env.get('RPATH',[])
             def_env=SCons.Script.DefaultEnvironment()
@@ -125,9 +130,9 @@ class map_rpath_part:
                 val=self.env.subst(i.alias_mapping_string())
                 if val == "":
                     continue
-                plist=mappers.sub_lst(self.env,["${PARTS('"+val+"','LIBPATH')}"],def_env)
+                plist=mappers.sub_lst(self.env,["${PARTS('"+val+"','LIBPATH',True)}"],def_env)
                 for p in plist:
-                    r=self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir(p).path,self.env.Dir('$OUT_BIN').path)+'\'')
+                    r=self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir('$INSTALL_LIB').path,self.env.Dir('$INSTALL_BIN').path)+'\'')
                     #r=relpath(self.env.Dir(p).path,self.env.Dir('$OUT_BIN').path)
                     if r not in rlst:
                         rlst.append(r)
@@ -137,4 +142,5 @@ class map_rpath_part:
             #print 'RPATH LIST',self.env['RPATH']
           
 # add configuartion varaible
-common.add_config_var('AUTO_RPATH',True)
+common.AddBoolVariable('AUTO_RPATH',True,'Controls if RPath values are automatically added to path')
+

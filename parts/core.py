@@ -14,104 +14,12 @@ import common
 import version
 import mappers
 import functors
+import tool_mapping
+import Variables
+import env_overrides
 
-def parts_version_text():
-    import parts_version
-    return 'Parts extension for SCons, Version '+parts_version._PARTS_VERSION
-
-def parts_version_text_env(env):
-    return parts_version_text()
-
-def is_parts_version_beta():
-    import parts_version
-    if parts_version._PARTS_VERSION[-4:].lower()=='beta':
-        return True
-    return False
-
-def is_parts_version_beta_env(env):
-    return is_parts_version_beta()
-
-def PartsExtensionVersion():
-    import parts_version
-    if is_parts_version_beta():
-        return version.version(parts_version._PARTS_VERSION[:-5])
-    return version.version(parts_version._PARTS_VERSION)
-
-def PartsExtensionVersion_env(env):
-    return PartsExtensionVersion()
-
-def generate_help_text():
-    ''' The function defines the help text'''
+import platform_info
     
-    help='\n'+parts_version_text()+'''
-Usage 'scons [scons options] [Parts options] [Targets]
-Example: scons config=release foo
-
-Use -H or --help-options for a list of scons options
-
-Parts options:
-
-BASIC SETTINGS:
-    mode=modes,modeN       - Special build values to be passed to every Part.
-                             (Default is 'default'.)
-    tools=val[,valN]       - The preferred tool set to use when building.
-    config=val[,valN]      - The configurations to build (Default is 'debug';
-                             'release' is alternative).
-    list_tool=all|tool_name- Dump defined configurations for the given tool or
-                             dump information on every tool if 'all' is given.
-    config_file=file_name  - Name of the config file to load with user settings.
-                             (Default is 'parts.cfg' if it exits. All values in
-                             the file are overridden by the command line.)
-    duplicate_build=True|False
-                           - Copy files to build_dir for safer parallel build
-                             while developing. (Default is False - saves disks
-                             space, is faster, and is less error prone.)
-    use_env=True|False     - Use Shell enviroment instead of auto setup
-                             (Default is False; FOR TEMPORARY USE ONLY!)
-    verbose=x[,xn]         - Dump extra information about the current state;
-                             values are 'all|...'. NOT YET IMPLEMENTED!
-ADVANCED SETTINGS:
-    BUILD_DIR_ROOT=dir     - Global root build directory to use.
-                             (Default is './build'.)
-    BUILD_DIR=build dir    - Global build directory to use.
-                             (Default is '$BUILD_DIR_ROOT/${CONFIG}_${PLATFORM}
-                             _${ARCHITECTURE}/$ALIAS'.)
-    PREBUILT_SERVER=UNC    - Pre-built SDK repository location. (NO Default!)
-    SVN_SERVER=URL         - SVN repository location. (NO Default!)
-                             Use LocalSetup() piece to set these automatically.
-    SVN_REVISION=XXXXX     - See "svn -r" (Default is None.)
-    CHECK_OUT_ROOT=dir     - Root directory for file extraction;
-                             (Default is './repository'.)
-    CHECK_OUT_DIR=dir      - Part directory for file extraction;
-                             (Default is '$CHECK_OUT_ROOT/$ALIAS'.)
-    UPDATE_ALL=True|False  - Update files from all repositories at each build.
-                             (Default is False)
-    UPDATE_FROM_SVN=True|False
-                           - Update files, but only from SVN (not prebuilts).
-                             (Default is False)
-    default_config=config  - Value of the default configuration; used when no
-                             build configuration is given. (Default is 'debug'.)
-    UTEST_ALL=value        - Value to use as the alias name used to build all
-                             the known unit tests defined with env.Utest()
-                             (Default is 'utest::')
-    RUN_UTEST_ALL=value    - Value to use as the alias name used to run all the
-                             known unit tests defined with env.Utest()
-                             (Default is 'run_utest::')
-    UNIT_TEST_ROOT=dir     - Global UnitTest directory to use.
-                             (Default is './unit_tests'.)
-    UNIT_TEST_DIR=dir      - Global build directory to use. (Default is
-                             '$UNIT_TEST_ROOT/${CONFIG}_${PLATFORM}_
-                             ${ARCHITECTURE}/${PART_PARENT_NAME}_${PART_VERSION}
-                             /$UNIT_TEST_TARGET_NAME'.)
-    USE_SRC_DIR=True|False - Value used for CPPPATH of dependent parts to
-                             use the Src directory not the SDK directory.
-                             Useful for debugging. (Default is 'False')
-    '''
-    
-    SCons.Script.Help(help)
-
-    
-
 def process_part(alias):
     '''This function will figure out based on the processing of the database info
     if the part file should be used as is, modifed to use SDK part file (assumes 
@@ -143,209 +51,259 @@ def normalize_map(m):
     if common.is_string(value) and not common.is_list(value):
         m[key]=string.split(value,',')
     
-    key='tools'
+    key='toolchain'
     value=m.get(key,None)    
     if common.is_string(value) and not common.is_list(value):
         m[key]=common.process_tool_arg(string.split(value,','))
-
-def process_conf_map(prepend,append,replace):
-    '''make the config map we will use to create the Env
-    it replaces then append and prepends data'''
     
-    cfg_map={}
-    cfg_map.update(common.g_args)
-    cfg_map.update(replace)
-    
-    for i in append.keys():
-        if cfg_map.has_key(i)==False:
-            cfg_map[i]=append[i]
-        else:
-            cfg_map[i]+=append[i]
-            
-    for i in prepend.keys():
-        if cfg_map.has_key(i)==False:
-            cfg_map[i]=prepend[i]
-        else:
-            cfg_map[i]=append[i]+cfg_map[i]
-    
-    return cfg_map
-        
-    
+    return m
 
 
 ### primary config stuff
 
+# class to handle old stuff that needs to change.. move to better location later
+class deprecated:
+    def __init__(self,key,new_key,value):
+        self.key=key
+        self.new_key=new_key
+        self.value=value
+
+    def __str__(self):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value
+
+    def __eq__(self,rhs):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value == rhs
+
+    def __ne__(self,rhs):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value != rhs    
+    
+    def __hash__(self):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return hash(str(self.value))
+    
+    def __len__(self):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return len(str(self.value))
+    def __getitem__(self,key):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value[key]
+    
+    def __add__(self, other):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return self.value+other
+    def __radd__(self, other):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return other+self.value
+    def __contains__ (self,item):
+        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
+        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        return item in self.value
+        
+        
 
 def generate_config(prepend,append,replace):
-    # get the tool list
-    prepend_env=[]
-    append_env=[]
-    post_config=[] # these are settings that need to be tweaked after the 
     
     ## see if this was cached... seems to take long time to create an env
-    ## so this is a big time saver.
-    ## a big note should be given that this is not the best way to cache most
-    ## likely but it is safe which is more important at the time of implementing this
-    #global common.g_env_cache
-    normalize_map(prepend)
-    normalize_map(append)
-    normalize_map(replace)
-    cache_key=str(prepend)+str(append)+str(replace)
-    cenv=common.g_env_cache.get(cache_key,None)
-    
-    if isinstance(cenv,SCons.Script.Environment):
-        #print "using cached version"
-        return cenv.Clone()
-    else:
-        #print "creating new env"
-        pass
-    
-    #combine all maps with config settings
-    cfg_map=process_conf_map(prepend,append,replace)  
-    #This is the tools list we need look up
-    tool_list=cfg_map['tools'] 
-    # might need to map config in a different way later
-    cfg_map['CONFIG']=cfg_map['config']
-    
-    # overwrite the tools key so SCon does not get upset
-    # note the default is defined... needs to be defined first
-    cfg_map['tools']=['default','packaging']    
-    # add our mapper objects
-    cfg_map['PARTS']=mappers.part_mapper
-    cfg_map['PARTID']=mappers.part_id_mapper
-    cfg_map['PARTSUB']=mappers.part_subst_mapper
-    cfg_map['PARTNAME']=mappers.part_name_mapper
-    cfg_map['PARTSHORTNAME']=mappers.part_shortname_mapper
-    cfg_map['ABSPATH']=mappers.abspath_mapper
-    cfg_map['RELPATH']=mappers.relpath_mapper
-    
-    
-    for t in tool_list:
-        #print t[0],t[1]
-        cfg=config.get_config(cfg_map['CONFIG'],t[0],t[1])
-        
-        for ci in cfg.keys():
-            if ci=='prepend_env':
-                prepend_env.extend(cfg[ci])
-            elif ci=='append_env':
-                append_env.extend(cfg[ci])
-            elif ci=='post_config':
-                post_config.extend(cfg[ci])
-            elif type(cfg[ci]) == type([]) and cfg_map.has_key(ci):
-                cfg_map[ci]=common.make_unique(cfg_map[ci]+cfg[ci])
-            elif type(cfg[ci]) == type({}) and cfg_map.has_key(ci):
-                cfg_map[ci].update(cfg[ci]) # might not be the best choice?
-            else:
-                cfg_map[ci]=cfg[ci] # might not be the best choice?
+    ## so this is a big time saver as most of the time we only need a copy of the 
+    ## same setup
+    ## NOTE!! should be given that this is not the best way to cache most likely
+    ## but it is safe which is more important at the time of implementing this
+
+    cache_key=str(normalize_map(prepend))+\
+                str(normalize_map(append))+\
+                str(normalize_map(replace))+\
+                str(normalize_map(common.g_defaultoverides))
                 
-    arch = cfg_map.get('ARCHITECTURE')
-    if arch == None:
-        arch = common.g_args['ARCHITECTURE']
-    cfg_map['ARCHITECTURE'] = arch
+    env=common.g_env_cache.get(cache_key,None)
+        
+    #if not isinstance(env,SCons.Script.Environment):
+    if env is None:
+        def_env=SCons.Script.DefaultEnvironment()
+        rpt=def_env.get('PARTS_REPORTER',None)
+        ## basic setup
+        cfg_map={}
+        # get command line args
+        overrides=SCons.Script.ARGUMENTS.copy()
+        ##################################
+        ## test for bad value.. remap is needed
+        tmp=overrides.get('tools',[])
+        if tmp!=[]:
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if overrides.has_key('toolchain')==False:
+                overrides['toolchain']=tmp
+            del overrides['tools']
 
-    if arch != None:
-        arch_tools = []
-        for t in cfg_map['tools']:
-            # Check if tool supports abi parameter and if it does
-            # initialize the parameter.
-            if type(t) == type(()) and type(t[1]) == type({}):
-                if t[1].has_key('abi'):
-                    t[1]['abi'] = arch
-            arch_tools += [t]
-        cfg_map['tools'] = arch_tools
-    
-    # post config stuff that needs to be based on everything else being done.
-    # useful for setting up compatiblity flags on tools that might have been
-    # set up before the dependent tool was.  For example, the Intel compiler
-    # has flags to set up binary compatiblity with different VC and GCC versions.
-    for i in post_config:
-        i(cfg_map)
-    env=SCons.Script.Environment(toolpath=[os.path.join(os.path.split(__file__)[0],'tools')],**cfg_map)
-    
-    # should not be needed most of the time, but it is useful
-    # for old setups that need some extra care to build correctly.
-    for i in prepend_env:
-        env.PrependENVPath(i[0],i[1])
-    for i in append_env:
-        env.AppendENVPath(i[0],i[1])
-    
-    # this is a bit of a hack but it helps a lot .. here we append the system
-    # path env value.. would be better if we did not do this but it helps with 
-    # missing or other common tool issues at the current moment.. would like a
-    # better solution when one has to use "other" non-python based solutions
-    # like a way for us to extend the standard tools with our own.
-    
-    ## second note:  we want this to be at the end so we don't mess up the
-    ## normal auto configuration stuff done by SCons for us!!!
-    # we have to get the real scons path as for some reason appending does some 
-    # unwanted behavior.. this fixes an issue with to compilers version paths
-    # being on the PATH and the wrong one being first.. probably a feature
-    # of scons for some linux users
-    good_path=env['ENV']['PATH']
-    env.AppendENVPath('PATH', os.environ['PATH'])
-    # append the true path in front
-    env.PrependENVPath('PATH', good_path)
-    
-    env.Append(BUILDERS = common.g_builders)
-    
-    if bool(env['use_env']) == True:
-        env['ENV']=os.environ
-    # current "cache"
-    common.g_env_cache[cache_key]=env
+        # test for bad value.. remap is needed
+        tmp=replace.get('tools',[])
+        if tmp!=[]:
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if replace.has_key('toolchain')==False:
+                replace['toolchain']=tmp
+            del replace['tools']
 
-    ## this is for fixing an issue with the scanners in which one item in a env
-    ## does not have the $vars fully expanded, which causes an issue with in the
-    ## dependency tree. This leads to a false rebuild of few files
-    for k in SCons.Tool.SourceFileScanner.function.keys():
-        if isinstance(SCons.Tool.SourceFileScanner.function[k].path_function,SCons.Scanner.FindPathDirs):
-            SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
-            SCons.Tool.SourceFileScanner.function[k].path_function)
+        tmp=prepend.get('tools',[])
+        if tmp!=[]:
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if prepend.has_key('toolchain')==False:
+                prepend['toolchain']=tmp
+            del prepend['tools']
+
+        tmp=append.get('tools',[])
+        if tmp!=[]:
+            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            if append.has_key('toolchain')==False:
+                append['toolchain']=tmp
+            del append['tools']
+
+        ## ARCH stuff
+
+        tmp=overrides.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if overrides.has_key('TARGET_ARCH')==False or overrides.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        # test for bad value.. remap is needed
+        tmp=replace.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if replace.has_key('TARGET_ARCH')==False or replace.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        tmp=append.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if append.has_key('TARGET_ARCH')==False or append.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+
+        tmp=prepend.get('ARCHITECTURE',None)
+        if tmp is not None:
+            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            if prepend.has_key('TARGET_ARCH')==False or prepend.has_key('TARGET_PLATFORM')==False:
+                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)        
+            
+        ######################################            
+        overrides.update(replace)
+        
+        # minor messing around with tools still need 
+        # (replace should get the toolchain of this)
+        pre_tools=prepend.get('toolchain',[])
+        if pre_tools!=[]:
+            del prepend['toolchain']
+        post_tools=append.get('toolchain',[])
+        if post_tools!=[]:
+            del append['toolchain']
+        # add stuff in SCons that are tools, that are needed
+        # this is needed for Tag for Install()
+        post_tools.extend(['packaging','install','zip'])
+        ## setup the SCons Variable
+        cfg_files=[SCons.Script.GetOption('cfg_file')]
+        vars=Variables.Variables(cfg_files,args=overrides,user_defaults=common.g_defaultoverides)
+        vars.AddVariables(*common.def_vars)
+
+        # adds values that may not be set as an Varibiable        
+        cfg_map.update(common.g_defaultoverides)
+        # add our mapper objects
+        cfg_map.update(common.g_mappers)
+        # random data
+        #cfg_map['HOST_PLATFORM']=platform_info._host_sys
+        cfg_map["PARTS_MODE"]=common.g_part_mode
+        if SCons.Script.GetOption('keep_going'):
+            cfg_map["CONTINUE_ON_EXCEPTION"]=True
+        else:
+            cfg_map["CONTINUE_ON_EXCEPTION"]=False
+        
+        ## create a new environment
+        # get our toolpath 
+        tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
+        # make the SCons environment #############################
+        env=SCons.Script.Environment(
+                                variables = vars,
+                                tools=[],
+                                toolpath=tool_path,
+                                BUILDERS = common.g_builders,
+                                **cfg_map
+                                )
+        #print "Unknowns *********************"
+        #print vars.UnknownVariables()
+        #print "******************************"
+    
+        # since we don't have overides in the __init__call??
+        env['HOST_PLATFORM']=platform_info._host_sys
+        # update the missing arguments to enviroment stuff
+        # this is stuff that does not have a option defined for
+        #update_extra_options(env)
+        env.Replace(**vars.UnknownVariables())
+          
+        ## apply tool chain
+        env.ToolChain(pre_tools+env['toolchain']+post_tools)#tl_chain)
+        
+        ## apply the configuration for the tool    
+        #config.Configuration(env)
+        config.apply_config(env)            
+        
+        #append any data or prepend any data as needed
+        #will probally need better error handling later
+        for k,v in append.iteritems():
+            has_hey=env.has_key(k)
+            if common.is_list(v) and has_hey:
+                env.AppendUnique(**{k:v})
+            elif common.is_list(v) and not has_hey:
+                env[k]=v
+            else:
+                print "error",k,"is not a list"
+        
+        for k,v in prepend.iteritems():
+            has_hey=env.has_key(k)
+            if common.is_list(v) and has_hey:
+                env.PrependUnique(**{k:v})
+            elif common.is_list(v) and not has_hey:
+                env[k]=v
+            else:
+                print "error",k,"is not a list"
+
+        if env['HOST_PLATFORM']['OS'] =='win32':
+            # add certain paths for windows
+            env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root(), delete_existing=1)
+            env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root()+'\\system32', delete_existing=1)            
+            
+        
+        # this allow the user to set the enviroment to the user path
+        # hopefully this is not needed 99.9% of the time.
+        # if used it will use the user env, and ignore the setup the SCons did
+        # minus the setup of the builder and flags
+        if bool(env['use_env']) == True:
+            env['ENV']=os.environ
+
+        ## this is for fixing an issue with the scanners in which one item in a env
+        ## does not have the $vars fully expanded, which causes an issue with in the
+        ## dependency tree. This leads to a false rebuild of few files
+        env_overrides.Scanner_override()
+
+        # stuff to zap
+        env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
+        env["config"]=deprecated("config","CONFIG",env['CONFIG'])
+        
+        # Add this to cache
+        common.g_env_cache[cache_key]=env    
     
     #return the cached env
     return env.Clone()
 
 
-class PartPathDirsWrapper:
-    """This is a wrapper class to work around a "bug" with the scanner in that
-    it tries to delay expand variables which might modify the Env. This
-    allows use to expand the area in the env before it tries to create the tuple
-    list of paths that it will use to scan with. The second improtance for this is 
-    that an env may have been cloned, this catches cloned env cases as parts doesn't
-    have a way to detect that the env was cloned"""
-    def __init__(self, obj):
-        self.obj = obj
-        #print "$$$",obj.variable
-    def __call__(self, env, dir, target=None, source=None, argument=None):
-        def_env=SCons.Script.DefaultEnvironment()
-        prop_lst=env.get(self.obj.variable,[])
-        if prop_lst!=[]:
-            ret=mappers.sub_lst(env,prop_lst,def_env)
-            env[self.obj.variable]=ret
-        #print 'Scanner', target[0]        
-        return self.obj(env,dir,target,source,argument)
 
 
-##def my_decider(dependency, target, prev_ni):
-##    '''this function is used to decide if a node shoudl rebuild. The way we use it
-##    is to add it to a value node, which has no value on disk to test for. We then
-##    add this to a node, as a dependence, that is to be build so this value node
-##    will call this function to decide if it needs to be built. Do this allow us to
-##    set call a list of functors that will pre setup more dependencies to Scons, 
-##    before Scons start to process them. This allow use to make a consistant
-##    Enviroment to all node ( prevents false rebuilds) and allow use to set high 
-##    level targets, map setting or what ever we need to do.'''
-##    
-##    print "MY DECIDER",dependency, target#, prev_ni.__dict__
-##    def_env=SCons.Script.DefaultEnvironment()
-##    if def_env['PREPROCESS_LOGIC_QUEUE']!=[]:
-##        print "PARTS: Mapping version information"
-##        for i in def_env['PREPROCESS_LOGIC_QUEUE']:
-##            i()
-##        def_env['PREPROCESS_LOGIC_QUEUE']=[]
-##        print "PARTS: Done -- Mapping version information"
-##    if common.g_args.get('REBUILD_ALL',False):
-##        return True  
-##    return False
 
 def get_file_main_script(def_env):
     if def_env.GetOption('file')!=[]:
@@ -417,7 +375,7 @@ def store_depends_data():
     import cPickle
     tmp=make_depends_map()
     # if we are not using SDK and we are reading everything, just re-write the whole file 
-    if (common.g_args['use_sdk']==False and common.g_buildable_part == set()):
+    if (common.g_part_mode==False and common.g_buildable_part == set()):
         common.g_depends_data=tmp
     else:
         #else we only update what we know is safe.
@@ -473,13 +431,4 @@ SCons.Script.Main._build_targets = _build_targets
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
-# adding logic to Scons Enviroment object
-SConsEnvironment.PartVersionString=parts_version_text_env
-SConsEnvironment.IsPartsExtensionVersionBeta=is_parts_version_beta_env
-SConsEnvironment.PartsExtensionVersion=PartsExtensionVersion_env
-
-common.add_config_var('REBUILD_ALL',False)
-
-common.add_parts_object('PartVersionString',parts_version_text)
-common.add_parts_object('IsPartsExtensionVersionBeta',is_parts_version_beta)
-common.add_parts_object('PartsExtensionVersion',PartsExtensionVersion)
+common.AddBoolVariable('REBUILD_ALL',False,'')
