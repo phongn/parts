@@ -8,7 +8,7 @@ env.DependsOn([Component('proxy.driver','1.*',requires=REQ.DEFAULT_INTERNAL )])
 #files
 cpp_files=['proxy.cpp']
 
-if env['PLATFORM']=='win32':
+if env['TARGET_OS']=='win32':
     env.Append(CPPDEFINES= ['WINDOW_OS'])
 env.Append(CPPDEFINES= ['PROXY_EXPORTS'])
 

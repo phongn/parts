@@ -5,7 +5,7 @@ env.PartName('common')
 #files
 cpp_files=['common.cpp']
 
-if env['PLATFORM']=='win32':
+if env['TARGET_OS']=='win32':
     env.Append(CPPDEFINES= ['WINDOW_OS'])
 env.Append(CPPDEFINES= ['COMMON_EXPORTS'])
 env.Append(CPPPATH= [AbsDir('../include')])

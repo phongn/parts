@@ -6,7 +6,7 @@ env.PartName('print_msg')
 #files
 cpp_files=['print_msg.c']
 
-if env['PLATFORM']=='win32':
+if env['TARGET_PLATFORM']["OS"]=='win32':
     env.Append(CPPDEFINES= ['WINDOW_OS'])
 env.Append(CPPDEFINES= ['PRINT_EXPORTS'])
 

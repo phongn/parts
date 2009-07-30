@@ -10,7 +10,7 @@ env2.UnitTest("test2",["test2.cpp"],src_dir='../utest')
 #files
 cpp_files=['print_msg.cpp']
 
-if env['PLATFORM']=='win32':
+if env['TARGET_OS']=='win32':
     env.Append(CPPDEFINES= ['WINDOW_OS'])
 env.Append(CPPDEFINES= ['PRINT_EXPORTS'])
 

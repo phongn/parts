@@ -5,7 +5,7 @@ env.PartName('driver')
 #files
 cpp_files=['driver.cpp']
 
-if env['PLATFORM']=='win32':
+if env['TARGET_OS']=='win32':
     env.Append(CPPDEFINES= ['WINDOW_OS'])
 env.Append(CPPDEFINES= ['DRIVER_EXPORTS'])
 
