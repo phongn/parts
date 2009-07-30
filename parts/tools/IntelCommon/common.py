@@ -16,12 +16,12 @@ intel_11_1='[0-9][0-9][0-9]'
 
 def MatchVersionNumbers(verStr1, verStr2):
 
-    major1, minor1, rev1, junk = (verStr1+'.-1.-1').split('.',3)
+    major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
     major1=int(major1)
     minor1=int(minor1)
     rev1=int(rev1)
 
-    major2, minor2, rev2, junk = (verStr2+'.-1.-1').split('.',3)
+    major2, minor2, rev2, junk = (verStr2+'.-1.-1.-1').split('.',3)
     major2=int(major2)
     minor2=int(minor2)
     rev2=int(rev2)
@@ -47,6 +47,9 @@ class IntelcInfo(ToolInfo):
     
     def version_set(self):
         return self.version
+    
+    def resolve_version(self,version):
+        return self.install_root.resolve_version(version)
 
 
 Intelc=ToolSetting('INTELC')

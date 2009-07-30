@@ -20,6 +20,7 @@ a seperate items value is saved to say if the cache is a full query or not.
 This allow the ability to retest 
 
 '''
+
 class ToolSetupError(SCons.Errors.InternalError):
     pass
 
@@ -129,7 +130,7 @@ class ToolSetting:
                     if tmp is not None:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
-                            self.found[key].append(ver)
+                            common.append_unique(self.found[key],ver)
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -150,7 +151,7 @@ class ToolSetting:
                     if tmp is not None:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
-                            self.found[key].append(ver)
+                            common.append_unique(self.found[key],ver)
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -171,7 +172,7 @@ class ToolSetting:
                     if tmp is not None:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
-                            self.found[key].append(ver)
+                            common.append_unique(self.found[key],ver)
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -192,7 +193,7 @@ class ToolSetting:
                     if tmp is not None:
                         #go through all items and store needed information
                         for ver,senv in tmp.items():
-                            self.found[key].append(ver)
+                            common.append_unique(self.found[key],ver)
                         # move found item with front
                         if swap:
                             vl.remove(v)
@@ -257,7 +258,7 @@ class ToolSetting:
                                 vl.insert(0,v)
                             #vl.remove(v)
                             # store that it is found
-                            self.found[key].append(version)
+                            common.append_unique(self.found[key],version)
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
@@ -282,7 +283,7 @@ class ToolSetting:
                                 vl.insert(0,v)
                             #vl.remove(v)
                             # store that it is found
-                            self.found[key].append(version)
+                            common.append_unique(self.found[key],version)
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
@@ -306,7 +307,7 @@ class ToolSetting:
                                 vl.insert(0,v)
                             #vl.remove(v)
                             # store that it is found
-                            self.found[key].append(version)
+                            common.append_unique(self.found[key],version)
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
@@ -330,7 +331,7 @@ class ToolSetting:
                                 vl.insert(0,v)
                             #vl.remove(v)
                             # store that it is found
-                            self.found[key].append(version)
+                            common.append_unique(self.found[key],version)
                             # get cache key
                             cache_key2=version+self.get_cache_key(env)
                             # store shell env vals
@@ -482,7 +483,6 @@ class ToolSetting:
         key=self.get_cache_key(env)
         _v=version=env.get(self.version_tag,None)
         cache_key=str(version)+key
-           
         try:
             return self.shell_cache[cache_key]
         except KeyError:
@@ -520,7 +520,6 @@ class ToolSetting:
             if tinfo is None:
                 raise ToolSetupError('ToolSettings failed to load infomation about tool with version: %s and target: %s'%(version,target))
             ##got the tool info now get the data
-            
             #get the shell environment
             shell_env=tinfo.get_shell_env(env,self.name,version,root_path,use_script)
             
@@ -534,14 +533,14 @@ class ToolSetting:
             # teh tool setup would have reset teh version, but not the install root
             if _v is None and env.get(self.rootpath_tag,None) is None:
                 root_path=ret[1]['INSTALL_ROOT']
-                key=root_path+str(use_script)+str(target)+env.subst("$CONFIG")
+                key=str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
                 self.shell_cache[str(_v)+key]=ret
         return ret
             
     def MergeShellEnv(self,env):
-##        import pprint
-##        pp = pprint.PrettyPrinter(indent=4)
-##        pp.pprint(self.__dict__)
+#        import pprint
+#        pp = pprint.PrettyPrinter(indent=4)
+#        pp.pprint(self.__dict__)
         
         version=env.get(self.version_tag,None)
         root_path=env.get(self.rootpath_tag,None)
@@ -556,7 +555,7 @@ class ToolSetting:
         # Add data to env
         for k, v in shell_env.items():
             env.PrependENVPath(k, v, delete_existing=1)
-        
+               
         ## setup any common state
         #setup version info
         env[self.name]=ns._rebind(env,self.name)
@@ -565,6 +564,9 @@ class ToolSetting:
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
         #print "Tool",self.name,"configured to version:",version
+ #       import pprint
+ #       pp = pprint.PrettyPrinter(indent=4)
+ #       pp.pprint(self.__dict__)
         
 
     

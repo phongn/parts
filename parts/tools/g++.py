@@ -33,6 +33,10 @@ def generate(env):
     #Backward compatiblity
     env['CXXVERSION']=env['GXX']['VERSION']   
 
+ # fix this up so we can control its printing to screen better.
+    print "g++ configured for version: %s target: %s"%(env['GXX']['VERSION'],env['TARGET_PLATFORM'])
+
+
 def exists(env):
     return GnuCommon.gxx.Exists(env)
 

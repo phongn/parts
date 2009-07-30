@@ -20,6 +20,9 @@ def generate(env):
 
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']
+
+ # fix this up so we can control its printing to screen better.
+    print "gcc configured for version: %s target: %s"%(env['GCC']['VERSION'],env['TARGET_PLATFORM'])
         
     
 

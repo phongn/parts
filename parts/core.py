@@ -3,6 +3,7 @@
 import fnmatch
 import shutil
 import os
+import sys
 import string
 import stat
 
@@ -225,8 +226,8 @@ def generate_config(prepend,append,replace):
             cfg_map["CONTINUE_ON_EXCEPTION"]=False
         
         ## create a new environment
-        # get our toolpath 
-        tool_path=[os.path.join(os.path.split(__file__)[0],'tools')]
+        ## get our toolpath 
+        tool_path=common.get_site_directories('tools')
         # make the SCons environment #############################
         env=SCons.Script.Environment(
                                 variables = vars,
@@ -244,6 +245,7 @@ def generate_config(prepend,append,replace):
         # update the missing arguments to enviroment stuff
         # this is stuff that does not have a option defined for
         #update_extra_options(env)
+        env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
         env.Replace(**vars.UnknownVariables())
           
         ## apply tool chain

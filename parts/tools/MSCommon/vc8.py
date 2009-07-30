@@ -50,7 +50,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v2.0/include'
+                            '${MSVC.VSINSTALL}/SDK/v2.0/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
@@ -116,7 +116,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK\include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v2.0/include'
+                            '${MSVC.VSINSTALL}/SDK/v2.0/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
@@ -182,7 +182,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v2.0/include'
+                            '${MSVC.VSINSTALL}/SDK/v2.0/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
@@ -247,7 +247,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v2.0/include'
+                            '${MSVC.VSINSTALL}/SDK/v2.0/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
@@ -313,7 +313,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/include'+os.pathsep+
-                            '${VSINSTALL}/SDK/v2.0/include'
+                            '${MSVC.VSINSTALL}/SDK/v2.0/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+

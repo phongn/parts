@@ -45,6 +45,40 @@ vssdk.Register(
                         },
             test_file='ctc.exe'
             ),
+
+
+        ToolInfo(
+            version='8.0.60912',
+            install_scanner=[
+                RegFinder([
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\VSIP\8.0.60912\InstallDir',
+                    r'Software\Microsoft\VisualStudio\VSIP\8.0.60912\InstallDir'
+                ]),
+                PathFinder([
+                    r'C:\Program Files (x86)\Visual Studio 2005 SDK\2006.09',
+                    r'C:\Program Files\Visual Studio 2005 SDK\2006.09'
+                ])
+            ],
+            script=None,
+            subst_vars={
+            'MAPCONFIG':MapLib
+            },
+            shell_vars={
+                        'PATH':
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Tools/Bin'                                                       
+                            ,
+                        'INCLUDE':
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/IDL'+os.pathsep+
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/Inc/office10'
+                            
+                        ,
+                        'LIB':
+                            '${VSSDK.INSTALL_ROOT}/VisualStudioIntegration/Common/lib/${VSSDK.MAPCONFIG()}'
+                            
+                        },
+            test_file='ctc.exe'
+            ),
         ToolInfo(
             version='8.0.61205.56',
             install_scanner=[

@@ -181,11 +181,23 @@ def make_unique(obj):
     tmp=[]
     for i in obj:
         if not i in tmp:
-            if type(i) == type([]):
-                tmp.extend(i)
-            else:
-                tmp.append(i)
-    return tmp    
+            #if type(i) == type([]):
+            #    tmp.extend(i)
+            #else:
+            tmp.append(i)
+    return tmp
+
+def append_unique(obj,val):
+    ''' The purpose of this object is to add to a list in a unique way'''
+    if not val in obj:
+        obj.append(val)
+    return obj
+
+def preppend_unique(obj,val):
+    ''' The purpose of this object is to add to a list in a unique way'''
+    if not val in obj:
+        obj=[val]+obj
+    return obj
 
 def make_unique_str(obj):
     ''' The purpose of this object is to make a list
@@ -551,33 +563,33 @@ def load_module(path,name,type):
     
 
 
-def load_module5(root,name):
-    """Return the imported module for some platform.
-    
-    Taken from SCons platform.. and made more generic so Parts can reuse the logic
-    instead of using the C&P anit-patttern.
-
-    """
-    full_name = root+'.' + name
-    #print full_name,sys.modules.has_key(full_name)
-    if not sys.modules.has_key(full_name):
-        try:
-            file, path, desc = imp.find_module(name,
-                                sys.modules[root].__path__)
-            try:
-                mod = imp.load_module(full_name, file, path, desc)
-            finally:
-                if file:
-                    file.close()
-        except ImportError:
-            try:
-                import zipimport            
-                importer = zipimport.zipimporter( sys.modules[root].__path__[0] )
-                mod = importer.load_module(full_name)                    
-            except ImportError:
-                raise SCons.Errors.UserError, "No %s named '%s'" % (root,name)
-        #setattr(???, name, mod) # was in orginal SCons code.. however i don't get it
-
-    return sys.modules[full_name]
+##def load_module5(root,name):
+##    """Return the imported module for some platform.
+##    
+##    Taken from SCons platform.. and made more generic so Parts can reuse the logic
+##    instead of using the C&P anit-patttern.
+##
+##    """
+##    full_name = root+'.' + name
+##    #print full_name,sys.modules.has_key(full_name)
+##    if not sys.modules.has_key(full_name):
+##        try:
+##            file, path, desc = imp.find_module(name,
+##                                sys.modules[root].__path__)
+##            try:
+##                mod = imp.load_module(full_name, file, path, desc)
+##            finally:
+##                if file:
+##                    file.close()
+##        except ImportError:
+##            try:
+##                import zipimport            
+##                importer = zipimport.zipimporter( sys.modules[root].__path__[0] )
+##                mod = importer.load_module(full_name)                    
+##            except ImportError:
+##                raise SCons.Errors.UserError, "No %s named '%s'" % (root,name)
+##        #setattr(???, name, mod) # was in orginal SCons code.. however i don't get it
+##
+##    return sys.modules[full_name]
 
 AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')

@@ -9,12 +9,12 @@ import os,re
 
 def MatchVersionNumbers(verStr1, verStr2):
 
-    major1, minor1, rev1, junk = (verStr1+'.-1.-1').split('.',3)
+    major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
     major1=int(major1)
     minor1=int(minor1)
     rev1=int(rev1)
 
-    major2, minor2, rev2, junk = (verStr2+'.-1.-1').split('.',3)
+    major2, minor2, rev2, junk = (verStr2+'.-1.-1.-1').split('.',3)
     major2=int(major2)
     minor2=int(minor2)
     rev2=int(rev2)
@@ -34,11 +34,12 @@ def MatchVersionNumbers(verStr1, verStr2):
 
 
 class GnuInfo(ToolInfo):
-    def __init__(self,install_scanner,opt_dirs,script,subst_vars,shell_vars,test_file):
+    def __init__(self,install_scanner,opt_dirs,script,subst_vars,shell_vars,test_file,opt_pattern=None):
         ToolInfo.__init__(self,None,install_scanner,script,subst_vars,shell_vars,test_file)
         self.opt_paths=parts.common.make_list(opt_dirs)
         self.version=version_range('*')
         self.found=None
+        self.opt_pattern=opt_pattern
 
     def get_default_ver(self,path):
         fullpath=path
@@ -72,16 +73,16 @@ class GnuInfo(ToolInfo):
         if self.found is None:
             root=ToolInfo.get_root(self,None)
             self.scan_query(root)
-            
-        try:
-            k=self.found.keys()
-            k.sort()
-            k.reverse()
-            for i in k:
-                if MatchVersionNumbers(version+".-1.-1",i):
-                    return self.found[i][0]
-        except KeyError:
-            pass
+        if self.found is not None:
+            try:
+                k=self.found.keys()
+                k.sort()
+                k.reverse()
+                for i in k:
+                    if MatchVersionNumbers(version,i):
+                        return self.found[i][0]
+            except KeyError:
+                pass
     
         # no root was found 
         # this is probally an error
@@ -97,7 +98,7 @@ class GnuInfo(ToolInfo):
             k.sort()
             k.reverse()
             for i in k:
-                if MatchVersionNumbers(version+".-1.-1",i):
+                if MatchVersionNumbers(version,i):
                     tool=self.found[i][1]
                     break
             env[namespace].TOOL=tool
@@ -134,19 +135,10 @@ class GnuInfo(ToolInfo):
             ret={}         
             reg=re.compile(self.test_file.replace('+',r'\+')+r'\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)', re.I)
             if opt_scan==True:
-                #see if we can find a version in the optional directories provided
-                #based on pattern of dir-ver/bin/tool
-                # this can be /opt or any other user provided directory
-                for d in self.opt_paths:
-                    #check that is exists and is directory
-                    if os.path.isdir(d):                        
-                        result=reg.match(d)
-                        if result:
-                            fullpath=os.path.join(d,'bin')
-                            pathwtool=os.path.join(fullpath,self.test_file)
-                            tmp=self.get_default_ver(pathwtool)
-                            if tmp is not None:
-                                ret[tmp]=(fullpath,self.test_file)
+                if self.opt_pattern is not None:
+                    opt_reg=re.compile(self.opt_pattern, re.I)
+                else:
+                    opt_reg=reg
                 #see if we can find a version in the optional directories provided
                 #based on pattern of dir/tool-ver/bin/tool
                 # this can be /opt or any other user provided directory
@@ -155,7 +147,7 @@ class GnuInfo(ToolInfo):
                     if os.path.isdir(d):
                         # look for all directories here that match pattern
                         for item in os.listdir(d):
-                            result=reg.match(item)
+                            result=opt_reg.match(item)
                             if result:
                                 fullpath=os.path.join(d,item,'bin')
                                 pathwtool=os.path.join(fullpath,self.test_file)

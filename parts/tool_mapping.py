@@ -43,7 +43,7 @@ def get_tools(env,tlset):
             else:
                 # see if this is a tool that is loadable
                 try:
-                    SCons.Tool.Tool(t[0],toolpath=env['toolpath'])
+                    SCons.Tool.Tool(t[0],toolpath=common.get_site_directories('tools'))#env['toolpath'])
                     new_list.extend([(t[0],{})])
                 except:
                     print "Unknown ToolChain or Tool:",t[0]

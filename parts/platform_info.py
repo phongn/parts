@@ -97,6 +97,7 @@ def ChipArchitecture():
 
 class SystemPlatform(env_overrides.bindable):
     def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+            
         self.key="_parts_"
         self._env={
                 self.key+"_OS":os,
@@ -133,6 +134,9 @@ class SystemPlatform(env_overrides.bindable):
         return tmp
 
     def __eq__ (self,rhs):
+        if common.is_string(rhs):
+            rhs=target_convert(rhs)
+            
         return (self.OS==rhs.OS or\
                 'any'==rhs.OS or\
                 'any'==self.OS) and\
@@ -173,7 +177,7 @@ _host_sys=SystemPlatform()
 def HostSystem():
     return _host_sys
 
-def target_convert(str_val, raw_val):
+def target_convert(str_val, raw_val=None):
     lst=str_val.split('-')
     if len(lst) > 2:
         raise ValueError("Warning:  %s is not a valid target_system value\nValue must be in form of <Plaform>-<Architecture>" % o)
@@ -216,4 +220,5 @@ common.add_global_value('ChipArchitecture',ChipArchitecture)
 common.add_global_value('OSBit',OSBit)
 common.add_global_value('Host_Platform',HostSystem)# zap this one
 common.add_global_value('SystemPlatform',SystemPlatform)
+
 

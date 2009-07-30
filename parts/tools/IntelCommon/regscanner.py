@@ -74,14 +74,25 @@ class reg_scanner:
             self.cache=ret
         return self.cache
         
+    def resolve_version(self,version):
+        tmp=self.scan()
+        if tmp is None:
+            return None
+        k=tmp.keys()
+        #k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return i
+        return None
+        
     def resolve(self,ver):
         tmp=self.scan()
         if tmp is None:
             return None
         k=tmp.keys()
-        k.reverse()
+        #k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver+".-1.-1",i):
+            if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
         return None  
 
@@ -171,14 +182,25 @@ class reg_scanner2:
             self.cache=ret
             
         return self.cache
+
+    def resolve_version(self,version):
+        tmp=self.scan()
+        if tmp is None:
+            return None
+        k=tmp.keys()
+        #k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return i
+        return None
         
     def resolve(self,ver):
         tmp=self.scan()
         if tmp is None:
             return None
         k=tmp.keys()
-        k.reverse()
+        #k.reverse()
         for i in k:
-            if common.MatchVersionNumbers(ver+".-1.-1",i):
+            if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
         return None  

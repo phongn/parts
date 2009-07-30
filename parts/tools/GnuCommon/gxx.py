@@ -21,7 +21,8 @@ gxx.Register(
         script=None,
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
-        test_file='g++'
+        test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
     ]
 )
@@ -45,7 +46,8 @@ gxx.Register(
         script=None,
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
-        test_file='g++'
+        test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
     ]
 )
@@ -69,7 +71,8 @@ gxx.Register(
         script=None,
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
-        test_file='g++'
+        test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
     ]
 )
@@ -95,7 +98,8 @@ gxx.Register(
         script=None,
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
-        test_file='g++'
+        test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
     ]
 )
@@ -120,7 +124,8 @@ gxx.Register(
         script=None,
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
-        test_file='g++'
+        test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
 
     ]

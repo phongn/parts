@@ -46,6 +46,9 @@ class ToolInfo:
             # add path data
             ret.append(".".join(tmp[:i+1]))
         return ret
+
+    def resolve_version(self,version):
+        return self.version
     
     def make_ver_shell_env_set(self,ver,env):
         ret={}
@@ -83,7 +86,7 @@ class ToolInfo:
             install_root=self.get_root(version)
         #Setup namespaced varibles
         env[namespace]=self.get_namespace(INSTALL_ROOT=install_root,
-                                VERSION=version,
+                                VERSION=self.resolve_version(version),
                                 TOOL=tool)
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)+env.subst("$CONFIG")]

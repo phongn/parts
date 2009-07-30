@@ -47,11 +47,24 @@ class file_scanner11:
                     ret[self.ver]=ret
             self.cache=ret
         return self.cache
-        
+
+    def resolve_version(self,version):
+        tmp=self.scan()
+        if tmp is None:
+            return None
+        k=tmp.keys()
+        #k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                return i
+        return None
+
     def resolve(self,version):
         tmp=self.scan()
+        if tmp is None:
+            return None
         k=tmp.keys()
-        k.reverse()
+        #k.reverse()
         for i in k:
             if common.MatchVersionNumbers(version,i):
                 return tmp[i]
@@ -88,13 +101,27 @@ class file_scanner9_10:
                     ret[self.ver]=ret
             self.cache=ret
         return self.cache
-        
-    def resolve(self,version):
+
+    def resolve_version(self,version):
         tmp=self.scan()
+        if tmp is None:
+            return None
         k=tmp.keys()
-        k.reverse()
+        #k.reverse()
         for i in k:
             if common.MatchVersionNumbers(version,i):
+                return i
+        return None  
+      
+    def resolve(self,version):
+        tmp=self.scan()
+        if tmp is None:
+            return None
+        k=tmp.keys()
+        #k.reverse()
+        for i in k:
+            if common.MatchVersionNumbers(version,i):
+                print version, i
                 return tmp[i]
         return None  
         
