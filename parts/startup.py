@@ -416,11 +416,11 @@ def tool_converter(str_val, raw_val):
     
 common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter)   
 
-common.AddVariable('show_progress',True,'Controls is progress state is shown')
+common.AddBoolVariable('show_progress',True,'Controls is progress state is shown')
 common.AddVariable('PROGRESS_STR',['scons: Evaluating |\r',
                                     'scons: Evaluating /\r',
                                     'scons: Evaluating -\r',
-                                    'scons: Evaluating \\\r'],#'scons: Evaluating $TARGET\r')
+                                    'scons: Evaluating \\\r'],
                                     'What is used to show progress state')
 
 #common.add_config_var('use_sdk_for','')
