@@ -4,6 +4,7 @@ from parts.tools.Common.ToolInfo import ToolInfo
 from parts.version import version_range
 
 intel_9='([9])([0-1])'
+intel_9_posix='([9]).([0-9]).([0-9][0-9][0-9])'
 intel_10='([1][0])([0-9]).([0-9][0-9][0-9])'
 intel_10_posix='([1][0]).([0-9]).([0-9][0-9][0-9])'
 intel_11='([1][1])([0-9]).([0-9][0-9][0-9])'

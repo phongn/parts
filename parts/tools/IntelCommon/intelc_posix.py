@@ -167,5 +167,57 @@ Intelc.Register(
 #            )
 #        ]
 #    ) 
-    
-    
+
+# 9.x 64-bit    
+Intelc.Register(
+     hosts=[SystemPlatform('posix','x86_64')],
+     targets=[SystemPlatform('posix','x86_64')],
+     info=[
+         IntelcInfo(
+             version='9.*',
+             install_scanner=filescanner.file_scanner9_10(
+                 '/opt/intel/cce',
+                 common.intel_9_posix,
+                 'EM64T',
+                 'ICPP_COMPILER9'),
+             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/iccvars.csh'),
+             subst_vars={
+             
+             },
+             shell_vars={
+                         'PATH':'${INTELC.INSTALL_ROOT}/bin/',
+                         'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                         'LIB':'${INTELC.INSTALL_ROOT}/lib/'
+                         },
+             test_file='icc'
+             )
+         ]
+     ) 
+
+#9.x 32-bit
+ Intelc.Register(
+     hosts=[SystemPlatform('posix','any')],
+     targets=[SystemPlatform('posix','x86')],
+     info=[
+         IntelcInfo(
+             version='9.*',
+             install_scanner=filescanner.file_scanner9_10(
+                 '/opt/intel/cc',
+                 common.intel_9_posix,
+                 'ia32',
+                 'ICPP_COMPILER9'),
+             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/iccvars.csh'),
+             subst_vars={
+             
+             },
+             shell_vars={
+                         'PATH':'${INTELC.INSTALL_ROOT}/bin/',
+                         'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                         'LIB':'${INTELC.INSTALL_ROOT}/lib/'
+                         },
+             test_file='icc'
+             )
+         ]
+     ) 
+  
+
