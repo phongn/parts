@@ -32,10 +32,9 @@ def py_blde(target, source, env):
     return (headers,source)
     
 
-def PythonScript(env,file,emit_func='emit',build_func='build',**kw):
+def PythonScript(env,file,emit_func='emit',build_func='build',func_args={},**kw):
     f={'emit':emit_func,'build':build_func}
-    args=kw
-    return env._PyScriptBuilder_(target=[],source=file,__PYTHONSCRIPT_FUNC_=f,__PYTHONSCRIPT_ARGS_=kw)
+    return env._PyScriptBuilder_(target=[],source=file,__PYTHONSCRIPT_FUNC_=f,__PYTHONSCRIPT_ARGS_=func_args,**kw)
     
   
 # This is what we want to be setup in parts
