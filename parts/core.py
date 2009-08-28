@@ -207,7 +207,7 @@ def generate_config(prepend,append,replace):
             del append['toolchain']
         # add stuff in SCons that are tools, that are needed
         # this is needed for Tag for Install()
-        post_tools.extend(['packaging','install','zip'])
+        post_tools.extend(['install','zip'])
         ## setup the SCons Variable
         cfg_files=[SCons.Script.GetOption('cfg_file')]
         vars=Variables.Variables(cfg_files,args=overrides,user_defaults=common.g_defaultoverides)

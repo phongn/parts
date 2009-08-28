@@ -60,24 +60,11 @@ class REQ:
     DEFAULT_INTERNAL=   HEADERS_INTERNAL|LIBS_INTERNAL
 
 
-class component:
+class ComponentRef:
     def __init__(self,name,version_range='*',requires=REQ.ALL_DEFAULT,internal=-1):
         self.name=name
         self.version=version.version_range(version_range)
-        if requires == REQ.ALL_DEFAULT:
-            if internal != -1:
-                def_env=SCons.Script.DefaultEnvironment()
-                rpt=def_env['PARTS_REPORTER']
-                env=def_env['PART_INFO'][def_env['DEFINING_PART']]['ENV']
-                rpt.part_warning(env,"Component argument of 'internal' is deprecated. Please use 'requires' argument instead") 
-                if internal==False:
-                    self.requires=REQ.DEFAULT
-                else:
-                    self.requires=REQ.DEFAULT_INTERNAL
-            else:
-                self.requires=REQ.DEFAULT
-        else:
-            self.requires=requires
+        self.requires=requires
             
     def alias_mapping_string(self):
         return "${PARTID('"+self.name+"','"+str(self.version)+"','ALIAS')}"
@@ -85,8 +72,8 @@ class component:
     def resolve_alias(self,env):
         return env.subst(self.alias_mapping_string())
 
-def Component(env,name,version_range='*',requires=REQ.ALL_DEFAULT,internal=-1):
-    return component(name,version_range,requires,internal)
+def Component(env,name,version_range='*',requires=REQ.ALL_DEFAULT):
+    return ComponentRef(name,version_range,requires)
 
 
 def depends_on(env,depends):
@@ -225,5 +212,5 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.DependsOn=depends_on
 SConsEnvironment.Component=Component
 # allow us to add component to parts as a global objects
-common.add_parts_object('Component',component)   
+common.add_parts_object('Component',ComponentRef)   
 common.add_parts_object('REQ',REQ)   

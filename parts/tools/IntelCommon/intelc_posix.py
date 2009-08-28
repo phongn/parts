@@ -195,7 +195,7 @@ Intelc.Register(
      ) 
 
 #9.x 32-bit
- Intelc.Register(
+Intelc.Register(
      hosts=[SystemPlatform('posix','any')],
      targets=[SystemPlatform('posix','x86')],
      info=[

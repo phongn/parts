@@ -29,7 +29,8 @@ perl.Register(
     info=[
     GnuInfo(
         install_scanner=[
-            PathFinder(['C:\\Perl64\\bin'])
+            PathFinder(['C:\\Perl64\\bin']),
+            PathFinder(['C:\\Perl\\bin'])
             ],
         opt_dirs=[                
             ],

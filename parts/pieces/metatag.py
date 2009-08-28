@@ -1,0 +1,56 @@
+import parts.common as common
+
+def MetaTag(nodes,ns='meta',**metakv):
+    #make sure the nodes are in a list
+    nodes=common.make_list(nodes)
+    #for each node add the meta values
+    for n in nodes:
+        # see if we have the meta attrbuted added already
+        if hasattr(n,ns) == False:
+            #if not add it
+            setattr(n,ns,common.namespace())
+        for k,v in metakv.items():
+            getattr(n,ns)[k]=v
+            
+def MetaTagValue(node,key,ns='meta',default=None):
+    if hasattr(node,ns)==False:
+        return default
+    try:
+        return getattr(node,ns)[key]
+    except KeyError:
+        return default
+
+def hasMetaTag(node,key,ns='meta'):
+    if hasattr(node,ns)==False:
+        return False
+    try:
+        getattr(node,ns)[key]
+        return True
+    except KeyError:
+        return False
+
+
+def MetaTag_method(env,nodes,ns='meta',**metakv):
+    return MetaTag(nodes,ns,**metakv)
+def MetaTagValue_method(env,node,key,ns='meta',default=None):
+    return MetaTagValue(node,key,ns,default)
+def hasMetaTag_method(env,node,key,ns='meta'):
+    return hasMetaTag(node,key,ns)
+
+# This is what we want to be setup in parts
+from SCons.Script.SConscript import SConsEnvironment
+
+# adding logic to Scons Enviroment object  
+SConsEnvironment.MetaTag=MetaTag_method
+SConsEnvironment.MetaTagValue=MetaTagValue_method
+SConsEnvironment.hasMetaTag=hasMetaTag_method
+
+common.add_parts_object('MetaTag',MetaTag)   
+common.add_parts_object('MetaTagValue',MetaTagValue)   
+common.add_parts_object('hasMetaTag',hasMetaTag)   
+
+common.add_global_value('MetaTag',MetaTag)   
+common.add_global_value('MetaTagValue',MetaTagValue)   
+common.add_global_value('hasMetaTag',hasMetaTag)   
+
+

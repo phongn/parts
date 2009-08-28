@@ -84,35 +84,19 @@ def resolve(env,version):
 ##
     if host.OS=='win32':
         return [
-                ('cl',None),
-                ('mslink',None),
-                ('masm',None),
-                ('mslib',None),
-                ('midl',None)
+                ('cl',None)
             ]
     elif host.OS=='posix':
         return [
-                ('gcc',None),
-                ('g++',None),
-                ('gas',None),
-                ('gnulink',None),
-                ('ar',None)
+                ('gxx',None)
             ]
     elif host.OS=='darwin':
         return [
-                ('gcc',None),
-                ('g++',None),
-                ('gas',None),
-                ('applelink',None),
-                ('ar',None)
+                ('gxx',None)
             ]
     elif host.OS=='sunos':
         return [
-                ('g++',None),
-                ('gcc',None),
-                ('ar',None),
-                ('gas',None),
-                ('gnulink',None)
+                ('gxx',None)
             ]
     else:
         print "Defaulting to Scons' default lookup"

@@ -5,10 +5,10 @@ import core
 import common
 import vcs
 import part_logger
+import packaging
 
 # these imports add stuff we will need to export to the parts file.
-from platform_info import ChipArchitecture
-from platform_info import OSBit
+import platform_info 
 import location
 import version
 import node_helpers
@@ -17,6 +17,203 @@ import sdk
 
 from pattern import Pattern
 
+##'''
+##'cpgl2_test': { 'ALIAS': 'cpgl2_test',
+##                'CCFLAGS': [],
+##                'CFLAGS': [],
+##                'CPPDEFINES': ["${PARTID('cpgl','2.*','CPPDEFINES',True)}"],
+##                'CPPPATH': ["${PARTID('cpgl','2.*','CPPPATH',True)}"],
+##                'CREATE_SDK': [ ( 'InstallItem',
+##                                  [ '$INSTALL_BIN',
+##                                    <parts.common._make_rel instance at 0x03D18DC8>,
+##                                    '',
+##                                    '',
+##                                    False,
+##                                    False]),
+##                                ( 'InstallItem',
+##                                  [ '$INSTALL_BIN',
+##                                    <parts.common._make_rel instance at 0x03D1C6E8>,
+##                                    '',
+##                                    '',
+##                                    False,
+##                                    False])],
+##                'CXXFLAGS': [],
+##                'DEPENDSON': [ <<pieces>dependon.component instance at 0x03D0F8A0>],
+##                'ENV': <SCons.Script.SConscript.SConsEnvironment instance at 0x037AA648>,
+##                'EXPORTED_BINS': [],
+##                'EXPORTED_HEADERS': [],
+##                'EXPORTED_LIBS': [],
+##                'FILE': <SCons.Node.FS.File instance at 0x03D0F940>,
+##                'LIBPATH': ["${PARTID('cpgl','2.*','LIBPATH',True)}"],
+##                'LIBS': ["${PARTID('cpgl','2.*','LIBS',True)}"],
+##                'LINKFLAGS': [],
+##                'MAKES_SDK': True,
+##                'NAME': 'cpgl_test',
+##                'PARENT_ALIAS': None,
+##                'PARENT_NAME': None,
+##                'ROOT_ALIAS': 'cpgl2_test',
+##                'ROOT_NAME': "${PARTNAME('cpgl2_test')}",
+##                'SDK_FILE': <SCons.Node.FS.File instance at 0x03D138C8>,
+##                'SHORT_ALIAS': 'cpgl2_test',
+##                'SHORT_NAME': 'cpgl_test',
+##                'SHORT_VERSION': '2.0',
+##                'TARGET_FILES': [ <SCons.Node.FS.File instance at 0x03D15440>,
+##                                  <SCons.Node.FS.File instance at 0x03D15648>,
+##                                  <SCons.Node.FS.File instance at 0x03D181C0>,
+##                                  <SCons.Node.FS.Entry instance at 0x03D18B70>,
+##                                  <SCons.Node.FS.File instance at 0x03D1C440>,
+##                                  <SCons.Node.FS.Entry instance at 0x03D1C760>,
+##                                  <SCons.Node.FS.File instance at 0x03D138C8>,
+##                                  <SCons.Node.FS.File instance at 0x03D13670>],
+##                'VERSION': <parts.version.version instance at 0x03D139E0>},
+##'''
+
+##g_parts=[]
+
+##class Part_t:
+##    def __init__(self,alias,parts_file,mode=[],vcs_type=None,default=False,
+##                    append={},prepend={},create_sdk=True,parent_part=None,**kw):
+##                    
+##        self.vcs=vcs_type # how we can get the source, None is local
+##        self.set_as_default_target=default # do we set this as a default build target
+##        self.mode=mode # special mode value used by part file to configure itself
+##        self.file=parts_file # the Parts file to read in
+##        self.create_sdk=create_sdk
+##        self.append=append
+##        self.prepend=append
+##        self.parent=parent_part
+##        self.kw=kw        
+##        g_parts.append(self)
+##        
+##        # other core setup
+##           
+##        # the path and location to the sub .scons file
+##        ## The Alias...
+##
+##        # setup which part is being defined.
+##        # we hold old state as needed. We create the name based on the
+##        # currently defined Part + .<new part name>
+##        if parent_alias!=None:
+##            # existing part is being define, this subpart is defines as
+##            # parentpart.subpart
+##            self.alias=parent_alias+'.'+short_alias 
+##        else:
+##            self.alias=short_alias
+##
+####        #setup state ####needed?
+####        def_env['DEFINING_PART']=alias
+####    
+####        # Part Alias
+####        env['ALIAS']=self.alias
+####        env['PART_ALIAS']=self.alias
+##        # The Alias Parent
+##        self.parent_alias=parent_alias
+##        # The Alias Short Form
+##        self.short_alias=alias
+##
+##        # some data we will use for our own DB file
+##        if common.g_name_alias_map.has_key(alias) == False:
+##            common.g_name_alias_map[alias]=set()
+##            
+##        #setup the root info
+##        #root_info=part_info
+##        #while root_info['PARENT_ALIAS'] != None:
+##            #root_info=def_env['PART_INFO'][root_info['PARENT_ALIAS']]
+##            #common.g_name_alias_map[alias].add(root_info['ALIAS'])
+##
+##        #the Alias Root
+##        self.root_alias=root_info['ALIAS']    
+##
+##        ## FILE STUFF
+##        if self.parts_file != None:
+##            # force subst to make sure funny path issues are handled
+##            self.parts_file=env.subst(self.parts_file)
+##    
+##            # do any checkout/copy/updates needed
+##            # update the parts_file location
+##            self.parts_file=vcs.process_vcs(env,vcs_type,parts_file)
+##
+##            # work around in Scons bug
+##            if self.parts_file[1] == ':' or self.parts_file[0]=='/':
+##                self.parts_file=env.File(self.parts_file)
+##            else:
+##                curr_path=env.Dir('.').srcnode().abspath
+##                slef.parts_file=env.File(os.path.join(curr_path,self.parts_file))
+##                #parts_file=env.Dir('.').srcnode().File(parts_file)
+##        
+##        #part_info['FILE']=parts_file
+##    
+##        ## The names..
+##        #the short name
+##        self.short_name=None
+##        #the Root name
+##        self.root_name="${PARTNAME('"+self.root_alias+"')}"
+##    
+##        if parent_alias==None:
+##            #The full name
+##            self.name=None
+##            #the Parent name
+##            self.parent_name=None
+##        
+##            # some default version info
+##            self.version=version.version('0.0.0')
+##            self.short_version='0.0'
+##        else:
+##            #The full name
+##            self.name="${PARTNAME('"+parent_alias+"')}.${PARTSHORTNAME('"+part_info['ALIAS']+"')}"
+##            #the Parent name
+##            self.parent_name="${PARTNAME('"+parent_alias+"')}"
+##            
+##            # some default version info
+##            self.version="${PARTS('"+root_info['ALIAS']+"','VERSION')}"
+##            self.short_version="${PARTS('"+root_info['ALIAS']+"','SHORT_VERSION')}"
+##
+##        #refernece to this env .. for better resolution later
+##        #part_info['ENV']=env
+##    
+##        #list of what we dependon 
+##        self.dependson=[]
+##    
+##        # some stuff for the SDK .. need to clean up latter
+##        self.exported_headers=[]
+##        self.EXPORTED_LIBS=[]
+##        self.EXPORTED_BINS=[]
+##
+##        #all the file that are outputted by a builder inside the part
+##        self.target_files=[]
+##    
+##        #def_env[name]=part_info
+##        #if def_env.has_key('PART_INFO')==False:
+##            #def_env['PART_INFO']={}
+##        #if def_env['PART_INFO'].has_key(alias):
+##            #rpt.part_warning(env,'Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
+##        #print 'Parts: Warning= Overriding predefined alias [',alias,'] file=[',def_env['PART_INFO'][alias]['FILE'],'] with data from part file=[',part_info['FILE'],']'
+##    
+##        
+##        
+##        
+##    
+##    def generate(self,env):
+##        
+##    def has_vcs(self):
+##        return self.vcs is not None
+##        
+##    def vcs(self)
+##        return self.vcs
+##    
+##    def installed_files(self,type=None):
+##        ret=filter(,self.installed_files)
+##        return self.installed_files
+##        
+##    def exported_items(self):
+##        #returns list of item type exported, such as headers, flags
+##        
+##    def exported_item(self,type):
+##        
+##
+##        
+        
+        
 
 def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     def_env=SCons.Script.DefaultEnvironment()
@@ -119,6 +316,13 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     part_info['EXPORTED_HEADERS']=[]
     part_info['EXPORTED_LIBS']=[]
     part_info['EXPORTED_BINS']=[]
+
+    #all the file that are outputted by a builder inside the part
+    part_info['TARGET_FILES']=[]
+    part_info['INSTALLED_FILES']=[]
+    
+    # not sure if i will need this or not ...
+    part_info['SUB_PARTS']=[]
     
     #def_env[name]=part_info
     if def_env.has_key('PART_INFO')==False:
@@ -131,22 +335,29 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     
 
 def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
-                append={},prepend={},create_sdk=True,**kw):
+                append={},prepend={},create_sdk=True,package_group=None,**kw):
     
     new_kw=env1.get('PARTS_KW',{})
     new_append=env1.get('PARTS_APPEND',{})
     new_prepend=env1.get('PARTS_PREPEND',{})
+    package_group=env1.get('PARTS_PACKAGE_GROUPS',package_group)
     new_kw.update(kw)
     new_append.update(append)
     new_prepend.update(prepend)
-    Part(alias,parts_file,mode,vcs_type,default,new_append,new_prepend,create_sdk,**new_kw)
+    Part(alias,parts_file,mode,vcs_type,default,new_append,new_prepend,
+    create_sdk,package_group,**new_kw)
+    tmp=env1.get('PART_INFO',None)
+    if tmp is not None:
+        tmp['SUB_PARTS'].append(env1['PART_ALIAS']+'.'+alias)
     
 def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
-            append={},prepend={},create_sdk=True,**kw):
+            append={},prepend={},create_sdk=True,package_group=None,
+            **kw):
     start_time=time.time()
     #print "defining" ,alias
     if common.g_part_mode=='help':
         return
+
 
     def_env=SCons.Script.DefaultEnvironment()
     rpt=def_env['PARTS_REPORTER']
@@ -176,11 +387,12 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     # Get the enviroment to use
     env=core.generate_config(prepend.copy(),append.copy(),kw.copy())
 
+    
     ## logger and task spawners
     spawn=env['PART_SPAWNER']
     env['PART_LOG_MAPPER']=part_logger.part_logger(env,rpt.console)
     env['SPAWN']=spawn(env)
-
+    
     # add to our set of Env with builders
     #common.g_env_w_builders.add(id(env))
 
@@ -204,21 +416,36 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
             rpt.part_message(env.subst('Building from source -- ${PART_ALIAS_CONCEPT}'+talias))
         #    print "Building",talias,"from source!!"
         part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
-    
+        
     alias=part_info['ALIAS']
     parts_file=part_info['FILE']
 
     def_env['PART_INFO'][alias]=part_info
-    
+
     #helps with debugging
     env['PART_INFO']=part_info
     
+    ## package logic ( as it is currently)
+    if package_group:
+        packaging.PackageGroup(package_group,alias)
+    part_info['PACKAGE_GROUPS']=package_group
+    env['PARTS_PACKAGE_GROUPS']=package_group
 
     ## Setup the enviroment with dependent libs, include, etc...
-
-    
     libpath=['$BUILD_DIR']
     env.Append(LIBPATH=libpath)
+    
+    ## add information on how to map this Parts
+    # allow us to make a part platform indepent in some way
+    # Might want to change this to be a enum like setup
+    if kw.get('platform_indepenent',False):
+        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any','any')
+    elif kw.get('os_indepenent',False):
+        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any')
+    elif kw.get('architecture_indepenent',False):
+        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform(arch='any')
+    else:
+        part_info['PLATFORM_MATCH']=env['TARGET_PLATFORM']
 
     # test to what we want to the SRC_DIR to be.. works around
     # annoying behavior of Root Sconstruct file not working with

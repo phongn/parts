@@ -50,6 +50,11 @@ g_globals={}
 # path to where Parts is installed
 g_parts_path=os.path.split(__file__)[0]
 
+# for packaging support 
+_INSTALLED_PACKAGING_GROUPS={}
+_INSTALLED_NO_PACKAGING_GROUPS={}
+
+
 g_base_env= SCons.Script.Environment(tools=[])
 def get_basic_SCon_env(**kw):
     return g_base_env.Clone(**kw)
@@ -99,7 +104,7 @@ class namespace(dict,env_overrides.bindable):
         try to set this object to Null string, causing an unwanted error'''
         #print "Get **************", name, self[name]
         tmp=self[name]
-        if is_string(tmp) or tmp is None:
+        if (is_string(tmp) or tmp is None) and self.__dict__.has_key('env'):
             return self.env.subst(tmp)
         return tmp
     
@@ -112,9 +117,9 @@ class namespace(dict,env_overrides.bindable):
         '''
         Rebind the environment to a new one.
         There does not seem a way to have this happen in a clone
-        as from what i can see semi_deep_copy does not pass a new env
-        However I can do this in cases when i do a copy, which is not as
-        bad as not doing it at all
+        as from what I can see semi_deep_copy does not pass a new env
+        Howevere I have updated the overrides to handle the clone of objects
+        that are bindable to the env to be cloned and handled better.
         '''
         tmp=namespace(**self.copy())
         tmp._bind(env,key)

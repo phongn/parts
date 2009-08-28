@@ -4,6 +4,9 @@
 
 import SCons.Script
 import SCons.Util
+import SCons.Environment
+import os
+
 
 class bindable(object):
     pass
@@ -57,6 +60,52 @@ def Scanner_override():
             SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
             SCons.Tool.SourceFileScanner.function[k].path_function)
 
+cc=[]
+cct=[]
+
+Orig_BuildWrapper=SCons.Environment.BuilderWrapper
+class Parts_BuilderWrapper(Orig_BuildWrapper):
+
+    def __call__(self, target=None, source=SCons.Environment._null, *args, **kw):
+        
+        # get default env
+        def_env=SCons.Script.DefaultEnvironment()
+        # get current part info
+        alias=def_env.get('DEFINING_PART')
+        
+
+        dup=kw.get("allow_duplicates",False)
+        found=False
+        if dup:
+            #Get info for help store info matches better
+            if alias is not None:
+                pinfo=def_env['PART_INFO'][alias]
+                name=pinfo.get('NAME')
+            else:
+                name=None
+            # make key
+            s=os.path.split(str(source[0]))[1]
+            key=(target,s,self.name,name)
+            print key
+            #test for match
+            if key in cc:
+                print "seen this one!!!!!!!!!!!!!!!!!!!",cc.index(key)
+                print key
+                tmp= cct[cc.index(key)]
+                found=True
+                
+        if not found:
+            tmp=Orig_BuildWrapper.__call__(self,target, source, *args, **kw)
+        
+        #take care of resolved target information.
+        if dup:
+            cc.append(key)
+            cct.append(tmp)
+        if alias is not None:
+            pinfo=def_env['PART_INFO'][alias]
+            pinfo['TARGET_FILES'].extend(tmp)
+        return tmp
+
 
 def my_semi_deepcopy(x):
     copier = SCons.Util._semi_deepcopy_dispatch.get(type(x))
@@ -76,3 +125,6 @@ SConsEnvironment.Clone=PartsClone
 # override __setitem__ bind env with bindable objects when set
 SConsEnvironment._orig__setitem__=SConsEnvironment.__setitem__
 SConsEnvironment.__setitem__=Parts__setitem__
+
+# override the builder wrapper to allow us to get the files defined in the scope of a part
+SCons.Environment.BuilderWrapper=Parts_BuilderWrapper

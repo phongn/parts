@@ -40,6 +40,7 @@ import os
 import shutil
 import stat
 import tarfile
+import fnmatch
 
 import SCons.Action
 from SCons.Util import make_path_relative
@@ -48,7 +49,9 @@ from SCons.Util import make_path_relative
 # We keep track of *all* installed files.
 import SCons.Tool.install #import _INSTALLED_FILES
 import SCons.Tool.install #import _UNIQUE_INSTALLED_FILES 
-
+from parts.common import _INSTALLED_PACKAGING_GROUPS
+from parts.common import _INSTALLED_NO_PACKAGING_GROUPS
+from parts.common import make_list
 
 def untar_print(target, source, env):
     dest=str(source[0])
@@ -125,6 +128,17 @@ def stringFunc(target, source, env):
         type = 'file'
     return 'Install %s: "%s" as "%s"' % (type, source, target)
 
+# auto tagging
+def auto_tag(env,node):
+    if env.get("AUTO_TAG_ON_INSTALL",True):
+        tags=env.get("AUTO_TAG_INSTALL",[])
+        for tag in tags:
+            pl=make_list(tag[0])
+            for pattern in pl:
+                if fnmatch.fnmatchcase(str(node),pattern):
+                    env.MetaTag(node,'package',**tag[1])
+                    
+
 #
 # Emitter functions
 #
@@ -133,9 +147,30 @@ def add_targets_to_INSTALLED_FILES(target, source, env):
     _INSTALLED_FILES global variable. This way all installed files of one
     scons call will be collected.
     """
-    #global _INSTALLED_FILES, _UNIQUE_INSTALLED_FILES
-    SCons.Tool.install._INSTALLED_FILES.extend(target)
-    SCons.Tool.install._UNIQUE_INSTALLED_FILES = None
+    tags=env.get('tags',{})
+    ##add to global list of install files
+    for t in target:
+        # add meta tags
+        if tags != {}:
+            env.MetaTag(t,'package',**tags)
+        # see if the file should be auto taged based on value
+        auto_tag(env,t)
+        # sort into list is it has not been set with package::no_package tag
+        no_pkg=env.MetaTagValue(t,'no_package','package',False)
+        # don't add No package tagged items to the installed files list
+        if no_pkg==False:
+            #global _INSTALLED_FILES, _UNIQUE_INSTALLED_FILES
+            SCons.Tool.install._INSTALLED_FILES.extend(target)
+            #SCons.Tool.install._UNIQUE_INSTALLED_FILES = None
+        ## sort in to packaging groups dictionary
+##        grps=getattr(t,'PACKAGING_GROUPS',['NOGROUP'])
+##        for g in grps:
+##            if no_pkg==False:
+##                _INSTALLED_PACKAGING_GROUPS[g]=t
+##            else:
+##                _INSTALLED_NO_PACKAGING_GROUPS[g]=t
+    
+    
     return (target, source)
 
 class DESTDIR_factory:
@@ -163,6 +198,7 @@ installas_action = SCons.Action.Action(installFunc, stringFunc)
 BaseInstallBuilder               = None
 
 def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
+    #print target,source[0],kw
     if target and dir:
         import SCons.Errors
         raise SCons.Errors.UserError, "Both target and dir defined for Install(), only one may be defined."

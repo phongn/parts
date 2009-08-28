@@ -8,6 +8,7 @@ var defined to to tell what has been targeted as the build env.
 import common
 import SCons.Platform
 import env_overrides
+import os,sys
 
 def OSBit():
     ''' 
@@ -19,6 +20,25 @@ def OSBit():
         application.
     '''
     import platform
+        
+    # Unfortunately, python does not provide any way to tell if the OS itself
+    # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
+    # the value Python might return. This tell us nothing of the current system
+    # The test below returns
+    if sys.platform == 'win32':
+        # this test fails on server 2008
+        # may fail on window 7 ( don't know yet)
+        value = "Software\Wow6432Node"
+        ret=None
+        try:
+            ret = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)
+        except:
+            pass
+        if ret is None and os.environ.get('PROCESSOR_ARCHITEW6432',None) is None:
+            return 32
+        else:
+            return 64
+    #assume is is correct. ## test later the  getconf LONG_BIT command
     val = platform.architecture()[0]
     if val[-3:] == 'bit':
         val=val[:-3]
@@ -65,21 +85,6 @@ def ChipArchitecture():
         than know if it is an P3 or P4
         
     '''
-    arch_map = {
-    'x86':'x86',
-    'i386':'x86',
-    'i486':'x86',
-    'i586':'x86',
-    'i686':'x86',
-    'x64':'x86_64',
-    'AMD64':'x86_64',
-    'amd64':'x86_64',
-    'em64t':'x86_64',
-    'EM64T':'x86_64',
-    'x86_64':'x86_64',
-    'IA64':'ia64',
-    'ia64':'ia64'
-    }
     #if win32
     import sys
     if sys.platform == 'win32':
@@ -218,7 +223,7 @@ common.add_parts_object('OSBit',OSBit)
 
 common.add_global_value('ChipArchitecture',ChipArchitecture)
 common.add_global_value('OSBit',OSBit)
-common.add_global_value('Host_Platform',HostSystem)# zap this one
+common.add_global_value('HostPlatform',HostSystem)
 common.add_global_value('SystemPlatform',SystemPlatform)
 
 

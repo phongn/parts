@@ -1,6 +1,7 @@
 import os
 import SCons.Util
 from parts.tools.Common.ToolSetting import ToolSetting
+import parts.platform_info 
 
 logfile = os.environ.get('SCONS_MSCOMMON_DEBUG')
 if logfile:
@@ -17,20 +18,7 @@ else:
 
 def is_win64():
     """Return true if running on windows 64-bits OS."""
-    # Unfortunately, python does not provide any way to tell if the OS itself
-    # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
-    # the value Python might return. This tell us nothing of the current system
-    # The test below returns
-    value = "Software\Wow6432Node"
-    yo=None
-    try:
-        yo = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)
-    except:
-        pass
-    if yo is None:
-        return False
-    else:
-        return True
+    return parts.platform_info.OSBit()==64
 
 def read_reg(value):
     return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]

@@ -25,7 +25,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
     pinfo=None
     ret=None
     last_ver=None
-    arch=env['TARGET_PLATFORM'].ARCH
+    arch=env['TARGET_PLATFORM']
     rpt=def_env['PARTS_REPORTER']
     try:
         for i in alias_lst[id]:
@@ -41,12 +41,13 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
                 else:
                     # else we assume this is a version object
                     this_ver=tmp
-                
-                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['ENV']['TARGET_PLATFORM'].ARCH:
+                    
+                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['PLATFORM_MATCH']:
                     last_ver=this_ver
                     ret=pinfo
                             
-    except Exception:
+    except Exception, ec:
+        print type(ec),ec
         rpt.part_error(env,"Error in alias look up\nID->Alias map "+str(alias_lst)+'\nlooking up ['+id+'] with version range ['+str(ver_range)+']')
         env.Exit(0)
     return ret
