@@ -497,7 +497,11 @@ def apply_config(env,name=None):
             f(env)
                 
 def _isconfigbasedon(env,name,config):                
-    tmp=g_configuration[config]
+    try:
+        tmp=g_configuration[config]
+    except KeyError:
+        load_cfg(name)
+        tmp=g_configuration[config]
     if tmp.Name() == name:
         return True
     if tmp.Dependent() is not None:

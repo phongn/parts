@@ -536,8 +536,10 @@ def get_site_directories(subdir):
         sitepaths=[
             #current directory parts_site or user pointed site
             os.path.join('.','parts-site',subdir),
+            os.path.join('.','.parts-site',subdir),
             #homedir/.parts-site
             os.path.join(os.path.expanduser('~'),'parts-site',subdir),
+            os.path.join(os.path.expanduser('~'),'.parts-site',subdir),
             # parts install
             os.path.join(g_parts_path,subdir)
         ]

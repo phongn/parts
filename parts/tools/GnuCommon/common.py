@@ -65,6 +65,16 @@ class GnuInfo(ToolInfo):
                 return line
    
         return None         
+
+    def resolve_version(self,version):
+        if self.found is None:
+            return None
+        k=self.found.keys()
+        for i in k:
+            if MatchVersionNumbers(version,i):
+                return i
+        return None
+        
     
     def version_set(self):
         return self.version
@@ -174,7 +184,7 @@ class GnuInfo(ToolInfo):
                 if tmp is not None:
                     ret[tmp]=(install_root,self.test_file) 
                 self.found=ret
-        
+        print self.found
         if self.found == {}:
             return None
         return self.found

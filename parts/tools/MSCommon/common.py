@@ -31,7 +31,7 @@ def get_current_sdk():
     key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'
     dir=''
     try:
-        dir=SCons.Util.RegGetValue(SCons.Util.HKEY_CURRENT_USER, key)[0]
+        dir=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, key)[0]
         debug('Found SDK dir in registry: %s' % dir)
     except WindowsError, e:
         debug('Did not find SDK dir key %s in registry' % \

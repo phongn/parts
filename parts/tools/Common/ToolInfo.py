@@ -138,7 +138,8 @@ class ToolInfo:
         for v,p in found.items():
             tmp=self.exists(env,namespace,v,p,use_script)
             if tmp is not None:
-                ret.update(self.make_ver_shell_env_set(v,tmp))
+                ret[v]=tmp
+                #ret.update(self.make_ver_shell_env_set(v,tmp))
         return ret
 
     ## general case

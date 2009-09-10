@@ -68,8 +68,47 @@ from pattern import Pattern
 ##                'VERSION': <parts.version.version instance at 0x03D139E0>},
 ##'''
 
-##g_parts=[]
+g_parts={} # generally only root/topp level parts
 
+class Part_t:
+    def __init__(self,alias,parts_file,mode=[],vcs_type=None,default=False,
+            append={},prepend={},create_sdk=True,package_group=None,
+            **kw):
+
+##        # set up state of aliases so we can make the correct key
+##        def_env=SCons.Script.DefaultEnvironment()
+##        parent_alias=def_env.get('DEFINING_PART',None)
+##        
+##        sdk_file=[None]
+##        if parent_alias != None:
+##            alias=parent_alias+'.'+alias
+                        
+        self.alias = alias
+        
+        self.file=parts_file # the Parts file to read in
+        self.mode=mode # special mode value used by part file to configure itself
+        self.vcs=vcs_type # how we can get the source, None is local
+        self.set_as_default_target=default # do we set this as a default build target
+        
+        self.append=append
+        self.prepend=prepend
+        self.create_sdk=create_sdk
+        self.package_groups=package_groups
+        self.kw=kw        
+        
+        self.Processed=False
+        
+        g_parts.append(self)
+        
+    def Process(self):
+        Part(**self.stuff)
+        
+    def store():
+        pass
+        
+
+def jj(): #delete this.. using to collapse section in editor
+    pass
 ##class Part_t:
 ##    def __init__(self,alias,parts_file,mode=[],vcs_type=None,default=False,
 ##                    append={},prepend={},create_sdk=True,parent_part=None,**kw):
@@ -212,7 +251,6 @@ from pattern import Pattern
 ##        
 ##
 ##        
-        
         
 
 def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):

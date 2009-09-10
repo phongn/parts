@@ -4,6 +4,38 @@ import parts.common as common
 import copy
 import SCons.Errors
 
+def MatchVersionNumbers(verStr1, verStr2):
+
+    major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
+    major1=int(major1)
+    minor1=int(minor1)
+    rev1=int(rev1)
+
+    major2, minor2, rev2, junk = (verStr2+'.-1.-1.-1').split('.',3)
+    major2=int(major2)
+    minor2=int(minor2)
+    rev2=int(rev2)
+
+    if major1 != major2:
+        return False
+    if major1 == major2 and (minor1 == -1 or minor2 == -1):
+        return True
+    if minor1 != minor2:
+        return False
+    if minor1 == minor2 and (rev1 == -1 or rev2 == -1):
+        return True
+    if rev1 == rev2:
+        return True
+
+    return False
+
+''' this class helps reports errors happen when we have some issue with setting 
+up the tool for the user.
+'''
+class ToolSetupError(SCons.Errors.UserError):
+    pass
+
+
 '''
 This class handles mangament of tool info objects based on HOST and TARGET 
 platform support.
@@ -20,9 +52,6 @@ a seperate items value is saved to say if the cache is a full query or not.
 This allow the ability to retest 
 
 '''
-
-class ToolSetupError(SCons.Errors.InternalError):
-    pass
 
 class ToolSetting:
     def __init__(self,name):
@@ -48,7 +77,18 @@ class ToolSetting:
         
         # all the requested shell env
         # cached in case we are asked again
-        self.shell_cache={}## moved to tool_info
+        self.shell_cache={}
+    
+    def best_ver_map(self,key,version):
+        from parts.version import version_range as Version
+        if version is None:
+            return None
+        k=self.found.get(key,[])
+        print "**",version,type(version),k[0],type(k[0]),isinstance(k[0],Version)
+        for i in k:
+            if MatchVersionNumbers(version,i):
+                return i
+        return None 
     
     def get_cache_key(self,env):
         ''' 
@@ -256,13 +296,12 @@ class ToolSetting:
                             if swap:
                                 vl.remove(v)
                                 vl.insert(0,v)
-                            #vl.remove(v)
-                            # store that it is found
-                            common.append_unique(self.found[key],version)
-                            # get cache key
-                            cache_key2=version+self.get_cache_key(env)
-                            # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
+                            # store that it is found.. store exact version found
+                            common.append_unique(self.found[key],v.resolve_version(version))
+                            ## get cache key
+                            #cache_key2=version+self.get_cache_key(env)
+                            ## store shell env vals
+                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -281,13 +320,12 @@ class ToolSetting:
                             if swap:
                                 vl.remove(v)
                                 vl.insert(0,v)
-                            #vl.remove(v)
-                            # store that it is found
-                            common.append_unique(self.found[key],version)
-                            # get cache key
-                            cache_key2=version+self.get_cache_key(env)
-                            # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
+                            # store that it is found.. store exact version found
+                            common.append_unique(self.found[key],v.resolve_version(version))
+                            ## get cache key
+                            #cache_key2=version+self.get_cache_key(env)
+                            ## store shell env vals
+                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -305,13 +343,12 @@ class ToolSetting:
                             if swap:
                                 vl.remove(v)
                                 vl.insert(0,v)
-                            #vl.remove(v)
-                            # store that it is found
-                            common.append_unique(self.found[key],version)
-                            # get cache key
-                            cache_key2=version+self.get_cache_key(env)
-                            # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
+                            # store that it is found.. store exact version found
+                            common.append_unique(self.found[key],v.resolve_version(version))
+                            ## get cache key
+                            #cache_key2=version+self.get_cache_key(env)
+                            ## store shell env vals
+                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -329,13 +366,12 @@ class ToolSetting:
                             if swap:
                                 vl.remove(v)
                                 vl.insert(0,v)
-                            #vl.remove(v)
-                            # store that it is found
-                            common.append_unique(self.found[key],version)
-                            # get cache key
-                            cache_key2=version+self.get_cache_key(env)
-                            # store shell env vals
-                            self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
+                            # store that it is found.. store exact version found
+                            common.append_unique(self.found[key],v.resolve_version(version))
+                            ## get cache key
+                            #cache_key2=version+self.get_cache_key(env)
+                            ## store shell env vals
+                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
                             # make sure it is sorted corrcetly
                             self.found[key].sort(reverse=True)
                             return
@@ -501,27 +537,31 @@ class ToolSetting:
             ##get the tool info for the host-target combo for the requested version
             #get latest found version if not provided
             if version is None:
-                version=self.get_latest_known_version(key)
+                best_version=self.get_latest_known_version(key)
+            else:
+                # map version to best known value found
+                best_version=self.best_ver_map(key,version)
             # see if we know if the give version exists
-            if self.is_version_known(version,key):
-                tinfo=self.GetInfo(version,target)
+            print "*",best_version
+            if self.is_version_known(best_version,key):
+                tinfo=self.GetInfo(best_version,target)
             else:
                 # this is an error, nothing found
                 # report that version is not found and the versions if any that
                 # have been found
                 
-                if version is None:
-                    raise ToolSetupError("No version of %s was found on the system for target %s"%(self.name,target))
                 if self.not_found[key] is not None:
                     # make sure all version are queried so we can report correctly
                     self.query_for_known(env,key)
+                if self.found[key] == []:
+                    raise ToolSetupError("No version of %s was found on the system for target %s"%(self.name,target))
                 raise ToolSetupError("Version of %s of %s not found for target %s. Found version are %s"%(version,self.name,target,self.found[key]))
 
             if tinfo is None:
                 raise ToolSetupError('ToolSettings failed to load infomation about tool with version: %s and target: %s'%(version,target))
             ##got the tool info now get the data
             #get the shell environment
-            shell_env=tinfo.get_shell_env(env,self.name,version,root_path,use_script)
+            shell_env=tinfo.get_shell_env(env,self.name,best_version,root_path,use_script)
             
             # store it in cache
             ret=(shell_env,env[self.name]._rebind(None,None))

@@ -16,6 +16,8 @@ def PackageGroup(name,parts=[]):
     '''
     tmp=[]
     parts=common.make_list(parts)
+    if g_package_groups.has_key(name) == False:
+        g_package_groups[name]=[]
     if parts != [] and name is not None:
         for p in parts:
             #if isinstance(p,Part_t) or isinstance(p,Component):
@@ -27,17 +29,29 @@ def PackageGroup(name,parts=[]):
                     common.append_unique(tmp,p)
             else:
                 raise RuntimeError("%s does not refer to a defined Part" % (p) )
-        try:
-            g_package_groups[name].extend(tmp)
-        except KeyError:
-            g_package_groups[name]=tmp
+            
+        g_package_groups[name].extend(tmp)        
         #cache is out of date.. zap it to force rebuild
         if common._INSTALLED_PACKAGING_GROUPS.has_key(name):
-            del common._INSTALLED_PACKAGING_GROUPS[name]
-            del common._INSTALLED_NO_PACKAGING_GROUPS[name]
+            common._INSTALLED_PACKAGING_GROUPS={}
+            common._INSTALLED_NO_PACKAGING_GROUPS={}
             
-        
     return g_package_groups[name]
+
+def ReplacePackageGroupFilter(env,name,func):
+    env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+
+def AppendMapPackageGroupFilter(env,name,func):
+    try:
+        env['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
+    except:
+        env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+        
+def PrependMapPackageGroupFilter(env,name,func):
+    try:
+        env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+env['MAP_PACKAGE_GROUP'][name]
+    except:
+        env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
 
 def get_part_alias(obj):
     #if isinstance(obj,Component):
@@ -54,29 +68,64 @@ def GetPackageGroupFiles(name,no_pkg=False):
         return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS[name] or common._INSTALLED_PACKAGING_GROUPS[name])
     except KeyError:
         
-        # see that we have the group defined
-        if name not in PackageGroups():
-            print "Group Not Found"
-            return None
-        
+        SortPackageGroups()
+                    
+    return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or common._INSTALLED_PACKAGING_GROUPS.get(name,[]))
+
+def SortPackageGroups():
+
+    grps=PackageGroups() # get the groups
+    def_env=SCons.Script.DefaultEnvironment() #get reference to default environment
+    
+    for name in grps:
         #get the component that are part of the group
-        part_lst=PackageGroup(name)
-        #if so gather all the installed files for the defined parts that are part 
-        # of the group
-        common._INSTALLED_PACKAGING_GROUPS[name]=[]
-        common._INSTALLED_NO_PACKAGING_GROUPS[name]=[]
-        def_env=SCons.Script.DefaultEnvironment()
-        for p in part_lst:
-            pinfo=def_env['PART_INFO'][get_part_alias(p)]
-            files=pinfo['INSTALLED_FILES']
+        obj_lst=PackageGroup(name)
+        # reset the cache for this name
+        common._INSTALLED_PACKAGING_GROUPS={}
+        common._INSTALLED_NO_PACKAGING_GROUPS={}
+        
+        for obj in obj_lst:
+            if isinstance(obj,SCons.Node.FS.File):
+                files=[obj]
+                map_objs=def_env.get('PACKAGE_GROUP_FILTER',[])
+                env=def_env
+            else: # assume this is a part
+                pinfo=def_env['PART_INFO'][get_part_alias(obj)]
+                env=pinfo['ENV']
+                map_objs=env.get('MAP_PACKAGE_GROUP',[])
+                files=pinfo['INSTALLED_FILES']
             for f in files:
                 _no_pkg=def_env.MetaTagValue(f,'no_package','package',False)
+                group_val=env.MetaTagValue(f,'group','package',None)
+                if group_val is None:
+                    group_val=name
+                    #apply meta tag to file
+                    env.MetaTag(f,'package',group=group_val)
+                    #apply any mappings
+                    for tmp in map_objs:
+                        key,tests=tmp
+                        for t in tests:
+                            if t(f):
+                                env.MetaTag(f,'package',group=key)
+                                break
+                                
                 if _no_pkg==False:
-                    common._INSTALLED_PACKAGING_GROUPS[name].append(f)
+                    try:
+                        common._INSTALLED_PACKAGING_GROUPS[group_val].append(f)
+                    except KeyError:
+                        common._INSTALLED_PACKAGING_GROUPS[group_val]=[f]
+                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[]
                 else:
-                    common._INSTALLED_NO_PACKAGING_GROUPS[name].append(f)
+                    try:
+                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val].append(f)
+                    except KeyError:
+                        common._INSTALLED_PACKAGING_GROUPS[group_val]=[]
+                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[f]
                     
-    return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS[name] or common._INSTALLED_PACKAGING_GROUPS[name])
+
+
+
+
 
 def GetPackageGroupFiles_env(env,name,no_pkg=False):
     return GetPackageGroupFiles(name,no_pkg)
