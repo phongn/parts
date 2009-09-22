@@ -1,4 +1,4 @@
-import parts.common as common
+import common
 
 def MetaTag(nodes,ns='meta',**metakv):
     #make sure the nodes are in a list
@@ -13,8 +13,6 @@ def MetaTag(nodes,ns='meta',**metakv):
             getattr(n,ns)[k]=v
             
 def MetaTagValue(node,key,ns='meta',default=None):
-    if hasattr(node,ns)==False:
-        return default
     try:
         return getattr(node,ns)[key]
     except KeyError:

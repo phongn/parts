@@ -15,6 +15,7 @@ def PackageGroup(name,parts=[]):
     don't know where we want to put the files in the package.
     '''
     tmp=[]
+    name=SCons.Script.DefaultEnvironment().subst(name)
     parts=common.make_list(parts)
     if g_package_groups.has_key(name) == False:
         g_package_groups[name]=[]
@@ -38,20 +39,49 @@ def PackageGroup(name,parts=[]):
             
     return g_package_groups[name]
 
-def ReplacePackageGroupFilter(env,name,func):
-    env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+# global form
+def ReplacePackageGroupCritera(name,func):
+    name=SCons.Script.DefaultEnvironment().subst(name)
+    common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
 
-def AppendMapPackageGroupFilter(env,name,func):
+def AppendPackageGroupCritera(name,func):
+    name=SCons.Script.DefaultEnvironment().subst(name)
+    try:
+        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
+    except:
+        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
+        
+def PrependPackageGroupCritera(name,func):
+    name=SCons.Script.DefaultEnvironment().subst(name)
+    try:
+        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+common.g_defaultoverides['MAP_PACKAGE_GROUP'][name]
+    except:
+        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
+
+# env form
+def ReplacePackageGroupCriteraEnv(env,name,func):
+    name=env.subst(name)
+    env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
+
+def AppendPackageGroupCriteraEnv(env,name,func):
+    name=env.subst(name)
     try:
         env['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
     except:
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
         
-def PrependMapPackageGroupFilter(env,name,func):
+def PrependPackageGroupCriteraEnv(env,name,func):
+    name=env.subst(name)
     try:
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+env['MAP_PACKAGE_GROUP'][name]
     except:
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    return PackageGroup(name)
 
 def get_part_alias(obj):
     #if isinstance(obj,Component):
@@ -63,28 +93,31 @@ def GetPackageGroupFiles(name,no_pkg=False):
     Get all the file that are installed that are define as part of a group.
     This function will try to cache known result to improve speed.
     '''
-    
+    # get Cache value
     try:
         return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS[name] or common._INSTALLED_PACKAGING_GROUPS[name])
     except KeyError:
-        
-        SortPackageGroups()
-                    
+        # no cache value.. re build list
+        SortPackageGroups()  
+        #print "Remapping",name
+            
+    # return what we got, if not in rebuilt list return empty list
     return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or common._INSTALLED_PACKAGING_GROUPS.get(name,[]))
 
 def SortPackageGroups():
 
     grps=PackageGroups() # get the groups
     def_env=SCons.Script.DefaultEnvironment() #get reference to default environment
-    
+    # reset the cache for this name
+    common._INSTALLED_PACKAGING_GROUPS={}
+    common._INSTALLED_NO_PACKAGING_GROUPS={}
     for name in grps:
+        if common._INSTALLED_PACKAGING_GROUPS.has_key(name)==False:
+            common._INSTALLED_PACKAGING_GROUPS[name]=[]
+            common._INSTALLED_NO_PACKAGING_GROUPS[name]=[]
         #get the component that are part of the group
-        obj_lst=PackageGroup(name)
-        # reset the cache for this name
-        common._INSTALLED_PACKAGING_GROUPS={}
-        common._INSTALLED_NO_PACKAGING_GROUPS={}
-        
-        for obj in obj_lst:
+        obj_lst=PackageGroup(name)    
+        for obj in obj_lst:            
             if isinstance(obj,SCons.Node.FS.File):
                 files=[obj]
                 map_objs=def_env.get('PACKAGE_GROUP_FILTER',[])
@@ -92,8 +125,9 @@ def SortPackageGroups():
             else: # assume this is a part
                 pinfo=def_env['PART_INFO'][get_part_alias(obj)]
                 env=pinfo['ENV']
-                map_objs=env.get('MAP_PACKAGE_GROUP',[])
+                map_objs=env.get('PACKAGE_GROUP_FILTER',[])
                 files=pinfo['INSTALLED_FILES']
+                
             for f in files:
                 _no_pkg=def_env.MetaTagValue(f,'no_package','package',False)
                 group_val=env.MetaTagValue(f,'group','package',None)
@@ -102,28 +136,30 @@ def SortPackageGroups():
                     #apply meta tag to file
                     env.MetaTag(f,'package',group=group_val)
                     #apply any mappings
-                    for tmp in map_objs:
+                    
+                    for tmp in map_objs.items():
                         key,tests=tmp
                         for t in tests:
                             if t(f):
                                 env.MetaTag(f,'package',group=key)
+                                #get new group value
+                                print "Remapping",f,"from package_group",group_val,'to',key
+                                group_val=key
                                 break
-                                
+                    
+                
                 if _no_pkg==False:
                     try:
-                        common._INSTALLED_PACKAGING_GROUPS[group_val].append(f)
+                        common.append_unique(common._INSTALLED_PACKAGING_GROUPS[group_val],f)
                     except KeyError:
                         common._INSTALLED_PACKAGING_GROUPS[group_val]=[f]
                         common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[]
                 else:
                     try:
-                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val].append(f)
+                        common.append_unique(common._INSTALLED_NO_PACKAGING_GROUPS[group_val],f)
                     except KeyError:
                         common._INSTALLED_PACKAGING_GROUPS[group_val]=[]
                         common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[f]
-                    
-
-
 
 
 
@@ -134,8 +170,16 @@ from SCons.Script.SConscript import SConsEnvironment
 
 
 SConsEnvironment.GetPackageGroupFiles=GetPackageGroupFiles_env
+
+SConsEnvironment.ReplacePackageGroupCritera=ReplacePackageGroupCriteraEnv
+SConsEnvironment.AppendPackageGroupCritera=AppendPackageGroupCriteraEnv
+SConsEnvironment.PrependPackageGroupCritera=PrependPackageGroupCriteraEnv
     
 common.add_global_value('PackageGroups',PackageGroups)   
 common.add_global_value('PackageGroup',PackageGroup)   
 common.add_global_value('GetPackageGroupFiles',GetPackageGroupFiles)   
+
+common.add_global_value('ReplacePackageGroupCritera',ReplacePackageGroupCritera)   
+common.add_global_value('AppendPackageGroupCritera',AppendPackageGroupCritera)   
+common.add_global_value('PrependPackageGroupCritera',PrependPackageGroupCritera)   
 

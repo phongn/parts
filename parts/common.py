@@ -31,7 +31,8 @@ g_part_mode=''
 
 #def_args={}
 def_vars=[]
-g_defaultoverides={}
+## adding stuff here as the Varible are falling apart on handing objects
+g_defaultoverides={'PACKAGE_GROUP_FILTER':{}}
 # holds the set of alias that are created by parts
 g_name_alias_map={}
 # set of the part we know we want to build
@@ -600,3 +601,27 @@ def load_module(path,name,type):
 ##    return sys.modules[full_name]
 
 AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')
+
+
+
+### add to a common filters file
+
+class hasFileExtension():
+    def __init__(self,extlist):
+        self.extlist=extlist
+    
+    def __call__(self,node):
+        for i in self.extlist:
+            if fnmatch.fnmatchcase(str(node),i):
+                return True
+        return False
+    
+class HasPackageCatagory():
+    def __init__(self, catagory):
+        self.catagory=catagory
+        
+    def __call__(self,node):
+        return MetaTagValue(node,'package','Category')==catagory
+
+add_global_value('hasFileExtension',hasFileExtension)   
+add_global_value('HasPackageCatagory',HasPackageCatagory)   

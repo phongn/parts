@@ -160,16 +160,8 @@ def add_targets_to_INSTALLED_FILES(target, source, env):
         # don't add No package tagged items to the installed files list
         if no_pkg==False:
             #global _INSTALLED_FILES, _UNIQUE_INSTALLED_FILES
-            SCons.Tool.install._INSTALLED_FILES.extend(target)
+            SCons.Tool.install._INSTALLED_FILES.append(t)
             #SCons.Tool.install._UNIQUE_INSTALLED_FILES = None
-        ## sort in to packaging groups dictionary
-##        grps=getattr(t,'PACKAGING_GROUPS',['NOGROUP'])
-##        for g in grps:
-##            if no_pkg==False:
-##                _INSTALLED_PACKAGING_GROUPS[g]=t
-##            else:
-##                _INSTALLED_NO_PACKAGING_GROUPS[g]=t
-    
     
     return (target, source)
 

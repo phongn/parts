@@ -84,7 +84,6 @@ class ToolSetting:
         if version is None:
             return None
         k=self.found.get(key,[])
-        print "**",version,type(version),k[0],type(k[0]),isinstance(k[0],Version)
         for i in k:
             if MatchVersionNumbers(version,i):
                 return i
@@ -542,7 +541,7 @@ class ToolSetting:
                 # map version to best known value found
                 best_version=self.best_ver_map(key,version)
             # see if we know if the give version exists
-            print "*",best_version
+            
             if self.is_version_known(best_version,key):
                 tinfo=self.GetInfo(best_version,target)
             else:

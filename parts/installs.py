@@ -7,6 +7,34 @@ import sdk
 import common
 import platform_info
 
+## need better configuration control
+# these function will hopfully be replaced later once a better solution shows it self
+
+g_installargs={}
+
+def SetDefaultInstallArguments(category,**kw):
+    '''
+    Sets up flags that will automatically be added to a given catgory of Install
+    This is more of hack, then a proper solution
+    '''
+    try:
+        g_installargs[category].update(kw)
+    except KeyError:
+        g_installargs[category]=kw
+
+def get_args(cat,**kw):
+
+    args={}
+    tmp=g_installargs.get(cat,{})
+    args.update(tmp)
+    args.update(kw)
+    try:
+        args['tags']['category']=cat
+    except:
+        args['tags']={'category':cat}
+    return args
+    
+#############################
 
 def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='',no_pkg=False,**kw):
   
@@ -35,7 +63,7 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
         del kw['tags']    
     if no_pkg == True:
         tags['no_package']=True
-        
+            
     if sdk_dir != '':
         for s in sources:
             
@@ -197,16 +225,16 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         
             if common.is_catagory_file(env, 'INSTALL_LIB_PATTERN', i):
                 top_dir = '$INSTALL_LIB'
-                category= 'INSTALL_LIB'
+                category= 'LIB'
                 #SDK_dir = '$SDK_LIB'
             elif common.is_catagory_file(env, 'INSTALL_BIN_PATTERN', i):
                 top_dir = '$INSTALL_BIN'
-                category= 'INSTALL_BIN'
+                category= 'BIN'
                 #SDK_dir = '$SDK_BIN'
             else:
                 continue
             itmp=InstallItem(env, top_dir, ret,sub_dir,
-                no_pkg=no_pkg,create_sdk=create_sdk,tags={'Category':category},**kw)
+                no_pkg=no_pkg,create_sdk=create_sdk,**get_args(category,**kw))
             env.MetaTag(itmp, PACKAGING_TYPE = top_dir[1:])
             installed_files+=itmp
         elif isinstance(i,pattern.Pattern):
@@ -227,13 +255,13 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                     if common.is_catagory_file(env,'INSTALL_LIB_PATTERN',d):
                         top_dir = '$INSTALL_LIB'
                         itmp=InstallItem(env, top_dir,ret,new_sub_dir,
-                            no_pkg=no_pkg,create_sdk=create_sdk,tags={'Category':'INSTALL_LIB'},**kw)                
+                            no_pkg=no_pkg,create_sdk=create_sdk,**get_args('LIB',**kw))                
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
                         installed_files+=itmp
                     elif common.is_catagory_file(env,'INSTALL_BIN_PATTERN',d):
                         top_dir = '$INSTALL_BIN'
                         itmp=InstallItem(env, top_dir,ret,new_sub_dir,
-                            no_pkg=no_pkg,create_sdk=create_sdk,tags={'Category':'INSTALL_BIN'},**kw)
+                            no_pkg=no_pkg,create_sdk=create_sdk,**get_args('BIN',**kw))
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
                         installed_files+=itmp
                     else:
@@ -249,10 +277,11 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
 
 def InstallAPI(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
+    
     installed_files = InstallItem(env, '$INSTALL_API', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_API',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_API'},**kw)
-    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_API')
+        **get_args('API',**kw))
+    #env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_API')
     return installed_files
     # Need to MetaTag() as Config? or as part of defining component?
 
@@ -261,7 +290,7 @@ def InstallLib(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$INSTALL_LIB', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_LIB',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_LIB'},**kw)
+        **get_args('LIB',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_LIB')
     return installed_files
     # Need to MetaTag() as Config? or as part of defining component?
@@ -270,7 +299,7 @@ def InstallBin(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
     installed_files = InstallItem(env, '$INSTALL_BIN', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_BIN',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_BIN'},**kw)
+        **get_args('BIN',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_BIN')
     return installed_files
     # Need to MetaTag() as Config? or as part of defining component?
@@ -280,7 +309,7 @@ def InstallConfig(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
     installed_files = InstallItem(env, '$INSTALL_CONFIG', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_CONFIG',no_pkg=no_pkg,create_sdk=create_sdk,
-        allow_duplicates=True,tags={'Category':'INSTALL_CONFIG'},**kw)
+        **get_args('CONFIG',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_CONFIG')
     return installed_files
     # Need to MetaTag() as Config? or as part of defining component?
@@ -290,7 +319,7 @@ def InstallDoc(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
     installed_files = InstallItem(env, '$INSTALL_DOC', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_DOC',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_DOC'},**kw)
+        **get_args('DOC',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DOC')
     return installed_files
     # Need to MetaTag() as Doc? or as part of defining component?
@@ -300,7 +329,7 @@ def InstallHelp(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$INSTALL_HELP', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_HELP',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_HELP'},**kw)
+        **get_args('HELP',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_HELP')
     return installed_files
     # Need to MetaTag() as Help? or as part of defining component?
@@ -310,7 +339,7 @@ def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw)
 
     installed_files = InstallItem(env, '$INSTALL_MESSAGE', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_MESSAGE',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_MESSAGE'},**kw)
+        **get_args('MESSAGE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_MESSAGE')
     return installed_files
     # Need to MetaTag() as Message? or as part of defining component?
@@ -320,7 +349,7 @@ def InstallResource(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
     
     installed_files = InstallItem(env, '$INSTALL_RESOURCE', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_RESOURCE',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_RESOURCE'},allow_duplicates=True,**kw)
+        **get_args('RESOURCE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_RESOURCE')
     return installed_files
     # Need to MetaTag() as Resource? or as part of defining component?
@@ -330,7 +359,7 @@ def InstallSample(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         
     installed_files = InstallItem(env, '$INSTALL_SAMPLE', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_SAMPLE',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_SAMPLE'},**kw)
+        **get_args('SAMPLE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_SAMPLE')
     return installed_files
     # Need to MetaTag() as Sample? or as part of defining component?
@@ -339,7 +368,7 @@ def InstallData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         
     installed_files = InstallItem(env, '$INSTALL_DATA', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_DATA',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'INSTALL_DATA'},**kw)
+        **get_args('DATA',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DATA')
     return installed_files
     # Need to MetaTag() as Sample? or as part of defining component?
@@ -349,7 +378,7 @@ def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
 
     installed_files = InstallItem(env, '$INSTALL_TOP_LEVEL', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_TOP_LEVEL',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'TOP_LEVEL'},allow_duplicates=True,**kw)
+        **get_args('TOP_LEVEL',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'TOP_LEVEL')
 
     return installed_files
@@ -359,7 +388,7 @@ def PkgNoInstall(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$PKG_NO_INSTALL', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_NO_INSTALL',no_pkg=no_pkg,create_sdk=create_sdk,
-        tags={'Category':'NO_INSTALL'},**kw)
+        **get_args('NO_INSTALL',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'NO_INSTALL')
     return installed_files
 
@@ -418,5 +447,7 @@ if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
 else:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')
 
+
+common.add_global_value('SetDefaultInstallArguments',SetDefaultInstallArguments)
 
 # vim: set et ts=4 sw=4 ai ft=python :

@@ -86,11 +86,11 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
             # make key
             s=os.path.split(str(source[0]))[1]
             key=(target,s,self.name,name)
-            print key
+            #print key
             #test for match
             if key in cc:
-                print "seen this one!!!!!!!!!!!!!!!!!!!",cc.index(key)
-                print key
+                #print "seen this one!!!!!!!!!!!!!!!!!!!",cc.index(key)
+                #print key
                 tmp= cct[cc.index(key)]
                 found=True
                 

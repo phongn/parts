@@ -37,4 +37,4 @@ common.AddBuilder('LibPackage',SCons.Builder.Builder(action = TarAction,
 common.AddBuilder('TarFile',SCons.Builder.Builder(action = TarAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.gz'))#,multi = 1))
+                                   suffix = '.tar'))#,multi = 1))
