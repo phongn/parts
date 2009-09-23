@@ -1,25 +1,28 @@
 import sys
 import common
 import console
+import pdb
+import string
+import stream_identifier
 
 class streamer:
     def __init__(self,outfunc):
-        self.outfunc=outfunc
+        self.outfunc=outfunc        
     def write(self,str):
-        self.outfunc(msg=str)
+        self.outfunc(x=str)
     def flush(self):
         pass
     
-
 class reporter:
     def __init__(self,logger,silent,wrn_as_err=False):
-        sys.stdout=streamer(self.stdout)
-        sys.stderr=streamer(self.stderr)
+        sys.stdout=streamer(lambda x : self.stream_dispatch(x,stream_identifier.Stream_Identifier.OUTPUT))
+        sys.stderr=streamer(lambda x : self.stream_dispatch(x,stream_identifier.Stream_Identifier.ERROR))
         
         self.console=console.Console(wrn_as_err)
         self.logger=logger
         self.already_printed = set()
         self.silent=silent
+        self.stream_identity = stream_identifier.Stream_Identifier()
     
     def part_warning(self,env,msg,print_once=False):
         s="Parts: Warning : "+msg+"\n"
@@ -59,7 +62,16 @@ class reporter:
             
     def verbose_msg(self,catagory,msg):
         pass
-    
+        
+    def stream_dispatch(self,msg,default = stream_identifier.Stream_Identifier.OUTPUT):
+        self.stream_identity.stream_identify(msg,default)
+        if self.stream_identity.identity is stream_identifier.Stream_Identifier.OUTPUT:
+            self.stdout(msg)
+        elif self.stream_identity.identity is stream_identifier.Stream_Identifier.ERROR:
+            self.stderr(msg)
+        elif self.stream_identity.identity is stream_identifier.Stream_Identifier.WARNING:
+            self.stdwrn(msg)     
+        
     def stdout(self,msg):
         '''This function gets all redirected stdout text from random print calls'''
         self.console.Write(msg)
@@ -67,6 +79,7 @@ class reporter:
          
     def stderr(self,msg):
         '''This will gets any stderr text in scons via a print>>stderr usage'''
+        #print>> sys.__stderr__, "Error message"
         self.console.Error.Write(msg)
         self.logger.logerr(msg)
     
