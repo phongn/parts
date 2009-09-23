@@ -9,8 +9,8 @@ class Stream_Identifier:
     WARNING = 3
     def __init__(self):
         self.identity = Stream_Identifier.NONE
-        self.warning = re.compile('\s\W?warnings?\W?\s',re.IGNORECASE)
-        self.error = re.compile('\s\W?errors?\W?\s',re.IGNORECASE)
+        self.warning = re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE)
+        self.error = re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)
         
     def stream_identify(self,line,default = OUTPUT):
         self.identity = Stream_Identifier.NONE

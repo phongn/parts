@@ -430,3 +430,4 @@ common.AddBoolVariable('use_sdk',False, 'Controls if SDKs dependents are used to
 
 #common.AddVariable('cfg_file','parts.cfg')
 common.add_global_value('SetOptionDefault',SetOptionDefault)
+common.AddBoolVariable('use_color',False,'Controls usage of color in console output text to highlight warnings and errors')
