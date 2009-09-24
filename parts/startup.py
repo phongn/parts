@@ -416,6 +416,7 @@ def tool_converter(str_val, raw_val):
     
 common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter)   
 
+common.AddBoolVariable('use_color',False,'Controls if color is used on the screen')
 common.AddBoolVariable('show_progress',True,'Controls is progress state is shown')
 common.AddVariable('PROGRESS_STR',['scons: Evaluating |\r',
                                     'scons: Evaluating /\r',
