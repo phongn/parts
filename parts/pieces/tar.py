@@ -2,8 +2,8 @@ import os,tarfile
 import SCons.Script
 import parts.common as common
 
-def tar(target, source, env):
-        zf = tarfile.open(str(target[0]), 'w')
+def tar(target, source, env, type):
+        zf = tarfile.open(str(target[0]), type)
         for s in source:
             tmp=s.path
             root_dir=env.get('src_dir',None)
@@ -28,8 +28,12 @@ def tar(target, source, env):
         #tar.extractall(destination)
         #tar.close()
 
-TarAction = SCons.Action.Action(tar)
-common.AddBuilder('LibPackage',SCons.Builder.Builder(action = TarAction,
+
+TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w') )
+GzAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|gz') )
+bz2Action = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|bz2') )
+
+common.AddBuilder('LibPackage',SCons.Builder.Builder(action = GzAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffix = '.so-gz'))#,multi = 1))
@@ -38,3 +42,15 @@ common.AddBuilder('TarFile',SCons.Builder.Builder(action = TarAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffix = '.tar'))#,multi = 1))
+                                
+common.AddBuilder('GzFile',SCons.Builder.Builder(action = GzAction,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffix = '.gz'))#,multi = 1))
+                                
+common.AddBuilder('Bz2File',SCons.Builder.Builder(action = bz2Action,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffix = '.bz2'))#,multi = 1))
+
+ 
