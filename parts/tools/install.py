@@ -111,7 +111,22 @@ def installFunc(target, source, env):
     assert len(target)==len(source), \
            "Installing source %s into target %s: target and source lists must have same length."%(map(str, source), map(str, target))
     for t,s in zip(target,source):
-        if install(t.get_path(),s.get_path(),env):
+        symlink=env.MetaTagValue(t,'SymLink')
+        if symlink is not None:
+            if env['HOST_OS']=='win32':
+                import win32file
+                import win32com.client
+                if symlink is not None:
+                    # make a short cut for now on windows
+                    # deal later with vista ability to make a symlink
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    shortcut = shell.CreateShortCut(t.get_path())
+                    shortcut.Targetpath = os.path.normpath(os.path.join(os.path.abspath(os.path.split(t.get_path())[0]),symlink))
+                    shortcut.save()
+                    
+            else:
+                os.symlink(dest,symlink)
+        elif install(t.get_path(),s.get_path(),env):
             return 1
 
     return 0
@@ -208,14 +223,32 @@ def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
         dnodes = env.arg2nodes(dir, target_factory.Dir)
     except TypeError:
         raise SCons.Errors.UserError, "Target `%s' of Install() is a file, but should be a directory.  Perhaps you have the Install() arguments backwards?" % str(dir)
-    sources = env.arg2nodes(source, env.fs.Entry)
+    #sources = env.arg2nodes(source, env.fs.Entry)
+    source=make_list(source)
+    sources=[]
+    # workaround to not having symlinks yet
+    for s in source:
+        tmp=env.arg2nodes(s, env.fs.Entry)
+        symlink=None
+        if isinstance(s,SCons.Node.FS.File):
+            symlink=env.MetaTagValue(s,'SymLink')
+        if symlink is not None:
+            env.MetaTag(tmp[0],SymLink=symlink)
+        sources.extend(tmp)
+        
     tgt = []
     for dnode in dnodes:
         for src in sources:
             # Prepend './' so the lookup doesn't interpret an initial
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
-            target = env.fs.Entry('.'+os.sep+src.name, dnode)
+            symlink=env.MetaTagValue(src,'SymLink')
+            if symlink is not None:
+                target=env.fs.File('.'+os.sep+src.name, dnode)
+                env.MetaTag(target,SymLink=symlink)
+            else:
+                target=env.fs.Entry('.'+os.sep+src.name, dnode)
+            #target = env.fs.Entry('.'+os.sep+src.name, dnode)
             tmp=BaseInstallBuilder(env, target, src, **kw)
             tgt.extend(tmp)
             #tgt.extend(BaseInstallBuilder(env, target, src, **kw))

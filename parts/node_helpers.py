@@ -22,6 +22,12 @@ def AbsFile(env,path):
 def AbsDir(env,path):
     return env.Dir(str(path),env['SRC_DIR']).srcnode().abspath
     
+    
+def SymLinkEnv(env,name,linkto,*args,**kw):
+    tmp=env.File(name,*args,**kw)
+    env.MetaTag(tmp,SymLink=linkto)
+    return tmp
+
 
 # import the meta object we will need to add our code to as methods
 from SCons.Script.SConscript import SConsEnvironment
@@ -29,3 +35,5 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object
 SConsEnvironment.AbsFile=AbsFile
 SConsEnvironment.AbsDir=AbsDir
+
+SConsEnvironment.SymLink=SymLinkEnv

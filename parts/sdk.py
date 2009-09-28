@@ -314,15 +314,31 @@ def SDKCOPYWrapper(env, target=None, source=None):
         dnodes = env.arg2nodes(target, target_factory.Dir)
     except TypeError:
         raise SCons.Errors.UserError, "PARTS: Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir)
-    
-    sources = env.arg2nodes(source, env.fs.Entry)
+    source=common.make_list(source)
+    sources=[]
+    # workaround to not having symlinks yet
+    for s in source:
+        tmp=env.arg2nodes(s, env.fs.Entry)
+        symlink=None
+        if isinstance(s,SCons.Node.FS.File):
+            symlink=env.MetaTagValue(s,'SymLink')
+        if symlink is not None:
+            env.MetaTag(tmp[0],SymLink=symlink)
+        sources.extend(tmp)
+        
+    #sources = env.arg2nodes(source, env.fs.Entry)
     n_targets = []
     for dnode in dnodes:
         for src in sources:
             # Prepend './' so the lookup doesn't interpret an initial
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
-            e=env.fs.Entry('.'+os.sep+src.name, dnode)
+            symlink=env.MetaTagValue(src,'SymLink')
+            if symlink is not None:
+                e=env.fs.File('.'+os.sep+src.name, dnode)
+                env.MetaTag(e,SymLink=symlink)
+            else:
+                e=env.fs.Entry('.'+os.sep+src.name, dnode)
             tmp=env.__SDKBuilder__(target=e,source=src)
             n_targets.extend(tmp)
             # hack for gz-so file .. remove later 
@@ -385,7 +401,21 @@ def SDKFunc(target, source, env):
     
     assert( len(target) == len(source) ), "\ntarget: %s\nsource: %s" %(map(str, target),map(str, source))
     for t, s in zip(target, source):
-        if sdkcopyFunc(t.get_path(), s.get_path(), env):
+        symlink=env.MetaTagValue(t,'SymLink')
+        if symlink is not None:
+            if env['HOST_OS']=='win32':
+                import win32file
+                import win32com.client
+                if symlink is not None:
+                    # make a short cut for now on windows
+                    # deal later with vista ability to make a symlink
+                    shell = win32com.client.Dispatch("WScript.Shell")
+                    shortcut = shell.CreateShortCut(t.get_path()+'.lnk')
+                    shortcut.Targetpath = os.path.normpath(os.path.join(os.path.abspath(os.path.split(t.get_path())[0]),symlink))
+                    shortcut.save()
+            else:
+                os.symlink(dest,symlink)
+        elif sdkcopyFunc(t.get_path(), s.get_path(), env):
             #report error to logger
             output.TaskEnd(id,1)
             return 1

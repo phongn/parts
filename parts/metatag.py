@@ -15,6 +15,8 @@ def MetaTag(nodes,ns='meta',**metakv):
 def MetaTagValue(node,key,ns='meta',default=None):
     try:
         return getattr(node,ns)[key]
+    except AttributeError:
+        return default
     except KeyError:
         return default
 
