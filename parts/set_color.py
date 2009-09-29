@@ -59,9 +59,11 @@ class win32_set_color:
         handle = ctypes.windll.kernel32.GetStdHandle(win32_set_color.STD_OUTPUT_HANDLE)        
         string_buffer = ctypes.create_string_buffer(22)        
         bool = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(handle, string_buffer)
+        wattr=0
         if bool:
             import struct
             (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
+        
         if wattr > 0:
             return wattr
 
@@ -114,6 +116,7 @@ class posix_set_color:
         handle = ctypes.windll.kernel32.GetStdHandle(win32_set_color.STD_OUTPUT_HANDLE)        
         string_buffer = ctypes.create_string_buffer(22)        
         bool = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(handle, string_buffer)
+        wattr=0
         if bool:
             import struct
             (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
