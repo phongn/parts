@@ -414,7 +414,7 @@ def SDKFunc(target, source, env):
                     shortcut.Targetpath = os.path.normpath(os.path.join(os.path.abspath(os.path.split(t.get_path())[0]),symlink))
                     shortcut.save()
             else:
-                os.symlink(dest,symlink)
+                os.symlink(t,symlink)
         elif sdkcopyFunc(t.get_path(), s.get_path(), env):
             #report error to logger
             output.TaskEnd(id,1)

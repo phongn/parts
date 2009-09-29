@@ -1,4 +1,5 @@
 import os
+import re
 import SCons.Script
 import pattern
 import common
@@ -57,7 +58,9 @@ def export_path(env,target_dirs,source_dirs,pinfo,prop,use_src=False,create_sdk=
                 
     #pinfo[prop].extend(ret)
     return ret
-                
+
+_reg=re.compile('[\w\-\.]*.so.([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)', re.I)
+             
 def export_file(env,targets,pinfo,prop):
     ret=[]
     for t in targets:
@@ -65,8 +68,13 @@ def export_file(env,targets,pinfo,prop):
             t=env.File(t)
         file=os.path.split(t.abspath)[1]
         ret.append(file)
+        
         if file.endswith('.so') or file.endswith('.sl'):
             file = file[:-3]
+        elif _reg.match(file):
+            # if this matches we want to not add this file
+            # ass doing this would upset the linker
+            continue
         elif file.endswith('.so-gz'):
             file = file[:-6]
         pinfo[prop].append(file)

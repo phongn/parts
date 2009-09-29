@@ -125,7 +125,7 @@ def installFunc(target, source, env):
                     shortcut.save()
                     
             else:
-                os.symlink(dest,symlink)
+                os.symlink(t,symlink)
         elif install(t.get_path(),s.get_path(),env):
             return 1
 
