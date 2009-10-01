@@ -70,6 +70,7 @@ class GnuInfo(ToolInfo):
         if self.found is None:
             return None
         k=self.found.keys()
+        k.sort(reverse=True)
         for i in k:
             if MatchVersionNumbers(version,i):
                 return i
@@ -137,6 +138,7 @@ class GnuInfo(ToolInfo):
             tmp=self.exists(env,namespace,v,p[0],use_script,p[1])
             if tmp is not None:
                 ret.update(self.make_ver_shell_env_set(v,tmp))
+        
         return ret
     
     def scan_query(self,install_root,opt_scan=True):
@@ -184,7 +186,7 @@ class GnuInfo(ToolInfo):
                 if tmp is not None:
                     ret[tmp]=(install_root,self.test_file) 
                 self.found=ret
-        print self.found
+        
         if self.found == {}:
             return None
         return self.found

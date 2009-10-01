@@ -317,6 +317,7 @@ msvc.Register(
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
+                            '${MSVC.VCINSTALL}/lib/ia64'+os.pathsep+
                             '${MSVC.VCINSTALL}/PlatformSDK/lib/ia64'+os.pathsep+
                             '${MSVC.VSINSTALL}/SDK/v2.0/lib/ia64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'

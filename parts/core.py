@@ -172,26 +172,26 @@ def generate_config(prepend,append,replace):
         tmp=overrides.get('ARCHITECTURE',None)
         if tmp is not None:
             rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
-            if overrides.has_key('TARGET_ARCH')==False or overrides.has_key('TARGET_PLATFORM')==False:
+            if overrides.has_key('TARGET_ARCH')==False and overrides.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         # test for bad value.. remap is needed
         tmp=replace.get('ARCHITECTURE',None)
         if tmp is not None:
             rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
-            if replace.has_key('TARGET_ARCH')==False or replace.has_key('TARGET_PLATFORM')==False:
+            if replace.has_key('TARGET_ARCH')==False and replace.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         tmp=append.get('ARCHITECTURE',None)
         if tmp is not None:
             rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
-            if append.has_key('TARGET_ARCH')==False or append.has_key('TARGET_PLATFORM')==False:
+            if append.has_key('TARGET_ARCH')==False and append.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         tmp=prepend.get('ARCHITECTURE',None)
         if tmp is not None:
             rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
-            if prepend.has_key('TARGET_ARCH')==False or prepend.has_key('TARGET_PLATFORM')==False:
+            if prepend.has_key('TARGET_ARCH')==False and prepend.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)        
             
         ######################################            
@@ -239,7 +239,7 @@ def generate_config(prepend,append,replace):
         #print "Unknowns *********************"
         #print vars.UnknownVariables()
         #print "******************************"
-    
+        
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
         # update the missing arguments to enviroment stuff
@@ -247,7 +247,6 @@ def generate_config(prepend,append,replace):
         #update_extra_options(env)
         env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
         env.Replace(**vars.UnknownVariables())
-          
         ## apply tool chain
         env.ToolChain(pre_tools+env['toolchain']+post_tools)#tl_chain)
         

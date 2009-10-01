@@ -129,7 +129,6 @@ class namespace(dict,env_overrides.bindable):
         self.__dict__['env']=env
 
 
-
 def process_tool_arg(lst):
     tmplst=[]
     for i in lst:
@@ -143,6 +142,8 @@ def process_tool_arg(lst):
             # error
             print "Invalid tool defined [",tmp,']'
             Exit(1)
+        elif tmp[1]=='':
+            tmp[1]=None
         tmplst.append(tmp)
     tmplst.reverse()
     return tmplst

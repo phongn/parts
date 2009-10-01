@@ -281,11 +281,9 @@ def InstallAPI(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     installed_files = InstallItem(env, '$INSTALL_API', src_files,
         sub_dir=sub_dir,sdk_dir='$SDK_API',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('API',**kw))
-    #env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_API')
+    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_API')
     return installed_files
-    # Need to MetaTag() as Config? or as part of defining component?
-
-
+    
 def InstallLib(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$INSTALL_LIB', src_files,
@@ -293,7 +291,6 @@ def InstallLib(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('LIB',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_LIB')
     return installed_files
-    # Need to MetaTag() as Config? or as part of defining component?
     
 def InstallBin(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
@@ -302,9 +299,7 @@ def InstallBin(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('BIN',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_BIN')
     return installed_files
-    # Need to MetaTag() as Config? or as part of defining component?
-
-
+    
 def InstallConfig(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
     installed_files = InstallItem(env, '$INSTALL_CONFIG', src_files,
@@ -312,8 +307,7 @@ def InstallConfig(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('CONFIG',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_CONFIG')
     return installed_files
-    # Need to MetaTag() as Config? or as part of defining component?
-
+    
 
 def InstallDoc(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
@@ -322,8 +316,7 @@ def InstallDoc(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('DOC',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DOC')
     return installed_files
-    # Need to MetaTag() as Doc? or as part of defining component?
-
+    
 
 def InstallHelp(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
@@ -332,9 +325,7 @@ def InstallHelp(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('HELP',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_HELP')
     return installed_files
-    # Need to MetaTag() as Help? or as part of defining component?
-
-
+    
 def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$INSTALL_MESSAGE', src_files,
@@ -342,9 +333,7 @@ def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw)
         **get_args('MESSAGE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_MESSAGE')
     return installed_files
-    # Need to MetaTag() as Message? or as part of defining component?
-
-
+    
 def InstallResource(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     
     installed_files = InstallItem(env, '$INSTALL_RESOURCE', src_files,
@@ -352,8 +341,7 @@ def InstallResource(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
         **get_args('RESOURCE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_RESOURCE')
     return installed_files
-    # Need to MetaTag() as Resource? or as part of defining component?
-
+    
 
 def InstallSample(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         
@@ -362,7 +350,7 @@ def InstallSample(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('SAMPLE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_SAMPLE')
     return installed_files
-    # Need to MetaTag() as Sample? or as part of defining component?
+    
     
 def InstallData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         
@@ -371,8 +359,7 @@ def InstallData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('DATA',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DATA')
     return installed_files
-    # Need to MetaTag() as Sample? or as part of defining component?
-
+    
 
 def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
@@ -392,6 +379,21 @@ def PkgNoInstall(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     env.MetaTag(installed_files, PACKAGING_TYPE = 'NO_INSTALL')
     return installed_files
 
+def InstallPython(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
+
+    installed_files = InstallItem(env, '$INSTALL_PYTHON', src_files,
+        sub_dir=sub_dir,sdk_dir='$SDK_PYTHON',no_pkg=no_pkg,create_sdk=create_sdk,
+        **get_args('PYTHON',**kw))
+    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_PYTHON')
+    return installed_files
+
+def InstallScript(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
+
+    installed_files = InstallItem(env, '$INSTALL_SCRIPT', src_files,
+        sub_dir=sub_dir,sdk_dir='$SDK_SCRIPT',no_pkg=no_pkg,create_sdk=create_sdk,
+        **get_args('SCRIPT',**kw))
+    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_SCRIPT')
+    return installed_files
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
@@ -435,6 +437,8 @@ common.AddVariable('INSTALL_SAMPLE','${INSTALL_ROOT}/sample','')
 common.AddVariable('INSTALL_DATA','${INSTALL_ROOT}/data','')
 common.AddVariable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
 common.AddVariable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
+common.AddVariable('INSTALL_PYTHON','${INSTALL_ROOT}/python','')
+common.AddVariable('INSTALL_SCRIPT','${INSTALL_ROOT}/scripts','')
 
 #file patterns
 common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dlsym'],'')

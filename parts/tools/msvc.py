@@ -199,7 +199,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['_MSVC_OUTPUT_FLAG'] = msvc_output_flag
     env['_CCCOMCOM']  = '$CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS $CCPCHFLAGS $CCPDBFLAGS'
     env['CC']         = 'cl'
-    env['CCFLAGS']    = SCons.Util.CLVar('/nologo')
+    env['CCFLAGS']    = SCons.Util.CLVar('')
     env['CFLAGS']     = SCons.Util.CLVar('')
     env['CCCOM']      = '$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM'
     env['SHCC']       = '$CC'

@@ -187,7 +187,7 @@ def SdkInclude(env,sources,sub_dir='',add_to_path=True,use_src_dir=False,create_
 def SdkLib(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=False,create_sdk=True):
     
     ret=SdkItem(env,'$SDK_LIB',sources,sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
-            add_to_path=add_to_path,auto_add_file=True,use_src_dir=use_src_dir,
+            add_to_path=add_to_path,auto_add_file=auto_add_libs,use_src_dir=use_src_dir,
             use_build_dir=True,create_sdk=create_sdk)
     return ret        
     
@@ -244,6 +244,16 @@ def SdkPkgNo(env, sources, sub_dir='',create_sdk=True):
 def SdkAPI(env, sources, sub_dir='',create_sdk=True):
 
     ret=SdkItem(env,'$SDK_API',sources,sub_dir,'',[],create_sdk=create_sdk)
+    return ret
+
+def SdkPython(env, sources, sub_dir='',create_sdk=True):
+
+    ret=SdkItem(env,'$SDK_Python',sources,sub_dir,'',[],create_sdk=create_sdk)
+    return ret
+
+def SdkScript(env, sources, sub_dir='',create_sdk=True):
+
+    ret=SdkItem(env,'$SDK_Script',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 
@@ -535,6 +545,8 @@ SConsEnvironment.SdkSample=SdkSample
 SConsEnvironment.SdkTopLevel=SdkTopLevel
 SConsEnvironment.SdkPkgNo=SdkPkgNo
 SConsEnvironment.SdkAPI=SdkAPI
+SConsEnvironment.SdkPython=SdkPython
+SConsEnvironment.SdkScript=SdkScript
 
 
 SConsEnvironment._SDKCOPY_=SDKCOPYWrapper
@@ -580,6 +592,8 @@ common.AddVariable('SDK_RESOURCE','$SDK_ROOT/resource','Full SDK directory for t
 common.AddVariable('SDK_SAMPLE','$SDK_ROOT/sample','Full SDK directory for the sample concept')
 common.AddVariable('SDK_TOP_LEVEL','$SDK_ROOT/TOP_LEVEL','Full SDK directory for the file that get installed as the top level (such readme.txt)')
 common.AddVariable('SDK_NO_INSTALL','$SDK_ROOT/NO_INSTALL','For files needed for the product in some way, but should not be added in the final install package')
+common.AddVariable('SDK_PYTHON','$SDK_ROOT/python','Full SDK directory for the python file concept')
+common.AddVariable('SDK_SCRIPT','$SDK_ROOT/scripts','Full SDK directory for general script file concept')
 
 common.AddBoolVariable('USE_SRC_DIR',False,'Controls is the SDK or Src directory of the Part is passed to dependent parts, useful for debug builds')
 common.AddBoolVariable('CREATE_SDK',True,'Controls if the SDK should be created and used') 

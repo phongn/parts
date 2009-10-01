@@ -61,6 +61,115 @@ Intelc.Register(
         ]
     ) 
 
+# 32-bit 11.1 ( pro )
+Intelc.Register(
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86')],
+    info=[
+        IntelcInfo(
+            version='11,11.1.*',
+            install_scanner=regscanner.reg_scanner2(
+                [r'Software\Wow6432Node\Intel\Suites\11.1',
+                r'Software\Intel\Suites\11.1'],
+                common.intel_11_1,
+                'ia32',
+                'ICPP_COMPILER11','11.1'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/lib/ia32/'                      
+                        },
+            test_file='icl.exe'
+            )
+        ]
+    ) 
+
+
+# 64-bit 11.1 ( Pro cross)
+Intelc.Register(
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('win32','x86_64')],
+    info=[
+        IntelcInfo(
+            version='11,11.1.*',
+            install_scanner=regscanner.reg_scanner2(
+                [r'Software\Wow6432Node\Intel\Suites\11.1',
+                r'Software\Intel\Suites\11.1'],
+                common.intel_11_1,
+                'EM64T',
+                'ICPP_COMPILER11','11.1'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32_Intel64/iclvars_IA32_intel64.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/Intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/lib/intel64'                     
+                        },
+            test_file='icl.exe'
+            )
+        ]
+    ) 
+    
+# 64-bit 11.1 ( Pro native)
+Intelc.Register(
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86_64')],
+    info=[
+        IntelcInfo(
+            version='11,11.1.*',
+            install_scanner=regscanner.reg_scanner2(
+                [r'Software\Wow6432Node\Intel\Suites\11.1'],
+                common.intel_11_1,
+                'EM64T_NATIVE',
+                'ICPP_COMPILER11','11.1'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/iclvars_intel64.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/Intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/lib/intel64'                     
+                        },
+            test_file='icl.exe'
+            )
+        ]
+    )     
+    
+    
+# ia64-bit 11.1 ( pro cross)
+Intelc.Register(
+    hosts=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','ia64')],
+    info=[
+        IntelcInfo(
+            version='11,11.1.*',
+            install_scanner=regscanner.reg_scanner2(
+                [r'Software\Wow6432Node\Intel\Suites\11.1',
+                r'Software\Intel\Suites\11.1'],
+                common.intel_11_1,
+                'Itanium',
+                'ICPP_COMPILER11','11.1'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/IA32_ia64/iclvars_ia32_ia64.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/IA32_ia64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/lib/ia64'                     
+                        },
+            test_file='icl.exe'
+            )
+        ]
+    ) 
+
 # 32-bit 11.0
 Intelc.Register(
     hosts=[SystemPlatform('win32','any')],

@@ -7,6 +7,14 @@ from parts.config import *
 import parts.version
 import SCons.Script
 
+def make_bool(obj):
+    if obj is bool():
+        return obj
+    #assume string
+    if obj.lower() == 'true':
+        return True
+    return False
+
 def map_default_version(env):
     return env['INTELC_VERSION']
 
@@ -25,12 +33,16 @@ def post_process_func(env):
             '-gcc-version='+ver])
     except:
         raise RuntimeError("You need to define gnutools or compatible tool chain with Intel tool chain")
+    
+    ## code coverage feature additions
+    if make_bool(env.get('codecov',False)) == True:    
+        if(env.Version(env['INTELC_VERSION']) >= 11):
+            env.Append(CCFLAGS=['-prof-gen=srcpos'])
+        else:
+            env.Append(CCFLAGS=['-prof-genx'])
+
 
 
 config=configuration(map_default_version,post_process_func)
 
-config.VersionRange("7-*",
-                    append=ConfigValues(
-                        LINKFLAGS=['-i-static']
-                        )
-                    )
+                

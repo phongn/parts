@@ -107,7 +107,9 @@ class configuration:
             for k,v in tmp.iteritems():
                 if settings.has_key(k)==False:
                     settings[k]={'append':[],'prepend':[]}
-                settings[k]['prepend']=v.extend(settings[k]['prepend'])
+                v.extend(settings[k]['prepend'])
+                settings[k]['prepend']=v
+            
         
         return (settings,settings_ex),ver_rng
         

@@ -1,5 +1,5 @@
 ######################################
-### Intel win32 compiler configurations debug
+### Intel win32 compiler configurations release
 ######################################
 
 import sys
@@ -12,10 +12,17 @@ def map_default_version(env):
 
 config=configuration(map_default_version)
 
-config.VersionRange("7-*",
+config.VersionRange("7-10.*",
                     append=ConfigValues(
                         CCFLAGS=['/nologo','/Ox','/MD','/W3','/Zc:wchar_t'],
-                        CXXFLAGS=['/EHsc','/GR'],
-                        LINKFLAGS=['/nodefaultlib:"libmmd.lib"']
+                        CXXFLAGS=['/EHsc','/GR']
                         )
                     )
+                    
+config.VersionRange("11-*",
+                    append=ConfigValues(
+                        CCFLAGS=['/nologo','/Ox','/MD','/W3','/Zc:wchar_t'],
+                        CXXFLAGS=['/EHsc','/GR']
+                        )
+                    )
+                    

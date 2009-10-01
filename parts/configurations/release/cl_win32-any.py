@@ -14,7 +14,7 @@ config=configuration(map_default_version)
 
 config.VersionRange("6.0",
                     append=ConfigValues(
-                        CCFLAGS=['/Ox','/MD','/W3'],
+                        CCFLAGS=['/nologo','/Ox','/MD','/W3'],
                         CXXFLAGS=['/EHsc','/GR']
                         )
                     )

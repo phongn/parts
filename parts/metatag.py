@@ -37,11 +37,20 @@ def MetaTagValue_method(env,node,key,ns='meta',default=None):
 def hasMetaTag_method(env,node,key,ns='meta'):
     return hasMetaTag(node,key,ns)
 
+def Tag_wrapper(env,nodes,ns='meta',**metakv):
+    import SCons.Script
+    def_env=SCons.Script.DefaultEnvironment()
+    rpt=def_env['PARTS_REPORTER']
+    rpt.part_warning(env,"Please use MetaTag instead")
+    return MetaTag(nodes,ns,**metakv)
+
+
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.MetaTag=MetaTag_method
+SConsEnvironment.Tag=Tag_wrapper # to work around existing tag usage
 SConsEnvironment.MetaTagValue=MetaTagValue_method
 SConsEnvironment.hasMetaTag=hasMetaTag_method
 

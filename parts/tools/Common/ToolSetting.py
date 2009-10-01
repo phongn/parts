@@ -84,6 +84,7 @@ class ToolSetting:
         if version is None:
             return None
         k=self.found.get(key,[])
+        k.sort(reverse=True)
         for i in k:
             if MatchVersionNumbers(version,i):
                 return i
@@ -159,8 +160,9 @@ class ToolSetting:
         if not self.found.has_key(target):
             self.found[key]=[]
         #test raw target
-        if self.tools.has_key(target):
-            for k,vl in self.tools[target].items():
+
+        def query_logic(_target):
+            for k,vl in self.tools[_target].items():
                 swap=False
                 for v in vl:
                     tmp=v.query(env,self.name,root_path,use_script)
@@ -180,69 +182,18 @@ class ToolSetting:
                     swap=True
             if env.has_key(self.name):
                 del env[self.name]
+        
+        if self.tools.has_key(target):
+            query_logic(target)
         #test for <OS>-any
         if self.tools.has_key(t1):
-            for k,vl in self.tools[t1].items():
-                swap=False
-                for v in vl:
-                    tmp=v.query(env,self.name,root_path,use_script)
-                    # if we find anything
-                    if tmp is not None:
-                        #go through all items and store needed information
-                        for ver,senv in tmp.items():
-                            common.append_unique(self.found[key],ver)
-                        # move found item with front
-                        if swap:
-                            vl.remove(v)
-                            vl.insert(0,v)
-                        # if we got here we had a match... we take this and
-                        # skip the rest
-                        break
-                    swap=True
-            if env.has_key(self.name):
-                del env[self.name]
+            query_logic(t1)
         #test for any-<Arch>
         if self.tools.has_key(t2):
-            for k,vl in self.tools[t2].items():
-                swap=False
-                for v in vl:
-                    tmp=v.query(env,self.name,root_path,use_script)
-                    # if we find anything
-                    if tmp is not None:
-                        #go through all items and store needed information
-                        for ver,senv in tmp.items():
-                            common.append_unique(self.found[key],ver)
-                        # move found item with front
-                        if swap:
-                            vl.remove(v)
-                            vl.insert(0,v)
-                        # if we got here we had a match... we take this and
-                        # skip the rest
-                        break
-                    swap=True
-            if env.has_key(self.name):
-                del env[self.name]               
+            query_logic(t2)
         #test for any-any
         if self.tools.has_key(t3):
-            for k,vl in self.tools[t3].items():
-                swap=False
-                for v in vl:
-                    tmp=v.query(env,self.name,root_path,use_script)
-                    # if we find anything
-                    if tmp is not None:
-                        #go through all items and store needed information
-                        for ver,senv in tmp.items():
-                            common.append_unique(self.found[key],ver)
-                        # move found item with front
-                        if swap:
-                            vl.remove(v)
-                            vl.insert(0,v)
-                        # if we got here we had a match... we take this and
-                        # skip the rest
-                        break
-                    swap=True
-            if env.has_key(self.name):
-                del env[self.name]              
+            query_logic(t3)
         self.found[key].sort(reverse=True)
         
         
@@ -281,100 +232,49 @@ class ToolSetting:
         cache_key=str(version)+key
         root_path=env.get(self.rootpath_tag,None)
         use_script=env.get(self.script_tag,False)
+
+        def exist_logic(_target):
+            for k,vl in self.tools[_target].items():
+                swap = False
+                for v in vl:
+                    if version in v.version_set():
+                        tmp=v.exists(env,self.name,version,root_path,use_script)
+                        if tmp is not None:
+                            # remove the matching tool, and add to the front 
+                            # as it is the matching tool found
+                            if swap:
+                                vl.remove(v)
+                                vl.insert(0,v)
+                            # store that it is found.. store exact version found
+                            common.append_unique(self.found[key],v.resolve_version(version))
+                            ## get cache key
+                            #cache_key2=version+self.get_cache_key(env)
+                            ## store shell env vals
+                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
+                            # make sure it is sorted corrcetly
+                            self.found[key].sort(reverse=True)
+                            return True
+                    swap=True
+            return False
+        
         
         #test raw target
         if self.tools.has_key(target):
-            for k,vl in self.tools[target].items():
-                swap = False
-                for v in vl:
-                    if version in v.version_set():
-                        tmp=v.exists(env,self.name,version,root_path,use_script)
-                        if tmp is not None:
-                            # remove the matching tool, and add to the front 
-                            # as it is the matching tool found
-                            if swap:
-                                vl.remove(v)
-                                vl.insert(0,v)
-                            # store that it is found.. store exact version found
-                            common.append_unique(self.found[key],v.resolve_version(version))
-                            ## get cache key
-                            #cache_key2=version+self.get_cache_key(env)
-                            ## store shell env vals
-                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
-                            # make sure it is sorted corrcetly
-                            self.found[key].sort(reverse=True)
-                            return
-                    swap=True
+            if exist_logic(target):
+                return 
                         
         #test for <OS>-any
         if self.tools.has_key(t1):
-            for k,vl in self.tools[t1].items():
-                swap = False
-                for v in vl:
-                    if version in v.version_set():
-                        tmp=v.exists(env,self.name,version,root_path,use_script)
-                        if tmp is not None:
-                            # remove the matching tool, and add to the front 
-                            # as it is the matching tool found
-                            if swap:
-                                vl.remove(v)
-                                vl.insert(0,v)
-                            # store that it is found.. store exact version found
-                            common.append_unique(self.found[key],v.resolve_version(version))
-                            ## get cache key
-                            #cache_key2=version+self.get_cache_key(env)
-                            ## store shell env vals
-                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
-                            # make sure it is sorted corrcetly
-                            self.found[key].sort(reverse=True)
-                            return
-                    swap=True
+            if exist_logic(t1):
+                return
         #test for any-<Arch>
         if self.tools.has_key(t2):
-            for k,vl in self.tools[t2].items():
-                swap = False
-                for v in vl:
-                    if version in v.version_set():
-                        tmp=v.exists(env,self.name,version,root_path,use_script)
-                        if tmp is not None:
-                            # remove the matching tool, and add to the front 
-                            # as it is the matching tool found
-                            if swap:
-                                vl.remove(v)
-                                vl.insert(0,v)
-                            # store that it is found.. store exact version found
-                            common.append_unique(self.found[key],v.resolve_version(version))
-                            ## get cache key
-                            #cache_key2=version+self.get_cache_key(env)
-                            ## store shell env vals
-                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
-                            # make sure it is sorted corrcetly
-                            self.found[key].sort(reverse=True)
-                            return
-                    swap=True
+            if exist_logic(t2):
+                return
         #test for any-any
         if self.tools.has_key(t3):
-            for k,vl in self.tools[t3].items():
-                swap = False
-                for v in vl:
-                    if version in v.version_set():
-                        tmp=v.exists(env,self.name,version,root_path,use_script)
-                        if tmp is not None:
-                            # remove the matching tool, and add to the front 
-                            # as it is the matching tool found
-                            if swap:
-                                vl.remove(v)
-                                vl.insert(0,v)
-                            # store that it is found.. store exact version found
-                            common.append_unique(self.found[key],v.resolve_version(version))
-                            ## get cache key
-                            #cache_key2=version+self.get_cache_key(env)
-                            ## store shell env vals
-                            #self.shell_cache[cache_key2]=self.shell_cache[cache_key]=(tmp,env[self.name]._rebind(None,None))
-                            # make sure it is sorted corrcetly
-                            self.found[key].sort(reverse=True)
-                            return
-                    swap=True
+            if exist_logic(t3):
+                return
                                      
         self.not_found[key].append(version)
         
@@ -415,7 +315,7 @@ class ToolSetting:
         #test to see if it was found
         return found
 
-    def GetInfo(self,version,target):
+    def GetInfo(self,env,version,target,root_path,use_script):
         '''
         Get the information. It is expected that the caller has done the 
         correct tests to validate that the can get information out of this 
@@ -435,22 +335,22 @@ class ToolSetting:
         if self.tools.has_key(target):
             for k,vl in self.tools[target].items():
                 for v in vl:
-                    if version in v.version_set():
+                    if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t1):
             for k,vl in self.tools[t1].items():
                 for v in vl:
-                    if version in v.version_set():
+                    if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t2):
             for k,vl in self.tools[t2].items():
                 for v in vl:
-                    if version in v.version_set():
+                    if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t3):
             for k,vl in self.tools[t3].items():
                 for v in vl:
-                    if version in v.version_set():
+                    if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v                                                
         
         return ret
@@ -521,17 +421,18 @@ class ToolSetting:
         try:
             return self.shell_cache[cache_key]
         except KeyError:
+            _env=env.Clone()
             # query data
             if version is not None:    
-                self.query_for_exact(env,key,version)
+                self.query_for_exact(_env,key,version)
             else:
-                self.query_for_known(env,key)
+                self.query_for_known(_env,key)
             
             # basic info we will need
             tinfo=None
-            root_path=env.get(self.rootpath_tag,None)
-            use_script=env.get(self.script_tag,False)
-            target=env['TARGET_PLATFORM']
+            root_path=_env.get(self.rootpath_tag,None)
+            use_script=_env.get(self.script_tag,False)
+            target=_env['TARGET_PLATFORM']
             
             ##get the tool info for the host-target combo for the requested version
             #get latest found version if not provided
@@ -543,7 +444,7 @@ class ToolSetting:
             # see if we know if the give version exists
             
             if self.is_version_known(best_version,key):
-                tinfo=self.GetInfo(best_version,target)
+                tinfo=self.GetInfo(_env,best_version,target,root_path,use_script)
             else:
                 # this is an error, nothing found
                 # report that version is not found and the versions if any that
@@ -559,18 +460,19 @@ class ToolSetting:
             if tinfo is None:
                 raise ToolSetupError('ToolSettings failed to load infomation about tool with version: %s and target: %s'%(version,target))
             ##got the tool info now get the data
+                                        
             #get the shell environment
-            shell_env=tinfo.get_shell_env(env,self.name,best_version,root_path,use_script)
+            shell_env=tinfo.get_shell_env(_env,self.name,best_version,root_path,use_script)
             
             # store it in cache
-            ret=(shell_env,env[self.name]._rebind(None,None))
+            ret=(shell_env,_env[self.name]._rebind(None,None))
             self.shell_cache[cache_key]=ret
             # test to see if orginal version and install_root are None is so make a special key for them
             # this is case a tool chain uses the same setup, but they did not overide the install_Root and version
             # in this case this run woudl store a key of version=None ans root=None but after this was applied
             # this next run would have an install root, and a version of None ( given this was what they set in the toolchain
             # teh tool setup would have reset teh version, but not the install root
-            if _v is None and env.get(self.rootpath_tag,None) is None:
+            if _v is None and _env.get(self.rootpath_tag,None) is None:
                 root_path=ret[1]['INSTALL_ROOT']
                 key=str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
                 self.shell_cache[str(_v)+key]=ret
