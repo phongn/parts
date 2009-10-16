@@ -2,6 +2,7 @@
 import os.path
 import string
 import sys
+import copy
 
 from ListVariable import ListVariable2
 
@@ -57,7 +58,7 @@ class Variables:
             option.key     = key
             option.aliases = []
         option.help = help
-        option.default = default
+        option.default = copy.copy(default)
         option.validator = validator
         option.converter = converter
         
@@ -188,7 +189,6 @@ class Variables:
             tmp=self.options.get(k,None)
             if tmp is None:
                 # This value was read in from a file most likely
-                print "****",k,v
                 self.unknown[k] = v
                 continue
             tmp=tmp.converter

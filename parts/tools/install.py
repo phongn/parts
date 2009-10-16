@@ -52,6 +52,7 @@ import SCons.Tool.install #import _UNIQUE_INSTALLED_FILES
 from parts.common import _INSTALLED_PACKAGING_GROUPS
 from parts.common import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
+import parts.node_helpers as node_helpers
 
 def untar_print(target, source, env):
     dest=str(source[0])
@@ -82,17 +83,17 @@ def copyFunc(dest, source, env):
     else:
         if env['HOST_OS']=='win32':
             import win32file
-            try:
-                win32file.CreateHardLink(dest,source)
-            except:
-                win32file.CopyFile(source,dest,False)
+            #try:
+            #    win32file.CreateHardLink(dest,source)
+            #except:
+            win32file.CopyFile(source,dest,False)
         else:
-            try:
-                os.link(source,dest)
-            except:
-                try:
-                    os.symlink(source,dest)
-                except:
+            #try:
+            #    os.link(source,dest)
+            #except:
+                #try:
+                #    os.symlink(source,dest)
+                #except:
                     shutil.copy2(source, dest)
                     st = os.stat(source)
                     os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
@@ -113,19 +114,7 @@ def installFunc(target, source, env):
     for t,s in zip(target,source):
         symlink=env.MetaTagValue(t,'SymLink')
         if symlink is not None:
-            if env['HOST_OS']=='win32':
-                import win32file
-                import win32com.client
-                if symlink is not None:
-                    # make a short cut for now on windows
-                    # deal later with vista ability to make a symlink
-                    shell = win32com.client.Dispatch("WScript.Shell")
-                    shortcut = shell.CreateShortCut(t.get_path())
-                    shortcut.Targetpath = os.path.normpath(os.path.join(os.path.abspath(os.path.split(t.get_path())[0]),symlink))
-                    shortcut.save()
-                    
-            else:
-                os.symlink(t,symlink)
+            node_helpers.make_link_bf([t],None,env)
         elif install(t.get_path(),s.get_path(),env):
             return 1
 

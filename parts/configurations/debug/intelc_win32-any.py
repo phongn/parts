@@ -14,14 +14,14 @@ config=configuration(map_default_version)
 
 config.VersionRange("7-10.*",
                     append=ConfigValues(
-                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/Zc:wchar_t','/RTC1'],
+                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/RTC1'],
                         CXXFLAGS=['/EHsc','/GR']
                         )
                     )
 
 config.VersionRange("11-*",
                     append=ConfigValues(
-                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/Zc:wchar_t','/RTC1'],
+                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/RTC1'],
                         CXXFLAGS=['/EHsc','/GR'],
                         ),
                         

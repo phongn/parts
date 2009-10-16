@@ -32,8 +32,8 @@ class REQ:
     CPPDEFINES_IMPORT=0x4000  #0100 0000 0000 0000
     CPPDEFINES_EXPORT=0x8000  #1000 0000 0000 0000
     
-    ALL_DEFAULT=0XFFFFF
-    
+    ALL_DEFAULT=0XFFFFF    
+        
     ## these are external use
     
     # we make value based on headers, libpath and libs. in the case of lib we 
@@ -61,7 +61,7 @@ class REQ:
 
 
 class ComponentRef:
-    def __init__(self,name,version_range='*',requires=REQ.ALL_DEFAULT,internal=-1):
+    def __init__(self,name,version_range='*',requires=REQ.DEFAULT):
         self.name=name
         self.version=version.version_range(version_range)
         self.requires=requires
@@ -72,7 +72,7 @@ class ComponentRef:
     def resolve_alias(self,env):
         return env.subst(self.alias_mapping_string())
 
-def Component(env,name,version_range='*',requires=REQ.ALL_DEFAULT):
+def Component(env,name,version_range='*',requires=REQ.DEFAULT):
     return ComponentRef(name,version_range,requires)
 
 
@@ -108,8 +108,6 @@ def depends_on(env,depends):
         if pinfo['NAME']==comp.name:
             rpt.part_warning(env,"Part depends on with itself")
             rpt.part_message("Skipping the definition of dependence to Scons")
-            #print "Parts: WARNING - Part alias [",alias,"] with name of [",pinfo['NAME'],"] is defined depends on with itself"
-            #print "Parts: WARNING - Skipping the definition of dependence to Scons"
             continue
         if (comp.requires & REQ.CPPPATH_IMPORT):
             cpppath.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPPATH',True)}")

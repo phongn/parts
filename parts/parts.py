@@ -6,6 +6,7 @@ import common
 import vcs
 import part_logger
 import packaging
+import copy
 
 # these imports add stuff we will need to export to the parts file.
 import platform_info 
@@ -16,6 +17,7 @@ import functors
 import sdk
 
 from pattern import Pattern
+
 
 ##'''
 ##'cpgl2_test': { 'ALIAS': 'cpgl2_test',
@@ -379,6 +381,8 @@ def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
     new_append=env1.get('PARTS_APPEND',{})
     new_prepend=env1.get('PARTS_PREPEND',{})
     package_group=env1.get('PARTS_PACKAGE_GROUPS',package_group)
+    if mode==[]:
+        mode=env1['MODE']
     new_kw.update(kw)
     new_append.update(append)
     new_prepend.update(prepend)
@@ -476,14 +480,14 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ## add information on how to map this Parts
     # allow us to make a part platform indepent in some way
     # Might want to change this to be a enum like setup
+    part_info['PLATFORM_MATCH']=copy.copy(env['TARGET_PLATFORM'])
     if kw.get('platform_indepenent',False):
         part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any','any')
-    elif kw.get('os_indepenent',False):
-        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any')
-    elif kw.get('architecture_indepenent',False):
-        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform(arch='any')
-    else:
-        part_info['PLATFORM_MATCH']=env['TARGET_PLATFORM']
+    if kw.get('os_indepenent',False):
+        part_info['PLATFORM_MATCH'].OS='any'
+    if kw.get('architecture_indepenent',False):
+        part_info['PLATFORM_MATCH'].ARCH='any'
+    
 
     # test to what we want to the SRC_DIR to be.. works around
     # annoying behavior of Root Sconstruct file not working with
@@ -562,7 +566,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
                 traceback.print_exc(file=ec_str)
                 rpt.part_error(env,"Exception thrown while processing "+parts_file.srcnode().abspath+"\n"+ec_str.getvalue())
                 rpt.part_message("Will try to continue...")
-                env.Exit(0)
+                #env.Exit(1)
         else:
             ret=def_env.SConscript(
                     parts_file,

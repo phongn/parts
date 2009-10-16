@@ -270,8 +270,8 @@ Use -H or --help-options for a list of scons options
         if s != '':
             fn=def_env.File(s)
             # the the below passes we trust the database
-            if fn.exists() and fn.get_csig()==csig:
-                setup_buildable_parts()
+            #if fn.exists() and fn.get_csig()==csig:
+            #    setup_buildable_parts()
     if env['use_source_for']!='' or env['use_sdk'] == True:
         env['use_sdk'] = True
         # get targets to build from source

@@ -81,11 +81,20 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
             if alias is not None:
                 pinfo=def_env['PART_INFO'][alias]
                 name=pinfo.get('NAME')
+                srcpath=pinfo['ENV']['SRC_DIR']
             else:
                 name=None
+                srcpath=None
             # make key
-            s=os.path.split(str(source[0]))[1]
-            key=(target,s,self.name,name)
+            if SCons.Util.is_String(source):
+                s=os.path.split(str(source))[1]
+            else:
+                s=os.path.split(str(source[0]))[1]
+            
+            if target == []:
+                key=(srcpath,s,self.name,name)
+            else:
+                key=(target,s,self.name,name)
             #print key
             #test for match
             if key in cc:

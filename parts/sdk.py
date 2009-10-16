@@ -3,6 +3,7 @@ import SCons.Script
 import pattern
 import common
 import exportitem as Xp
+import node_helpers
 
 g_sdked_files=[]
 
@@ -10,7 +11,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
     
     # make sure inputs are in good format
     define_part=SCons.Script.DefaultEnvironment().get('DEFINING_PART',None)
-    
+    target_dir=env.subst(target_dir)
     # Some varibles
     out=[]
     src_dir=[]
@@ -110,7 +111,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
 
 def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_path=True,
                 auto_add_file=True,use_src_dir=False,use_build_dir=False,create_sdk=True):
-    
+       
     if common.is_list(sources)==False:
         sources=[sources]
     sources=SCons.Script.Flatten(sources)
@@ -385,17 +386,17 @@ def sdkcopyFunc(dest, source, env):
     else:
         if env['HOST_OS']=='win32':
             import win32file
-            try:
-                win32file.CreateHardLink(dest,source)
-            except:
-                win32file.CopyFile(source,dest,False)
+            #try:
+            #    win32file.CreateHardLink(dest,source)
+            #except:
+            win32file.CopyFile(source,dest,False)
         else:
-            try:
-                os.link(source,dest)
-            except:
-                try:
-                    os.symlink(source,dest)
-                except:
+            #try:
+            #    os.link(source,dest)
+            #except:
+                #try:
+                #    os.symlink(source,dest)
+                #except:
                     shutil.copy2(source, dest)
                     st = os.stat(source)
                     os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
@@ -413,18 +414,7 @@ def SDKFunc(target, source, env):
     for t, s in zip(target, source):
         symlink=env.MetaTagValue(t,'SymLink')
         if symlink is not None:
-            if env['HOST_OS']=='win32':
-                import win32file
-                import win32com.client
-                if symlink is not None:
-                    # make a short cut for now on windows
-                    # deal later with vista ability to make a symlink
-                    shell = win32com.client.Dispatch("WScript.Shell")
-                    shortcut = shell.CreateShortCut(t.get_path()+'.lnk')
-                    shortcut.Targetpath = os.path.normpath(os.path.join(os.path.abspath(os.path.split(t.get_path())[0]),symlink))
-                    shortcut.save()
-            else:
-                os.symlink(t,symlink)
+            node_helpers.make_link_bf([t],None,env)
         elif sdkcopyFunc(t.get_path(), s.get_path(), env):
             #report error to logger
             output.TaskEnd(id,1)

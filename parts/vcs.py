@@ -30,7 +30,7 @@ def process_vcs(env,vcs_type,part_file):
                 rpt.part_error(env,"Failure detected during updating sources")
                 env.Exit(100+ret)
     else:
-        if env['UPDATE_ALL']==False or vcs_type.NeedsUpdate(env)==False:
+        if env['UPDATE_ALL']==False and vcs_type.NeedsUpdate(env)==False:
             # don't have the file and they did not ask to get it
             # so we report a message and do a forced checkout
             rpt.part_warning(env,"Sources do not seem to exist, and no update flags given. Doing forced checkout!",)

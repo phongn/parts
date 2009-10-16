@@ -140,7 +140,7 @@ class SystemPlatform(env_overrides.bindable):
 
     def __eq__ (self,rhs):
         if common.is_string(rhs):
-            rhs=target_convert(rhs)
+            rhs=target_convert(rhs,base=self)
             
         return (self.OS==rhs.OS or\
                 'any'==rhs.OS or\
@@ -148,6 +148,9 @@ class SystemPlatform(env_overrides.bindable):
             (self.ARCH==rhs.ARCH or\
                 'any'==rhs.ARCH or\
                 'any'==self.ARCH)
+                
+    def __ne__ (self,rhs):
+        return (not self.__eq__(rhs))
 
     def __str__(self):
         return self.OS+"-"+self.ARCH
@@ -182,7 +185,8 @@ _host_sys=SystemPlatform()
 def HostSystem():
     return _host_sys
 
-def target_convert(str_val, raw_val=None):
+def target_convert(str_val, raw_val=None,base=None):
+    host_sys= base is None and _host_sys or base
     lst=str_val.split('-')
     if len(lst) > 2:
         raise ValueError("Warning:  %s is not a valid target_system value\nValue must be in form of <Plaform>-<Architecture>" % o)
@@ -192,22 +196,21 @@ def target_convert(str_val, raw_val=None):
         if tmp == '':
             #assume this was a platform
             ret=SystemPlatform(
-                lst[0],_host_sys.ARCH
+                lst[0],host_sys.ARCH
                 )
         else:
             #assume this is a architure
             ret=SystemPlatform(
-                    _host_sys.OS,lst[0]
+                    host_sys.OS,lst[0]
                     )
     else:
         p=lst[0]
         a=lst[1]
         if p == '':
-            p=_host_sys.OS
+            p=host_sys.OS
         if a == '':
-            a=_host_sys.ARCH
+            a=host_sys.ARCH
         ret=SystemPlatform(p,a)
-
     return ret
 
 # add configuartion varaible

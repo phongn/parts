@@ -6,6 +6,7 @@ import pattern
 import sdk
 import common
 import platform_info
+import exportitem
 
 ## need better configuration control
 # these function will hopfully be replaced later once a better solution shows it self
@@ -45,6 +46,9 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
     src_lst=[]
     # dictionary of MetaTag we want to add to any file we installed
     tags={}
+
+    target=env.subst(target)
+    target_lib=env.subst('${INSTALL_LIB}')
     
     if sub_dir != '' and sdk_dir != '':
         dest_dir=os.path.join(target, sub_dir)
@@ -69,8 +73,8 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
             
             if isinstance(s,pattern.Pattern):
                 if s not in sdk.g_sdked_files:
-                    if target=='${INSTALL_LIB}':
-                        SdkItem(env,'$SDK_LIB',[s],sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
+                    if target==target_lib:
+                        env.SdkItem('$SDK_LIB',[s],sub_dir,'',[(exportitem.EXPORT_TYPES.FILE ,'LIBS'),(exportitem.EXPORT_TYPES.PATH ,'LIBPATH')],
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
@@ -94,8 +98,8 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                 
             elif isinstance(s,SCons.Node.FS.Dir):
                 if s not in sdk.g_sdked_files:
-                    if target=='${INSTALL_LIB}':
-                        ret=SdkItem(env,'$SDK_LIB',[s],sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
+                    if target==target_lib:
+                        ret=env.SdkItem('$SDK_LIB',[s],sub_dir,'',[(exportitem.EXPORT_TYPES.FILE ,'LIBS'),(exportitem.EXPORT_TYPES.PATH ,'LIBPATH')],
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
@@ -108,8 +112,8 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                 src_lst.append(env.Dir(ret[0]))
             elif isinstance(s,SCons.Node.FS.File):
                 if s not in sdk.g_sdked_files:
-                    if target=='${INSTALL_LIB}':
-                        ret=SdkItem(env,'$SDK_LIB',[s],sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
+                    if target==target_lib:
+                        ret=env.SdkItem('$SDK_LIB',[s],sub_dir,'',[(exportitem.EXPORT_TYPES.FILE ,'LIBS'),(exportitem.EXPORT_TYPES.PATH ,'LIBPATH')],
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
@@ -121,8 +125,8 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                 src_lst.append(env.File(ret[0]))
             elif isinstance(s,SCons.Node.Node) or common.is_string(s):
                 if s not in sdk.g_sdked_files:
-                    if target=='${INSTALL_LIB}':
-                        ret=SdkItem(env,'$SDK_LIB',[s],sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
+                    if target==target_lib:
+                        ret=env.SdkItem('$SDK_LIB',[s],sub_dir,'',[(exportitem.EXPORT_TYPES.FILE ,'LIBS'),(exportitem.EXPORT_TYPES.PATH ,'LIBPATH')],
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
@@ -441,7 +445,7 @@ common.AddVariable('INSTALL_PYTHON','${INSTALL_ROOT}/python','')
 common.AddVariable('INSTALL_SCRIPT','${INSTALL_ROOT}/scripts','')
 
 #file patterns
-common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dlsym'],'')
+common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dlsym','*.dylib'],'')
 common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
 #common.AddListVariable('AUTO_TAG_INSTALL',[('*.pdb',{'no_package':True})],'')
 common.AddBoolVariable('AUTO_TAG_ON_INSTALL',True,'')
@@ -450,6 +454,7 @@ if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
 else:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')
+
 
 
 common.add_global_value('SetDefaultInstallArguments',SetDefaultInstallArguments)

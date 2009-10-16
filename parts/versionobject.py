@@ -391,9 +391,9 @@ class VersionObject:
 				maxVersion = minVersion
 
 			minVersion = string.replace(minVersion, "*", "0")
-			maxVersion = string.replace(maxVersion, "*", "999999999")
+			maxVersion = string.replace(maxVersion, "*", "9999999999999999")
 			minVersion = string.replace(minVersion, "x", "0")
-			maxVersion = string.replace(maxVersion, "x", "999999999")
+			maxVersion = string.replace(maxVersion, "x", "9999999999999999")
 			if excludeRange:
 				self.invalidRanges.append((minVersion, maxVersion))
 			else:

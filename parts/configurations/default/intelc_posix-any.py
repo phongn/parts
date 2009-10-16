@@ -45,4 +45,5 @@ def post_process_func(env):
 
 config=configuration(map_default_version,post_process_func)
 
+config.VersionRange("*")
                 

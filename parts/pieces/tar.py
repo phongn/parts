@@ -46,7 +46,7 @@ common.AddBuilder('TarFile',SCons.Builder.Builder(action = TarAction,
 common.AddBuilder('GzFile',SCons.Builder.Builder(action = GzAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.gz'))#,multi = 1))
+                                   suffx = '.tar.gz'))#,multi = 1))
                                 
 common.AddBuilder('Bz2File',SCons.Builder.Builder(action = bz2Action,
                                    source_factory = SCons.Node.FS.Entry,
