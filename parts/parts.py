@@ -275,7 +275,8 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
         # parentpart.subpart
         alias=parent_alias+'.'+short_alias 
     else:
-        alias=short_alias
+        alias=env.subst(env.get('ALIAS_PREFIX','')+short_alias+env.get('ALIAS_POSTFIX',''))
+        
 
     #setup state
     def_env['DEFINING_PART']=alias
@@ -288,7 +289,7 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     part_info['PARENT_ALIAS']=parent_alias
     # The Alias Short Form
     part_info['SHORT_ALIAS']=short_alias
-
+    env['SHORT_ALIAS']=short_alias
     # some data we will use for our own DB file
     if common.g_name_alias_map.has_key(alias) == False:
         common.g_name_alias_map[alias]=set()
@@ -310,6 +311,7 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
         # do any checkout/copy/updates needed
         # update the parts_file location
         parts_file=vcs.process_vcs(env,vcs_type,parts_file)
+        part_info['VCS_OBJECT']=vcs_type
 
         # work around in Scons bug
         if parts_file[1] == ':' or parts_file[0]=='/':
@@ -377,9 +379,12 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
 def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
                 append={},prepend={},create_sdk=True,package_group=None,**kw):
     
-    new_kw=env1.get('PARTS_KW',{})
-    new_append=env1.get('PARTS_APPEND',{})
-    new_prepend=env1.get('PARTS_PREPEND',{})
+    new_kw={}
+    new_append={}
+    new_prepend={}
+    new_kw.update(env1.get('PARTS_KW',{}))
+    new_append.update(env1.get('PARTS_APPEND',{}))
+    new_prepend.update(env1.get('PARTS_PREPEND',{}))
     package_group=env1.get('PARTS_PACKAGE_GROUPS',package_group)
     if mode==[]:
         mode=env1['MODE']
@@ -407,9 +412,11 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     sdk_file=[None]
     if parent_alias == None:
-        talias=alias
+        talias=alias#def_env.subst(kw.get('ALIAS_PREFIX',def_env.get('ALIAS_PREFIX',''))+
+                     #           alias+
+                      #          kw.get('ALIAS_POSTFIX',def_env.get('ALIAS_POSTFIX','')))
         # empty list to save mem if this is a root part
-        sdk.g_sdked_files=[]
+        sdk.g_sdked_files=set([])
         # this allows us to decide if we want to continue processing this file or not
         # if not we will return. The second part of this is to see if we modify the part file
         # we will read to be the original, or the generated one.
@@ -428,7 +435,6 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ## setup the basics
     # Get the enviroment to use
     env=core.generate_config(prepend.copy(),append.copy(),kw.copy())
-
     
     ## logger and task spawners
     spawn=env['PART_SPAWNER']
@@ -449,16 +455,18 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ## Setup the global state 
     
     ## store part specfic data
+    base_str=None
     if sdk_file != [None]:
     #    print "Building",talias,"from SDK!!"
-        rpt.part_message(env.subst('Building from SDK -- ${PART_ALIAS_CONCEPT}'+talias))
+        base_str=env.subst('Building from SDK -- ${PART_ALIAS_CONCEPT}')
         part_info=make_part_info(env,sdk_file,alias,parent_alias,None)
     else:
         if parent_alias == None:
-            rpt.part_message(env.subst('Building from source -- ${PART_ALIAS_CONCEPT}'+talias))
+            base_str=env.subst('Building from source -- ${PART_ALIAS_CONCEPT}')
         #    print "Building",talias,"from source!!"
         part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
-        
+    if base_str:
+        rpt.part_message(env.subst(base_str+part_info['ALIAS']))
     alias=part_info['ALIAS']
     parts_file=part_info['FILE']
 
@@ -499,7 +507,8 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     if mode == []:
         mode=env['mode']
-    env['MODE']=mode  
+    #env['mode']=common.make_list(kw.get('mode',[]))
+    env['MODE']=common.make_list(mode)
     
     ##alias info
     env['PART_ROOT_ALIAS']=part_info['ROOT_ALIAS']
@@ -528,7 +537,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     AbsFile=node_helpers._AbsFile(env)
     AbsDir=node_helpers._AbsDir(env)
     Include=location.Include(env)
-    env['mode']=kw.get('mode',[])
+    
     
     export_map['AbsFile']=AbsFile
     export_map['AbsDir']=AbsDir
@@ -582,8 +591,8 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     if (env['CREATE_SDK'] == False and create_sdk == True):
         create_sdk=False;
     
+    pinfo=def_env['PART_INFO'][alias]
     if create_sdk==True:
-        pinfo=def_env['PART_INFO'][alias]
         #set up the builder for the SDK file
         v=env.__CreateSDKBuilder__([],parts_file)
         part_info['SDK_FILE']=v[0]
@@ -716,6 +725,9 @@ SConsEnvironment.Part=Part_method
 # add configuartion varaible needed for part
 common.AddVariable('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}','Namespace used to just build a a given target')
 
+common.AddVariable('ALIAS_POSTFIX','','')
+common.AddVariable('ALIAS_PREFIX','','')
+
 common.AddVariable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to express building via an Alias target')
 common.AddVariable('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}','Namespace to express building via a Part Name and possible version')
 common.AddVariable('BUILD_DIR_ROOT','#build', 'Root directory for building a given build configuration/variant')
@@ -723,6 +735,8 @@ common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$AL
 common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
 common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')
+
+
 
 common.add_global_value('Part',Part)
 common.add_global_value('part',Part)

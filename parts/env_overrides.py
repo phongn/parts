@@ -88,8 +88,12 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
             # make key
             if SCons.Util.is_String(source):
                 s=os.path.split(str(source))[1]
-            else:
+            elif source==SCons.Environment._null:
+                s="_null"
+            elif SCons.Util.is_List(source):
                 s=os.path.split(str(source[0]))[1]
+            else:
+                s=os.path.split(str(source))[1]
             
             if target == []:
                 key=(srcpath,s,self.name,name)

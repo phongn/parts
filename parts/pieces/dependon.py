@@ -32,8 +32,8 @@ class REQ:
     CPPDEFINES_IMPORT=0x4000  #0100 0000 0000 0000
     CPPDEFINES_EXPORT=0x8000  #1000 0000 0000 0000
     
-    ALL_DEFAULT=0XFFFFF    
-        
+    ALL_DEFAULT=0XFFFFF
+    
     ## these are external use
     
     # we make value based on headers, libpath and libs. in the case of lib we 
@@ -108,23 +108,25 @@ def depends_on(env,depends):
         if pinfo['NAME']==comp.name:
             rpt.part_warning(env,"Part depends on with itself")
             rpt.part_message("Skipping the definition of dependence to Scons")
+            #print "Parts: WARNING - Part alias [",alias,"] with name of [",pinfo['NAME'],"] is defined depends on with itself"
+            #print "Parts: WARNING - Skipping the definition of dependence to Scons"
             continue
         if (comp.requires & REQ.CPPPATH_IMPORT):
-            cpppath.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPPATH',True)}")
+            cpppath=common.append_unique(cpppath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPPATH',True)}")
         if (comp.requires & REQ.LIBPATH_IMPORT):
-            libpath.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
+            libpath=common.append_unique(libpath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
         if (comp.requires & REQ.LIBS_IMPORT):
-            libs.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
+            libs=common.append_unique(libs,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
         if (comp.requires & REQ.LINKFLAGS_IMPORT):
-            linkflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
+            linkflags=common.append_unique(linkflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
         if (comp.requires & REQ.CCFLAGS_IMPORT):
-            ccflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CCFLAGS',True)}")
+            ccflags=common.append_unique(ccflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CCFLAGS',True)}")
         if (comp.requires & REQ.CFLAGS_IMPORT):
-            cflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CFLAGS',True)}")
+            cflags=common.append_unique(cflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CFLAGS',True)}")
         if (comp.requires & REQ.CXXFLAGS_IMPORT):
-            cxxflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CXXFLAGS',True)}")
+            cxxflags=common.append_unique(cxxflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CXXFLAGS',True)}")
         if (comp.requires & REQ.CPPDEFINES_IMPORT):
-            cppdefines.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPDEFINES',True)}")
+            cppdefines=common.append_unique(cppdefines,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPDEFINES',True)}")
         
         #unknown_alias=comp.alias_mapping_string()
         #def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_parts_alias(env,unknown_alias))
@@ -153,21 +155,21 @@ def depends_on(env,depends):
             comp=d
         
         if (comp.requires & REQ.CPPPATH_EXPORT):
-            cpppath.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPPATH',True)}")
+            cpppath=common.append_unique(cpppath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPPATH',True)}")
         if (comp.requires & REQ.LIBPATH_EXPORT):
-            libpath.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
+            libpath=common.append_unique(libpath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
         if (comp.requires & REQ.LIBS_EXPORT):
-            libs.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
+            libs=common.append_unique(libs,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
         if (comp.requires & REQ.LINKFLAGS_EXPORT):
-            linkflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
+            linkflags=common.append_unique(linkflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
         if (comp.requires & REQ.CCFLAGS_EXPORT):
-            ccflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CCFLAGS',True)}")
+            ccflags=common.append_unique(ccflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CCFLAGS',True)}")
         if (comp.requires & REQ.CFLAGS_EXPORT):
-            cflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CFLAGS',True)}")
+            cflags=common.append_unique(cflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CFLAGS',True)}")
         if (comp.requires & REQ.CXXFLAGS_EXPORT):
-            cxxflags.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CXXFLAGS',True)}")
+            cxxflags=common.append_unique(cxxflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CXXFLAGS',True)}")
         if (comp.requires & REQ.CPPDEFINES_EXPORT):
-            cppdefines.append("${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPDEFINES',True)}")
+            cppdefines=common.append_unique(cppdefines,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPDEFINES',True)}")
         
     # safety check to make sure key exist in the correct form
     if 'CPPPATH' not in pinfo:
@@ -188,14 +190,14 @@ def depends_on(env,depends):
         pinfo['CPPDEFINES']=[]
     
     # add the values...
-    pinfo['CPPPATH'].extend(cpppath)
-    pinfo['LIBPATH'].extend(libpath)
-    pinfo['LIBS'].extend(libs)
-    pinfo['LINKFLAGS'].extend(linkflags)
-    pinfo['CFLAGS'].extend(cflags)
-    pinfo['CCFLAGS'].extend(ccflags)
-    pinfo['CXXFLAGS'].extend(cxxflags)
-    pinfo['CPPDEFINES'].extend(cppdefines)
+    pinfo['CPPPATH']=common.extend_unique(pinfo['CPPPATH'],cpppath)
+    pinfo['LIBPATH']=common.extend_unique(pinfo['LIBPATH'],libpath)
+    pinfo['LIBS']=common.extend_unique(pinfo['LIBS'],libs)
+    pinfo['LINKFLAGS']=common.extend_unique(pinfo['LINKFLAGS'],linkflags)
+    pinfo['CFLAGS']=common.extend_unique(pinfo['CFLAGS'],cflags)
+    pinfo['CCFLAGS']=common.extend_unique(pinfo['CCFLAGS'],ccflags)
+    pinfo['CXXFLAGS']=common.extend_unique(pinfo['CXXFLAGS'],cxxflags)
+    pinfo['CPPDEFINES']=common.extend_unique(pinfo['CPPDEFINES'],cppdefines)
     
     #map up rpath with this.. ( need to fix up the Mac)
     if def_env['PLATFORM']!='win32' and def_env['PLATFORM'] != 'darwin':

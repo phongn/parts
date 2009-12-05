@@ -77,7 +77,7 @@ def export_file(env,targets,pinfo,prop):
             continue
         elif file.endswith('.so-gz'):
             file = file[:-6]
-        pinfo[prop].append(file)
+        pinfo[prop]=[file]+pinfo[prop]
     return ret
 
 def export_file_path(env,targets,pinfo,prop,use_src):

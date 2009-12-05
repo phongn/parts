@@ -81,7 +81,7 @@ def AddBoolVariable(key,default,help):
 
 def AddEnumVariable(key,default,help,allowed_values,map={},ignorecase=1):
     '''Generic varible addition'''
-    def_vars.append(SCons.Script.EnumVariable(key,help,default))
+    def_vars.append(SCons.Script.EnumVariable(key,help,default,allowed_values,map,ignorecase))
 
 def AddListVariable(key,default,help,allowed_values=[],map={}):
     '''Generic varible addition'''
@@ -194,17 +194,44 @@ def make_unique(obj):
             tmp.append(i)
     return tmp
 
+def extend_unique(obj,lst):
+    ''' 
+    The purpose of this funtion is to add the items in the collection
+    to a list in a unique way
+    '''
+    for i in lst:
+        obj=append_unique(obj,i)
+    return obj
+
+def pre_extend_unique(obj,lst):
+    ''' 
+    The purpose of this funtion is to add the items in the collection
+    to a list in a unique way
+    '''
+    
+    for i in lst:
+        obj=prepend_unique(obj,i)
+    return obj
+
 def append_unique(obj,val):
-    ''' The purpose of this object is to add to a list in a unique way'''
+    ''' The purpose of this funtion is to add the object to a list in a unique way'''
     if not val in obj:
+        obj.append(val)
+    else:
+        obj.remove(val)
         obj.append(val)
     return obj
 
-def preppend_unique(obj,val):
-    ''' The purpose of this object is to add to a list in a unique way'''
+def prepend_unique(obj,val):
+    ''' The purpose of this funtion is to add the object to a list in a unique way'''
     if not val in obj:
         obj=[val]+obj
+    else:
+        obj.remove(val)
+        obj=[val]+obj
+    
     return obj
+
 
 def make_unique_str(obj):
     ''' The purpose of this object is to make a list

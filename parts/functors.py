@@ -74,36 +74,63 @@ def full_parts_depends_list(env):
         flst=cache_tmp
     return flst
 
+
+def gen_rpath_link(alias):
+    '''
+    Add the Rlink path that woudl be added for the component depending on this 
+    component, Not what this component would depend on
+    '''
+    import mappers
+    def_env=SCons.Script.DefaultEnvironment()
+    pinfo=def_env['PART_INFO'][alias]
+    dlst=pinfo['DEPENDSON']
+    env=pinfo['ENV']
+    rplst=[]
+
+    # setup the current alias case 
+    # this adds what this componnet directly depends on
+    # not what it dependents depend on which is what we need for the 
+    # rpath-link case
+    # get the libpath for this component
+    plist=mappers.sub_lst(env,env.get('LIBPATH',[]),def_env)
+    for p in plist:
+        rp='-Wl,-rpath-link='+env.Dir(p).path
+        common.append_unique(rplst,rp)
+                    
+    # setup everything that we depend on that we may not have added yet
+    for d in dlst:
+        d_alias=env.subst(d.alias_mapping_string())
+        if d_alias == '':
+            rpt=def_env['PARTS_REPORTER']
+            rpt.part_warning(env,"Part name ["+d.name+"] is not defined for mapping RPATH data",True)
+            continue
+        try:
+            rtmp=def_env['PART_INFO'][d_alias]['RLINK_CACHE']
+            # add saved data
+            for i in rtmp:
+                common.append_unique(rplst,i)
+        except KeyError:
+            rtmp=gen_rpath_link(d_alias)
+            for i in rtmp:
+                common.append_unique(rplst,i)
+    # data to cache for any component that depend on this component
+    pinfo['RLINK_CACHE']=rplst # add this case to the cache
+    return rplst
+    
+
 class map_rpath_link_part:
     ''' this class is used to map the rpath-link option to the LINKFLAGS on linux
     like systems by pulling information of the LIBPATH.
     '''
-    def __init__(self,env,add_self=False):
+    def __init__(self,env):
         self.env=env
-        self.add_self=add_self
+        
     def __call__(self):
         if self.env['AUTO_RPATH']==True:
-            import mappers
             def_env=SCons.Script.DefaultEnvironment()
-            #alias=self.env['ALIAS']
-            rplst=[]#self.env.get('LINKFLAGS',[])
-            #print 'rpath-link mapping of',alias
-            dlst=full_parts_depends_list(self.env)
-            if self.add_self==True:
-                dlst=[self.env['ALIAS']]+dlst
-            #print dlst
-            for d in dlst:
-                tenv=def_env['PART_INFO'][d]['ENV']
-                plist=mappers.sub_lst(self.env,tenv.get('LIBPATH',[]),def_env)
-                #print alias ,plist
-                for p in plist:
-                    rp='-Wl,-rpath-link='+self.env.Dir(p).path
-                    if rp not in rplst: # bug in old version of AppendUnique.. clean up later
-                        rplst.append(rp)
-                        #print ' \t',rp
-
+            alias=self.env['ALIAS']
+            rplst=gen_rpath_link(alias)
             self.env.AppendUnique(LINKFLAGS=rplst,delete_existing=True)
-            #print 'LINKFLAGS LIST for',self.env['ALIAS'],self.env['LINKFLAGS']
 
 
 class map_rpath_part:

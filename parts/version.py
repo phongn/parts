@@ -58,6 +58,21 @@ class version(versionobject.VersionObject):
             return False
         return versionobject.CompareVersionNumbers(self.ToString(),str(obj))[1]<=0
 
+    def Major(self):
+        ''' 
+        Allows direct access to the major part of the version number
+        '''
+        return str(self.major())
+    def Minor(self):
+        ''' 
+        Allows direct access to the minor part of the version number
+        '''
+        return str(self.minor())
+    def Revision(self):
+        ''' 
+        Allows direct access to the revision part of the version number
+        '''
+        return str(self.revision())
     
     # need to clean up orginal version objects code a bit to make this cleaner
     def major(self):

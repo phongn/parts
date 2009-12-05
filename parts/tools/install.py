@@ -223,6 +223,7 @@ def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
             symlink=env.MetaTagValue(s,'SymLink')
         if symlink is not None:
             env.MetaTag(tmp[0],SymLink=symlink)
+            env.MetaTag(tmp[0],SymLinkMakeDummyFile=env.MetaTagValue(s,'SymLinkMakeDummyFile',default=True))
         sources.extend(tmp)
         
     tgt = []

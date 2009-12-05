@@ -27,7 +27,7 @@ msvc.Register(
                     r'C:\Program Files\Microsoft Visual Studio .net 2003'
                 ])
             ],
-            script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
+            script=ScriptFinder('${MSVC.VSINSTALL}/Common7/Tools/vcvars32.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}',
@@ -88,11 +88,11 @@ msvc.Register(
                     'VSCOMNTOOLS'
                 ],'../../'),
                 PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio .net',
-                    r'C:\Program Files\Microsoft Visual Studio .net'
+                    r'C:\Program Files (x86)\Microsoft Visual Studio .NET',
+                    r'C:\Program Files\Microsoft Visual Studio .NET'
                 ])
             ],
-            script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
+            script=ScriptFinder('${MSVC.VSINSTALL}/Common7/Tools/vsvars32.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}',
@@ -153,7 +153,7 @@ msvc.Register(
                     r'C:\Program Files\Microsoft Visual Studio/VC98'
                 ])
             ],
-            script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
+            script=ScriptFinder('${MSVC.VCINSTALL}/bin/vcvars32.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..'

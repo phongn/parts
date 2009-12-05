@@ -28,7 +28,7 @@ msvc.Register(
                     r'C:\Program Files\Microsoft Visual Studio 9.0\VC'
                 ])
             ],
-            script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
+            script=ScriptFinder('${MSVC.VSINSTALL}/Common7/Tools/vcvars32.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',

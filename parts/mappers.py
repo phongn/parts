@@ -13,9 +13,10 @@ def sub_lst(env,lst,def_env={"PARTS_COMPLEX_SUB":0}):
     def_env["PARTS_COMPLEX_SUB"]=def_env["PARTS_COMPLEX_SUB"]+1
     for i in lst:
         v=env.subst(str(i)).split("\1")
-        ret.extend(v)
+        #ret.extend(v)
+        ret=common.extend_unique(ret,v)
     def_env["PARTS_COMPLEX_SUB"]=def_env["PARTS_COMPLEX_SUB"]-1
-    return common.make_unique(ret)
+    return ret#common.make_unique(ret)
 
 def find_matching_version(def_env,env,id,ver_range,alias_lst):
     ''' this function is used by the part_ID_mapper to help find the lastest 
@@ -50,7 +51,7 @@ def find_matching_version(def_env,env,id,ver_range,alias_lst):
     except Exception, ec:
         print type(ec),ec
         rpt.part_error(env,"Error in alias look up\nID->Alias map "+str(alias_lst)+'\nlooking up ['+id+'] with version range ['+str(ver_range)+']')
-        env.Exit(1)
+        env.Exit(0)
     return ret
 
 class part_mapper:
@@ -110,7 +111,7 @@ class part_mapper:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             rpt.part_error(env,"Exception in PARTS mapping happened\n"+ec_str.getvalue())
-            env.Exit(1)
+            env.Exit(0)
         return ret
 
 #already_printed = set()
@@ -142,7 +143,7 @@ class part_id_mapper:
                     if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
                         rpt.part_warning(env,self.name+" Did not find Part name ["+self.part_id+"] in name->alias dictionary",True)
                     else:
-                        rpt.part_error(env,self.name+" Did not find Part name ["+self.part_id+"] in name->alias dictionary",True)                        
+                        rpt.part_error(env,self.name+" Did not find Part name ["+self.part_id+"] in name->alias dictionary")                        
                         env.Exit(1)
                 return ''
             
@@ -151,13 +152,13 @@ class part_id_mapper:
                 
             if pinfo == None:
                 rpt.part_error(env,self.name+": Part name ["+self.part_id+"] did not define version that matches version range of ["+str(self.ver_range)+"] for "+env['TARGET_PLATFORM'].ARCH+" ARCHITECTURE")
-                env.Exit(1)
+                exit(0)
             
             ret=pinfo.get(self.part_prop,None)
             if ret== None:
                 if self.ignore==False:
                     rpt.part_error(env,self.name+": Error -- Property"+pinfo["ALIAS"]+'.'+self.part_prop+"was not defined")
-                    env.Exit(1)
+                    env.Exit(0)
                 else:
                     ret= ""
                 
@@ -197,7 +198,7 @@ class part_id_mapper:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             rpt.part_error(env,"Exception in PARTID mapping happened\n"+ec_str.getvalue())
-            env.Exit(1)
+            env.Exit(0)
         #print "PARTID resolving -- Done 4",ret
         return ret
     
@@ -232,7 +233,7 @@ class part_subst_mapper:
         except Exception,ec:
             rpt.part_error(env,"Some exception in "+self.name+" mapping happened")
             rpt.part_message(str(ec))
-            env.Exit(1)
+            env.Exit(0)
         return ret
     
 class part_name_mapper:
@@ -262,7 +263,7 @@ class part_name_mapper:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             rpt.part_error(env,"Exception in "+self.name+" mapping happened\n"+ec_str.getvalue())
-            env.Exit(1)
+            env.Exit(0)
         return ret
 
 class part_shortname_mapper:
@@ -294,7 +295,7 @@ class part_shortname_mapper:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             rpt.part_error(env,"Exception in "+self.name+" mapping happened\n"+ec_str.getvalue())
-            env.Exit(1)
+            env.Exit(0)
         return ret
 
 class abspath_mapper:

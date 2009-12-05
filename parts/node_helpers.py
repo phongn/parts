@@ -30,7 +30,10 @@ def SymLinkEnv(env,name,linkto):#,*args,**kw):
     #tmp=env.File(name,*args,**kw)
     #env.MetaTag(tmp,SymLink=linkto)
     #return tmp
-    return env.__make_link__(target=name,linkto=linkto)
+    tmp=env.__make_link__(target=name,linkto=linkto)
+    if len(tmp) > 1:
+        raise SCons.Errors.UserError("Symlink can only have one Target")
+    return tmp[0]
 
 def make_link_Emit(target, source, env):
     tmp=target[0]
@@ -43,6 +46,7 @@ def make_link_Emit(target, source, env):
 def make_link_bf(target, source, env):
     t=target[0]
     symlink=env.MetaTagValue(t,'SymLink')
+    make_dummy_file=env.MetaTagValue(t,'SymLinkMakeDummyFile',default=True)
     print "Creating SymLink",t.get_path(),"pointing to",symlink
     if env['HOST_OS']=='win32':
         import win32file
@@ -66,23 +70,23 @@ def make_link_bf(target, source, env):
                 os.symlink(symlink,t.get_path())
         else:
             os.symlink(symlink,t.get_path())
-            
-        #hack to get around the use of exist vs lexists in SCons
-        if symlink[0]=='/': # absdir
-            if os.path.lexists(symlink)==False:
-                try:
-                    f=open(symlink,'w')
-                    f.write(symlink)
-                except:
-                    pass
-        else: # non absdir link            
-            symfile=os.path.abspath(os.path.join(os.path.split(t.get_path())[0],symlink))
-            if os.path.lexists(symfile)==False:
-                try:
-                    f=open(symfile,'w')
-                    f.write(symlink)
-                except:
-                    pass
+        if make_dummy_file:
+            #hack to get around the use of exist vs lexists in SCons
+            if symlink[0]=='/': # absdir
+                if os.path.lexists(symlink)==False:
+                    try:
+                        f=open(symlink,'w')
+                        f.write(symlink)
+                    except:
+                        pass
+            else: # non absdir link            
+                symfile=os.path.abspath(os.path.join(os.path.split(t.get_path())[0],symlink))
+                if os.path.lexists(symfile)==False:
+                    try:
+                        f=open(symfile,'w')
+                        f.write(symlink)
+                    except:
+                        pass
         
     return None
 
