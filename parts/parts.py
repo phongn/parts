@@ -10,12 +10,12 @@ import copy
 
 # these imports add stuff we will need to export to the parts file.
 import platform_info 
-import location
+
 import version
 import node_helpers
 import functors
 import sdk
-
+import reporter
 from pattern import Pattern
 
 
@@ -257,7 +257,7 @@ def jj(): #delete this.. using to collapse section in editor
 
 def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
+    
     part_info={}
     
     # we assume all parts make SDK.. else they will modify this value latter
@@ -370,8 +370,8 @@ def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
     if def_env.has_key('PART_INFO')==False:
         def_env['PART_INFO']={}
     if def_env['PART_INFO'].has_key(alias):
-        rpt.part_warning(env,'Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
-        #print 'Parts: Warning= Overriding predefined alias [',alias,'] file=[',def_env['PART_INFO'][alias]['FILE'],'] with data from part file=[',part_info['FILE'],']'
+        reporter.report_warning('Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
+        
     
     return part_info
     
@@ -400,6 +400,7 @@ def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
 def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,
             **kw):
+    reporter.SetPartStackFrameInfo()
     start_time=time.time()
     #print "defining" ,alias
     if common.g_part_mode=='help':
@@ -407,7 +408,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
 
 
     def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
+    
     parent_alias=def_env.get('DEFINING_PART',None)
     
     sdk_file=[None]
@@ -438,7 +439,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     ## logger and task spawners
     spawn=env['PART_SPAWNER']
-    env['PART_LOG_MAPPER']=part_logger.part_logger(env,rpt.console)
+    env['PART_LOG_MAPPER']=part_logger.part_logger(env,reporter.g_rpter.console)
     env['SPAWN']=spawn(env)
     
     # add to our set of Env with builders
@@ -466,7 +467,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
         #    print "Building",talias,"from source!!"
         part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
     if base_str:
-        rpt.part_message(env.subst(base_str+part_info['ALIAS']))
+        reporter.print_msg(env.subst(base_str+part_info['ALIAS']))
     alias=part_info['ALIAS']
     parts_file=part_info['FILE']
 
@@ -489,11 +490,11 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     # allow us to make a part platform indepent in some way
     # Might want to change this to be a enum like setup
     part_info['PLATFORM_MATCH']=copy.copy(env['TARGET_PLATFORM'])
-    if kw.get('platform_indepenent',False):
+    if kw.get('platform_independent ',kw.get('platform_indepenent',False)):
         part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any','any')
-    if kw.get('os_indepenent',False):
+    if kw.get('os_independent ',kw.get('os_indepenent',False)):
         part_info['PLATFORM_MATCH'].OS='any'
-    if kw.get('architecture_indepenent',False):
+    if kw.get('architecture_independent ',kw.get('architecture_indepenent',False)):
         part_info['PLATFORM_MATCH'].ARCH='any'
     
 
@@ -532,12 +533,9 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ## handling some ugly wrapper to ceratina object i would rather have as 
     ## pieces
     export_map=common.g_parts_objs
-    Bin=location.Bin(env)
-    Lib=location.Lib(env)
+    
     AbsFile=node_helpers._AbsFile(env)
     AbsDir=node_helpers._AbsDir(env)
-    Include=location.Include(env)
-    
     
     export_map['AbsFile']=AbsFile
     export_map['AbsDir']=AbsDir
@@ -549,19 +547,12 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ret=None
     if (common.g_part_mode=='build') or (os.path.exists(parts_file.srcnode().abspath)==True):
         if os.path.exists(parts_file.srcnode().abspath)==False:
-            rpt.part_warning(env,'Parts file '+parts_file.srcnode().abspath+" was not found. The build may fail")
-            #print 'Parts: Warning -- Parts file',parts_file.srcnode().abspath,'was not found. The build may fail'
+            reporter.report_warning('Parts file '+parts_file.srcnode().abspath+" was not found. The build may fail")
+            
         # Call the part file        
-##        s=env.subst('$SRC_DIR')
-##        ffile=parts_file
-##        print
-##        print 'build_dir=',env.subst('$BUILD_DIR'),env.Dir(env.subst('$BUILD_DIR')).path
-##        print 'src_dir=',env.Dir(s),env.Dir(s).abspath
-##        print 'src_dir2=',env.Dir(s).srcnode(),env.Dir(s).srcnode().abspath
-##        print 'file=',ffile,ffile.abspath,ffile.srcnode().abspath
-##        print
         if env['CONTINUE_ON_EXCEPTION']:
             try:
+                reporter.ResetPartStackFrameInfo()
                 ret=def_env.SConscript(
                     parts_file,
                     src_dir=env.subst('$SRC_DIR'),
@@ -573,10 +564,11 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
                 import traceback,StringIO
                 ec_str=StringIO.StringIO()
                 traceback.print_exc(file=ec_str)
-                rpt.part_error(env,"Exception thrown while processing "+parts_file.srcnode().abspath+"\n"+ec_str.getvalue())
-                rpt.part_message("Will try to continue...")
+                reporter.report_warning("Exception thrown while processing "+parts_file.srcnode().abspath+"\n"+ec_str.getvalue())
+                reporter.print_msg("Will try to continue...")
                 #env.Exit(1)
         else:
+            reporter.ResetPartStackFrameInfo()
             ret=def_env.SConscript(
                     parts_file,
                     src_dir=env.subst('$SRC_DIR'),
@@ -585,7 +577,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
                     exports=export_map
                     )
 
-    
+    reporter.SetPartStackFrameInfo()
     ## Setup SDK stuff
  
     if (env['CREATE_SDK'] == False and create_sdk == True):
@@ -712,6 +704,7 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     
     def_env['DEFINING_PART']=parent_alias   
     #print alias,'\t\t',time.time() - start_time,"seconds"
+    reporter.ResetPartStackFrameInfo()
     
 
 
@@ -732,10 +725,6 @@ common.AddVariable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to
 common.AddVariable('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}','Namespace to express building via a Part Name and possible version')
 common.AddVariable('BUILD_DIR_ROOT','#build', 'Root directory for building a given build configuration/variant')
 common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$ALIAS', 'Full path used to for building a given build configuration/variant')
-common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
-common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
-common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')
-
 
 
 common.add_global_value('Part',Part)

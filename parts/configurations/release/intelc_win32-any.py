@@ -12,17 +12,11 @@ def map_default_version(env):
 
 config=configuration(map_default_version)
 
-config.VersionRange("7-10.*",
+config.VersionRange("7-*",
                     append=ConfigValues(
                         CCFLAGS=['/nologo','/Ox','/MD','/W3'],
-                        CXXFLAGS=['/EHsc','/GR']
-                        )
-                    )
-                    
-config.VersionRange("11-*",
-                    append=ConfigValues(
-                        CCFLAGS=['/nologo','/Ox','/MD','/W3'],
-                        CXXFLAGS=['/EHsc','/GR']
+                        CXXFLAGS=['/EHsc','/GR'],
+                        CPPDEFINES=['NDEBUG']
                         )
                     )
                     

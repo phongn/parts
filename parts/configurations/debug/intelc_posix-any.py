@@ -1,5 +1,5 @@
 ######################################
-### Intel posix compiler configurations debug
+### Intel posix compiler configurations pat_debug
 ######################################
 
 import sys
@@ -12,9 +12,10 @@ def map_default_version(env):
 
 config=configuration(map_default_version)
 
+
 config.VersionRange("7-*",
                     append=ConfigValues(
                         CCFLAGS=['-O0','-g']
                         )
                     )
-
+                    

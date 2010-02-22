@@ -54,16 +54,7 @@ from parts.common import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
 import parts.node_helpers as node_helpers
 
-def untar_print(target, source, env):
-    dest=str(source[0])
-    destination=os.path.split(dest)[0]
-    return  "Unpacking LibPackage files in "+destination
-def untar(target, source, env):
-    dest=str(source[0])
-    destination=os.path.split(dest)[0]    
-    tar=tarfile.open(dest,'r')
-    tar.extractall(destination)
-    tar.close()
+
 #
 # Functions doing the actual work of the Install Builder.
 #
@@ -82,21 +73,15 @@ def copyFunc(dest, source, env):
         shutil.copytree(source, dest)
     else:
         if env['HOST_OS']=='win32':
-            import win32file
-            #try:
-            #    win32file.CreateHardLink(dest,source)
-            #except:
-            win32file.CopyFile(source,dest,False)
+            import ctypes
+            ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
+            if ret==0:
+                raise ctypes.WinError()
         else:
-            #try:
-            #    os.link(source,dest)
-            #except:
-                #try:
-                #    os.symlink(source,dest)
-                #except:
-                    shutil.copy2(source, dest)
-                    st = os.stat(source)
-                    os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+            
+            shutil.copy2(source, dest)
+            st = os.stat(source)
+            os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
         
     return 0
 

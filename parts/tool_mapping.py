@@ -1,7 +1,9 @@
 
 import common
+import load_module
 import SCons.Tool
 import os
+import reporter
 
 def get_tlset_module(tlchain,version):
     # first try to load exact match.. then general match
@@ -11,7 +13,7 @@ def get_tlset_module(tlchain,version):
         name_list=[tlchain]
     for k in name_list:
         try:
-            mod=common.load_module(common.get_site_directories('toolchain'),k,'toolchain')
+            mod=load_module.load_module(load_module.get_site_directories('toolchain'),k,'toolchain')
             #print 'Found ToolChain:',k
             return mod
         except:
@@ -43,10 +45,10 @@ def get_tools(env,tlset):
             else:
                 # see if this is a tool that is loadable
                 try:
-                    SCons.Tool.Tool(t[0],toolpath=common.get_site_directories('tools'))#env['toolpath'])
+                    SCons.Tool.Tool(t[0],toolpath=load_module.get_site_directories('tools'))#env['toolpath'])
                     new_list.extend([(t[0],{})])
                 except:
-                    print "Unknown ToolChain or Tool:",t[0]
+                    reporter.report_warning("Failed to load Unknown ToolChain or Tool:",t[0])
                     pass
         else:
             #This has been handled
@@ -79,6 +81,17 @@ def _ToolChain(env,chainlist):
         # apply the tool to the enviroment
         env['CONFIGURED_TOOLS'].append(t[0])
         env.Tool(t[0])
+
+def tool_converter(str_val, raw_val):
+    if common.is_string(raw_val):
+        tmp=raw_val.split(',')
+        lst=[]
+        for i in tmp:
+            lst.append(i.split('_'))
+        return lst
+    if common.is_list(raw_val):
+        return raw_val
+    raise "Invalid tool value '%s'" % raw_val
         
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
@@ -86,3 +99,6 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object
 
 SConsEnvironment.ToolChain=_ToolChain
+
+
+common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter) 

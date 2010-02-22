@@ -1,5 +1,5 @@
 ######################################
-### Intel win32 compiler configurations debug
+### Intel win32 compiler configurations pat_debug
 ######################################
 
 import sys
@@ -12,17 +12,9 @@ def map_default_version(env):
 
 config=configuration(map_default_version)
 
-config.VersionRange("7-10.*",
+config.VersionRange("7-*",
                     append=ConfigValues(
                         CCFLAGS=['/nologo','/Od','/MDd','/W3','/RTC1'],
                         CXXFLAGS=['/EHsc','/GR']
                         )
-                    )
-
-config.VersionRange("11-*",
-                    append=ConfigValues(
-                        CCFLAGS=['/nologo','/Od','/MDd','/W3','/RTC1'],
-                        CXXFLAGS=['/EHsc','/GR'],
-                        ),
-                        
                     )

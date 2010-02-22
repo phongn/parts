@@ -8,7 +8,7 @@ import unittest
 
 
 #### tests for TestSettings objects
-class TestPathFinder(unittest.TestCase):
+class TestToolSettings(unittest.TestCase):
 
     def setUp(self):
         self.env=SCons.Script.Environment(tools=[],HOST_PLATFORM=HostSystem(),TARGET_PLATFORM=HostSystem())

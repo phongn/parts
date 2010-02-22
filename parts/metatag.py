@@ -1,4 +1,5 @@
 import common
+import reporter
 
 def MetaTag(nodes,ns='meta',**metakv):
     #make sure the nodes are in a list
@@ -38,10 +39,7 @@ def hasMetaTag_method(env,node,key,ns='meta'):
     return hasMetaTag(node,key,ns)
 
 def Tag_wrapper(env,nodes,ns='meta',**metakv):
-    import SCons.Script
-    def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
-    rpt.part_warning(env,"Please use MetaTag instead")
+    reporter.report_warning("Please use MetaTag instead")
     return MetaTag(nodes,ns,**metakv)
 
 

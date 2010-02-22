@@ -1,0 +1,77 @@
+
+import sys
+import os
+import imp
+import traceback,StringIO
+import SCons.Errors
+import SCons.Script
+import common
+import reporter
+
+
+g_site_dir_cache={}
+def get_site_directories(subdir):
+    try:
+        return g_site_dir_cache[subdir]
+    except KeyError:
+        host_os=SCons.Script.DefaultEnvironment()['PLATFORM'] # can't user HOST_OS because of bootstrap issue.
+        syspath=[]
+        localpath=[]
+        # local data
+        localpath=[
+            #homedir/.parts-site
+            os.path.join(os.path.expanduser('~'),'parts-site',subdir),
+            os.path.join(os.path.expanduser('~'),'.parts-site',subdir)
+            ]
+        # add paths for windows
+        if host_os=='win32':
+            localpath=localpath+[os.path.join(os.environ['APPDATA'],'parts-site',subdir)]
+            
+        # global system area
+        if host_os == 'win32':
+            syspath=[os.path.join(os.environ['ALLUSERSPROFILE'],'parts-site',subdir)]
+        elif host_os == 'darwin':
+            syspath=[os.path.join('/Library/Application Support/parts','parts-site',subdir)]
+        else:
+            syspath=[os.path.join('/usr/share/parts','parts-site',subdir)]
+        
+        sitepaths=[
+            #current directory parts_site or user pointed site
+            os.path.join('.','parts-site',subdir),
+            os.path.join('.','.parts-site',subdir)
+            #homedir/.parts-site
+            ]+localpath+syspath+[
+            # parts install
+            os.path.join(common.g_parts_path,subdir)
+        ]
+        
+        g_site_dir_cache[subdir]=sitepaths
+    return g_site_dir_cache[subdir]
+
+def load_module(path,name,type):
+    """Return the imported module
+    made more generic so Parts can reuse the logic
+    instead of using the C&P anit-patttern.
+    """
+    
+    modname='<'+type+'>'+name
+    if not sys.modules.has_key(modname):
+        reporter.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
+        file, path1, desc = imp.find_module(name,path)
+        
+        try:
+            mod = imp.load_module(modname, file, path1, desc)
+            reporter.verbose_msg("load_module","Module was loaded from <%s>"%path1)
+        except ImportError,e:
+            #ec_str=StringIO.StringIO()
+            #traceback.print_exc(file=ec_str)
+            reporter.verbose_msg("load_module","Failed to load module!")
+            #reporter.trace_msg("Stack:\n%s"%(ec_str.getvalue()))
+            if file:
+                file.close()
+            raise SCons.Errors.UserError, "No module named '%s'" % (name)
+        if file:
+            file.close()
+        
+    return sys.modules[modname]
+    

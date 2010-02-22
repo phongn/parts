@@ -6,10 +6,107 @@ import SCons.Script
 import SCons.Util
 import SCons.Environment
 import os
+import sys
 
 
+from SCons.Script import _SConscript 
+import SCons.Script.Main
+
+if sys.platform=='win32':
+    #This allow us to up file in a non-exclusive mode
+    import ctypes
+    import __builtin__
+    import msvcrt
+
+    _orginial_file = __builtin__.file
+    _orginial_open = __builtin__.open
+    
+
+    FILE_SHARE_READ=1
+    FILE_SHARE_WRITE=2
+    FILE_SHARE_DELETE=4
+
+    GENERIC_READ =-0x80000000
+    GENERIC_WRITE=0x40000000
+
+    CREATE_ALWAYS=2
+    OPEN_EXISTING=3
+    OPEN_ALWAYS=4
+    TRUNCATE_EXISTING=5
+
+    
+    def get_win32_desired_access(str):
+        ret=0
+        if str.find('r')!=-1:
+            ret=GENERIC_READ
+        if str.find('w')!=-1 or str.find('+')!=-1 or str.find('a')!=-1:
+            ret=ret|GENERIC_WRITE
+            
+        return ret
+
+    def get_win32_shared_mode(str):
+        ret=FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE
+        #if str.find('w')!=-1 or str.find('+')!=-1 or str.find('a')!=-1:
+        #    ret=ret|FILE_SHARE_WRITE
+        return ret    
+
+    def get_win32_creation_disposition(str):
+        ret=0
+        if str.find('w')!=-1 or str.find('+')!=-1:
+            ret=CREATE_ALWAYS
+        elif str.find('r')!=-1:
+            ret=OPEN_EXISTING
+        else:
+            ret=OPEN_ALWAYS
+            
+        return ret
+    
+    def shared_open(filename, mode='r', bufsize=-1):
+        # this is sort of ugly
+        
+        #sys.__stdout__.write("\n **** "+str(filename)+" "+ str(mode)+" "+str(bufsize)+'\n')
+        fd=ctypes.windll.kernel32.CreateFileW(unicode(filename),
+                    get_win32_desired_access(mode),# read, write modes
+                    get_win32_shared_mode(mode),# add share delete
+                    None, #default securtity
+                    get_win32_creation_disposition(mode), #If we create the file or not
+                    128, # normal attribute.. FILE_ATTRIBUTE_NORMAL
+                    0 # no Template
+                )
+        if fd == -1:
+            
+            raise IOError,ctypes.FormatError(ctypes.GetLastError())
+        # not sure if I should modify flags passed here, 
+        # as the next call will get them
+        if mode.find('b') != -1:
+            tmp=msvcrt.open_osfhandle(fd,os.O_BINARY) 
+        else:
+            tmp=msvcrt.open_osfhandle(fd,os.O_TEXT) 
+        
+        f=os.fdopen(tmp,mode,bufsize)
+        
+        return f
+        
+    __builtin__.file=shared_open
+    __builtin__.open=shared_open
+    _SConscript.open=_orginial_open
+    
+
+# this class allows us to add object varible that get a reference to the env
+# that holds it
 class bindable(object):
     pass
+
+OrigSConscript_exception=_SConscript.SConscript_exception
+def PartSConscript_exception(file=None):
+    ''' this is silly in general, but is done to allow the remapping of stream 
+    to work better as the orginal code get the stream before I remap it as it is
+    a default option. This prevents sys.stderr from beting used by have my 
+    stderr used be used.'''
+    if file==None:
+        file=sys.stderr
+    OrigSConscript_exception(file)
+_SConscript.SConscript_exception=PartSConscript_exception
 
 def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
     clone_env=self._orig_Clone(tools,toolpath,parse_flags,**kw)
@@ -121,6 +218,7 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
 
 
 def my_semi_deepcopy(x):
+    ''' fixes issues with deepcopy'''
     copier = SCons.Util._semi_deepcopy_dispatch.get(type(x))
     if copier:
         return copier(x)
@@ -128,6 +226,46 @@ def my_semi_deepcopy(x):
         return SCons.Util._semi_deepcopy_inst(x)
 
 SCons.Util.semi_deepcopy=my_semi_deepcopy
+
+
+# overides for better error reporting
+
+def Parts_find_deepest_user_frame(tb):
+    """
+    Find the deepest stack frame that is not part of SCons.
+
+    Input is a "pre-processed" stack trace in the form
+    returned by traceback.extract_tb() or traceback.extract_stack()
+    """
+    
+    tb.reverse()
+
+    # find the deepest traceback frame that is not part
+    # of SCons:
+    ftmp = SCons.Script.GetOption("file")
+    if len(ftmp) == 0:
+        ftmp=['sconstruct']
+        
+    def list_endwith(str, lst):
+        str=str.lower()
+        for l in lst:
+            l=l.lower()
+            if str.endswith(l):
+                return True
+        return False
+    #print len(tb)
+    for frame in tb:
+        filename = frame[0]
+        #print filename
+        if filename.find(os.sep+'SCons'+os.sep) == -1 and list_endwith(filename,['.parts','.part']) == True:
+            return frame
+        elif list_endwith(filename,ftmp):
+            return lastframe
+        lastframe=frame
+    #print "->",tb[0]
+    return tb[0]
+
+SCons.Script.Main.find_deepest_user_frame=Parts_find_deepest_user_frame
 
 from SCons.Script.SConscript import SConsEnvironment
 

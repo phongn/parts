@@ -42,6 +42,7 @@ import SCons.Platform.win32
 import SCons.Tool
 import SCons.Util
 
+import parts.reporter as reporter
 from MSCommon import msvc,validate_vars
 
 def pdbGenerator(env, target, source, for_signature):
@@ -142,7 +143,7 @@ def _dllEmitter(target, source, env, paramtp):
                             '%sPREFIX' % paramtp, '%sSUFFIX' % paramtp,
                             "WINDOWSEXPPREFIX", "WINDOWSEXPSUFFIX"))
 
-    return (target+extratargets, source+extrasources)
+    return (env.Precious(target+extratargets), env.Precious(source+extrasources))
 
 def windowsLibEmitter(target, source, env):
     return _dllEmitter(target, source, env, 'SHLIB')
@@ -180,7 +181,7 @@ def prog_emitter(target, source, env):
         extratargets.append(pdb)
         target[0].attributes.pdb = pdb
 
-    return (target+extratargets,source)
+    return (env.Precious(target+extratargets),env.Precious(source))
 
 def RegServerFunc(target, source, env):
     if env.has_key('register') and env['register']:
@@ -220,7 +221,7 @@ def EmbedManifestProgFunc(target,source,env):
 
     if insert_manifest and os.path.exists (manifestSrc):
         manifest = manifestSrc 
-        ret = (embedManifestProgAction) ([target[0]],None,env)
+        ret = (embedManifestProgAction) (env.Precious(target[0]),None,env)
         if ret:
             raise SCons.Errors.UserError, "Unable to embed manifest into %s" % (target[0])
         else:
@@ -262,7 +263,7 @@ def generate(env):
     env['SHLINKCOM']   =  compositeShLinkAction
     env.Append(SHLIBEMITTER = [windowsLibEmitter])
     env['LINK']        = 'link'
-    #env['LINKFLAGS']   = SCons.Util.CLVar('/nologo')
+    env['LINKFLAGS']   = SCons.Util.CLVar('/nologo')
     env['_PDB'] = pdbGenerator
     env['LINKCOM'] = compositelinkcomAction
     env.Append(PROGEMITTER = [prog_emitter])
@@ -315,6 +316,8 @@ def generate(env):
     env['_LDMODULE_SOURCES'] = _windowsLdmodSources
     env['LDMODULEEMITTER'] = [ldmodEmitter]
     env['LDMODULECOM'] = compositeLdmodAction
+    
+    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslink',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env,'link')

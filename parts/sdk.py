@@ -4,6 +4,7 @@ import pattern
 import common
 import exportitem as Xp
 import node_helpers
+import reporter
 
 g_sdked_files=set([])
 
@@ -35,7 +36,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
             if create_sdk==False:
                 out+=sr#s.files(t)
             else:
-                out+=env._SDKCOPYAs_(target=t,source=sr)
+                out+=env.CCopyAs(target=t,source=sr)
             
             #print "Pattern type"
         elif isinstance(s,SCons.Node.FS.Dir):
@@ -51,7 +52,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
                 #print s
             else:
                 #print target_dir,s
-                out.extend(env._SDKCOPY_(target=target_dir,source=s))
+                out.extend(env.CCopy(target=target_dir,source=s))
             #print "Dir type"
         elif isinstance(s,SCons.Node.FS.File):
             #print s.abspath
@@ -64,7 +65,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
                 #print s
             else:
                 #print target_dir,s
-                out.extend(env._SDKCOPY_(target=target_dir,source=s))
+                out.extend(env.CCopy(target=target_dir,source=s))
             #src.append(s)
             #print "File type"
         elif isinstance(s,SCons.Node.Node) or common.is_string(s):
@@ -74,7 +75,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
             if create_sdk==False:
                 out.append(s)
             else:
-                out.extend(env._SDKCOPY_(target=target_dir,source=s))
+                out.extend(env.CCopy(target=target_dir,source=s))
             #src.append(s)            
         else:
             def_env=SCons.Script.DefaultEnvironment()
@@ -111,7 +112,9 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
 
 def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_path=True,
                 auto_add_file=True,use_src_dir=False,use_build_dir=False,create_sdk=True):
-       
+    
+    reporter.SetPartStackFrameInfo(True)
+
     if common.is_list(sources)==False:
         sources=[sources]
     sources=SCons.Script.Flatten(sources)
@@ -173,6 +176,7 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
                 #pinfo['CREATE_SDK'].append(('SdkItem',[target_dir,common._make_rel([targets[0]]),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))    
             else:
                 pinfo['CREATE_SDK'].append(('SdkItem',[target_dir,common._make_rel(targets),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))
+    reporter.ResetPartStackFrameInfo()
     return targets
 
 
@@ -210,6 +214,11 @@ def SdkDoc(env,sources,sub_dir='',create_sdk=True):
 def SdkHelp(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_HELP',sources,sub_dir,'',[],create_sdk=create_sdk)
+    return ret
+
+def SdkManPage(env,sources,sub_dir='',create_sdk=True):
+    
+    ret=SdkItem(env,'$SDK_MANPAGE',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkData(env,sources,sub_dir='',create_sdk=True):
@@ -259,6 +268,7 @@ def SdkScript(env, sources, sub_dir='',create_sdk=True):
 
 
 def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=False,create_sdk=True):
+    reporter.SetPartStackFrameInfo(True)
     if sources==None:
         return
     if common.is_list(sources)==False:
@@ -300,141 +310,142 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
                         #out+=SdkBin(env,[i],sub_dir=sub_dir,create_sdk=create_sdk)
                     else:
                         pass
+    reporter.ResetPartStackFrameInfo()
     return out
 
 ################################################
 ## SDK BUILDER -- this basically is like Install
 ## but does a copy... might be able to use newly added Copy builder...
 ################################################
-import tarfile
-def untar_print(target, source, env):
-    dest=str(source[0])
-    destination=os.path.split(dest)[0]
-    return  "Unpacking LibPackage files in "+destination
-def untar(target, source, env):
-    dest=str(source[0])
-    destination=os.path.split(dest)[0]    
-    tar=tarfile.open(dest,'r')
-    tar.extractall(destination)
-    tar.close()
-
-def SDKCOPYWrapper(env, target=None, source=None):
-    import SCons.Script
-    target_factory = env.fs
-    try:
-        dnodes = env.arg2nodes(target, target_factory.Dir)
-    except TypeError:
-        raise SCons.Errors.UserError, "PARTS: Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir)
-    source=common.make_list(source)
-    sources=[]
-    # workaround to not having symlinks yet
-    for s in source:
-        tmp=env.arg2nodes(s, env.fs.Entry)
-        symlink=None
-        if isinstance(s,SCons.Node.FS.File):
-            symlink=env.MetaTagValue(s,'SymLink')
-        if symlink is not None:
-            env.MetaTag(tmp[0],SymLink=symlink)
-        sources.extend(tmp)
-        
-    #sources = env.arg2nodes(source, env.fs.Entry)
-    n_targets = []
-    for dnode in dnodes:
-        for src in sources:
-            # Prepend './' so the lookup doesn't interpret an initial
-            # '#' on the file name portion as meaning the Node should
-            # be relative to the top-level SConstruct directory.
-            symlink=env.MetaTagValue(src,'SymLink')
-            if symlink is not None:
-                e=env.fs.File('.'+os.sep+src.name, dnode)
-                env.MetaTag(e,SymLink=symlink)
-                env.MetaTag(e,SymLinkMakeDummyFile=env.MetaTagValue(src,'SymLinkMakeDummyFile',default=True))
-            else:
-                e=env.fs.Entry('.'+os.sep+src.name, dnode)
-            tmp=env.__SDKBuilder__(target=e,source=src)
-            n_targets.extend(tmp)
-            # hack for gz-so file .. remove later 
-            if str(tmp[0]).endswith('.so-gz'):
-                n=env.fs.File(str(tmp[0])[:-3])
-                env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
-    return n_targets
-
-
-def SDKCOPYAsWrapper(env, target=None, source=None):
-    result = []
-    for src, tgt in map(lambda x, y: (x, y), source, target):
-        result.extend(env.__SDKBuilder__(tgt, src))
-    return result
-
-    #n_targets=env.__SDKBuilder__(target=target,source=source)
-    #return results
+##import tarfile
+##def untar_print(target, source, env):
+##    dest=str(source[0])
+##    destination=os.path.split(dest)[0]
+##    return  "Unpacking LibPackage files in "+destination
+##def untar(target, source, env):
+##    dest=str(source[0])
+##    destination=os.path.split(dest)[0]    
+##    tar=tarfile.open(dest,'r')
+##    tar.extractall(destination)
+##    tar.close()
+##
+##def SDKCOPYWrapper(env, target=None, source=None):
+##    import SCons.Script
+##    target_factory = env.fs
+##    try:
+##        dnodes = env.arg2nodes(target, target_factory.Dir)
+##    except TypeError:
+##        raise SCons.Errors.UserError, "PARTS: Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir)
+##    source=common.make_list(source)
+##    sources=[]
+##    # workaround to not having symlinks yet
+##    for s in source:
+##        tmp=env.arg2nodes(s, env.fs.Entry)
+##        symlink=None
+##        if isinstance(s,SCons.Node.FS.File):
+##            symlink=env.MetaTagValue(s,'SymLink')
+##        if symlink is not None:
+##            env.MetaTag(tmp[0],SymLink=symlink)
+##        sources.extend(tmp)
+##        
+##    #sources = env.arg2nodes(source, env.fs.Entry)
+##    n_targets = []
+##    for dnode in dnodes:
+##        for src in sources:
+##            # Prepend './' so the lookup doesn't interpret an initial
+##            # '#' on the file name portion as meaning the Node should
+##            # be relative to the top-level SConstruct directory.
+##            symlink=env.MetaTagValue(src,'SymLink')
+##            if symlink is not None:
+##                e=env.fs.File('.'+os.sep+src.name, dnode)
+##                env.MetaTag(e,SymLink=symlink)
+##                env.MetaTag(e,SymLinkMakeDummyFile=env.MetaTagValue(src,'SymLinkMakeDummyFile',default=True))
+##            else:
+##                e=env.fs.Entry('.'+os.sep+src.name, dnode)
+##            tmp=env.__SDKBuilder__(target=e,source=src)
+##            n_targets.extend(tmp)
+##            # hack for gz-so file .. remove later 
+##            if str(tmp[0]).endswith('.so-gz'):
+##                n=env.fs.File(str(tmp[0])[:-3])
+##                env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
+##    return n_targets
+##
+##
+##def SDKCOPYAsWrapper(env, target=None, source=None):
+##    result = []
+##    for src, tgt in map(lambda x, y: (x, y), source, target):
+##        result.extend(env.__SDKBuilder__(tgt, src))
+##    return result
+##
+##    #n_targets=env.__SDKBuilder__(target=target,source=source)
+##    #return results
 
 ################################################
 ## SDK BUILDER
 ################################################
 
-def sdkcopyFunc(dest, source, env):
-    import shutil,stat
-    if os.path.isdir(source):
-        if os.path.exists(dest):
-            if not os.path.isdir(dest):
-                raise SCons.Errors.UserError, "cannot overwrite non-directory `%s' with a directory `%s'" % (str(dest), str(source))
-        else:
-            parent = os.path.split(dest)[0]
-            if not os.path.exists(parent):
-                os.makedirs(parent)
-        shutil.copytree(source, dest)
-    else:
-        if env['HOST_OS']=='win32':
-            import win32file
-            #try:
-            #    win32file.CreateHardLink(dest,source)
-            #except:
-            win32file.CopyFile(source,dest,False)
-        else:
-            #try:
-            #    os.link(source,dest)
-            #except:
-                #try:
-                #    os.symlink(source,dest)
-                #except:
-                    shutil.copy2(source, dest)
-                    st = os.stat(source)
-                    os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-        
-    return 0
-
-def SDKFunc(target, source, env):
-    
-    # get the logger for the given part
-    output=env["PART_LOG_MAPPER"]    
-    # tell it we are starting a task
-    id=output.TaskStart(SdkStringFunc(target,source,env)+"\n")
-    
-    assert( len(target) == len(source) ), "\ntarget: %s\nsource: %s" %(map(str, target),map(str, source))
-    for t, s in zip(target, source):
-        symlink=env.MetaTagValue(t,'SymLink')
-        if symlink is not None:
-            node_helpers.make_link_bf([t],None,env)
-        elif sdkcopyFunc(t.get_path(), s.get_path(), env):
-            #report error to logger
-            output.TaskEnd(id,1)
-            return 1
-    #tell logger the task has end correctly.
-    output.TaskEnd(id,0)
-    return None
-
-def SdkStringFunc(target, source, env):
-    target = str(target[0])
-    source = str(source[0])
-    if os.path.isdir(source):
-        type = 'directory'
-    else:
-        type = 'file'
-    return 'Copying %s: "%s" to SDK as: "%s"' % (type, source, target)
-
-def SdkFuncEmit(target, source, env):
-    return ([target[0]], [source[0]])
+##def sdkcopyFunc(dest, source, env):
+##    import shutil,stat
+##    if os.path.isdir(source):
+##        if os.path.exists(dest):
+##            if not os.path.isdir(dest):
+##                raise SCons.Errors.UserError, "cannot overwrite non-directory `%s' with a directory `%s'" % (str(dest), str(source))
+##        else:
+##            parent = os.path.split(dest)[0]
+##            if not os.path.exists(parent):
+##                os.makedirs(parent)
+##        shutil.copytree(source, dest)
+##    else:
+##        if env['HOST_OS']=='win32':
+##            import win32file
+##            try:
+##                win32file.CreateHardLink(dest,source)
+##            except:
+##                win32file.CopyFile(source,dest,False)
+##        else:
+##            #try:
+##            #    os.link(source,dest)
+##            #except:
+##                #try:
+##                #    os.symlink(source,dest)
+##                #except:
+##                    shutil.copy2(source, dest)
+##                    st = os.stat(source)
+##                    os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+##        
+##    return 0
+##
+##def SDKFunc(target, source, env):
+##    
+##    # get the logger for the given part
+##    output=env["PART_LOG_MAPPER"]    
+##    # tell it we are starting a task
+##    id=output.TaskStart(SdkStringFunc(target,source,env)+"\n")
+##    
+##    assert( len(target) == len(source) ), "\ntarget: %s\nsource: %s" %(map(str, target),map(str, source))
+##    for t, s in zip(target, source):
+##        symlink=env.MetaTagValue(t,'SymLink')
+##        if symlink is not None:
+##            node_helpers.make_link_bf([t],None,env)
+##        elif sdkcopyFunc(t.get_path(), s.get_path(), env):
+##            #report error to logger
+##            output.TaskEnd(id,1)
+##            return 1
+##    #tell logger the task has end correctly.
+##    output.TaskEnd(id,0)
+##    return None
+##
+##def SdkStringFunc(target, source, env):
+##    target = str(target[0])
+##    source = str(source[0])
+##    if os.path.isdir(source):
+##        type = 'directory'
+##    else:
+##        type = 'file'
+##    return 'Copying %s: "%s" to SDK as: "%s"' % (type, source, target)
+##
+##def SdkFuncEmit(target, source, env):
+##    return ([target[0]], [source[0]])
 
 
 #####################################################
@@ -528,6 +539,7 @@ SConsEnvironment.SdkTarget=Sdk
 SConsEnvironment.SdkConfig=SdkConfig
 SConsEnvironment.SdkDoc=SdkDoc
 SConsEnvironment.SdkHelp=SdkHelp
+SConsEnvironment.SdkManPage=SdkManPage
 SConsEnvironment.SdkData=SdkData
 SConsEnvironment.SdkMessage=SdkMessage
 SConsEnvironment.SdkResource=SdkResource
@@ -540,16 +552,16 @@ SConsEnvironment.SdkPython=SdkPython
 SConsEnvironment.SdkScript=SdkScript
 
 
-SConsEnvironment._SDKCOPY_=SDKCOPYWrapper
-SConsEnvironment._SDKCOPYAs_=SDKCOPYAsWrapper
+#SConsEnvironment._SDKCOPY_=SDKCOPYWrapper
+#SConsEnvironment._SDKCOPYAs_=SDKCOPYAsWrapper
 
-common.AddBuilder('__SDKBuilder__',SCons.Builder.Builder(
-        action         = SCons.Action.Action(SDKFunc, SdkStringFunc),
-        target_factory = SCons.Node.FS.Entry,
-        source_factory = SCons.Node.FS.Entry,
-        multi          = 1,
-        emitter        = SdkFuncEmit
-        ))
+##common.AddBuilder('__SDKBuilder__',SCons.Builder.Builder(
+##        action         = SCons.Action.Action(SDKFunc, SdkStringFunc),
+##        target_factory = SCons.Node.FS.Entry,
+##        source_factory = SCons.Node.FS.Entry,
+##        multi          = 1,
+##        emitter        = SdkFuncEmit
+##        ))
 
 common.AddBuilder('__CreateSDKBuilder__',SCons.Builder.Builder(
         action = SCons.Script.Action(CreateSDK_BF,CreateSDK_StrF),
@@ -577,6 +589,7 @@ common.AddVariable('SDK_API','$SDK_ROOT/API','Full SDK directory for the API con
 common.AddVariable('SDK_CONFIG','$SDK_ROOT/config','Full SDK directory for the configuration file concept')
 common.AddVariable('SDK_DOC','$SDK_ROOT/doc','Full SDK directory for the documenation concept')
 common.AddVariable('SDK_HELP','$SDK_ROOT/help','Full SDK directory for the help concept')
+common.AddVariable('SDK_MANPAGE','$SDK_ROOT/man','Full SDK directory for the manpage concept')
 common.AddVariable('SDK_DATA','$SDK_ROOT/data','Full SDK directory for the generic data concept')
 common.AddVariable('SDK_MESSAGE','$SDK_ROOT/message','Full SDK directory for the messages (catalogs) concept')
 common.AddVariable('SDK_RESOURCE','$SDK_ROOT/resource','Full SDK directory for the resource concept')

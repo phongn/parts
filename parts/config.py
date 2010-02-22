@@ -8,7 +8,9 @@ import version
 import SCons.Script
 import configurations,version
 import os
-
+import reporter
+import load_module
+import traceback,StringIO
 
 def null_ver_mapper(env):
     return '0.0.0'
@@ -249,6 +251,7 @@ def load_cfg(name):
     if name==None:
         return
     # load the configuration meta information
+    reporter.verbose_msg('configuration',"Loading configuration definition for <%s>"%name)
     configurations.configuration(name)
     # make sure any dependent config is loaded as well
     dep=g_configuration[name].Dependent()
@@ -372,46 +375,61 @@ def load_tool_config(env,name,tool,host,target):
         if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
             # if not load it
             load_tool_config(env,dep,tool,host,target)    
-
+    reporter.verbose_msg('configuration',"Loading configuration <%s> for tool <%s>"%(name,tool))
     ## Load our config data, and map the version value
     name_list=make_name_list(tool,host,target)
     found=True
     ver=None
     for k in name_list:
         try:
-            
-            #mod=common.load_module('parts.configurations.'+name,k)
-            mod=common.load_module(common.get_site_directories(os.path.join('configurations',name)),k,'config'+name)
-            print 'Configuration [',name,'] loaded file:',k
+            reporter.verbose_msg('configuration',"trying to load file <%s>"%k)
+            mod=load_module.load_module(
+                    load_module.get_site_directories(
+                            os.path.join('configurations',name)
+                            ),
+                    k,
+                    'config'+name
+                    )
+            reporter.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,k))
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break
-        except:
+        except ImportError:
             pass
+        except Exception,ec:
+            ec_str=StringIO.StringIO()
+            traceback.print_exc(file=ec_str)
+            reporter.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
+            
         
     else:
-        #if dep == None:
-        #    print 'Configuration [',name,'] found no configruation for tool:',k
+        if dep == None:
+            reporter.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
         found=False # nothing found
 
     ## Last we merge settings and store
     if dep != None:
         # Get base settings
+        reporter.verbose_msg('configuration','Getting dependent configuration settings',dep)
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
     
     if found==True:
         # merge setting
+        reporter.verbose_msg('configuration',"Merging configurtation settings")
         settings,ver_rng=mod.config.merge(ver,base_settings)
         #print settings
         #store setting
+        reporter.verbose_msg('configuration',"Storing settings")
         g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func)
     else:
+        reporter.verbose_msg('configuration',"Storing settings")
         g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper)
 
 def get_config(env,name,tool,host,target):
     # is "meta" config loaded
     if g_configuration.has_key(name)==False:
         #if not load it
+        
         load_cfg(name)
     config=g_configuration[name]
     # is tool loaded?
@@ -432,13 +450,11 @@ def get_config(env,name,tool,host,target):
 import env_overrides
 class config_type_wrapper(str,env_overrides.bindable):
     def __eq__(self,rhs):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(self.env,"Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test")
+        reporter.report_warning("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test",env=self.env)
         return self.env.isConfigBasedOn(rhs)
 
     def __ne__(self,rhs):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(self.env,"Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for != test")
+        reporter.report_warning("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for != test",env=self.env)
         return self.env.isConfigBasedOn(rhs)==False
        
     def _rebind(self,env,key):
@@ -468,7 +484,7 @@ def apply_config(env,name=None):
     env['CONFIG']=config_type_wrapper(name)
     env['CONFIG']._bind(env,'CONFIG')
         
-    print "Applying configuration:",name
+    reporter.verbose_msg('configuration'"Applying configuration <%s>"%name)
     #print "tools that have been configured",tools
     for t in tools:
         settings,setting_extra=get_config(env,name,t,host,target)

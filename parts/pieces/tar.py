@@ -32,11 +32,11 @@ def tar(target, source, env, type):
 TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w') )
 GzAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|gz') )
 bz2Action = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|bz2') )
-
-common.AddBuilder('LibPackage',SCons.Builder.Builder(action = GzAction,
-                                   source_factory = SCons.Node.FS.Entry,
-                                   source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.so-gz'))#,multi = 1))
+##
+##common.AddBuilder('LibPackage',SCons.Builder.Builder(action = GzAction,
+##                                   source_factory = SCons.Node.FS.Entry,
+##                                   source_scanner = SCons.Defaults.DirScanner,
+##                                   suffix = '.so-gz'))#,multi = 1))
 
 common.AddBuilder('TarFile',SCons.Builder.Builder(action = TarAction,
                                    source_factory = SCons.Node.FS.Entry,

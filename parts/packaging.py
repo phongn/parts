@@ -1,6 +1,6 @@
 import common
 import SCons.Script
-
+import reporter
 
 g_package_groups={}
 
@@ -40,12 +40,12 @@ def PackageGroup(name,parts=[]):
     return g_package_groups[name]
 
 # global form
-def ReplacePackageGroupCritera(name,func):
+def ReplacePackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
     common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
 
-def AppendPackageGroupCritera(name,func):
+def AppendPackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
     try:
         common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
@@ -53,7 +53,7 @@ def AppendPackageGroupCritera(name,func):
         common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
         
-def PrependPackageGroupCritera(name,func):
+def PrependPackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
     try:
         common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+common.g_defaultoverides['MAP_PACKAGE_GROUP'][name]
@@ -61,13 +61,15 @@ def PrependPackageGroupCritera(name,func):
         common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
 
+
+
 # env form
-def ReplacePackageGroupCriteraEnv(env,name,func):
+def ReplacePackageGroupCriteriaEnv(env,name,func):
     name=env.subst(name)
     env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
 
-def AppendPackageGroupCriteraEnv(env,name,func):
+def AppendPackageGroupCriteriaEnv(env,name,func):
     name=env.subst(name)
     try:
         env['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
@@ -75,7 +77,7 @@ def AppendPackageGroupCriteraEnv(env,name,func):
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
         
-def PrependPackageGroupCriteraEnv(env,name,func):
+def PrependPackageGroupCriteriaEnv(env,name,func):
     name=env.subst(name)
     try:
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+env['MAP_PACKAGE_GROUP'][name]
@@ -143,7 +145,7 @@ def SortPackageGroups():
                             if t(f):
                                 env.MetaTag(f,'package',group=key)
                                 #get new group value
-                                print "Remapping",f,"from package_group",group_val,'to',key
+                                reporter.verbose_msg('packageing',"Remapping",f,"from package_group",group_val,'to',key)
                                 group_val=key
                                 break
                     
@@ -161,19 +163,47 @@ def SortPackageGroups():
                         common._INSTALLED_PACKAGING_GROUPS[group_val]=[]
                         common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[f]
 
-
-
 def GetPackageGroupFiles_env(env,name,no_pkg=False):
     return GetPackageGroupFiles(name,no_pkg)
+
+# compatible for mistakes
+
+def ReplacePackageGroupCritera(name,func):
+    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria')
+    return ReplacePackageGroupCriteria(name,func)
+
+def AppendPackageGroupCritera(name,func):
+    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria')
+    return AppendPackageGroupCriteria(name,func)
+        
+def PrependPackageGroupCritera(name,func):
+    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria')
+    return PrependPackageGroupCriteria(name,func)
+
+
+def ReplacePackageGroupCriteriaEnv_old(env,name,func):
+    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria')
+    return env.ReplacePackageGroupCriteria(name,func)
+def AppendPackageGroupCriteriaEnv_old(env,name,func):
+    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria')
+    return env.AppendPackageGroupCriteria(name,func)
+def PrependPackageGroupCriteriaEnv_old(env,name,func):
+    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria')
+    return env.PrependPackageGroupCriteria(name,func)
+    
     
 from SCons.Script.SConscript import SConsEnvironment
 
 
 SConsEnvironment.GetPackageGroupFiles=GetPackageGroupFiles_env
 
-SConsEnvironment.ReplacePackageGroupCritera=ReplacePackageGroupCriteraEnv
-SConsEnvironment.AppendPackageGroupCritera=AppendPackageGroupCriteraEnv
-SConsEnvironment.PrependPackageGroupCritera=PrependPackageGroupCriteraEnv
+SConsEnvironment.ReplacePackageGroupCritera=ReplacePackageGroupCriteriaEnv_old
+SConsEnvironment.AppendPackageGroupCritera=AppendPackageGroupCriteriaEnv_old
+SConsEnvironment.PrependPackageGroupCritera=PrependPackageGroupCriteriaEnv_old
+
+SConsEnvironment.ReplacePackageGroupCriteria=ReplacePackageGroupCriteriaEnv
+SConsEnvironment.AppendPackageGroupCriteria=AppendPackageGroupCriteriaEnv
+SConsEnvironment.PrependPackageGroupCriteria=PrependPackageGroupCriteriaEnv
     
 common.add_global_value('PackageGroups',PackageGroups)   
 common.add_global_value('PackageGroup',PackageGroup)   
@@ -181,5 +211,9 @@ common.add_global_value('GetPackageGroupFiles',GetPackageGroupFiles)
 
 common.add_global_value('ReplacePackageGroupCritera',ReplacePackageGroupCritera)   
 common.add_global_value('AppendPackageGroupCritera',AppendPackageGroupCritera)   
-common.add_global_value('PrependPackageGroupCritera',PrependPackageGroupCritera)   
+common.add_global_value('PrependPackageGroupCritera',PrependPackageGroupCritera)
+
+common.add_global_value('ReplacePackageGroupCriteria',ReplacePackageGroupCriteria)   
+common.add_global_value('AppendPackageGroupCriteria',AppendPackageGroupCriteria)   
+common.add_global_value('PrependPackageGroupCriteria',PrependPackageGroupCriteria)   
 

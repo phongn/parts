@@ -9,6 +9,7 @@ import stat
 
 import SCons.Script 
 
+import load_module
 import pattern
 import config
 import common 
@@ -18,6 +19,8 @@ import functors
 import tool_mapping
 import Variables
 import env_overrides
+import logger
+import reporter
 
 import platform_info
     
@@ -70,45 +73,38 @@ class deprecated:
         self.value=value
 
     def __str__(self):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        #reporter.SetPartStackFrameInfo()
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
+        #reporter.ResetPartStackFrameInfo()
         return self.value
 
     def __eq__(self,rhs):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self.value == rhs
 
     def __ne__(self,rhs):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self.value != rhs    
     
     def __hash__(self):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return hash(str(self.value))
     
     def __len__(self):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return len(str(self.value))
     def __getitem__(self,key):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self.value[key]
     
     def __add__(self, other):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self.value+other
     def __radd__(self, other):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return other+self.value
     def __contains__ (self,item):
-        rpt=SCons.Script.DefaultEnvironment().get('PARTS_REPORTER',None)
-        rpt.part_warning(None,"["+self.key+"] is deprecated please use ["+self.new_key+"]")
+        reporter.report_warning("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return item in self.value
         
         
@@ -131,7 +127,7 @@ def generate_config(prepend,append,replace):
     #if not isinstance(env,SCons.Script.Environment):
     if env is None:
         def_env=SCons.Script.DefaultEnvironment()
-        rpt=def_env.get('PARTS_REPORTER',None)
+        
         ## basic setup
         cfg_map={}
         # get command line args
@@ -140,7 +136,7 @@ def generate_config(prepend,append,replace):
         ## test for bad value.. remap is needed
         tmp=overrides.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            reporter.report_warning('tools is deprecated, use toolchain',env=env)
             if overrides.has_key('toolchain')==False:
                 overrides['toolchain']=tmp
             del overrides['tools']
@@ -148,21 +144,21 @@ def generate_config(prepend,append,replace):
         # test for bad value.. remap is needed
         tmp=replace.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            reporter.report_warning('tools is deprecated, use toolchain',env=env)
             if replace.has_key('toolchain')==False:
                 replace['toolchain']=tmp
             del replace['tools']
 
         tmp=prepend.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            reporter.report_warning('tools is deprecated, use toolchain',env=env)
             if prepend.has_key('toolchain')==False:
                 prepend['toolchain']=tmp
             del prepend['tools']
 
         tmp=append.get('tools',[])
         if tmp!=[]:
-            rpt.part_warning(env,'tools is deprecated, use toolchain')
+            reporter.report_warning('tools is deprecated, use toolchain',env=env)
             if append.has_key('toolchain')==False:
                 append['toolchain']=tmp
             del append['tools']
@@ -171,26 +167,26 @@ def generate_config(prepend,append,replace):
 
         tmp=overrides.get('ARCHITECTURE',None)
         if tmp is not None:
-            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if overrides.has_key('TARGET_ARCH')==False and overrides.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         # test for bad value.. remap is needed
         tmp=replace.get('ARCHITECTURE',None)
         if tmp is not None:
-            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if replace.has_key('TARGET_ARCH')==False and replace.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         tmp=append.get('ARCHITECTURE',None)
         if tmp is not None:
-            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if append.has_key('TARGET_ARCH')==False and append.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
 
         tmp=prepend.get('ARCHITECTURE',None)
         if tmp is not None:
-            rpt.part_warning(env,'ARCHITECTURE is deprecated, use TARGET_PLATFORM')
+            reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if prepend.has_key('TARGET_ARCH')==False and prepend.has_key('TARGET_PLATFORM')==False:
                 overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)        
             
@@ -227,7 +223,7 @@ def generate_config(prepend,append,replace):
         
         ## create a new environment
         ## get our toolpath 
-        tool_path=common.get_site_directories('tools')
+        tool_path=load_module.get_site_directories('tools')
         # make the SCons environment #############################
         env=SCons.Script.Environment(
                                 variables = vars,
@@ -374,6 +370,7 @@ def make_depends_map():
 
 def store_depends_data():
     import cPickle
+    reporter.SetPartStackFrameInfo()
     tmp=make_depends_map()
     # if we are not using SDK and we are reading everything, just re-write the whole file 
     if (common.g_part_mode==False and common.g_buildable_part == set()):
@@ -385,6 +382,7 @@ def store_depends_data():
     cPickle.dump(common.g_depends_data, output)
     common.g_depends_data=None
     output.close()
+    reporter.ResetPartStackFrameInfo()
     
 def load_depends_data():
     try:
@@ -401,17 +399,23 @@ def load_depends_data():
     return (0,{})
 
 def parts_prebuild_setup():
+    
+    # set logger if not set yet to save mem
+    if reporter.g_rpter.logger is logger.QueueLogger:
+        reporter.g_rpter.logger=logger.nil_logger
+        
     def_env=SCons.Script.DefaultEnvironment()
     if def_env['PREPROCESS_LOGIC_QUEUE']!=[]:
-        rpt=def_env['PARTS_REPORTER']
-        rpt.part_message("Mapping version information")
+        reporter.print_msg("Mapping version information")
         
         store_depends_data()
-        
+        reporter.SetPartStackFrameInfo()
         for i in def_env['PREPROCESS_LOGIC_QUEUE']:
             i()
         def_env['PREPROCESS_LOGIC_QUEUE']=[]
-        rpt.part_message("Done -- Mapping version information")
+        reporter.print_msg("Done -- Mapping version information")
+        reporter.ResetPartStackFrameInfo()
+    
     return True
 
 
@@ -420,10 +424,14 @@ scons_build_targets = SCons.Script.Main._build_targets
 
 def _build_targets(fs, options, targets, target_top):
     #print "&&&",common.g_name_alias_map
-    
+    reporter.SetPartStackFrameInfo()
     if parts_prebuild_setup() == False:
-        return None
-    return scons_build_targets(fs, options, targets, target_top)
+        ret= None
+    else:
+        ret= scons_build_targets(fs, options, targets, target_top)
+
+    reporter.ResetPartStackFrameInfo()
+    return ret
 
 SCons.Script.Main._build_targets = _build_targets
 

@@ -1,6 +1,7 @@
 import SCons.Util
 import parts.platform_info as platform_info
 import parts.common as common
+import parts.reporter as reporter
 import copy
 import SCons.Errors
 
@@ -479,8 +480,8 @@ class ToolSetting:
         return ret
             
     def MergeShellEnv(self,env):
-#        import pprint
-#        pp = pprint.PrettyPrinter(indent=4)
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4)
 #        pp.pprint(self.__dict__)
         
         version=env.get(self.version_tag,None)
@@ -496,7 +497,7 @@ class ToolSetting:
         # Add data to env
         for k, v in shell_env.items():
             env.PrependENVPath(k, v, delete_existing=1)
-               
+        reporter.verbose_msg('ToolSettings',"env['ENV'] equal to\n",pprint.pformat(env['ENV']))
         ## setup any common state
         #setup version info
         env[self.name]=ns._rebind(env,self.name)
@@ -504,7 +505,7 @@ class ToolSetting:
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
-        #print "Tool",self.name,"configured to version:",version
+        reporter.verbose_msg('ToolSettings',"Tool",self.name,"configured to version:",version)
  #       import pprint
  #       pp = pprint.PrettyPrinter(indent=4)
  #       pp.pprint(self.__dict__)

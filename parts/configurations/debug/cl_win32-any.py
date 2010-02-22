@@ -1,5 +1,5 @@
 ######################################
-### Microsoft compiler configurations debug
+### Microsoft compiler configurations pat_debug
 ######################################
 
 import sys
@@ -21,7 +21,7 @@ config.VersionRange("6.0",
 config.VersionRange("7-*",
                     append=ConfigValues(
                         CCFLAGS=['/nologo','/Od','/MDd','/W3','/RTC1'],
-                        CXXFLAGS=['/EHsc','/GR']
+                        CXXFLAGS=['/EHsc','/GR']                        
                         )
                     )
 

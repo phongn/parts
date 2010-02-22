@@ -4,6 +4,7 @@ import SCons.Util
 import SCons.Warnings
 import os
 
+import parts.reporter as reporter
 
 
 def generate(env):
@@ -26,11 +27,11 @@ def generate(env):
     if is_windows:
         # Look for license file dir
         # in system environment, and default location.
-        envlicdir = os.environ.get("INTEL_LICENSE_FILE", '')
+        envlicdir = os.environ.get("INTEL_LICENSE_FILE", '').split(';')
         defaultlicdir = r'C:\Program Files\Common Files\Intel\Licenses'
 
         licdir = None
-        for ld in [envlicdir]:
+        for ld in envlicdir:
             if ld and os.path.exists(ld):
                 licdir = ld
                 break
@@ -50,7 +51,7 @@ def generate(env):
     IntelCommon.Intelc.MergeShellEnv(env)
     
     # fix this up so we can control its printing to screen better.
-    print "INTELC configured for version: %s target: %s"%(env['INTELC']['VERSION'],env['TARGET_PLATFORM'])
+    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return IntelCommon.Intelc.Exists(env)

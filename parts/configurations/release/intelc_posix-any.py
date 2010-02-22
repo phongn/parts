@@ -12,9 +12,11 @@ def map_default_version(env):
 
 config=configuration(map_default_version)
 
+
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        CCFLAGS=['-O2']
+                        CCFLAGS=['-O2'],
+                        CPPDEFINES=['NDEBUG']
                         )
                     )
                     

@@ -1,4 +1,5 @@
 import common
+import console
 import SCons.Script
 import subprocess,sys,string,os
 import thread,threading 
@@ -128,7 +129,8 @@ class pipeRedirector:
         l = ' '
         while l != '':
             l = self.pipein.readline()
-            self.writer(l)
+            if l != "":
+                self.writer(l)
 
     def __init__(self,pipein,writer):
         self.pipein = pipein
@@ -205,7 +207,7 @@ class part_logger:
         self.env=env
         def_env=SCons.Script.DefaultEnvironment()
         self.reporter=def_env['PARTS_REPORTER']
-        self.block_text=False
+        self.block_text=2#SCons.Script.GetOption('num_jobs') > 1
         self.cache={}
 
         log=env['PART_LOGGER']
@@ -224,17 +226,8 @@ class part_logger:
         return id
     
     def TaskEnd(self,id,exit_code):
-        for text in self.cache[id]:
-            if text[0] == 0:
-                self.reporter.stdout(text[1])
-                self.other_out.Out(self.env,id,text[1])
-            elif text[0] ==1:
-                self.reporter.stderr(text[1])
-                self.other_out.Err(self.env,id,text[1])
-            else:
-                # we have some error or unknown code
-                pass
-        
+
+        self._empty_cache(id) 
         self.other_out.End(self.env,id,exit_code)
         del self.cache[id]
 
@@ -243,7 +236,17 @@ class part_logger:
             self.reporter.stdout(msg)
             self.other_out.Out(self.env,id,msg)
         else:
-            self.cache[id].append((0,msg))
+            try:
+                tmp=self.cache[id][-1][0]
+            except IndexError:
+                tmp=None
+            if tmp == console.Console.out_stream:
+               self.cache[id][-1][1] += msg
+            elif self.block_text == 2: # simple chaching
+                self._empty_cache(id) # this different so flush it
+                self.cache[id].append([console.Console.out_stream,msg])
+            else:
+                self.cache[id].append([console.Console.out_stream,msg])
         
         
     def WriteErr(self,id,msg):
@@ -252,8 +255,57 @@ class part_logger:
             self.reporter.stderr(msg)
             self.other_out.Err(self.env,id,msg)
         else:
-            self.cache[id].append((1,msg))
-        
+            try:
+                tmp=self.cache[id][-1][0]
+            except IndexError:
+                tmp=None
+            if tmp == console.Console.error_stream:
+               self.cache[id][-1][1] += msg
+            elif self.block_text == 2: # simple chaching
+                self._empty_cache(id) # this different so flush it
+                self.cache[id].append([console.Console.error_stream,msg])
+            else: #full caching
+                self.cache[id].append([console.Console.error_stream,msg])
+    
+    def _empty_cache(self,id):
+        for text in self.cache[id]:
+            if text[0] == console.Console.out_stream:
+                brkup=text[1].split('\n')
+                grpstr=''
+                for s in brkup:
+                    if s == '':
+                        pass
+                    elif grpstr == '':
+                        grpstr=s+'\n'
+                    elif s[0]==' ' or s[0]=='\t': # group indented text
+                        grpstr+=s+'\n'
+                    else:
+                        self.reporter.stdout(grpstr)
+                        self.other_out.Out(self.env,id,grpstr)
+                        grpstr=s+'\n'
+                else:
+                    self.reporter.stdout(grpstr)
+                    self.other_out.Out(self.env,id,grpstr)
+            elif text[0] ==console.Console.error_stream:
+                brkup=text[1].split('\n')
+                grpstr=''
+                for s in brkup:
+                    if s == '':
+                        pass
+                    elif grpstr == '':
+                        grpstr=s+'\n'
+                    elif s[0]==' ' or s[0]=='\t': # group indented text
+                        grpstr+=s+'\n'
+                    else:
+                        self.reporter.stderr(grpstr)
+                        self.other_out.Err(self.env,id,grpstr)
+                        grpstr=s+'\n'
+                else:
+                    self.reporter.stderr(grpstr)
+                    self.other_out.Err(self.env,id,grpstr)
+            else:
+                # we have some error or unknown code
+                pass
         
 class part_nil_logger:
     ''' the point of this class is to define the base interface for all part logger
@@ -279,6 +331,8 @@ class parts_text_logger:
         
         
     def create_file(self,env):
+        #The lock is needed here to prevent more than one thread creating this file
+        # at the same time
         self.m_lock.acquire()
         if self.m_file == None:
             dr=env.Dir(env.subst("$LOG_PART_DIR")).abspath
@@ -295,16 +349,16 @@ class parts_text_logger:
         else:
             eol='\n'
         self.cache[id]=[
-            (0,'Task:'+cmd+eol),
-            (0,"Output begin ----------------------------------------------------------------\n")
+            (console.Console.out_stream,'Task:'+cmd+eol),
+            (console.Console.out_stream,"Output begin ----------------------------------------------------------------\n")
             ]
        
     def End(self,env,id,exit_code):
         s=""
         for text in self.cache[id]:
-            if text[0] == 0:
+            if text[0] == console.Console.out_stream:
                 s+=text[1]
-            elif text[0] ==1:
+            elif text[0] ==console.Console.error_stream:
                 s+=text[1]
             else:
                 # we have some error or unknown code
@@ -315,10 +369,10 @@ class parts_text_logger:
         del self.cache[id]
                 
     def Out(self,env,id,msg):
-        self.cache[id].append((0,msg))
+        self.cache[id].append((console.Console.out_stream,msg))
         
     def Err(self,env,id,msg):
-        self.cache[id].append((1,msg))
+        self.cache[id].append((console.Console.error_stream,msg))
         
     def __del__(self):
         if self.__dict__.has_key('m_file') == False:
@@ -327,9 +381,9 @@ class parts_text_logger:
             self.cache[id].append((1,"Build interupted"))
             s=''
             for text in self.cache[id]:
-                if text[0] == 0:
+                if text[0] == console.Console.out_stream:
                     s+=text[1]
-                elif text[0] ==1:
+                elif text[0] ==console.Console.error_stream:
                     s+=text[1]
                 else:
                     # we have some error or unknown code

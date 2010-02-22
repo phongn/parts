@@ -1,22 +1,18 @@
-'''
-The startup configuration code
-'''
 
-import SCons.Script
-import config
 import common
-import core
-import sdk
-import exportitem
-import installs
-import logger
 import reporter
-import platform_info
-import os
-import string
-import Variables
-import version_info
+import logger
+import poptions
+import core
 
+import SCons.Script    
+
+import sys
+import atexit
+
+
+###
+## move all this when we redo the SDK option
 
 def target_to_alias(target,ret):    
     ''' This function will make the target to the set of alias that map to it'''
@@ -194,46 +190,197 @@ def create_sdk_set(def_env):
     
     common.g_build_as_sdk=ret
     def_env['PARTS_REPORTER'].part_message("Set to try to build as SDK "+str(common.g_build_as_sdk))
-
-def start():
-    '''This function sets up all the data and objects needed to have everything work correctly'''
-    # start off looking for options that we need to display extra data on
-    import sys
-    args = sys.argv[1:]
-    if SCons.Script.GetOption('clean'):
-        common.g_part_mode='clean'
-    elif SCons.Script.GetOption('help'):
-        common.g_part_mode='help'
-    else:
-        common.g_part_mode='build'
-
-    if 'tools' in SCons.Script.ARGUMENTS.keys():
-        print "Command line option 'tools' is deprecated, use 'toolchain'"
-        exit(1)
-        
-    # options for dumping information about configurations
-    list_tool=SCons.Script.ARGUMENTS.get('list_tool',None)
-
-    if list_tool!=None:
-        if list_tool=='all':
-            config.dump_config_list()
-        else:
-            config.dump_config_list(list_tool)
-        SCons.Script.Exit(0)
-        
-    verbose=SCons.Script.GetOption('verbose')
-    if verbose!=None:
-        print 'verbose not implemented yet'
-
-    ## setup the command arguments
-    init_args() 
-    env=core.generate_config({},{},{'tool_chain':[]})
-    env._CacheDir_path=None
-    env.Decider('MD5-timestamp')
-    def_env=SCons.Defaults._default_env=env
     
-    # generate help text
-    if common.g_part_mode=='help':
+################################################################################
+
+
+
+
+# would it be nice if ther was a addon base in Scons... hmmmmm
+class parts_addon(object):
+    def __init__(self):
+        # start up the reporter which controls the streams and all output
+        log_obj=logger.QueueLogger
+        log_obj=log_obj('','')#(directory.abspath,env['LOG_FILE_NAME'])
+        reporter.g_rpter=reporter.reporter(
+            log_obj,
+            SCons.Script.GetOption('silent'),
+            SCons.Script.GetOption('verbose')
+            )
+        reporter.verbose_msg("init","Starting up Parts")
+        
+        reporter.verbose_msg("init","Registering exit handler")
+        atexit.register(self.ShutDown)
+        
+    def Start(self):
+               
+        # setup variable
+        self.setup_variables()
+        # setup command line arguments
+        self.setup_arguments()
+        # setup default Enviroment overides
+        self.setup_defenv()
+        #try to setup all logger
+        self.setup_logger()
+        # generate help text
+        if self.BuildMode=='help':
+            self.setup_help_info()
+        #setup the sdk options
+        self.setup_sdk()
+        #setup the progress meter
+        self.setup_progress_meter()
+                
+    def ShutDown(self):
+        from SCons.Script import GetBuildFailures
+        bf_lst=GetBuildFailures()
+        if len(bf_lst) > 0:
+            msg=''
+            for bf in bf_lst:
+                if common.is_list(bf.command):
+                    cmd=' '.join(bf.command)
+                else:
+                    cmd=bf.command
+                msg+=' Node: "%s"\n ' %(bf.node)
+                #reporter.print_msg('Failed node: "%s"\n file: "%s" command: "%s"\n action: "%s"\n status: "%s"\n errstr: "%s"' %
+                 #(bf.node,bf.filename,cmd,bf.action,bf.status,bf.errstr))
+                #print bf.node.__dict__.keys()
+##                tmp=''
+##                for d in bf.node.sources:
+##                    tmp+='    '+str(d)+"\n"
+##                reporter.verbose_msg("error_summary","Source file for %s:\n%s"%(bf.node,tmp))
+##                tmp=''
+##                for d in bf.node.implicit:
+##                    tmp+='    '+str(d)+"\n"
+##                reporter.verbose_msg("error_summary","dependents file for %s:\n%s"%(bf.node,tmp))
+            reporter.print_msg("Summary: %s build failure detected during build\n%s"%(len(bf_lst),msg))
+        reporter.g_rpter.ShutDown()
+
+    #setup APIs
+    def setup_variables(self):
+        ''' 
+        Set all the varible that we have or need globally
+        '''
+        
+        # set up the build mode
+        args = sys.argv[1:]
+        
+        reporter.verbose_msg("startup","Setting building mode")
+        if SCons.Script.GetOption('clean'):
+            common.g_part_mode='clean'
+        elif SCons.Script.GetOption('help'):
+            common.g_part_mode='help'
+        else:
+            common.g_part_mode='build'
+
+        
+            
+    def setup_defenv(self):
+                
+        reporter.verbose_msg("startup","Creating default environment")
+        env=core.generate_config({},{},{})
+        env=env.Clone()
+        env._CacheDir_path=None
+        reporter.verbose_msg("startup","Resetting Scons default environment")
+        self.def_env=SCons.Defaults._default_env=env
+        self.def_env.Decider('MD5-timestamp')
+         ## setup other globals.. defaults
+        reporter.verbose_msg("startup","Setting some global varibles needed in Defafult Environment")
+        self.def_env['PARTS_REPORTER']=reporter.g_rpter
+        # need to handle more complete subst mapper handling
+        self.def_env["PARTS_COMPLEX_SUB"]=0
+        # needed for Dependon and other preprocessing logic (like setting rpaths)
+        self.def_env['PREPROCESS_LOGIC_QUEUE']=[]
+        # turn off all default building of any items without a target, or until
+        # default is called again to set one. ( ie the default by Scons is '.' which is everything)
+        self.def_env.Default('')
+        self.def_env.EnsureSConsVersion(1,2,0)
+        
+        
+        
+    def setup_logger(self):
+        
+        reporter.verbose_msg("startup","Processing logger options")
+        directory=self.def_env.Dir(self.def_env['LOG_ROOT_DIR'])
+        log_obj=SCons.Script.GetOption('logger')
+        
+        #If the first try at this had nothing we have a Queue logger
+        # to store everything we have to report so far
+        if type(reporter.g_rpter.logger) is logger.QueueLogger:
+            #Setup new log object and copy over stored messages
+            log_obj=log_obj(directory.abspath,self.def_env['LOG_FILE_NAME'])
+            reporter.g_rpter.reset_logger(log_obj)
+        
+    def setup_arguments(self):
+        '''
+        Setup the main option with the varible that can be used to control it
+        with SetOptionDefault or the config file
+        '''
+        overides={}
+        tmp=SCons.Script.GetOption('target_platform')
+        if tmp is not None:
+            overides['TARGET_PLATFORM']=tmp
+        
+        tmp=SCons.Script.GetOption('build_config')
+        if tmp is not None:
+            overides['CONFIG']=tmp
+        
+        tmp=SCons.Script.GetOption('tool_chain')
+        if tmp is not None:
+            overides['toolchain']=tmp
+            
+        tmp=SCons.Script.GetOption('mode')
+        if tmp is not None:
+            overides['mode']=tmp
+
+        tmp=SCons.Script.GetOption('ccopy_logic')
+        if tmp is not None:
+            overides['CCOPY_LOGIC']=tmp
+
+        SCons.Script.ARGUMENTS.update(overides)
+        
+        
+    def setup_sdk(self):
+        reporter.verbose_msg("startup","Processing SDK options")
+        csig,common.g_depends_data=core.load_depends_data()
+        #print common.g_depends_data
+        # first check to see if the main Sconstruct has changed
+        if csig != 0:
+            s=core.get_file_main_script(self.def_env)
+            if s != '':
+                fn=self.def_env.File(s)
+                # the the below passes we trust the database
+                #if fn.exists() and fn.get_csig()==csig:
+                #    setup_buildable_parts()
+        if self.def_env['use_source_for']!='' or self.def_env['use_sdk'] == True:
+            self.def_env['use_sdk'] = True
+            # get targets to build from source
+            reporter.g_rpter.part_message("Using prebuilt SDK's if they exist")
+            if self.def_env['use_source_for']!='':
+                src_targets=string.split(SCons.Script.ARGUMENTS['use_source_for'],',')
+            else:
+                src_targets=SCons.Script.COMMAND_LINE_TARGETS[:]
+            # create target list
+            setup_sdk_target_parts(src_targets)
+            add_dirty_parts(self.def_env)
+            reduce_target_alias_set(self.def_env)
+            create_sdk_set(self.def_env)
+
+    def setup_progress_meter(self):
+        reporter.verbose_msg("startup","Setting up show-progress feature")
+        if SCons.Script.GetOption('show_progress'):
+            if self.def_env['HOST_OS'] == 'win32':
+                try:
+                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('con:','w'),overwrite=True)
+                except Exception,ec:
+                    pass                
+            else:
+                try: 
+                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
+                except Exception,ec:
+                    pass
+    
+    def setup_help_info(self):
+        reporter.verbose_msg("startup","In Help mode, setting up Help values")
         starttext='\n'+version_info.parts_version_text()+'''
 Usage 'scons [scons options] [Parts options] [Targets]
 Example: scons config=release foo
@@ -243,191 +390,29 @@ Use -H or --help-options for a list of scons options
         cfg_files=[SCons.Script.GetOption('cfg_file')]
         vars=Variables.Variables(cfg_files,args=SCons.Script.ARGUMENTS)
         vars.AddVariables(*common.def_vars)
-        SCons.Script.Help(starttext+vars.GenerateHelpText(env,True))
-    ## setup the reporter so we have a way to consitantly output and manage data
-      
-    log_obj=env['LOGGER']
-    if common.is_string(log_obj)==True:
-        log_obj=env.get(log_obj,logger.nil_logger)
-    directory=def_env.Dir(env['LOG_ROOT_DIR'])
-    log_obj=log_obj(directory.abspath,env['LOG_FILE_NAME'])
-    rpt=reporter.reporter(log_obj,def_env.GetOption('silent'),env['STREAM_WARNING_AS_ERROR'])
+        SCons.Script.Help(starttext+vars.GenerateHelpText(self.def_env,True))
     
-    ## setup other globals.. defaults
+    #state APIs
     
-    def_env['PARTS_REPORTER']=rpt
-    # need to handle more complete subst mapper handling
-    def_env["PARTS_COMPLEX_SUB"]=0
-    # needed for Dependon and other preprocessing logic (like setting rpaths)
-    def_env['PREPROCESS_LOGIC_QUEUE']=[]
-
-    ##load cached data
-    csig,common.g_depends_data=core.load_depends_data()
-    #print common.g_depends_data
-    # first check to see if the main Sconstruct has changed
-    if csig != 0:
-        s=core.get_file_main_script(def_env)
-        if s != '':
-            fn=def_env.File(s)
-            # the the below passes we trust the database
-            #if fn.exists() and fn.get_csig()==csig:
-            #    setup_buildable_parts()
-    if env['use_source_for']!='' or env['use_sdk'] == True:
-        env['use_sdk'] = True
-        # get targets to build from source
-        rpt.part_message("Using prebuilt SDK's if they exist")
-        if env['use_source_for']!='':
-            src_targets=string.split(SCons.Script.ARGUMENTS['use_source_for'],',')
-        else:
-            src_targets=SCons.Script.COMMAND_LINE_TARGETS[:]
-        # create target list
-        setup_sdk_target_parts(src_targets)
-        add_dirty_parts(def_env)
-        reduce_target_alias_set(def_env)
-        create_sdk_set(def_env)
-    # turn off all default building of any items without a target, or until
-    # default is called again to set one. ( ie the default by Scons is '.' which is everything)
-    def_env.Default('')
-    def_env.EnsureSConsVersion(0,98,0)#'0x0d20070918')
+    def BuildMode(self):
+        return common.g_build_mode
     
-    SCons.Script.Decider('MD5-timestamp')
-    # this logic may not be 100% correct
-    if env['show_progress']:
-        if def_env['PLATFORM'] == 'win32':
-            SCons.Script.Progress(env['PROGRESS_STR'],1,file=open('con:','w'),overwrite=True)
-        else:
-            try: 
-                SCons.Script.Progress(env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
-            except Exception,ec:
-                pass
-            
+    
+    
     
 
+common.AddVariable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
+common.AddBoolVariable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
 
-def init_args():
-    '''
-    the idea here is to map option in the form of -- to the varibles. This is only
-    needed for a few items, that arguably cross a line between -- and key=val such as config
-    '''
-    #''' Since the Option class does not work as we would like, we hard code some logic for the time being
-    #This current revision loops over the options that have been set in def_args. Going forward we will still
-    #want to see what we can do to clean this up even more. Leaving stub till I know 100% to delete this
-    #'''
-    
+common.AddBoolVariable('use_color',False,'Controls usage of color in console output text to highlight warnings and errors')
+common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
+common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
+common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')
 
-   
-    
+common.AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')
 
-# used to help scripts set defaults when there is no config script
-
-def SetOptionDefault(key,value):
-    import sys
-    def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
-    args = sys.argv[1:]
-    if common.g_part_mode=='help':
-        return
-    global def_args
-
-    rpt.part_message('Setting default value of '+str(key)+' to ' +str(value))
-    common.g_defaultoverides[key]=value
-    #reset cache 
-    #common.g_env_cache={}
-    
-
-            
-def opt_target(option, opt, value, parser):
-        import SCons.Script.Main
-        lst=string.split(value, '-')
-        if len(lst) > 2:
-            raise OptionValueError("Warning:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % o)
-        if len(lst) == 1:
-            # nice to a have short cut
-            tmp=platform_info.MapArchitecture(lst[0])
-            if tmp == '':
-                #assume this was a platform
-                parser.values.target_platform=platform_info.SystemPlatform(
-                    lst[0],platform_info._host_sys.ARCH
-                    )
-            else:
-                #assume this is a architure
-                parser.values.target_platform=platform_info.SystemPlatform(
-                        platform_info._host_sys.OS,lst[0]
-                        )
-        else:
-            p=lst[0]
-            a=lst[1]
-            if p == '':
-                p=platform_info._host_sys.OS
-            if a == '':
-                a=platform_info._host_sys.Architecture
-            parser.values.target_platform=platform_info.SystemPlatform(p,a)
-
-
-SCons.Script.AddOption("--cfg_file",
-            dest='cfg_file',
-            default='parts.cfg',
-            nargs=1, type='string',
-            action='store',
-            help='Configuration file used to store common settings')
-            
-SCons.Script.AddOption("--verbose",
-            dest='verbose',
-            default=None,
-            nargs=1, type='string',
-            action='store',
-            help='Control the level of detail information printed')
-                 
-##            
-##SCons.Script.AddOption("--tool_chain",
-##            dest='tool_chain',
-##            default=[],#'default',
-##            nargs=1,
-##            callback=opt_chain,
-##            type='string',
-##            action='callback',
-##            help='Tool chains to use for build')
-            
-SCons.Script.AddOption("--target","--target_platform",
-            dest='target_platform',
-            default=platform_info.SystemPlatform(platform_info._host_sys.OS,platform_info._host_sys.ARCH),#'default',
-            nargs=1,
-            callback=opt_target,
-            type='string',
-            action='callback',
-            help='Sets the default TARGET_PLATFORM use for cross builds')
-        
-
-# add configuartion varaible needed for basic setup
-#common.add_config_var('cfg_file','parts.cfg')
-
-
-
-def tool_converter(str_val, raw_val):
-    if common.is_string(raw_val):
-        tmp=raw_val.split(',')
-        lst=[]
-        for i in tmp:
-            lst.append(i.split('_'))
-        return lst
-    if common.is_list(raw_val):
-        return raw_val
-    raise "Invalid tool value '%s'" % RawVal
-    
-common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter)   
-
-common.AddBoolVariable('show_progress',True,'Controls is progress state is shown')
 common.AddVariable('PROGRESS_STR',['scons: Evaluating |\r',
                                     'scons: Evaluating /\r',
                                     'scons: Evaluating -\r',
                                     'scons: Evaluating \\\r'],
                                     'What is used to show progress state')
-
-#common.add_config_var('use_sdk_for','')
-
-common.AddVariable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
-common.AddBoolVariable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
-
-#common.AddVariable('cfg_file','parts.cfg')
-common.add_global_value('SetOptionDefault',SetOptionDefault)
-common.AddBoolVariable('use_color',False,'Controls usage of color in console output text to highlight warnings and errors')

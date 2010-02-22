@@ -2,6 +2,7 @@
 import parts.version as version
 import parts.common as common
 import parts.functors as functors
+import parts.reporter as reporter
 import SCons.Script 
 
 class REQ:
@@ -62,27 +63,33 @@ class REQ:
 
 class ComponentRef:
     def __init__(self,name,version_range='*',requires=REQ.DEFAULT):
+        reporter.SetPartStackFrameInfo()
         self.name=name
         self.version=version.version_range(version_range)
         self.requires=requires
+        self.stackframe=reporter.GetPartStackFrameInfo()
+        reporter.ResetPartStackFrameInfo()
             
     def alias_mapping_string(self):
         return "${PARTID('"+self.name+"','"+str(self.version)+"','ALIAS')}"
     
     def resolve_alias(self,env):
-        return env.subst(self.alias_mapping_string())
+        common.g_part_frame.insert(0,self.stackframe)
+        tmp = env.subst(self.alias_mapping_string())
+        common.g_part_frame.pop(0)
+        return tmp
 
 def Component(env,name,version_range='*',requires=REQ.DEFAULT):
     return ComponentRef(name,version_range,requires)
 
 
 def depends_on(env,depends):
+    reporter.SetPartStackFrameInfo()
     def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
     alias=def_env['DEFINING_PART']
     if alias == None:
         return
-    
+
     pinfo=def_env['PART_INFO'][alias]
     
     # depends that get passed on
@@ -106,8 +113,8 @@ def depends_on(env,depends):
             comp=d
         # quick error check
         if pinfo['NAME']==comp.name:
-            rpt.part_warning(env,"Part depends on with itself")
-            rpt.part_message("Skipping the definition of dependence to Scons")
+            reporter.report_warning("Part depends on with itself")
+            reporter.print_msg("Skipping the definition of dependence to Scons")
             #print "Parts: WARNING - Part alias [",alias,"] with name of [",pinfo['NAME'],"] is defined depends on with itself"
             #print "Parts: WARNING - Skipping the definition of dependence to Scons"
             continue
@@ -116,7 +123,7 @@ def depends_on(env,depends):
         if (comp.requires & REQ.LIBPATH_IMPORT):
             libpath=common.append_unique(libpath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
         if (comp.requires & REQ.LIBS_IMPORT):
-            libs=common.append_unique(libs,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
+            libs=common.append_unique(libs,"${PARTLIB('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
         if (comp.requires & REQ.LINKFLAGS_IMPORT):
             linkflags=common.append_unique(linkflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
         if (comp.requires & REQ.CCFLAGS_IMPORT):
@@ -128,6 +135,8 @@ def depends_on(env,depends):
         if (comp.requires & REQ.CPPDEFINES_IMPORT):
             cppdefines=common.append_unique(cppdefines,"${PARTID('"+comp.name+"','"+str(comp.version)+"','CPPDEFINES',True)}")
         
+#	    reporter.verbose_msg("Duplicate","Component Name : " + comp.name)
+
         #unknown_alias=comp.alias_mapping_string()
         #def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_parts_alias(env,unknown_alias))
         #pinfo['DEPENDSON'].append(unknown_alias)
@@ -138,7 +147,7 @@ def depends_on(env,depends):
         CPPPATH=cpppath,LIBPATH=libpath,LIBS=libs,CPPDEFINES=cppdefines,
         LINKFLAGS=linkflags,CCFLAGS=ccflags,CFLAGS=cflags,CXXFLAGS=cxxflags
         )
-            
+#    reporter.verbose_msg("Duplicate",env.subst($CPPDEFINES))            
     cpppath=[]
     libpath=[]
     libs=[]
@@ -159,7 +168,7 @@ def depends_on(env,depends):
         if (comp.requires & REQ.LIBPATH_EXPORT):
             libpath=common.append_unique(libpath,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBPATH',True)}")
         if (comp.requires & REQ.LIBS_EXPORT):
-            libs=common.append_unique(libs,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
+            libs=common.append_unique(libs,"${PARTLIB('"+comp.name+"','"+str(comp.version)+"','LIBS',True)}")
         if (comp.requires & REQ.LINKFLAGS_EXPORT):
             linkflags=common.append_unique(linkflags,"${PARTID('"+comp.name+"','"+str(comp.version)+"','LINKFLAGS',True)}")
         if (comp.requires & REQ.CCFLAGS_EXPORT):
@@ -203,7 +212,8 @@ def depends_on(env,depends):
     if def_env['PLATFORM']!='win32' and def_env['PLATFORM'] != 'darwin':
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_part(env))
         def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_rpath_link_part(env))
-        
+    
+    reporter.ResetPartStackFrameInfo()
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

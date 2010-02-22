@@ -3,6 +3,7 @@ import SCons.Util
 import SCons.Tool.cc
 import GnuCommon
 
+import parts.reporter as reporter
 
 def generate(env):
     """Add Builders and construction variables for gcc to an Environment."""
@@ -20,9 +21,16 @@ def generate(env):
 
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']
-
+    
+    # this is to work around broken linux installs that can break cross building
+    # with autoconfig.. or at least this helps
+    if env['HOST_ARCH'] == 'x86' and env['TARGET_ARCH'] == 'x86_64':
+        env['CC']=env['CC']+' -m64'
+    if env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
+        env['CC']=env['CC']+' -m32'
+    
  # fix this up so we can control its printing to screen better.
-    print "gcc configured for version: %s target: %s"%(env['GCC']['VERSION'],env['TARGET_PLATFORM'])
+    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))
         
     
 

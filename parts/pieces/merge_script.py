@@ -3,6 +3,7 @@ import subprocess
 import os
 import copy
 import re
+import sys
 
 def normalize_env(shellenv, keys):
     """Given a dictionary representing a shell environment, add the variables
@@ -14,8 +15,9 @@ def normalize_env(shellenv, keys):
     Note: the environment is copied"""
     normenv = {}
     if shellenv:
-        for k in shellenv.keys():
-            normenv[k] = copy.deepcopy(shellenv[k]).encode('mbcs')
+        if sys.platform=='win32':
+            for k in shellenv.keys():
+                normenv[k] = copy.deepcopy(shellenv[k]).encode('mbcs')
 
         for k in keys:
             if os.environ.has_key(k):

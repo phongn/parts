@@ -1,5 +1,6 @@
 import common
 import SCons.Script
+import reporter
 
 class map_parts_alias:
     '''
@@ -21,7 +22,7 @@ class map_parts_alias:
         
         alias=self.env['ALIAS']
         def_env=SCons.Script.DefaultEnvironment()
-        rpt=def_env['PARTS_REPORTER']
+
         dlst=def_env['PART_INFO'][alias]['DEPENDSON']
         flist=[]
         flist2=[]
@@ -29,8 +30,6 @@ class map_parts_alias:
             #get unknown alias
             val=d.resolve_alias(self.env)
             if val == "":
-                #rpt.part_warning(self.env,"Was not able to map "+d.alias_mapping_string(),True)
-                rpt.part_warning(self.env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
                 continue
             denv=def_env['PART_INFO'][val]['ENV']
             flist.append(denv.subst('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
@@ -38,7 +37,6 @@ class map_parts_alias:
         #the build alias
         build_alias='_${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
         ## this one might help SCons scale better with larger -j values
-        #build_alias='_${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
         #the install alias
         install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
         # we map the build alias to the dependent SDK aliases
@@ -57,15 +55,12 @@ def full_parts_depends_list(env):
     if cache_tmp is None:
         dlst=def_env['PART_INFO'][alias]['DEPENDSON']
         flst=[]
-        rpt=def_env['PARTS_REPORTER']
         for d in dlst:
-            val=env.subst(d.alias_mapping_string())
+            val=d.resolve_alias(env)
             if val == "":
-                #rpt.part_warning(env,"Was not able to map "+d.alias_mapping_string(),True)
-                rpt.part_warning(env,"Was not able find Part name ["+d.name+"] with version ["+str(d.version)+"]",True)
                 continue
             flst.append(val)
-            #print alias,d.alias_mapping_string()
+            
             tmp_env=def_env['PART_INFO'][val]['ENV']
             tmp=full_parts_depends_list(tmp_env)
             flst.extend(tmp)
@@ -99,10 +94,11 @@ def gen_rpath_link(alias):
                     
     # setup everything that we depend on that we may not have added yet
     for d in dlst:
-        d_alias=env.subst(d.alias_mapping_string())
+        d_alias=d.resolve_alias(env)
         if d_alias == '':
-            rpt=def_env['PARTS_REPORTER']
-            rpt.part_warning(env,"Part name ["+d.name+"] is not defined for mapping RPATH data",True)
+            reporter.report_warning("Part name ["+d.name+"] is not defined for mapping RPATH data",
+                                        print_once=True,
+                                        )
             continue
         try:
             rtmp=def_env['PART_INFO'][d_alias]['RLINK_CACHE']

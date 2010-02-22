@@ -8,6 +8,7 @@ import subprocess
 import os,sys,shutil,filecmp,time,stat
 import SCons.Script 
 import SCons.Errors
+import reporter
 
 SCons.Script.Alias('extract_sources')
 
@@ -18,8 +19,7 @@ def process_vcs(env,vcs_type,part_file):
     if vcs_type is None:
         # have none just return the orginal file name as is
         return part_file
-    def_env=SCons.Script.DefaultEnvironment()
-    rpt=def_env['PARTS_REPORTER']
+    
     # we are here we have soem sort of VCS object to process
     # check to see if the file exists
     vcs_type.UpdateEnv(env)
@@ -29,17 +29,18 @@ def process_vcs(env,vcs_type,part_file):
             # Flags had been set for this object to update
             ret=vcs_type.Update(env)
             if ret:
-                rpt.part_error(env,"Failure detected during updating sources")
-                env.Exit(100+ret)
+                reporter.report_error("Failure detected during updating sources")
     else:
         if env['UPDATE_ALL']==False and vcs_type.NeedsUpdate(env)==False:
             # don't have the file and they did not ask to get it
             # so we report a message and do a forced checkout
-            rpt.part_warning(env,"Sources do not seem to exist, and no update flags given. Doing forced checkout!",)
+            reporter.report_warning("Sources do not seem to exist, and no update flags given, such as UPDATE_ALL=True\n\
+ Automatically updating component.",show_stack=False)
+            
         ret=vcs_type.CheckOut(env)
         if ret:
-            rpt.part_error(env,"Failure detected during checkout sources")
-            env.Exit(100+ret)
+            reporter.report_error("Failure detected during checkout sources")
+            
     return vcs_type.PartFileName(env,part_file)
             
             
@@ -112,30 +113,26 @@ class vcs:
         pass
 
     def Update(self,env):
-        def_env=SCons.Script.DefaultEnvironment()
         output=env["PART_LOG_MAPPER"]
-        rpt=def_env['PARTS_REPORTER']
         id=output.TaskStart("Updating Sources\n")
         cmd=self.update_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
         ret=SysCall(cmd)
         if ret:
             # we had some failure
-            rpt.part_error(env,'The command "' + cmd + '" returned [ ' + str (ret)+' ]')
+            reporter.report_error('The command "' + cmd + '" returned [ ' + str (ret)+' ]')
         #all ends well
         output.TaskEnd(id,ret)
         return ret
 
     def CheckOut(self,env):
-        def_env=SCons.Script.DefaultEnvironment()
         output=env["PART_LOG_MAPPER"]
-        rpt=def_env['PARTS_REPORTER']
         alias=env['PART_ALIAS']
         id=output.TaskStart("Checking out Sources for %s\n"%(alias))
         cmd=self.checkout_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
         ret=SysCall(cmd)
         if ret:
             # we had some failure
-            rpt.part_error(env,'The command "' + cmd + '" returned [ ' + str (ret)+' ]')
+            reporter.report_error('The command "' + cmd + '" returned [ ' + str (ret)+' ]')
         #all ends well
         output.TaskEnd(id,ret)
         return ret

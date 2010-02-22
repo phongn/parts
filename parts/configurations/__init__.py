@@ -1,8 +1,6 @@
-
+import parts.load_module as load_module
 
 def configuration(type):
-    import parts.common as common
-    import os
-    mod=common.load_module(
-        common.get_site_directories('configurations'),type,'configtype')
+    mod=load_module.load_module(
+        load_module.get_site_directories('configurations'),type,'configtype')
     

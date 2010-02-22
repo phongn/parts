@@ -41,6 +41,7 @@ import SCons.Defaults
 import SCons.Scanner.IDL
 import SCons.Util
 
+import parts.reporter as reporter
 from MSCommon import msvc
 
 def midl_emitter(target, source, env):
@@ -80,6 +81,7 @@ def generate(env):
     env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE'
     env['BUILDERS']['TypeLibrary'] = midl_builder
     msvc.MergeShellEnv(env)
+    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('midl',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env,'midl')

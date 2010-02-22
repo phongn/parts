@@ -7,6 +7,7 @@ import sdk
 import common
 import platform_info
 import exportitem
+import reporter
 
 ## need better configuration control
 # these function will hopfully be replaced later once a better solution shows it self
@@ -78,7 +79,9 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
-                        env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk)
+                        env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
+                        add_to_path=kw.get('add_to_path',True),
+                        auto_add_file=kw.get('auto_add_file',True))
                         
                 sdkf,sr=s.target_source(pattern_dest_sdk)
                 inst,sr=s.target_source(dest_dir)
@@ -103,7 +106,9 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
-                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk)
+                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
+                        add_to_path=kw.get('add_to_path',True),
+                        auto_add_file=kw.get('auto_add_file',True))
                 else:
                     ret=s
                 out=env.Install(dest_dir, ret,tags=tags,**kw)
@@ -117,7 +122,9 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
-                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk)
+                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
+                        add_to_path=kw.get('add_to_path',True),
+                        auto_add_file=kw.get('auto_add_file',True))
                 else:
                     ret=[s]
                 
@@ -130,14 +137,16 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
-                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk)
+                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
+                        add_to_path=kw.get('add_to_path',True),
+                        auto_add_file=kw.get('auto_add_file',True))
                 else:
                     ret=[s]
                     
                 installed_files.extend(env.Install(dest_dir, ret,tags=tags,**kw))
                 src_lst.append(env.File(ret[0]))
             else:
-                rpt.part_warning(env,"Unknown type in ProcessInstall() in installs.py")
+                reporter.report_warning("Unknown type in ProcessInstall() in installs.py")
         
     
     else:
@@ -169,6 +178,7 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     target      -- the place within the product package to hold source
     returns     -- the return value of the Install call, so that callers can
                    subsequently further MetaTag these files'''
+    reporter.SetPartStackFrameInfo(True)
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
     if common.is_list(source)==False:
@@ -195,6 +205,7 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
         if pinfo.has_key('CREATE_SDK') == False:
             pinfo['CREATE_SDK']=[]
         pinfo['CREATE_SDK'].append(('InstallItem',[target, common._make_rel(src_files), sub_dir,"",no_pkg,False]))
+    reporter.ResetPartStackFrameInfo()
     return installed_files
 
 
@@ -211,7 +222,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     # Look at the Node and its builder and then based on the type of builder
     # we know what kind of thing it is. That's the future direction.
 
-
+    reporter.SetPartStackFrameInfo(True)
     if common.is_list(src_files)==False:
         src_files=[src_files]
     src_files=SCons.Script.Flatten(src_files)
@@ -276,7 +287,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         else:
             #print 'Told to InstallTarget', i, '...what should I do?'
             continue
-        
+    reporter.ResetPartStackFrameInfo()
     return installed_files
 
 
@@ -329,6 +340,14 @@ def InstallHelp(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('HELP',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_HELP')
     return installed_files
+
+def InstallManPage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
+
+    installed_files = InstallItem(env, '$INSTALL_MANPAGE', src_files,
+        sub_dir=sub_dir,sdk_dir='$SDK_MANPAGE',no_pkg=no_pkg,create_sdk=create_sdk,
+        **get_args('MANPAGE',**kw))
+    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_MANPAGE')
+    return installed_files
     
 def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
@@ -363,7 +382,14 @@ def InstallData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         **get_args('DATA',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DATA')
     return installed_files
-    
+
+def InstallInclude(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
+        
+    installed_files = InstallItem(env, '$INSTALL_INCLUDE', src_files,
+        sub_dir=sub_dir,sdk_dir='$SDK_INCLUDE',no_pkg=no_pkg,create_sdk=create_sdk,
+        **get_args('INCLUDE',**kw))
+    env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_INCLUDE')
+    return installed_files    
 
 def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
@@ -408,7 +434,9 @@ SConsEnvironment.InstallAPI=InstallAPI
 SConsEnvironment.InstallConfig=InstallConfig
 SConsEnvironment.InstallDoc=InstallDoc
 SConsEnvironment.InstallData=InstallData
+SConsEnvironment.InstallInclude=InstallInclude
 SConsEnvironment.InstallHelp=InstallHelp
+SConsEnvironment.InstallManPage=InstallManPage
 SConsEnvironment.InstallMessage=InstallMessage
 SConsEnvironment.InstallResource=InstallResource
 SConsEnvironment.InstallSample=InstallSample
@@ -417,6 +445,8 @@ SConsEnvironment.PkgNoInstall=PkgNoInstall
 SConsEnvironment.InstallNoPkg=PkgNoInstall
 SConsEnvironment.InstallBin=InstallBin
 SConsEnvironment.InstallLib=InstallLib
+SConsEnvironment.InstallPython=InstallPython
+SConsEnvironment.InstallScript=InstallScript
 
 SConsEnvironment.InstallItem=InstallItem
 
@@ -435,6 +465,7 @@ common.AddVariable('INSTALL_INCLUDE','${INSTALL_ROOT}/include','')
 common.AddVariable('INSTALL_CONFIG','${INSTALL_ROOT}/config','')
 common.AddVariable('INSTALL_DOC','${INSTALL_ROOT}/doc','')
 common.AddVariable('INSTALL_HELP','${INSTALL_ROOT}/help','')
+common.AddVariable('INSTALL_MANPAGE','${INSTALL_ROOT}/man','')
 common.AddVariable('INSTALL_MESSAGE','${INSTALL_ROOT}/message','')
 common.AddVariable('INSTALL_RESOURCE','${INSTALL_ROOT}/resource','')
 common.AddVariable('INSTALL_SAMPLE','${INSTALL_ROOT}/sample','')

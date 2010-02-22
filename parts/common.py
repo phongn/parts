@@ -16,6 +16,9 @@ import SCons.Errors
 import SCons.Tool
 import SCons.Util
 
+
+g_part_frame=[]
+
 g_builders={}
 #g_args={}
 g_env_cache={}
@@ -230,6 +233,14 @@ def prepend_unique(obj,val):
         obj.remove(val)
         obj=[val]+obj
     
+    return obj
+
+def extend_if_absent(obj,val):
+    ''' The purpose of this funtion is to add to the object only the list elements which are unique'''
+    tmp=[]
+    for element in val:
+        if element not in obj:            
+            obj.append(element)
     return obj
 
 
@@ -557,99 +568,10 @@ def make_alias_tree(env,concept,
     
     return name_alias
 
-g_site_dir_cache={}
-def get_site_directories(subdir):
-    try:
-        return g_site_dir_cache[subdir]
-    except KeyError:
-        sitepaths=[
-            #current directory parts_site or user pointed site
-            os.path.join('.','parts-site',subdir),
-            os.path.join('.','.parts-site',subdir),
-            #homedir/.parts-site
-            os.path.join(os.path.expanduser('~'),'parts-site',subdir),
-            os.path.join(os.path.expanduser('~'),'.parts-site',subdir),
-            # parts install
-            os.path.join(g_parts_path,subdir)
-        ]
-        g_site_dir_cache[subdir]=sitepaths
-    return g_site_dir_cache[subdir]
-
-def load_module(path,name,type):
-    """Return the imported module
-    made more generic so Parts can reuse the logic
-    instead of using the C&P anit-patttern.
-    """
-    
-    modname='<'+type+'>'+name
-    
-    if not sys.modules.has_key(modname):
-        file, path1, desc = imp.find_module(name,path)
-        try:
-            mod = imp.load_module(modname, file, path1, desc)
-        except ImportError,e:
-            print e
-            if file:
-                file.close()
-            raise SCons.Errors.UserError, "No module named '%s'" % (name)
-        if file:
-            file.close()
-        
-    return sys.modules[modname]
-    
-
-
-##def load_module5(root,name):
-##    """Return the imported module for some platform.
-##    
-##    Taken from SCons platform.. and made more generic so Parts can reuse the logic
-##    instead of using the C&P anit-patttern.
-##
-##    """
-##    full_name = root+'.' + name
-##    #print full_name,sys.modules.has_key(full_name)
-##    if not sys.modules.has_key(full_name):
-##        try:
-##            file, path, desc = imp.find_module(name,
-##                                sys.modules[root].__path__)
-##            try:
-##                mod = imp.load_module(full_name, file, path, desc)
-##            finally:
-##                if file:
-##                    file.close()
-##        except ImportError:
-##            try:
-##                import zipimport            
-##                importer = zipimport.zipimporter( sys.modules[root].__path__[0] )
-##                mod = importer.load_module(full_name)                    
-##            except ImportError:
-##                raise SCons.Errors.UserError, "No %s named '%s'" % (root,name)
-##        #setattr(???, name, mod) # was in orginal SCons code.. however i don't get it
-##
-##    return sys.modules[full_name]
-
-AddVariable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')
 
 
 
-### add to a common filters file
 
-class hasFileExtension():
-    def __init__(self,extlist):
-        self.extlist=extlist
-    
-    def __call__(self,node):
-        for i in self.extlist:
-            if fnmatch.fnmatchcase(str(node),i):
-                return True
-        return False
-    
-class HasPackageCatagory():
-    def __init__(self, catagory):
-        self.catagory=catagory
-        
-    def __call__(self,node):
-        return MetaTagValue(node,'package','Category')==catagory
 
-add_global_value('hasFileExtension',hasFileExtension)   
-add_global_value('HasPackageCatagory',HasPackageCatagory)   
+
+

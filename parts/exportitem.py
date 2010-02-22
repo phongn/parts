@@ -3,6 +3,7 @@ import re
 import SCons.Script
 import pattern
 import common
+import reporter
  
 class EXPORT_TYPES:
     FILE=1
@@ -115,8 +116,11 @@ def ExportCXXFLAGS(env,values,create_sdk=True):
     return ExportItem(env,'CXXFLAGS',values,create_sdk)
 def ExportLINKFLAGS(env,values,create_sdk=True):
     return ExportItem(env,'LINKFLAGS',values,create_sdk)
+def ExportLIBS(env,values,create_sdk=True):
+    return ExportItem(env,'LIBS',values,create_sdk)
 
 def ExportItem(env,prop,values,create_sdk=True):
+    reporter.SetPartStackFrameInfo(True)
     def_env=SCons.Script.DefaultEnvironment()
     define_part=def_env.get('DEFINING_PART',None)
     pinfo=def_env['PART_INFO'][define_part]
@@ -139,7 +143,7 @@ def ExportItem(env,prop,values,create_sdk=True):
         if pinfo.has_key('CREATE_SDK') == False:
             pinfo['CREATE_SDK']=[]
         pinfo['CREATE_SDK'].append(('ExportItem',[prop,values,False]))
-    
+    reporter.ResetPartStackFrameInfo()
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
@@ -152,6 +156,7 @@ SConsEnvironment.ExportCFLAGS=ExportCFLAGS
 SConsEnvironment.ExportCCFLAGS=ExportCCFLAGS
 SConsEnvironment.ExportCXXFLAGS=ExportCXXFLAGS
 SConsEnvironment.ExportLINKFLAGS=ExportLINKFLAGS
+SConsEnvironment.ExportLIBS=ExportLIBS
 SConsEnvironment.ExportItem=ExportItem
 
 

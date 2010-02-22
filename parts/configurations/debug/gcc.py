@@ -1,5 +1,5 @@
 ######################################
-### gcc compiler configurations debug
+### gcc compiler configurations pat_debug
 ######################################
 
 import sys
@@ -13,7 +13,8 @@ config=configuration(map_default_version)
 
 config.VersionRange("3-*",
                     append=ConfigValues(
-                        CCFLAGS=['-O0','-g']
+                        CCFLAGS=['-O0','-g'],
+                        CPPDEFINES=['PAT_DEBUG']
                         )
                     )
 

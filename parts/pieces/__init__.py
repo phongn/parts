@@ -1,8 +1,8 @@
 import glob,os.path
-import parts.common as common
+import parts.load_module as load_module
 
 #The pieces directories to load
-pt_dirs=common.get_site_directories('pieces')
+pt_dirs=load_module.get_site_directories('pieces')
 # scan each directory and load all the pieces file
 for d in pt_dirs:
     if os.path.exists(d):
@@ -10,7 +10,7 @@ for d in pt_dirs:
         for i in objs:
             name = os.path.splitext(os.path.basename(i))[0]
             if name != '__init__':
-                common.load_module([d],name,'pieces')
+                load_module.load_module([d],name,'pieces')
                 #locals()[name]=__import__(name,globals(),locals(),[])
 
 

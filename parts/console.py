@@ -1,86 +1,106 @@
-import common
+import ansi_stream
+import color
 import sys
-import set_color
-import pdb
-import string
-import traceback
-import SCons.Script
 import thread
-
-class StreamWrapper:
-    OUTPUT = 0
-    ERROR = 1
-    WARNING = 2
-    SET = 1
-    RESET = 0
-    def __init__(self,name,stream):
-        self.name = name
-        self.stream=stream
-        # put an if statement here for posix or win32
-        self.set_color = set_color.colors()
-        self.def_env=SCons.Script.DefaultEnvironment()
-        self.COLOR_ON = self.def_env["use_color"]
-        self.m_lock=thread.allocate_lock()
-               
-    def Color(self,action,msg):
-        if action == StreamWrapper.SET:
-            self.m_lock.acquire()
-            if self.name == StreamWrapper.ERROR:
-                msg = self.set_color.set_color(self.set_color.RED,msg)
-            elif self.name == StreamWrapper.WARNING:
-                msg = self.set_color.set_color(self.set_color.YELLOW,msg)
-            else:
-                msg = self.set_color.set_color(self.set_color.orig_color,msg)
-        else:
-            msg = self.set_color.set_color(self.set_color.orig_color,msg)
-            self.m_lock.release()
-        return msg
-        
-    def Write(self,s):
-        ## set color
-        if self.COLOR_ON:
-            s = self.Color(StreamWrapper.SET,s)        
-        ## write data
-        self.stream.write(s)
-        ## reset color
-        if self.COLOR_ON:
-            s = self.Color(StreamWrapper.RESET,s)
-
-    
-    def WriteLines(self,str_list):
-        ## set color
-        if self.COLOR_ON:
-            s = self.Color(StreamWrapper.SET,s)        
-        ## write data
-        self.stream.writelines(str_list)
-        ## reset color
-        if self.COLOR_ON:
-            s = self.Color(StreamWrapper.RESET,s)
-
-      
-    
-    def BackgroundColor(self,val):
-        pass
-
 
 class Console:
     ''' only support output operations at this time'''
-    def __init__(self,warning_as_error_stream=False):
-        self.Output=StreamWrapper(StreamWrapper.OUTPUT,sys.__stdout__)
-        self.Error=StreamWrapper(StreamWrapper.ERROR,sys.__stderr__)
-        if warning_as_error_stream==True:
-            self.Warning=StreamWrapper(StreamWrapper.WARNING,sys.__stderr__)
+    out_stream=1
+    error_stream=2
+    warning_stream=3
+    message_stream=4
+    trace_stream=5
+    verbose_stream=6
+    def __init__(self,process_color=False):
+
+        self.m_lock=thread.allocate_lock() # used to sync output cases across streams
+        
+        if color.is_win32==True:
+            if color.default_color==color.ConsoleColor(0,0):
+                process_color=None
+        if process_color is None:
+            #self.__console=ansi_stream.ColorTextStream(conio,use_color=process_color)                
+            self.Output=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            self.Error=ansi_stream.ColorTextStream(
+                                        sys.__stderr__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            self.Warning=ansi_stream.ColorTextStream(
+                                        sys.__stderr__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            self.Message=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            self.Trace=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            self.Verbose=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        use_color=False
+                                    )
+            
         else:
-            self.Warning=StreamWrapper(StreamWrapper.WARNING,sys.__stdout__)
+            #self.__console=ansi_stream.ColorTextStream(conio,color.Purple,use_color=process_color)                
+            self.Output=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stdout'],
+                                        use_color=True
+                                    )
+            self.Error=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stderr'],
+                                        use_color=True
+                                    )
+            self.Warning=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stdwrn'],
+                                        use_color=True
+                                    )
+            self.Message=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stdmsg'],
+                                        use_color=True
+                                    )
+            self.Trace=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stdtrace'],
+                                        use_color=True
+                                    )
+            self.Verbose=ansi_stream.ColorTextStream(
+                                        sys.__stdout__,
+                                        self.m_lock,
+                                        process_color['stdverbose'],
+                                        use_color=True
+                                    )
     
+    def ShutDown(self):
+        sys.stdout=sys.__stdout__
+        sys.stdout=sys.__stderr__
+        
+
+        
     def Write(self,msg):
         ## write data
-        #print>> sys.__stderr__, "Console::Write()"
-        self.Output.Write(msg)
+        print msg
+        pass#self.__console.Write(msg)
     
-    def WriteLines(self,msg_lst):
-        ## write data
-        self.Output.Write(msg_lst)
-        
-        
-        
+
+
+

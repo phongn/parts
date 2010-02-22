@@ -49,7 +49,7 @@ config=configuration(map_default_version,post_process_func)
 
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        CPPDEFINES=['WIN32','_WINDOWS','_WIN32_WINNT=0x501'],
+                        CPPDEFINES=['WIN32','_WINDOWS'],
                         CCFLAGS=['/DINTELC_VERSION=$INTELC_VERSION']
                         )
                     )

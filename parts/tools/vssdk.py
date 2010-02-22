@@ -4,7 +4,7 @@ import SCons.Util
 
 import MSCommon.vsx_sdk
 from MSCommon import vssdk
-
+import parts.reporter as reporter
 
 ctc_action = SCons.Action.Action('$CTC_COM', '$CTC_COMSTR')
 ctc_builder = SCons.Builder.Builder(action=ctc_action,
@@ -28,6 +28,7 @@ def generate(env):#, version=None, abi=None, topdir=None, verbose=0):
         
     vssdk.MergeShellEnv(env)
 
+    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('vssdk',env['VSSDK']['VERSION'],env['TARGET_PLATFORM']))
 
 
 def exists (env):

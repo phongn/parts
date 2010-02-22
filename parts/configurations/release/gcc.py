@@ -13,7 +13,8 @@ config=configuration(map_default_version)
 
 config.VersionRange("3-*",
                     append=ConfigValues(
-                        CCFLAGS=['-O2']
+                        CCFLAGS=['-O2'],
+                        CPPDEFINES=['NDEBUG']
                         )
                     )
 

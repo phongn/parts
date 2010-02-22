@@ -7,6 +7,7 @@ import parts.node_helpers as node_helpers
 import parts.pattern as pattern
 import parts.functors as functors
 import parts.parts
+import parts.reporter as reporter 
 
 #map unit testing stuff.. clean up depends.. 
 
@@ -73,7 +74,7 @@ else:
 
 
 def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,**kw):
-    
+    reporter.SetPartStackFrameInfo()
     ## make a new enviroment to prevent conflicts with pdb files and output names
     #env2=core.generate_config({},{},kw)
     env2=env.Clone(**kw)
@@ -165,22 +166,22 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     for s in data_src:
         if isinstance(s,pattern.Pattern):
             t,sr=s.target_source(dest_dir)
-            out+=env2._SDKCOPYAs_(target=t,source=sr)
+            out+=env2.CCopyAs(target=t,source=sr)
             #print "Pattern type"
         elif isinstance(s,SCons.Node.FS.Dir):
             #get all file in the directory
             #... add code...
-            out+=env2._SDKCOPY_(target=dest_dir,source=s)
+            out+=env2.CCopy(target=dest_dir,source=s)
             #print "Dir type"
         elif isinstance(s,SCons.Node.FS.File):
-            out+=env2._SDKCOPY_(target=dest_dir,source=s)
+            out+=env2.CCopy(target=dest_dir,source=s)
             #print "File type"
         elif isinstance(s,SCons.Node.Node):
-            out+=env2._SDKCOPY_(target=dest_dir,source=s)
+            out+=env2.CCopy(target=dest_dir,source=s)
         elif common.is_string(s):
             if s[:len(orig_src_dir)]==orig_src_dir:
                 s=s[len(orig_src_dir)+1:]
-            out+=env2._SDKCOPY_(target=dest_dir,source=os.path.join(build_dir,s))
+            out+=env2.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
         else:
             print "Parts: Warning! -- Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME')
 
@@ -214,9 +215,9 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     for i in ret:
         if isinstance(i,SCons.Node.FS.File)or isinstance(i,SCons.Node.Node) or common.is_string(i):
             if common.is_catagory_file(env,'INSTALL_LIB_PATTERN',i):
-                tmp+=env2._SDKCOPY_(target='$INSTALL_LIB',source=i)
+                tmp+=env2.CCopy(target='$INSTALL_LIB',source=i)
             else:#if common.is_catagory_file(env,'SDK_BIN_PATTERN',i):
-                tmp+=env2._SDKCOPY_(target='$INSTALL_BIN',source=i)
+                tmp+=env2.CCopy(target='$INSTALL_BIN',source=i)
     ret = tmp
     
      #install alias stuff
@@ -277,6 +278,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     env2.AlwaysBuild(a)
 
     def_env['DEFINING_PART']=old_val
+    reporter.ResetPartStackFrameInfo()
     return ret
 
 

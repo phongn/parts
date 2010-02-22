@@ -6,12 +6,15 @@
 # import main code
 import env_overrides
 import common 
-import startup
 import parts
 import version
 import filters
+import version_info
 
+import engine
 
+# create the engine
+g_engine=engine.parts_addon()
 
 ### import the pieces
 import pieces
@@ -21,4 +24,5 @@ import pieces
 globals().update(common.g_globals)
 
 # start up logic ... runs during import of the code
-startup.start() # sets up everything
+g_engine.Start() # sets up everything
+
