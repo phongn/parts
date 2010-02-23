@@ -21,6 +21,8 @@ if sys.platform=='win32':
     _orginial_file = __builtin__.file
     _orginial_open = __builtin__.open
     
+    # this import to stop SCons from doing what it is doing with open/file
+    import SCons.Platform.win32
 
     FILE_SHARE_READ=1
     FILE_SHARE_WRITE=2
@@ -90,6 +92,8 @@ if sys.platform=='win32':
     __builtin__.file=shared_open
     __builtin__.open=shared_open
     _SConscript.open=_orginial_open
+    
+   
     
 
 # this class allows us to add object varible that get a reference to the env
