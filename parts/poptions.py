@@ -252,7 +252,7 @@ SCons.Script.AddOption("--show-progress",
             action='callback',
             help='Controls if progress state is shown')  
 
-SCons.Script.AddOption("--use_color","--color",
+SCons.Script.AddOption("--use-color","--color",
             dest='use_color',
             default={
             'stdout':color.ConsoleColor(color.Dim),

@@ -23,11 +23,11 @@ def get_data_files(root,path):
 	pth=os.path.join(root,path)
 	for d in os.listdir(path):
 		np=os.path.join(path,d)
-		if os.path.isdir(np) and d !='.svn':
+		if os.path.isdir(np) and d.endswith('.svn')==False:
 			tmp= get_data_files(root,np)
 			if tmp!=[]:
 				ret.extend(tmp)
-		else:
+		elif os.path.isfile(np):
 			files.append(np)
 	if file != []:
 		ret.append( (pth,files) )
@@ -42,6 +42,8 @@ elif host_os == 'darwin':
     syspath='/Library/Application Support/parts'
 else:
     syspath='/usr/share/parts'
+
+print get_data_files(syspath,'parts-site')
                 
 from distutils.core import setup
 setup(name="parts",
