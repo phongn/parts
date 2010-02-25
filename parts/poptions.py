@@ -7,7 +7,7 @@ import load_module
 import platform_info
 
 import SCons.Script    
-
+import os
 import sys
 from optparse import OptionValueError
 
@@ -104,10 +104,8 @@ def opt_bool(option, opt, value, parser,var):
 def opt_color(option, opt, value, parser):
     tmp=value.lower()
     colors=False
+    
     if tmp in opt_false_values:
-        colors=None
-    elif os.isatty(sys.stdout.fileno()) or os.isatty(sys.stderr.fileno()):
-        # if the text is being redirected
         colors=None
     elif tmp in set(['full','default','darkbg','y', 'yes', 'true', 't', '1', 'on' ]):
         colors={
@@ -261,6 +259,7 @@ SCons.Script.AddOption("--use-color","--color",
             'stdmsg':color.ConsoleColor(color.Bright),
             'stdverbose':color.ConsoleColor(color.BrightAqua),
             'stdtrace':color.ConsoleColor(color.BrightBlue),
+            'defaults':True
             },
             nargs=1,
             callback=opt_color,

@@ -34,7 +34,8 @@ error_tests =[
 
 message_tests =[
     re.compile('(scons?\s?:)',re.IGNORECASE),
-    re.compile('(parts?\s?:)',re.IGNORECASE)
+    re.compile('(parts?\s?:)',re.IGNORECASE),
+    re.compile('(Install file?\s?:)'),
     ]
 
 DEFAULT_STREAM=0
@@ -81,7 +82,13 @@ class reporter:
         sys.stdout=streamer(self.stdout)
         sys.stderr=streamer(self.stderr)        
         
-        self.console=console.Console(SCons.Script.GetOption('use_color'))
+        tmp=SCons.Script.GetOption('use_color')
+        
+        if tmp.has_key('defaults'):
+            if os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False:
+                tmp=None
+        
+        self.console=console.Console(tmp)
         self.logger=logger
         self.already_printed = set()
         self.silent=silent

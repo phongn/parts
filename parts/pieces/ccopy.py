@@ -7,6 +7,7 @@ import parts.common as common
 import parts.node_helpers as node_helpers
 import parts.reporter as reporter
 import stat
+from parts.part_logger import part_nil_logger
 
 # generic copy builder
 if sys.platform == 'win32':
@@ -124,7 +125,7 @@ def CCopyFuncWrapper(dest, source, env, copyfunc):
 def CCopyFunc(target, source, env, copy_logic):
     
     # get the logger for the given part
-    output=env["PART_LOG_MAPPER"]    
+    output=env.get("PART_LOG_MAPPER",part_nil_logger)
     # tell it we are starting a task
     id=output.TaskStart(CCopyStringFunc(target,source,env)+"\n")
         

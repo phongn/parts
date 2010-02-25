@@ -52,7 +52,7 @@ g_mappers={}
 g_globals={}
 
 # path to where Parts is installed
-g_parts_path=os.path.split(__file__)[0]
+g_parts_path=os.path.abspath(os.path.split(__file__)[0])
 
 # for packaging support 
 _INSTALLED_PACKAGING_GROUPS={}

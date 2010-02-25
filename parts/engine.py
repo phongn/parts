@@ -404,7 +404,6 @@ Use -H or --help-options for a list of scons options
 common.AddVariable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
 common.AddBoolVariable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
 
-common.AddBoolVariable('use_color',False,'Controls usage of color in console output text to highlight warnings and errors')
 common.AddBoolVariable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 common.AddBoolVariable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
 common.AddListVariable('mode',['default'],'Values used to control different build mode for a given part')

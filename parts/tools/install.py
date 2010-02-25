@@ -53,6 +53,7 @@ from parts.common import _INSTALLED_PACKAGING_GROUPS
 from parts.common import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
 import parts.node_helpers as node_helpers
+from parts.part_logger import part_nil_logger
 
 
 #
@@ -89,6 +90,7 @@ def copyFunc(dest, source, env):
 def installFunc(target, source, env):
     """Install a source file into a target using the function specified
     as the INSTALL construction variable."""
+    
     try:
         install = env['INSTALL']
     except KeyError:
@@ -96,13 +98,22 @@ def installFunc(target, source, env):
 
     assert len(target)==len(source), \
            "Installing source %s into target %s: target and source lists must have same length."%(map(str, source), map(str, target))
+
+    # get the logger for a given Part if it exists
+    output=env.get("PART_LOG_MAPPER",part_nil_logger)
+    # tell it we are starting a task
+    id=output.TaskStart(stringFunc(target,source,env)+"\n")
+    
     for t,s in zip(target,source):
         symlink=env.MetaTagValue(t,'SymLink')
         if symlink is not None:
             node_helpers.make_link_bf([t],None,env)
         elif install(t.get_path(),s.get_path(),env):
+            output.TaskEnd(id,1)
+            #report error to logger
             return 1
-
+    #tell logger the task has end correctly.
+    output.TaskEnd(id,0)
     return 0
 
 def stringFunc(target, source, env):
