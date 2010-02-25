@@ -169,26 +169,26 @@ def GetPackageGroupFiles_env(env,name,no_pkg=False):
 # compatible for mistakes
 
 def ReplacePackageGroupCritera(name,func):
-    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria')
+    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return ReplacePackageGroupCriteria(name,func)
 
 def AppendPackageGroupCritera(name,func):
-    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria')
+    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return AppendPackageGroupCriteria(name,func)
         
 def PrependPackageGroupCritera(name,func):
-    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria')
+    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return PrependPackageGroupCriteria(name,func)
 
 
 def ReplacePackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria')
+    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.ReplacePackageGroupCriteria(name,func)
 def AppendPackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria')
+    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.AppendPackageGroupCriteria(name,func)
 def PrependPackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria')
+    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.PrependPackageGroupCriteria(name,func)
     
     
