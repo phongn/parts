@@ -132,7 +132,7 @@ def generate_config(prepend,append,replace):
         cfg_map={}
         # get command line args
         overrides=SCons.Script.ARGUMENTS.copy()
-        print overrides['TARGET_PLATFORM']
+        
         ##################################
         ## test for bad value.. remap is needed
         tmp=overrides.get('tools',[])
@@ -240,7 +240,7 @@ def generate_config(prepend,append,replace):
         #print "Unknowns *********************"
         #print vars.UnknownVariables()
         #print "******************************"
-        print env['TARGET_PLATFORM'], type(env['TARGET_PLATFORM'])
+        
         
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
