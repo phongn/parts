@@ -458,13 +458,12 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     ## store part specfic data
     base_str=None
     if sdk_file != [None]:
-    #    print "Building",talias,"from SDK!!"
         base_str=env.subst('Building from SDK -- ${PART_ALIAS_CONCEPT}')
         part_info=make_part_info(env,sdk_file,alias,parent_alias,None)
     else:
         if parent_alias == None:
             base_str=env.subst('Building from source -- ${PART_ALIAS_CONCEPT}')
-        #    print "Building",talias,"from source!!"
+        
         part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
     if base_str:
         reporter.print_msg(env.subst(base_str+part_info['ALIAS']))

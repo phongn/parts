@@ -315,25 +315,32 @@ class parts_addon(object):
         Setup the main option with the varible that can be used to control it
         with SetOptionDefault or the config file
         '''
+        
         overides={}
         tmp=SCons.Script.GetOption('target_platform')
         if tmp is not None:
+            reporter.verbose_msg("startup","Setting target_platform:",tmp,'type:',type(tmp))
             overides['TARGET_PLATFORM']=tmp
+        
         
         tmp=SCons.Script.GetOption('build_config')
         if tmp is not None:
+            reporter.verbose_msg("startup","Setting build_config:",tmp,'type:',type(tmp))
             overides['CONFIG']=tmp
         
         tmp=SCons.Script.GetOption('tool_chain')
         if tmp is not None:
+            reporter.verbose_msg("startup","Setting tool_chain:",tmp,'type:',type(tmp))
             overides['toolchain']=tmp
             
         tmp=SCons.Script.GetOption('mode')
         if tmp is not None:
+            reporter.verbose_msg("startup","Setting mode:",tmp,'type:',type(tmp))
             overides['mode']=tmp
 
         tmp=SCons.Script.GetOption('ccopy_logic')
         if tmp is not None:
+            reporter.verbose_msg("startup","Setting ccopy_logic:",tmp,'type:',type(tmp))
             overides['CCOPY_LOGIC']=tmp
 
         SCons.Script.ARGUMENTS.update(overides)

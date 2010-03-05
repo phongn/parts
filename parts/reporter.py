@@ -84,8 +84,8 @@ class reporter:
         
         tmp=SCons.Script.GetOption('use_color')
         
-        if tmp.has_key('defaults'):
-            if os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False:
+        if tmp is not None and tmp.has_key('defaults') and \
+            (os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False):
                 tmp=None
         
         self.console=console.Console(tmp)

@@ -132,6 +132,7 @@ def generate_config(prepend,append,replace):
         cfg_map={}
         # get command line args
         overrides=SCons.Script.ARGUMENTS.copy()
+        print overrides['TARGET_PLATFORM']
         ##################################
         ## test for bad value.. remap is needed
         tmp=overrides.get('tools',[])
@@ -169,26 +170,30 @@ def generate_config(prepend,append,replace):
         if tmp is not None:
             reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if overrides.has_key('TARGET_ARCH')==False and overrides.has_key('TARGET_PLATFORM')==False:
-                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+                tmp={'TARGET_PLATFORM':platform_info.SystemPlatform(os='any',arch=tmp)}
+                overrides.update(tmp)
 
         # test for bad value.. remap is needed
         tmp=replace.get('ARCHITECTURE',None)
         if tmp is not None:
             reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if replace.has_key('TARGET_ARCH')==False and replace.has_key('TARGET_PLATFORM')==False:
-                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+                tmp={'TARGET_PLATFORM':platform_info.SystemPlatform(os='any',arch=tmp)}
+                overrides.update(tmp)
 
         tmp=append.get('ARCHITECTURE',None)
         if tmp is not None:
             reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if append.has_key('TARGET_ARCH')==False and append.has_key('TARGET_PLATFORM')==False:
-                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)
+                tmp={'TARGET_PLATFORM':platform_info.SystemPlatform(os='any',arch=tmp)}
+                overrides.update(tmp)
 
         tmp=prepend.get('ARCHITECTURE',None)
         if tmp is not None:
             reporter.report_warning('ARCHITECTURE is deprecated, use TARGET_PLATFORM',env=env)
             if prepend.has_key('TARGET_ARCH')==False and prepend.has_key('TARGET_PLATFORM')==False:
-                overrides['TARGET_PLATFORM']=platform_info.SystemPlatform(os='any',arch=tmp)        
+                tmp={'TARGET_PLATFORM':platform_info.SystemPlatform(os='any',arch=tmp)}
+                overrides.update(tmp)
             
         ######################################            
         overrides.update(replace)
@@ -235,6 +240,7 @@ def generate_config(prepend,append,replace):
         #print "Unknowns *********************"
         #print vars.UnknownVariables()
         #print "******************************"
+        print env['TARGET_PLATFORM'], type(env['TARGET_PLATFORM'])
         
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys

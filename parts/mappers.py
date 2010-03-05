@@ -180,7 +180,7 @@ class part_id_mapper(mapper):
             #print "PARTID resolving","${PARTID('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
             def_env=SCons.Script.DefaultEnvironment()
             
-            this_pinfo=def_env['PART_INFO'][env['ALIAS']]
+            
             #first we need to get the id to alias map
             id_to_alias = def_env.get('PART_IDS',{})     
             
@@ -306,7 +306,7 @@ class part_lib_mapper(mapper):
             #print "PARTID resolving","${PARTID('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
             def_env=SCons.Script.DefaultEnvironment()
             
-            this_pinfo=def_env['PART_INFO'][env['ALIAS']]
+            
             #first we need to get the id to alias map
             id_to_alias = def_env.get('PART_IDS',{})     
             
