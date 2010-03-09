@@ -23,29 +23,34 @@ def SetOptionDefault(key,value):
     global def_args
     #special logger logic
     if key=='LOGGER':
-        ### clean up
-        directory=def_env.Dir(def_env['LOG_ROOT_DIR'])
-        tmp=def_env.subst(value)
-        if tmp in opt_true_values :
-            mod=load_module.load_module(
-                load_module.get_site_directories('loggers'),
-                'text',
-                'logger')  
-            log_obj=mod.__dict__.get(value,logger.nil_logger)
-        elif tmp in opt_false_values:
-            log_obj=logger.nil_logger
+        if type(reporter.g_rpter.logger) is not logger.QueueLogger:
+            #reporter.print_msg('Logger already set -- ignoring')
+            pass
         else:
-            mod=load_module.load_module(
-                load_module.get_site_directories('loggers'),
-                tmp,
-                'logger')  
-            log_obj=mod.__dict__.get(tmp,logger.nil_logger)
-        #####
-        if type(reporter.g_rpter.logger) is logger.QueueLogger:
-            log_obj=log_obj(directory.abspath,def_env['LOG_FILE_NAME'])
-            reporter.g_rpter.reset_logger(log_obj)
-        elif type(reporter.g_rpter.logger) is not logger.nil_logger:
-            reporter.print_msg('Logger already set -- ignoring')
+            ### clean up
+            directory=def_env.Dir(def_env['LOG_ROOT_DIR'])
+            tmp=def_env.subst(value)
+            if tmp=='TEXT_LOGGER':
+                tmp=def_env.subst('$'+value)
+
+            if tmp in opt_true_values :
+                mod=load_module.load_module(
+                    load_module.get_site_directories('loggers'),
+                    'text',
+                    'logger')  
+                log_obj=mod.__dict__.get(value,logger.nil_logger)
+            elif tmp in opt_false_values:
+                log_obj=logger.nil_logger
+            else:
+                mod=load_module.load_module(
+                    load_module.get_site_directories('loggers'),
+                    tmp,
+                    'logger')  
+                log_obj=mod.__dict__.get(tmp,logger.nil_logger)
+            #####
+            if type(reporter.g_rpter.logger) is logger.QueueLogger:
+                log_obj=log_obj(directory.abspath,def_env['LOG_FILE_NAME'])
+                reporter.g_rpter.reset_logger(log_obj)
             
     reporter.print_msg('Setting default value of',key,'to',value)
     common.g_defaultoverides[key]=value

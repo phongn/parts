@@ -168,7 +168,7 @@ class SystemPlatform(env_overrides.bindable):
     def __copy__(self):
         return SystemPlatform(self.OS,self.ARCH)
     
-    def __deepcopy__(self):
+    def __deepcopy__(self,memo=None):
         return SystemPlatform(self.OS,self.ARCH)
     
     def __getitem__(self, key):

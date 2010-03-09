@@ -130,8 +130,11 @@ def generate_config(prepend,append,replace):
         
         ## basic setup
         cfg_map={}
+        import copy
         # get command line args
-        overrides=SCons.Script.ARGUMENTS.copy()
+        
+        #print SCons.Script.ARGUMENTS
+        overrides=copy.deepcopy(SCons.Script.ARGUMENTS)
         
         ##################################
         ## test for bad value.. remap is needed

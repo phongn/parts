@@ -231,8 +231,8 @@ class parts_addon(object):
         self.setup_progress_meter()
                 
     def ShutDown(self):
-        from SCons.Script import GetBuildFailures
-        bf_lst=GetBuildFailures()
+        
+        bf_lst=SCons.Script.GetBuildFailures()
         if len(bf_lst) > 0:
             msg=''
             for bf in bf_lst:
