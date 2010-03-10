@@ -143,7 +143,11 @@ def opt_color(option, opt, value, parser):
             }
         for t in tmp:
             # stuff like "o=blue,e=green"
-            k,v=t.split('=')
+            try:
+                # need better lgic to validate arguments.. but this will do for now
+                k,v=t.split('=')
+            except:
+                raise OptionValueError("Error: Invalid value for setting color: %s" % value)
             k=k.lower()
             if k in ['o','out','stdout']:
                 colors['stdout']=color.parse_color(v)

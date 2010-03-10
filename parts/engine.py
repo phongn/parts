@@ -4,6 +4,7 @@ import reporter
 import logger
 import poptions
 import core
+import load_module
 
 import SCons.Script    
 
@@ -302,6 +303,22 @@ class parts_addon(object):
         reporter.verbose_msg("startup","Processing logger options")
         directory=self.def_env.Dir(self.def_env['LOG_ROOT_DIR'])
         log_obj=SCons.Script.GetOption('logger')
+        
+        #compatibility check
+        if type(reporter.g_rpter.logger) is logger.QueueLogger:
+            tmp=SCons.Script.ARGUMENTS.get('LOGGER',None)
+            if tmp is not None:
+                directory=self.def_env.Dir(self.def_env['LOG_ROOT_DIR'])
+                tmp=self.def_env.subst(tmp)
+                # remap old TEXT_LOGGER value
+                if tmp=='TEXT_LOGGER':
+                    tmp=self.def_env.subst('$'+tmp)
+
+                    mod=load_module.load_module(
+                        load_module.get_site_directories('loggers'),
+                        tmp,
+                        'logger')  
+                    log_obj=mod.__dict__.get(tmp,logger.QueueLogger)
         
         #If the first try at this had nothing we have a Queue logger
         # to store everything we have to report so far

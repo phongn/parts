@@ -25,11 +25,16 @@ def get_site_directories(subdir):
             ]
         # add paths for windows
         if host_os=='win32':
-            localpath=localpath+[os.path.join(os.environ['APPDATA'],'parts-site',subdir)]
+            # if we run as a service ( like running in buildbot) we may not have a user directory
+            if  os.environ.has_key('APPDATA'):
+                localpath=localpath+[os.path.join(os.environ['APPDATA'],'parts-site',subdir)]
+            
             
         # global system area
         if host_os == 'win32':
-            syspath=[os.path.join(os.environ['ALLUSERSPROFILE'],'parts-site',subdir)]
+            # should not be needed.. just being careful
+            if  os.environ.has_key('ALLUSERSPROFILE'):
+                syspath=[os.path.join(os.environ['ALLUSERSPROFILE'],'parts-site',subdir)]
         elif host_os == 'darwin':
             syspath=[os.path.join('/Library/Application Support/parts','parts-site',subdir)]
         else:
