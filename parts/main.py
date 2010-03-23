@@ -10,6 +10,7 @@ import parts
 import version
 import filters
 import version_info
+import installs
 
 import engine
 
