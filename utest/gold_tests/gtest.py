@@ -5,6 +5,10 @@ import time
 import threading
 import difflib
 
+parts_path=os.path.abspath(os.path.normpath('../../'))
+os.environ['PYTHONPATH']=parts_path
+
+
 full_stream_file='stream.both.txt'
 out_stream_file='stream.out.txt'
 err_stream_file='stream.err.txt'
