@@ -1,11 +1,11 @@
 import sys
+import linecache
 import common
 import console
 import re
 import os
 import logger
 import traceback
-import inspect,copy
 import string
 import SCons.Script
 # not ideal...
@@ -163,7 +163,7 @@ class reporter:
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.verbose:
-                s='Verbose: ['+tmp[0]+"] "+msg
+                s='Parts: Verbose: ['+tmp[0]+"] "+msg
                 self.stdverbose(s)
                 break
 
@@ -379,46 +379,51 @@ def list_endwith(str, lst):
         return False
 
 def SetPartStackFrameInfo(use_existing=False):
-    
+    # putting tuple of (filename, line, routine, content) into common.g_part_frame
     if use_existing==True:
         if len(common.g_part_frame) > 0:
             common.g_part_frame.insert(0,common.g_part_frame[0])
             return 
+
+    # We avoid using of inspect.* functions here because
+    # the functions are redundant in this case and add
+    # additional overhead.
             
-    filename=".parts"
-    user_stack=inspect.stack()
+    # The following returns a frame of SetPartStackFrameInfo caller
+    # we will use its values as default return data
+    frame = sys._getframe(1)
+    part_frame = frame
     try:
-        for s in user_stack:
-            info=inspect.getframeinfo(s[0])
-            
-            #We don't assume python 2.6 so we don't know we have a named tuple
-            if list_endwith(info[0],['.parts','.part']):
-                common.g_part_frame.insert(0, (info[0][:],copy.copy(info[1]),info[2][:],info[3][:]) )
-                #print common.g_part_frame[0]
-                return
-            elif list_endwith(info[0],['sconstruct']):
-                common.g_part_frame.insert(0, (info[0][:],copy.copy(info[1]),info[2][:],info[3][:]) )
-                return 
-            
-           
-        # if this happens try to find best Parts src file to report
-        start_cnt=False
-        cnt=2
-        for s in user_stack:
-            info=inspect.getframeinfo(s[0])
-            #We don't assume python 2.6 so we don't know we have a named tuple
-            if info[0].find(os.sep+"parts"+os.sep+'reporter.py') ==-1:
-                start_cnt=True
-            if start_cnt:
-                cnt=cnt-1
-            if cnt==0:
-                common.g_part_frame.insert(0, (info[0][:],copy.copy(info[1]),info[2][:],info[3][:]) )
-                return
-            
-        # just give up
-        common.g_part_frame.insert(0, ("unknown","unknown","unknown","unknown") )
+        checked = False
+        while part_frame:
+            if not checked:
+                # determining best parts source to return
+                if not part_frame.f_code.co_filename.endswith('parts'+os.sep+'reporter.py'):
+                    frame = part_frame
+                    checked = True
+            if list_endwith(part_frame.f_code.co_filename, [".parts", ".part", "sconstruct"]):
+                break
+            part_frame = part_frame.f_back
+        else:
+            part_frame = frame
+
+        assert(not part_frame is None)
+        lineno = part_frame.f_lineno
+        line = linecache.getline(part_frame.f_code.co_filename, lineno)
+        common.g_part_frame.insert(0, (part_frame.f_code.co_filename,lineno,part_frame.f_code.co_name,line))
+
     finally:
-        del user_stack
+        # We delete frame and part_frame here to avoid leaking refernce to frame
+        # such leaks "can cause your program to create reference cycles. Once a 
+        # reference cycle has been created, the lifespan of all objects which
+        # can be accessed from the objects which form the cycle can become much
+        # longer even if Python's optional cycle detector is enabled. If such
+        # cycles must be created, it is important to ensure they are explicitly
+        # broken to avoid the delayed destruction of objects and increased
+        # memory consumption which occurs."
+
+        del frame
+        del part_frame
     
 
 # some functions to get the current stack frame of interest for reporting purposes

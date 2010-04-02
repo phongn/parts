@@ -549,9 +549,8 @@ class stream_writter(object):
 
         self.cache= []
 
-    def smart_match(self,str):
-        
-        if re.match("Verbose: \[\w*\]",str) is not None:
+    def smart_match(self,str):        
+        if re.match("Parts: Verbose: \[\w*\]",str) is not None:
             self.verbose.write(str)
         elif re.match("Trace: \[\w*\]",str) is not None:
             self.trace.write(str)
@@ -581,6 +580,7 @@ class stream_writter(object):
     def _empty_cache(self):
         
         for text in self.cache:
+            
             if text[0] == stream_writter.stdout:
                 brkup=text[1].split('\n')
                 grpstr=''
@@ -603,7 +603,7 @@ class stream_writter(object):
             elif text[0] == stream_writter.stderr:
                 brkup=text[1].split('\n')
                 grpstr=''
-                
+                    
                 for s in brkup:
                     if s == '':
                         pass

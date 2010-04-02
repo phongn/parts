@@ -244,17 +244,17 @@ def parse_color(str):
             return Gray
         elif col in ['9','brightred','br']:
             return BrightRed
-        elif col in ['10','a','brightgreen','bg']:
+        elif col in ['10','brightgreen','bg']:
             return BrightGreen
-        elif col in ['11','b','brightyellow','by']:
+        elif col in ['11','brightyellow','by']:
             return BrightYellow
-        elif col in ['12','c','brightblue','bb']:
+        elif col in ['12','brightblue','bb']:
             return BrightBlue
-        elif col in ['13','d','brightpurple','brightmagenta','bp','bm']:
+        elif col in ['13','brightpurple','brightmagenta','bp','bm']:
             return BrightPurple
-        elif col in ['14','e','brightaqua','brightcyan','ba','bc']:
+        elif col in ['14','brightaqua','brightcyan','ba','bc']:
             return BrightAqua
-        elif col in ['15','f','brightwhite','bw']:
+        elif col in ['15','brightwhite','bw']:
             return BrightWhite
         elif col in ['default']:
             return Default

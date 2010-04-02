@@ -402,6 +402,9 @@ class parts_addon(object):
                     SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
                 except Exception,ec:
                     pass
+            reporter.verbose_msg("gtest_showprogress","show-progress feature is ON")
+        else:
+            reporter.verbose_msg("gtest_showprogress","show-progress feature is OFF")    
     
     def setup_help_info(self):
         reporter.verbose_msg("startup","In Help mode, setting up Help values")
