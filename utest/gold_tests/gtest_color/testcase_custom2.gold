@@ -1,0 +1,7 @@
+Parts: Verbose: [gtest_color] Colors are ON. Foreground colors are : 
+Parts: Verbose: [gtest_color] stdout : 15
+Parts: Verbose: [gtest_color] stderr : 13
+Parts: Verbose: [gtest_color] stdwrn : 11
+Parts: Verbose: [gtest_color] stdmsg : 6
+Parts: Verbose: [gtest_color] stdverbose : 14
+Parts: Verbose: [gtest_color] stdtrace : 1

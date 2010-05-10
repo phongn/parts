@@ -1,0 +1,3 @@
+usage: scons [OPTION] [TARGET] ...
+
+SCons error: Error: Invalid value for setting color: out=15;error=bp;stdmsg=c;t=1
