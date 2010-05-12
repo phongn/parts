@@ -58,7 +58,9 @@ def normalize_map(m):
     key='toolchain'
     value=m.get(key,None)    
     if common.is_string(value) and not common.is_list(value):
-        m[key]=common.process_tool_arg(string.split(value,','))
+        tmp=common.process_tool_arg(string.split(value,','))
+        tmp.reverse()
+        m[key]=tmp
     
     return m
 
@@ -126,7 +128,6 @@ def generate_config(prepend,append,replace):
         
     #if not isinstance(env,SCons.Script.Environment):
     if env is None:
-        def_env=SCons.Script.DefaultEnvironment()
         
         ## basic setup
         cfg_map={}
@@ -268,7 +269,7 @@ def generate_config(prepend,append,replace):
             elif common.is_list(v) and not has_hey:
                 env[k]=v
             else:
-                print "error",k,"is not a list"
+                reporter.report_warning('Ignoring appending value', k,"as it is not a list. It is type",type(v),".")
         
         for k,v in prepend.iteritems():
             has_hey=env.has_key(k)
@@ -277,7 +278,7 @@ def generate_config(prepend,append,replace):
             elif common.is_list(v) and not has_hey:
                 env[k]=v
             else:
-                print "error",k,"is not a list"
+                reporter.report_warning('Ignoring prepending value', k,"as it is not a list. It is type",type(v),".")
 
         if env['HOST_PLATFORM']['OS'] =='win32':
             # add certain paths for windows

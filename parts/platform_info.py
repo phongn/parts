@@ -9,6 +9,59 @@ import common
 import SCons.Platform
 import env_overrides
 import os,sys
+import re
+import reporter
+import api
+
+  
+def MapArchitecture(val):
+    ''' 
+    Maps the value of lowlevel architures to high level one that
+    are more generic and useful.
+
+    supported currently
+        x86 -- Intel(r) line of compatible 32-bit chips 
+        x86_64 -- The 64-bit extended memory form of x86 (AMD64 or em64t)
+        ia64 -- 
+
+        # to add other system here    
+    '''
+    return common.g_arch_map.get(val,'')                
+
+def MapOS(val):
+    ''' 
+    Maps the value of lowlevel OS names to high level one that
+    are more generic and useful to scons.
+    
+    supported currently
+        win32 -- Windows OS of all flavors, both 32bit and 64bit
+        posix -- All Linux and Unix flavors
+        darwin -- All Mac OS flavors
+        sunos -- All Solaris flavors
+    
+        # to add other system here    
+    '''
+    return common.g_os_map.get(val,'')
+  
+def GetValidArchList(self): #remove?
+    return common.valid_arch
+    
+def GetValidOSList(self): #remove?
+    return common.valid_os
+    
+def ValidatePlatform(platform_str):    
+    if common.g_valid_platform_re.search(platform_str):            
+        lst = common.g_valid_platform_re.search(platform_str).groups()
+        if ((lst[0] is None and lst[2] is None) or (lst[1] == '-' and (lst[0] is None or lst[2] is None))):
+            return False
+        else:
+            if lst[1] == '-':
+                tmp = MapOS(lst[0]),lst[1],MapArchitecture(lst[2])
+            elif lst[0] is None:
+                tmp = lst[0],lst[1],MapArchitecture(lst[2])
+            elif lst[2] is None:
+                tmp = MapOS(lst[0]),lst[1],lst[2]                        
+            return tmp
 
 def OSBit():
     ''' 
@@ -24,7 +77,7 @@ def OSBit():
     # Unfortunately, python does not provide any way to tell if the OS itself
     # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
     # the value Python might return. This tell us nothing of the current system
-    # The test below returns
+    # The test below returqwns
     if sys.platform == 'win32':
         # this test fails on server 2008
         # may fail on window 7 ( don't know yet)
@@ -43,36 +96,7 @@ def OSBit():
     if val[-3:] == 'bit':
         val=val[:-3]
     return int(val)
-    
-def MapArchitecture(val):
-    ''' 
-    Maps the value of lowlevel architures to high level one that
-    are more generic and useful.
-    
-    supported currently
-        x86 -- Intel(r) line of compatible 32-bit chips 
-        x86_64 -- The 64-bit extended memory form of x86 (AMD64 or em64t)
-        ia64 -- 
-    
-        # to add other system here    
-    '''
-    arch_map = {
-    'ia32':'x86',
-    'x86':'x86',
-    'i386':'x86',
-    'i486':'x86',
-    'i586':'x86',
-    'i686':'x86',
-    'x64':'x86_64',
-    'AMD64':'x86_64',
-    'amd64':'x86_64',
-    'em64t':'x86_64',
-    'EM64T':'x86_64',
-    'x86_64':'x86_64',
-    'IA64':'ia64',
-    'ia64':'ia64'
-    }
-    return arch_map.get(val,'')
+
         
 def ChipArchitecture():
     ''' 
@@ -102,12 +126,20 @@ def ChipArchitecture():
 
 class SystemPlatform(env_overrides.bindable):
     def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-            
-        self.key="_parts_"
-        self._env={
-                self.key+"_OS":os,
-                self.key+"_ARCH":arch
-            }
+        platform_str = os + '-' + arch
+        lst = ValidatePlatform(platform_str)
+        if not lst:
+            reporter.report_error( " " + platform_str + " is not a valid target_system value\n")            
+        else:
+            if lst[0] is not None:
+                os=lst[0]
+            if lst[2] is not None:
+                arch=lst[2]
+            self.key="_parts_"
+            self._env={
+                    self.key+"_OS":os,
+                    self.key+"_ARCH":arch
+                }
         
     def _getOS(self):
         return self._env[self.key+"_OS"]
@@ -187,28 +219,15 @@ def HostSystem():
 
 def target_convert(str_val, raw_val=None,base=None):
     host_sys= base is None and _host_sys or base
-    lst=str_val.split('-')
-    if len(lst) > 2:
-        raise ValueError("Warning:  %s is not a valid target_system value\nValue must be in form of <Plaform>-<Architecture>" % o)
-    if len(lst) == 1:
-        # nice to a have short cut
-        tmp=MapArchitecture(lst[0])
-        if tmp == '':
-            #assume this was a platform
-            ret=SystemPlatform(
-                lst[0],host_sys.ARCH
-                )
-        else:
-            #assume this is a architure
-            ret=SystemPlatform(
-                    host_sys.OS,lst[0]
-                    )
+    lst = ValidatePlatform(str_val)    
+    if not lst:
+        reporter.report_error( " " + str_val + " is not a valid target_system value\n")        
     else:
         p=lst[0]
-        a=lst[1]
-        if p == '':
+        a=lst[2]
+        if p == None:
             p=host_sys.OS
-        if a == '':
+        if a == None:
             a=host_sys.ARCH
         ret=SystemPlatform(p,a)
     return ret
@@ -228,5 +247,5 @@ common.add_global_value('ChipArchitecture',ChipArchitecture)
 common.add_global_value('OSBit',OSBit)
 common.add_global_value('HostPlatform',HostSystem)
 common.add_global_value('SystemPlatform',SystemPlatform)
-
+#common.add_global_value('ValidatePlatform',ValidatePlatform)
 

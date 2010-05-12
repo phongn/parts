@@ -241,7 +241,8 @@ class _ConfigurationSet:
 def DefineConfiguration(name,dependsOn='default'):
     # add configuration
     if g_configuration.has_key(name):
-        print "ConfigurationSet",name," already exists"
+        #print "ConfigurationSet",name," already exists"
+        reporter.report_warning("ConfigurationSet",name," already exists")
         # warning is it exists?
     #add dependance
     g_configuration[name]=_ConfigurationSet(name,dependsOn)

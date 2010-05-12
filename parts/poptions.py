@@ -15,7 +15,7 @@ from optparse import OptionValueError
 # used to help scripts set defaults when there is no config script
 def SetOptionDefault(key,value):
 
-    def_env=SCons.Script.DefaultEnvironment()
+    def_env=common.g_engine.def_env
     
     args = sys.argv[1:]
     if common.g_part_mode=='help':
@@ -54,36 +54,9 @@ def SetOptionDefault(key,value):
             
     reporter.print_msg('Setting default value of',key,'to',value)
     common.g_defaultoverides[key]=value
-    #reset cache 
-    #common.g_env_cache={}
+    SetOptionDefault._modified=True
 
-
-def opt_target(option, opt, value, parser):
-    lst=value.split('-')
-    if len(lst) > 2:
-        raise OptionValueError("Error:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % o)
-    if len(lst) == 1:
-        # nice to a have short cut
-        tmp=platform_info.MapArchitecture(lst[0])
-        if tmp == '':
-            #assume this was a platform
-            parser.values.target_platform=platform_info.SystemPlatform(
-                lst[0],platform_info._host_sys.ARCH
-                )
-        else:
-            #assume this is a architure
-            parser.values.target_platform=platform_info.SystemPlatform(
-                    platform_info._host_sys.OS,lst[0]
-                    )
-    else:
-        p=lst[0]
-        a=lst[1]
-        if p == '':
-            p=platform_info._host_sys.OS
-        if a == '':
-            a=platform_info._host_sys.Architecture
-        parser.values.target_platform=platform_info.SystemPlatform(p,a)
-
+    
 def opt_chain(option, opt, value, parser):
     tmp=value.split(',')
     lst=[]
@@ -165,6 +138,16 @@ def opt_color(option, opt, value, parser):
         raise OptionValueError("Error: Invalid value for setting color: %s" % value)
     
     parser.values.use_color=colors
+    if colors is None:
+        reporter.verbose_msg("gtest_color","Colors are OFF")
+    else:
+        reporter.verbose_msg("gtest_color","Colors are ON. Foreground colors are : \n")
+        reporter.verbose_msg("gtest_color","stdout : " + str(colors['stdout'].Foreground()))
+        reporter.verbose_msg("gtest_color","stderr : " + str(colors['stderr'].Foreground()))
+        reporter.verbose_msg("gtest_color","stdwrn : " + str(colors['stdwrn'].Foreground()))
+        reporter.verbose_msg("gtest_color","stdmsg : " + str(colors['stdmsg'].Foreground()))
+        reporter.verbose_msg("gtest_color","stdverbose : " + str(colors['stdverbose'].Foreground()))
+        reporter.verbose_msg("gtest_color","stdtrace : " + str(colors['stdtrace'].Foreground()))
     
 def opt_ccopy(option, opt, value, parser):
     tmp=value.lower()
@@ -191,7 +174,13 @@ def opt_logging(option, opt, value, parser):
             'logger')
         parser.values.logger=mod.__dict__.get(value,logger.nil_logger)
 
-
+SCons.Script.AddOption("--build-config","--buildconfig","--cfg",
+            dest='build_config',
+            default=None,
+            nargs=1, type='string',
+            action='store',
+            help='The configuration to use')
+            
 SCons.Script.AddOption("--cfg-file",
             dest='cfg_file',
             default='parts.cfg',
@@ -215,13 +204,6 @@ SCons.Script.AddOption("--log",
             type='string',
             action='callback',
             help='True to use default logger, else name of logger to use')
-
-SCons.Script.AddOption("--build-config","--buildconfig","--cfg",
-            dest='build_config',
-            default=None,
-            nargs=1, type='string',
-            action='store',
-            help='The configuration to use')
                  
 SCons.Script.AddOption("--tool-chain","--toolchain","--tc",
             dest='tool_chain',
@@ -236,9 +218,8 @@ SCons.Script.AddOption("--target","--target-platform",
             dest='target_platform',
             default=None,
             nargs=1,
-            callback=opt_target,
             type='string',
-            action='callback',
+            action='store',
             help='Sets the default TARGET_PLATFORM use for cross builds')
 
 SCons.Script.AddOption("--mode",

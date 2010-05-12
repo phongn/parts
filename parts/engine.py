@@ -5,6 +5,7 @@ import logger
 import poptions
 import core
 import load_module
+import platform_info
 
 import SCons.Script    
 
@@ -282,15 +283,16 @@ class parts_addon(object):
         env=env.Clone()
         env._CacheDir_path=None
         reporter.verbose_msg("startup","Resetting Scons default environment")
+        tmp_queue=SCons.Defaults._default_env.get('PREPROCESS_LOGIC_QUEUE',[])
         self.def_env=SCons.Defaults._default_env=env
         self.def_env.Decider('MD5-timestamp')
          ## setup other globals.. defaults
-        reporter.verbose_msg("startup","Setting some global varibles needed in Defafult Environment")
+        reporter.verbose_msg("startup","Setting some global varibles needed in Default Environment")
         self.def_env['PARTS_REPORTER']=reporter.g_rpter
         # need to handle more complete subst mapper handling
         self.def_env["PARTS_COMPLEX_SUB"]=0
         # needed for Dependon and other preprocessing logic (like setting rpaths)
-        self.def_env['PREPROCESS_LOGIC_QUEUE']=[]
+        self.def_env['PREPROCESS_LOGIC_QUEUE']=tmp_queue
         # turn off all default building of any items without a target, or until
         # default is called again to set one. ( ie the default by Scons is '.' which is everything)
         self.def_env.Default('')
@@ -336,6 +338,8 @@ class parts_addon(object):
         overides={}
         tmp=SCons.Script.GetOption('target_platform')
         if tmp is not None:
+            tmp=platform_info.target_convert(tmp)
+            reporter.verbose_msg("gtest_target","Target set as",tmp)
             reporter.verbose_msg("startup","Setting target_platform:",tmp,'type:',type(tmp))
             overides['TARGET_PLATFORM']=tmp
         

@@ -489,11 +489,11 @@ def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
     # allow us to make a part platform indepent in some way
     # Might want to change this to be a enum like setup
     part_info['PLATFORM_MATCH']=copy.copy(env['TARGET_PLATFORM'])
-    if kw.get('platform_independent ',kw.get('platform_indepenent',False)):
+    if kw.get('platform_independent',kw.get('platform_indepenent',False)):
         part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any','any')
-    if kw.get('os_independent ',kw.get('os_indepenent',False)):
+    if kw.get('os_independent',kw.get('os_indepenent',False)):
         part_info['PLATFORM_MATCH'].OS='any'
-    if kw.get('architecture_independent ',kw.get('architecture_indepenent',False)):
+    if kw.get('architecture_independent',kw.get('architecture_indepenent',False)):
         part_info['PLATFORM_MATCH'].ARCH='any'
     
 

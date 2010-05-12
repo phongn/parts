@@ -7,6 +7,7 @@ import string
 import os
 import imp
 import sys
+import re
 
 import Variables
 
@@ -16,7 +17,7 @@ import SCons.Errors
 import SCons.Tool
 import SCons.Util
 
-
+g_engine=None
 g_part_frame=[]
 
 g_builders={}
@@ -569,7 +570,89 @@ def make_alias_tree(env,concept,
     return name_alias
 
 
+############################## Platform Maps ################################
+g_arch_map = {
+'ia32':'x86',
+'x86':'x86',
+'i386':'x86',
+'i486':'x86',
+'i586':'x86',
+'i686':'x86',
+'x64':'x86_64',
+'AMD64':'x86_64',
+'amd64':'x86_64',
+'em64t':'x86_64',
+'EM64T':'x86_64',
+'x86_64':'x86_64',
+'IA64':'ia64',
+'ia64':'ia64',
+'any':'any'
+}
 
+g_os_map = {
+'win32':'win32',
+'win64':'win32',
+'xp':'win32',
+'vista':'win32',
+'win7':'win32',
+'windows':'win32',
+'posix':'posix',
+'linux':'posix',
+'fedora':'posix',
+'rhel':'posix',
+'ubuntu':'posix',
+'hp-ux':'hp-ux',
+'os2':'os2',
+'cygwin':'cygwin',
+'suse':'posix',
+'sles':'posix',
+'sunos':'sunos',
+'solaris':'sunos',
+'darwin':'darwin',
+'mac':'darwin',
+'macos':'darwin',
+'any':'any'
+}
+
+g_valid_arch = []
+g_valid_os =[]
+g_valid_platform_re = re.compile("a")
+
+def UpdatePlatformRegEx():
+    global g_valid_platform_re
+    arch_str = ''
+    os_str = ''
+    for arch in g_valid_arch:
+        if arch_str == '':
+            arch_str = arch_str + arch
+        else:
+            arch_str = arch_str + '|' + arch
+            
+    for os in g_valid_os:
+        if os_str == '':
+            os_str = os_str + os
+        else:
+            os_str = os_str + '|' + os
+   
+    g_valid_platform_re = re.compile('(' + os_str + ')*(-*)(' + arch_str + ')*',re.IGNORECASE)
+
+    
+def UpdateValidArchList():
+    for k,v in g_arch_map.items():
+        if k not in g_valid_arch:
+            g_valid_arch.append(k)
+    g_valid_arch.sort(lambda a,b: cmp(len(b),len(a)))
+    UpdatePlatformRegEx()
+
+def UpdateValidOSList():
+    for k,v in g_os_map.items():
+        if k not in g_valid_os:
+            g_valid_os.append(k)
+    g_valid_os.sort(lambda a,b: cmp(len(b),len(a)))
+    UpdatePlatformRegEx()
+
+UpdateValidArchList()
+UpdateValidOSList()
 
 
 

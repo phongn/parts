@@ -271,6 +271,27 @@ def Parts_find_deepest_user_frame(tb):
 
 SCons.Script.Main.find_deepest_user_frame=Parts_find_deepest_user_frame
 
+# override DefaultEnvironment to allow resetting of values with SetOptionDefault
+
+import poptions,common
+
+def Part_DefaultEnvironment(*args,**kw):
+
+    try:
+        if poptions.SetOptionDefault._modified==False:
+            return Part_DefaultEnvironment._cache
+    except AttributeError:
+        pass
+    #remake the def env
+    common.g_engine.setup_defenv()
+    #store in chache
+    Part_DefaultEnvironment._cache=common.g_engine.def_env
+    poptions.SetOptionDefault._modified=False
+    return Part_DefaultEnvironment._cache
+
+SCons.Script.DefaultEnvironment=Part_DefaultEnvironment
+
+
 from SCons.Script.SConscript import SConsEnvironment
 
 # override Clone to deepcopy bindable objects

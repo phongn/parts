@@ -1,9 +1,25 @@
-from common import msvc,framework_root,framework_root64,get_current_sdk
+from common import msvc,framework_root,framework_root64
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
+import parts.reporter as reporter
 import os
 import SCons.Platform
+
+def get_current_sdk():
+    ''' get SDK path based on reg key used for vc 9.0'''
+    # note this key is used for both 32-bit and 64-bit systems
+    # this mean the that default path will always be program file/xxx
+    # even on 64-bit systems
+    try:
+        return get_current_sdk.cache
+    except AttributeError:
+        r=RegFinder([r'SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'])
+        dir=r()
+        if dir is None:
+            dir=''
+        get_current_sdk.cache=dir
+        return get_current_sdk.cache
 
 ## version 9 .. 2008
 # 32-bit

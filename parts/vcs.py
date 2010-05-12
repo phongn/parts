@@ -53,7 +53,7 @@ def SysCall (cmdStr):
     
     #currentDir = os.getcwd ()
     #print currentDir + '> ' + cmdStr
-    print cmdStr
+    reporter.print_msg(cmdStr)
     sys.stdout.flush ()
     try: 
         proc = subprocess.Popen (cmdStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -64,13 +64,12 @@ def SysCall (cmdStr):
         ret = proc.returncode
         return ret
         if ret:
-            print 'Error: The command "' + cmdStr + '" returned ' + str (ret)
-            return False
+            reporter.report_error('The command "' +cmdStr + '" returned ' + str (ret))
         else:
             return True
     except OSError:
-        print 'Error: exception encountered' #, sys.exc_type, sys.exc_value
-        return False
+        reporter.report_error('Error: exception encountered') #, sys.exc_type, sys.exc_value)
+        
 
 class vcs:
     ''' 
@@ -253,7 +252,7 @@ class vcs_Prebuilts(vcs):
         # we don't want to do anything for PRE-BUILTS!
         out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         p=os.path.normpath(self.full_path(env))
-        print 'Updating Prebuilts from ' + p + ' to ' + out_dir
+        reporter.print_msg( 'Updating Prebuilts from ' + p + ' to ' + out_dir)
         try:
             shutil.rmtree (out_dir) 
             shutil.copytree (p, out_dir)
@@ -267,7 +266,7 @@ class vcs_Prebuilts(vcs):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         p=os.path.normpath(self.full_path(env))
-        print 'Copying Prebuilts from ' + p + ' to ' + out_dir
+        reporter.print_msg( 'Copying Prebuilts from ' + p + ' to ' + out_dir)
         try:
             shutil.copytree (p, out_dir)
         except Exception,e:

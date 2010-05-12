@@ -14,7 +14,7 @@ def get_site_directories(subdir):
     try:
         return g_site_dir_cache[subdir]
     except KeyError:
-        host_os=SCons.Script.DefaultEnvironment()['PLATFORM'] # can't user HOST_OS because of bootstrap issue.
+        host_os=sys.platform
         syspath=[]
         localpath=[]
         # local data

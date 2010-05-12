@@ -1,4 +1,4 @@
-import os
+import os,sys
 import SCons.Script
 import pattern
 import common
@@ -439,7 +439,7 @@ common.AddBuilder('__CreateSDKBuilder__',SCons.Builder.Builder(
         #target_factory = SCons.Node.FS.File,
         #source_factory = SCons.Node.FS.File,
         emitter=CreateSDK_Emit,
-        target_scanner=SCons.Script.DefaultEnvironment().Scanner(CreateSDK_SF)
+        target_scanner=SCons.Scanner.Base(CreateSDK_SF)
         ))
 import datetime        
 # add configuartion varaible
@@ -477,7 +477,7 @@ common.AddBoolVariable('USE_SRC_DIR',False,'Controls is the SDK or Src directory
 common.AddBoolVariable('CREATE_SDK',True,'Controls if the SDK should be created and used') 
 
 common.AddListVariable('SDK_LIB_PATTERN',['*.lib','*.LIB','*.a','*.A','*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dylib'],'filter of file patterns use to match lib type files')
-if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
+if 'win32' == sys.platform:
     common.AddListVariable('SDK_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'filter of file patterns use to match bin type files')
 else:
     common.AddListVariable('SDK_BIN_PATTERN',['*'],'filter of file patterns use to match lib type files')

@@ -107,7 +107,7 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/Intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/lib/intel64'                     
                         },

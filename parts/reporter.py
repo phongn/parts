@@ -318,6 +318,7 @@ def verbose_msg(catagory,*lst,**kw):
                 break        
         
 def trace_msg(*lst,**kw):
+    return
     msg=map(str,lst)
     g_rpter.stdtrace(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 

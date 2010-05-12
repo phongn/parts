@@ -1,4 +1,4 @@
-import os
+import os,sys
 import SCons.Script
 #import SCons.Environment
 import SCons.Tool.install
@@ -481,7 +481,7 @@ common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
 #common.AddListVariable('AUTO_TAG_INSTALL',[('*.pdb',{'no_package':True})],'')
 common.AddBoolVariable('AUTO_TAG_ON_INSTALL',True,'')
 
-if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
+if 'win32' == sys.platform:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
 else:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')

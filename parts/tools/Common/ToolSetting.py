@@ -30,6 +30,27 @@ def MatchVersionNumbers(verStr1, verStr2):
 
     return False
 
+def _cmp_(verStr1, verStr2):
+    # till I get the upgraded version object
+    major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
+    major2, minor2, rev2, junk = (verStr2+'.-1.-1.-1').split('.',3)
+    try:
+        major1=int(major1)
+        minor1=int(minor1)
+        rev1=int(rev1)
+        major2=int(major2)
+        minor2=int(minor2)
+        rev2=int(rev2)
+    except ValueError:
+        return cmp(verStr1,verStr2)
+    
+    if major1 != major2:
+        return cmp(major1,major2)
+    if minor1 != minor2:
+        return cmp(minor1,minor2)    
+    return cmp(rev1,rev2)
+
+
 ''' this class helps reports errors happen when we have some issue with setting 
 up the tool for the user.
 '''
@@ -81,7 +102,8 @@ class ToolSetting:
         self.shell_cache={}
     
     def best_ver_map(self,key,version):
-        from parts.version import version_range as Version
+        #from parts.version import version_range as Version
+        
         if version is None:
             return None
         k=self.found.get(key,[])
@@ -104,6 +126,7 @@ class ToolSetting:
         return str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
     
     def get_latest_known_version(self,cache_key): 
+        
         try:
             # assumes presorted when added
             return self.found[cache_key][0]
@@ -195,7 +218,9 @@ class ToolSetting:
         #test for any-any
         if self.tools.has_key(t3):
             query_logic(t3)
-        self.found[key].sort(reverse=True)
+        
+        self.found[key].sort(reverse=True,cmp=_cmp_)
+        
         
         
     def query_for_exact(self,env,key,version):
