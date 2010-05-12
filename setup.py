@@ -49,7 +49,20 @@ elif sys.platform == 'darwin':
 else:
     syspath='/usr/share/parts'
 
-local_overrides=get_data_files(syspath,'parts-site')
+# to allow install if root access is not used	
+if os.path.exists(syspath) == False:
+	try:
+		os.makedirs(syspath)
+	except:
+		pass
+		
+if os.access(syspath,os.W_OK ) == False:
+	syspath=os.path.join(os.path.expanduser('~'),'.parts-site')	
+	
+	
+	
+	
+local_overrides=get_data_files(syspath,'.parts-site')
 ##print local_overrides
 ## 
 ###uninstall previous data

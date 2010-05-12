@@ -206,7 +206,8 @@ class vcs_svn(vcs):
     def NeedsUpdate(self,env):
         opt1=env.get('UPDATE_FROM_SVN',False)
         opt2=env.get('UPDATE_'+env['PART_ALIAS'].upper(),False)
-        return opt1==True or opt2==True or vcs.NeedsUpdate(self,env)
+        opt3=env.get('UPDATE_'+env['SHORT_ALIAS'].upper(),False)
+        return opt1==True or opt2==True or opt3==True or vcs.NeedsUpdate(self,env)
     
     def UpdateEnv(self,env):
         ''' 
