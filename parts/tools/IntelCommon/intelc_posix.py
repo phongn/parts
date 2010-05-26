@@ -9,8 +9,8 @@ import os
 
 # 32-bit 11.1 
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','x86')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -36,8 +36,8 @@ Intelc.Register(
     
 # 64-bit 11.1
 Intelc.Register(
-    hosts=[SystemPlatform('posix','x86_64')],
-    targets=[SystemPlatform('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -65,8 +65,8 @@ Intelc.Register(
     
 # 64-bit ia64 11.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','ia64')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','ia64'),SystemPlatform('darwin','ia64')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -92,8 +92,8 @@ Intelc.Register(
 
 # 32-bit 10.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','x86')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -118,8 +118,8 @@ Intelc.Register(
     
 # 64-bit 10.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','x86_64')],
-    targets=[SystemPlatform('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -144,8 +144,8 @@ Intelc.Register(
     
 # 64-bit ia64 10.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','ia64')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','ia64'),SystemPlatform('darwin','ia64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -170,8 +170,8 @@ Intelc.Register(
 
 # 9.x 64-bit    
 Intelc.Register(
-     hosts=[SystemPlatform('posix','x86_64')],
-     targets=[SystemPlatform('posix','x86_64')],
+     hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+     targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
      info=[
          IntelcInfo(
              version='9.*',
@@ -196,8 +196,8 @@ Intelc.Register(
 
 #9.x 32-bit
 Intelc.Register(
-     hosts=[SystemPlatform('posix','any')],
-     targets=[SystemPlatform('posix','x86')],
+     hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+     targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
      info=[
          IntelcInfo(
              version='9.*',

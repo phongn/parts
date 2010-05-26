@@ -2,6 +2,74 @@ import sys,os
 sys.path.append('./parts') 
 import parts_version
 import distutils.file_util
+from distutils.command.install import install
+
+class custom_install(install):
+    def run(self):
+        self.uninstall = os.path.join(self.install_scripts, "%s_uninstall.py" % self.distribution.get_name())
+        
+        if os.path.exists(self.uninstall):
+            print "Uninstalling previous version"
+            if self.dry_run:
+                os.system("python %s -n" % self.uninstall)
+            else:
+                os.system("python %s" % self.uninstall)
+        
+        keep_record = True
+        if not self.record:
+            self.record = "install_record.txt"
+            keep_record = False
+        
+        self.force = 1
+        install.run(self)
+        
+        if not self.dry_run:
+            self._generate_uninstall()
+        
+        if not keep_record:
+            print "Removing unwanted record %s" % self.record
+            if not self.dry_run: os.remove(self.record)
+            self.record = None
+    
+    def _generate_uninstall(self):
+        print "Generating uninstall script in %s" % self.uninstall
+        out = open(self.uninstall, 'w')
+        out.write("#!/usr/bin/env python\n")
+        out.write("import os, sys\n\n")
+        out.write("files = [\n")
+        fin = open(self.record, 'r')
+        for line in fin:
+            line = line.strip();
+            line = line.replace('\\', "\\\\");
+            out.write("'%s',\n" % line)
+        
+        fin.close()
+        out.write("__file__\n")
+        out.write("]\n\n")
+        out.write("dry_run = False\n")
+        out.write("for arg in sys.argv:\n")
+        out.write("\tif arg == '-n':\n")
+        out.write("\t\tdry_run = True\n\n")
+        
+        out.write("for f in files:\n")
+        out.write("\tif os.path.exists(f):\n")
+        out.write("\t\tprint \"Removing %s\" % f\n")
+        out.write("\t\tif not dry_run: os.remove(f)\n")
+        
+        out.write("\tf = f + 'c'\n")
+        out.write("\tif os.path.exists(f):\n")
+        out.write("\t\tprint \"Removing %s\" % f\n")
+        out.write("\t\tif not dry_run: os.remove(f)\n")
+        
+        out.write("\tdir = os.path.dirname(f)\n")
+        out.write("\ttry:\n")
+        out.write("\t\twhile not dry_run:\n")
+        out.write("\t\t\tos.rmdir(dir)\n")
+        out.write("\t\t\tprint \"Removing %s\" % dir\n")
+        out.write("\t\t\tdir = os.path.dirname(dir)\n")
+        out.write("\texcept OSError:\n")
+        out.write("\t\tpass\n")
+        out.close()
 
 # Going forward I think this script is will be supporting only the install command. I make another script to make "install packages"
 # the extra part-site directory does not work with most of the Command builders in dist_util
@@ -21,16 +89,16 @@ def get_packages(path):
                 ret.extend(tmp)
     return ret
 
-def get_data_files(root,path):
+def get_data_files(root,path,installpath):
     ret=[]
     files=[]
     if os.path.exists(path) == False:
         return ret
-    pth=os.path.join(root,path)
+    pth=os.path.join(root,installpath)
     for d in os.listdir(path):
         np=os.path.join(path,d)
         if os.path.isdir(np) and d.endswith('.svn')==False:
-            tmp= get_data_files(root,np)
+            tmp= get_data_files(root,np,os.path.join(installpath,d))
             if tmp!=[]:
                 ret.extend(tmp)
         elif os.path.isfile(np) and d.endswith('.py'):
@@ -57,13 +125,12 @@ if os.path.exists(syspath) == False:
 		pass
 		
 if os.access(syspath,os.W_OK ) == False:
-	syspath=os.path.join(os.path.expanduser('~'),'.parts-site')	
-	
-	
-	
-	
-local_overrides=get_data_files(syspath,'.parts-site')
-##print local_overrides
+    syspath=os.path.join(os.path.expanduser('~'))
+    local_overrides=get_data_files(syspath,'.parts-site','.parts-site')
+else:
+    local_overrides=get_data_files(syspath,'.parts-site','parts-site')
+    
+
 ## 
 ###uninstall previous data
 ##if 'install' in sys.argv:
@@ -89,6 +156,7 @@ setup(name="parts",
         version=parts_version._PARTS_VERSION,
         packages=['parts']+get_packages('./parts'),
         scripts=['parts/parts.bat','parts/parts'],
+        cmdclass={'install':custom_install},
         data_files=local_overrides
         )
 
