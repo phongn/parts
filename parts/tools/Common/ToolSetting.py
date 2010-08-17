@@ -102,8 +102,7 @@ class ToolSetting:
         self.shell_cache={}
     
     def best_ver_map(self,key,version):
-        #from parts.version import version_range as Version
-        
+        from parts.version import version_range as Version
         if version is None:
             return None
         k=self.found.get(key,[])
@@ -126,7 +125,6 @@ class ToolSetting:
         return str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
     
     def get_latest_known_version(self,cache_key): 
-        
         try:
             # assumes presorted when added
             return self.found[cache_key][0]

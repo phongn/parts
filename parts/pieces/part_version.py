@@ -1,5 +1,6 @@
 
 import parts.common as common
+import parts.reporter as reporter
 import parts.version as version
 import SCons.Script
 
@@ -10,29 +11,21 @@ def part_version(env,ver=None):
     '''
     if ver == None:
         return get_part_version(env)
-    def_env=SCons.Script.DefaultEnvironment()
-    alias=def_env['DEFINING_PART']
-    ret=version.version('0.0.0')
-    if alias != None:
-        part_info=def_env['PART_INFO'][alias]
-        if part_info['PARENT_ALIAS']==None:
-            ret=version.version(ver)
-            part_info['VERSION']=ret
-            part_info['SHORT_VERSION']=ret.short_version_string()
-        else:
-            tmp_info=def_env['PART_INFO'][part_info['PARENT_ALIAS']]
-            while tmp_info['PARENT_ALIAS'] != None:
-                tmp_info=def_env['PART_INFO'][tmp_info['PARENT_ALIAS']]
+
+    part_obj=common.g_engine._part_manager._from_env(env)       
+    ret=version.version(ver)
+    if part_obj.Version != '0.0.0':
+        reporter.report_warning("Version already set to %s, ignoring new value of %s"%(part_obj.Root.Version,ret))
+        return part_obj.Version 
+    part_obj._set_version(ret)
             
-            part_info['VERSION']="${PARTS('"+tmp_info['ALIAS']+"','VERSION')}"
-            part_info['SHORT_VERSION']="${PARTS('"+tmp_info['ALIAS']+"','SHORT_VERSION')}"
     return ret
     
 def get_part_version(env):
-    return version.version(env.subst('$PART_VERSION'))
+    return common.g_engine._part_manager._from_env(env).Version
 
 def get_part_short_version(env):
-    return version.version(env.subst('$PART_SHORT_VERSION'))
+    return common.g_engine._part_manager._from_env(env).ShortVersion
 
 
 

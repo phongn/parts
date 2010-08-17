@@ -80,7 +80,10 @@ def _ToolChain(env,chainlist):
             
         # apply the tool to the enviroment
         env['CONFIGURED_TOOLS'].append(t[0])
-        env.Tool(t[0])
+        tmp=SCons.Tool.Tool(t[0],toolpath=env['toolpath'])
+        #env.Tool(t[0])
+        env['_BUILD_CONTEXT_FILES'].add(tmp.generate.func_code.co_filename)
+        tmp(env)
 
 def tool_converter(str_val, raw_val):
     if common.is_string(raw_val):

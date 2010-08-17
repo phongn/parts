@@ -1,6 +1,7 @@
 import common
 import SCons.Script
 import reporter
+import thread
 
 class map_parts_alias:
     '''
@@ -20,10 +21,8 @@ class map_parts_alias:
         #self.value=value
     def __call__(self):
         
-        alias=self.env['ALIAS']
-        def_env=SCons.Script.DefaultEnvironment()
-
-        dlst=def_env['PART_INFO'][alias]['DEPENDSON']
+        pobj=common.g_engine._part_manager._from_env(self.env)
+        dlst=pobj.Depends
         flist=[]
         flist2=[]
         for d in dlst:
@@ -31,14 +30,14 @@ class map_parts_alias:
             val=d.resolve_alias(self.env)
             if val == "":
                 continue
-            denv=def_env['PART_INFO'][val]['ENV']
+            denv=pobj.Env
             flist.append(denv.subst('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
             flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
         #the build alias
-        build_alias='_${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+        build_alias='_${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
         ## this one might help SCons scale better with larger -j values
         #the install alias
-        install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+        install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
         # we map the build alias to the dependent SDK aliases
         self.env.Alias(build_alias,flist)
         # we map the install alias to the dependent INSTALL aliases
@@ -49,11 +48,12 @@ def full_parts_depends_list(env):
     ''' make a full depends list ( internal and non internal) for the given Env
     We will probally want to refactor some of this into state in def_env later
     '''
-    alias=env['ALIAS']
-    def_env=SCons.Script.DefaultEnvironment()
-    cache_tmp=def_env['PART_INFO'][alias].get('FULL_DEPENDS',None)
+    
+    pobj=common.g_engine._part_manager._from_env(env)
+    
+    cache_tmp=pobj.FullDepends
     if cache_tmp is None:
-        dlst=def_env['PART_INFO'][alias]['DEPENDSON']
+        dlst=pobj.Depends
         flst=[]
         for d in dlst:
             val=d.resolve_alias(env)
@@ -61,10 +61,10 @@ def full_parts_depends_list(env):
                 continue
             flst.append(val)
             
-            tmp_env=def_env['PART_INFO'][val]['ENV']
+            tmp_env=common.g_engine._part_manager._from_alias(val).env
             tmp=full_parts_depends_list(tmp_env)
             flst.extend(tmp)
-            def_env['PART_INFO'][alias]['FULL_DEPENDS']=flst
+            pobj.set_full_depends(flst)
     else:
         flst=cache_tmp
     return flst
@@ -76,10 +76,11 @@ def gen_rpath_link(alias):
     component, Not what this component would depend on
     '''
     import mappers
-    def_env=SCons.Script.DefaultEnvironment()
-    pinfo=def_env['PART_INFO'][alias]
-    dlst=pinfo['DEPENDSON']
-    env=pinfo['ENV']
+    
+    pobj=common.g_engine._part_manager._from_alias(alias)
+    
+    dlst=pobj.DependsOn
+    env=pobj.Env
     rplst=[]
 
     # setup the current alias case 
@@ -87,21 +88,22 @@ def gen_rpath_link(alias):
     # not what it dependents depend on which is what we need for the 
     # rpath-link case
     # get the libpath for this component
-    plist=mappers.sub_lst(env,env.get('LIBPATH',[]),def_env)
+    plist=mappers.sub_lst(env,env.get('LIBPATH',[]),thread.get_ident())
     for p in plist:
         rp='-Wl,-rpath-link='+env.Dir(p).path
         common.append_unique(rplst,rp)
                     
     # setup everything that we depend on that we may not have added yet
+    
     for d in dlst:
         d_alias=d.resolve_alias(env)
-        if d_alias == '':
+        if d_alias == '' or d_alias is None:
             reporter.report_warning("Part name ["+d.name+"] is not defined for mapping RPATH data",
                                         print_once=True,
                                         )
             continue
         try:
-            rtmp=def_env['PART_INFO'][d_alias]['RLINK_CACHE']
+            rtmp=common.g_engine._part_manager._from_alias(d_alias).cache['rlink']
             # add saved data
             for i in rtmp:
                 common.append_unique(rplst,i)
@@ -110,7 +112,7 @@ def gen_rpath_link(alias):
             for i in rtmp:
                 common.append_unique(rplst,i)
     # data to cache for any component that depend on this component
-    pinfo['RLINK_CACHE']=rplst # add this case to the cache
+    pobj._cache['rlink']=rplst # add this case to the cache
     return rplst
     
 
@@ -123,9 +125,7 @@ class map_rpath_link_part:
         
     def __call__(self):
         if self.env['AUTO_RPATH']==True:
-            def_env=SCons.Script.DefaultEnvironment()
-            alias=self.env['ALIAS']
-            rplst=gen_rpath_link(alias)
+            rplst=gen_rpath_link(self.env['PART_ALIAS'])
             self.env.AppendUnique(LINKFLAGS=rplst,delete_existing=True)
 
 
@@ -140,20 +140,20 @@ class map_rpath_part:
         if self.env['AUTO_RPATH']==True:
             import mappers
             rlst=self.env.get('RPATH',[])
-            def_env=SCons.Script.DefaultEnvironment()
+            
             alias=self.env['ALIAS']
-            #print alias
-            dlst=def_env['PART_INFO'][alias]['DEPENDSON']
+            pobj=common.g_engine._part_manager._from_alias(alias)
+            dlst=pobj.Depends
             if self.add_self==True:
-                temp=self.env.Component(def_env['PART_INFO'][alias]['NAME'],
-                self.env.subst(str(def_env['PART_INFO'][alias]['VERSION'])))
-                dlst=[temp]+dlst #################### need to fix this for linux
-            #print "Start",self.env['ALIAS'],rplst
+                temp=self.env.Component(pobj.Name,
+                self.env.subst(str(pobj.Version)))
+                dlst=[temp]+dlst 
+            
             for i in dlst:
                 val=self.env.subst(i.alias_mapping_string())
                 if val == "":
                     continue
-                plist=mappers.sub_lst(self.env,["${PARTS('"+val+"','LIBPATH',True)}"],def_env)
+                plist=mappers.sub_lst(self.env,["${PARTS('"+val+"','LIBPATH',True)}"],thread.get_ident())
                 for p in plist:
                     r=self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir('$INSTALL_LIB').path,self.env.Dir('$INSTALL_BIN').path)+'\'')
                     #r=relpath(self.env.Dir(p).path,self.env.Dir('$OUT_BIN').path)
@@ -164,6 +164,19 @@ class map_rpath_part:
             self.env.Replace(RPATH=rlst)
             #print 'RPATH LIST',self.env['RPATH']
           
+class map_build_context:
+    ''' 
+        This maps all build info related files we might need to help detect quickly
+    if the build context has changed from the last run.
+    '''
+    def __init__(self,pobj):
+        self.pobj=pobj
+        
+    def __call__(self):
+        self.pobj._add_build_context_files(self.pobj.Env['_BUILD_CONTEXT_FILES'])
+        self.pobj._add_config_context_files(self.pobj.Env['_CONFIG_CONTEXT'])
+        
+        
 # add configuartion varaible
 common.AddBoolVariable('AUTO_RPATH',True,'Controls if RPath values are automatically added to path')
 

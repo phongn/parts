@@ -28,7 +28,7 @@ def generate(env):#, version=None, abi=None, topdir=None, verbose=0):
         
     vssdk.MergeShellEnv(env)
 
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('vssdk',env['VSSDK']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('vssdk',env['VSSDK']['VERSION'],env['TARGET_PLATFORM']))
 
 
 def exists (env):

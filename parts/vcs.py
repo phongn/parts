@@ -13,6 +13,58 @@ import reporter
 SCons.Script.Alias('extract_sources')
 
 
+ERROR_STR= """Error removing %(path)s, %(error)s """
+
+def rmgeneric(path, __func__):
+
+    try:
+        __func__(path)
+        print 'Removed ', path
+    except OSError, (errno, strerror):
+        print ERROR_STR % {'path' : path, 'error': strerror }
+            
+def removeall(path):
+
+    if not os.path.isdir(path):
+        return
+    
+    files=os.listdir(path)
+
+    for x in files:
+        fullpath=os.path.join(path, x)
+        if os.path.isfile(fullpath):
+            f=os.remove
+            rmgeneric(fullpath, f)
+        elif os.path.isdir(fullpath):
+            removeall(fullpath)
+            f=os.rmdir
+            rmgeneric(fullpath, f)
+
+
+def remove_vcs(path):
+    
+    if not os.path.isdir(path):
+        return
+    
+    files=os.listdir(path)
+
+    for x in files:
+        fullpath=os.path.join(path, x)
+        if os.path.isfile(fullpath):
+            try:
+                os.remove(fullpath)
+            except OSError, (errno, strerror):
+                reporter.report_error('Failed removing %s, %s' % {'path' : path, 'error': strerror },exit=False)
+        elif os.path.isdir(fullpath):
+            removeall(fullpath)
+            try:
+                os.rmdir(fullpath)
+            except OSError, (errno, strerror):
+                reporter.report_error('Failed removing %s, %s'% {'path' : path, 'error': strerror },exit=False)
+            
+
+
+
 def process_vcs(env,vcs_type,part_file):
 #output=env["PART_LOG_MAPPER"]
     # see if we have a VCS_type to process
@@ -53,7 +105,7 @@ def SysCall (cmdStr):
     
     #currentDir = os.getcwd ()
     #print currentDir + '> ' + cmdStr
-    reporter.print_msg(cmdStr)
+    print cmdStr
     sys.stdout.flush ()
     try: 
         proc = subprocess.Popen (cmdStr, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -64,12 +116,13 @@ def SysCall (cmdStr):
         ret = proc.returncode
         return ret
         if ret:
-            reporter.report_error('The command "' +cmdStr + '" returned ' + str (ret))
+            print 'Error: The command "' + cmdStr + '" returned ' + str (ret)
+            return False
         else:
             return True
     except OSError:
-        reporter.report_error('Error: exception encountered') #, sys.exc_type, sys.exc_value)
-        
+        print 'Error: exception encountered' #, sys.exc_type, sys.exc_value
+        return False
 
 class vcs:
     ''' 
@@ -114,11 +167,20 @@ class vcs:
     def Update(self,env):
         output=env["PART_LOG_MAPPER"]
         id=output.TaskStart("Updating Sources\n")
-        cmd=self.update_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
+        checkoutpath=env.Dir(env.subst('$CHECK_OUT_DIR')).path
+        cmd=self.update_cmd(env,checkoutpath)
         ret=SysCall(cmd)
+        # if failed.. try to recover
         if ret:
-            # we had some failure
-            reporter.report_error('The command "' + cmd + '" returned [ ' + str (ret)+' ]')
+            reporter.report_warning('The command "' + cmd + '" returned [ ' + str (ret)+' ], Trying to recover from error...')
+            print "Removing", checkoutpath
+            self.clean_step(checkoutpath)
+            remove_vcs(checkoutpath)
+            ret=self.CheckOut(env)
+        # we tried but it failed so error and exit.
+            if ret:
+                # we had some failure
+                reporter.report_error('Recovery failed! You may have to manually remove %s'%(checkoutpath))
         #all ends well
         output.TaskEnd(id,ret)
         return ret
@@ -127,11 +189,18 @@ class vcs:
         output=env["PART_LOG_MAPPER"]
         alias=env['PART_ALIAS']
         id=output.TaskStart("Checking out Sources for %s\n"%(alias))
-        cmd=self.checkout_cmd(env,env.Dir(env.subst('$CHECK_OUT_DIR')).path)
+        checkoutpath=env.Dir(env.subst('$CHECK_OUT_DIR')).path
+        cmd=self.checkout_cmd(env,checkoutpath)
         ret=SysCall(cmd)
         if ret:
-            # we had some failure
-            reporter.report_error('The command "' + cmd + '" returned [ ' + str (ret)+' ]')
+            reporter.report_warning('The command "' + cmd + '" returned [ ' + str (ret)+' ], Trying to recover from error...')
+            print "Removing", checkoutpath
+            self.clean_step(checkoutpath)
+            remove_vcs(checkoutpath)
+            ret=self.CheckOut(env)
+            if ret:
+                # we had some failure
+                reporter.report_error('Recovery failed! You may have to manually remove %s'%(checkoutpath))
         #all ends well
         output.TaskEnd(id,ret)
         return ret
@@ -141,6 +210,7 @@ class vcs:
         return ret
         
     def FileExists(self,env,file):
+        
         return os.path.exists(self.PartFileName(env,file))
 
     def NeedsUpdate(self,env):
@@ -155,6 +225,10 @@ class vcs:
                 TYPE='unknown',
                 CHECKOUT_DIR=''
             ) 
+    def AllowParallelAction(self):
+        # change this latter to get value of 
+        # some policy/variable value
+        return True
     
         
 
@@ -206,8 +280,7 @@ class vcs_svn(vcs):
     def NeedsUpdate(self,env):
         opt1=env.get('UPDATE_FROM_SVN',False)
         opt2=env.get('UPDATE_'+env['PART_ALIAS'].upper(),False)
-        opt3=env.get('UPDATE_'+env['SHORT_ALIAS'].upper(),False)
-        return opt1==True or opt2==True or opt3==True or vcs.NeedsUpdate(self,env)
+        return opt1==True or opt2==True or vcs.NeedsUpdate(self,env)
     
     def UpdateEnv(self,env):
         ''' 
@@ -253,7 +326,7 @@ class vcs_Prebuilts(vcs):
         # we don't want to do anything for PRE-BUILTS!
         out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         p=os.path.normpath(self.full_path(env))
-        reporter.print_msg( 'Updating Prebuilts from ' + p + ' to ' + out_dir)
+        print 'Updating Prebuilts from ' + p + ' to ' + out_dir
         try:
             shutil.rmtree (out_dir) 
             shutil.copytree (p, out_dir)
@@ -267,7 +340,7 @@ class vcs_Prebuilts(vcs):
         #print 'Copying Prebuilts from ' + self.default_server(env)+self.repos + ' to ' + out_dir
         out_dir=env.Dir(env.subst('$CHECK_OUT_DIR')).path
         p=os.path.normpath(self.full_path(env))
-        reporter.print_msg( 'Copying Prebuilts from ' + p + ' to ' + out_dir)
+        print 'Copying Prebuilts from ' + p + ' to ' + out_dir
         try:
             shutil.copytree (p, out_dir)
         except Exception,e:
@@ -325,12 +398,10 @@ class VcsUsePriorPart(vcs):
         def_env=SCons.Script.DefaultEnvironment()
         alias=env.subst(env.get('ALIAS_PREFIX','')+self.alias+env.get('ALIAS_POSTFIX',''))
         # clone???
+        pobj=common.g_engine._part_manager._from_env(env)
+        
         try:
-            envt=def_env['PART_INFO'][alias]['ENV']
-        except KeyError:
-            raise SCons.Errors.UserError('Part %s was not defined before Part %s'%(alias,env['SHORT_ALIAS']))
-        try:
-            vcsobj=envt['VCS']
+            vcsobj=pobj.vcs#envt['VCS']
             env['VCS']=vcsobj
             env['VCS']['ORGINAL_TYPE']=env['VCS']['TYPE']
             env['VCS']['TYPE']='UsePriorPart'

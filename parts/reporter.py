@@ -6,6 +6,7 @@ import re
 import os
 import logger
 import traceback
+import inspect,copy
 import string
 import SCons.Script
 # not ideal...
@@ -24,18 +25,22 @@ class streamer:
     def flush(self):
         pass
 
+test_search=0
+test_match=1
+
 warning_tests = [
-    re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE)
+    (test_search,re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE))
     ]
 
 error_tests =[
-    re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)
+    (test_search,re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)),
+    (test_match,re.compile('fail$',re.IGNORECASE))
     ]
 
 message_tests =[
-    re.compile('(scons?\s?:)',re.IGNORECASE),
-    re.compile('(parts?\s?:)',re.IGNORECASE),
-    re.compile('(Install file?\s?:)'),
+    (test_search,re.compile('(scons?\s?:)',re.IGNORECASE)),
+    (test_search,re.compile('(parts?\s?:)',re.IGNORECASE)),
+    (test_search,re.compile('(Install file?\s?:)')),
     ]
 
 DEFAULT_STREAM=0
@@ -44,6 +49,11 @@ MESSAGE_STREAM=2
 WARNING_STREAM=3
 ERROR_STREAM=4
 
+def do_test(test,str):
+    if test[0]==test_search:
+        return test[1].search(str)
+    elif test[0]==test_match:
+        return test[1].match(str)
 
 def remap(s,org_stream):
     global last_type
@@ -58,19 +68,19 @@ def remap(s,org_stream):
 
 def is_warning(str):
     for test in warning_tests:
-        if test.search(str):
+        if do_test(test,str):
             return True
     return False
 
 def is_error(str):
     for test in error_tests:
-        if test.search(str):
+        if do_test(test,str):
             return True
     return False
 
 def is_message(str):
     for test in message_tests:
-        if test.search(str):
+        if do_test(test,str):
             return True
     return False
 
@@ -79,16 +89,24 @@ class reporter:
     def __init__(self,logger,silent,verbose):
 
         # so we can process any text that is being outputted by some other means
-        sys.stdout=streamer(self.stdout)
-        sys.stderr=streamer(self.stderr)        
+        use_color=SCons.Script.GetOption('use_color')
+        trace=SCons.Script.GetOption('trace')
         
-        tmp=SCons.Script.GetOption('use_color')
-        
-        if tmp is not None and tmp.has_key('defaults') and \
+        if use_color is not None and use_color.has_key('defaults') and \
             (os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False):
-                tmp=None
+                use_color=None
+        if trace == []:
+            global trace_msg
+            def empty():
+                pass
+            trace_msg=empty
+
+        # remap the streams.  (may want to delay even more...)
+        sys.stdout=streamer(self.stdout)
+        sys.stderr=streamer(self.stderr)
         
-        self.console=console.Console(tmp)
+        # setup the rest of the stuff    
+        self.console=console.Console(use_color)
         self.logger=logger
         self.already_printed = set()
         self.silent=silent
@@ -163,14 +181,16 @@ class reporter:
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.verbose:
-                s='Parts: Verbose: ['+tmp[0]+"] "+msg
+                s='Verbose: ['+tmp[0]+"] "+msg
                 self.stdverbose(s)
                 break
 
     def trace_msg(self,catagory,msg):
-        if self.trace:
-            s='Trace: '+catagory+msg    
-            self.stdtrace(s)
+        tmp=common.make_list(catagory)
+        for c in tmp:
+            if c in self.trace:
+                s='Trace: '+catagory+msg    
+                self.stdtrace(s)
             
     def user_warning(self,env,msg,print_once=False,stackframe=None,show_stack=True):
         if env.get("PART_NAME") is None:
@@ -318,7 +338,6 @@ def verbose_msg(catagory,*lst,**kw):
                 break        
         
 def trace_msg(*lst,**kw):
-    return
     msg=map(str,lst)
     g_rpter.stdtrace(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 
@@ -366,7 +385,7 @@ def user_verbose_env(env,catagory,*lst,**kw):
     g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 
 
-# stuff to help with reporting debug info
+## stuff to help with reporting debug info
 def ResetPartStackFrameInfo():
     if len(common.g_part_frame) > 0:
         common.g_part_frame.pop(0)

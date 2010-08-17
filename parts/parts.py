@@ -7,6 +7,7 @@ import vcs
 import part_logger
 import packaging
 import copy
+import dependson
 
 # these imports add stuff we will need to export to the parts file.
 import platform_info 
@@ -18,706 +19,1303 @@ import sdk
 import reporter
 from pattern import Pattern
 
+import pprint
 
-##'''
-##'cpgl2_test': { 'ALIAS': 'cpgl2_test',
-##                'CCFLAGS': [],
-##                'CFLAGS': [],
-##                'CPPDEFINES': ["${PARTID('cpgl','2.*','CPPDEFINES',True)}"],
-##                'CPPPATH': ["${PARTID('cpgl','2.*','CPPPATH',True)}"],
-##                'CREATE_SDK': [ ( 'InstallItem',
-##                                  [ '$INSTALL_BIN',
-##                                    <parts.common._make_rel instance at 0x03D18DC8>,
-##                                    '',
-##                                    '',
-##                                    False,
-##                                    False]),
-##                                ( 'InstallItem',
-##                                  [ '$INSTALL_BIN',
-##                                    <parts.common._make_rel instance at 0x03D1C6E8>,
-##                                    '',
-##                                    '',
-##                                    False,
-##                                    False])],
-##                'CXXFLAGS': [],
-##                'DEPENDSON': [ <<pieces>dependon.component instance at 0x03D0F8A0>],
-##                'ENV': <SCons.Script.SConscript.SConsEnvironment instance at 0x037AA648>,
-##                'EXPORTED_BINS': [],
-##                'EXPORTED_HEADERS': [],
-##                'EXPORTED_LIBS': [],
-##                'FILE': <SCons.Node.FS.File instance at 0x03D0F940>,
-##                'LIBPATH': ["${PARTID('cpgl','2.*','LIBPATH',True)}"],
-##                'LIBS': ["${PARTID('cpgl','2.*','LIBS',True)}"],
-##                'LINKFLAGS': [],
-##                'MAKES_SDK': True,
-##                'NAME': 'cpgl_test',
-##                'PARENT_ALIAS': None,
-##                'PARENT_NAME': None,
-##                'ROOT_ALIAS': 'cpgl2_test',
-##                'ROOT_NAME': "${PARTNAME('cpgl2_test')}",
-##                'SDK_FILE': <SCons.Node.FS.File instance at 0x03D138C8>,
-##                'SHORT_ALIAS': 'cpgl2_test',
-##                'SHORT_NAME': 'cpgl_test',
-##                'SHORT_VERSION': '2.0',
-##                'TARGET_FILES': [ <SCons.Node.FS.File instance at 0x03D15440>,
-##                                  <SCons.Node.FS.File instance at 0x03D15648>,
-##                                  <SCons.Node.FS.File instance at 0x03D181C0>,
-##                                  <SCons.Node.FS.Entry instance at 0x03D18B70>,
-##                                  <SCons.Node.FS.File instance at 0x03D1C440>,
-##                                  <SCons.Node.FS.Entry instance at 0x03D1C760>,
-##                                  <SCons.Node.FS.File instance at 0x03D138C8>,
-##                                  <SCons.Node.FS.File instance at 0x03D13670>],
-##                'VERSION': <parts.version.version instance at 0x03D139E0>},
-##'''
 
-g_parts={} # generally only root/topp level parts
-
-class Part_t:
-    def __init__(self,alias,parts_file,mode=[],vcs_type=None,default=False,
+class Part_t(object):
+    def __init__(self,alias,file,mode=[],vcs_t=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,
             **kw):
+   
+        ## stuff for creating an environment 
+        # need to store this so we can pass to an sub-part
+        self.__append=append #This is stuff we want to append to the environment
+        self.__prepend=prepend # this is stuff we would want to prepend
+        self.__kw=kw # this is stuff we want to replace        
+        self.__mode=common.make_list(mode)
+        #version number.. ideally this maps to root version only
+        # but in some cases we need it in Parts that are not fully defined yet
+        self.__version=version.version(kw.get('version','0.0.0'))
+        ## sdk stuff
+        # do we want to create the sdk or skip it
+        self.__create_sdk=create_sdk
+        # This is the data for the SDK file we will want to make
+        self.__create_sdk_data=[] 
+        # the file that are copied in to the SDK
+        self.__sdk_files=[] 
+        # the name of the SDK file we will make.. if any
+        self.__sdk_file=None 
+        
+        ##packaging stuff
+        # what package group to add this to
+        self.__package_group=package_group
+        
+        ## state stuff
+        self.__set_as_default_target=default # do we set this as a default build target
+        
+        # the part has been fully processed or not
+        self.__Processed=False
+        # the file has been read
+        self.__is_read=kw.get('__is_read',False)
+        # this is the style/format the part file used
+        self.__format=None
+        
+        # everything we dependon, implict and explict, 
+        # contain component objects.. change to part and component mix latter??
+        self.__full_dependson=[] 
+        self.__dependson=[] # has to be a list as the order matters for linking
+        # these are Parts that this Part uses, but may not depend on.
+        # we will make sure these are processed before this Part is processed
+        # used primarly for classic formats
+        # otherwise the Depends on logic will try to verify these object for possible
+        # matches, else error. ie IF the part name matches the rest of it has to
+        # dependons staements with no matching name fall trhought the "global"
+        # set of Parts to match
+        # ideally stored only on root_parts
+        if self.__kw.get('parent_part',None) is None:
+            self.__uses=common.make_list(kw.get("requires",[]))
+        
+        # data we will cache later
+        self.__cache={}
+        # the sections we can define in a part
+        self.__sections={}
+        # the environment object for the Part
+        self.__env=None 
+        self.__env_exports={}
+        
+        ##basic data
+        # the alias.. such as 
+        self.__alias=alias
+        self.__short_alias=alias
+        #The part name.. parent.name+.+short_name
+        self.__name=kw.get('name',None)
+        # the short name.. or exact value given to this part as the name
+        self.__short_name=None
+        # the parent part object
+        self.__parent=None
+        # the top level part object
+        self.__root=None
+        # any subparts to this Part
+        self.__sub_parts={}
+        
+        ## collection of data we make during the build
+        
+        # this is the data we need to have export to other components            
+        self.__exports={} 
+        
+        # data the we build.. don't need order only that it happens
+        self.__part_nodes=set() # any node that belongs to this part to build or check for
+        self.__target_files=set() # any $TARGET that is built are part of this component
+        self.__installed_files=[] # the file that are installed for this Part
+        # files that effect the possible good state of this build context 
+        # of anything this Part might fix
+        self.__build_context_files=set() 
+        self.__config_context={}
+        # all the aliases that map to this part object
+        # such as install::name like stuff or utest::name_version
+        self.__alias_set=set() 
 
-##        # set up state of aliases so we can make the correct key
-##        def_env=SCons.Script.DefaultEnvironment()
-##        parent_alias=def_env.get('DEFINING_PART',None)
-##        
-##        sdk_file=[None]
-##        if parent_alias != None:
-##            alias=parent_alias+'.'+alias
-                        
-        self.alias = alias
-        
-        self.file=parts_file # the Parts file to read in
-        self.mode=mode # special mode value used by part file to configure itself
-        self.vcs=vcs_type # how we can get the source, None is local
-        self.set_as_default_target=default # do we set this as a default build target
-        
-        self.append=append
-        self.prepend=prepend
-        self.create_sdk=create_sdk
-        self.package_groups=package_groups
-        self.kw=kw        
-        
-        self.Processed=False
-        
-        g_parts.append(self)
-        
-    def Process(self):
-        Part(**self.stuff)
-        
-    def store():
-        pass
+        # how we can get the source, None is local
+        self.__vcs=vcs_t 
+        # the file for this part, if any
+        self.__file=file
+        # the src_path we need to make sure SCons as no issues when loading the Part file
+        self.__src_path=None
+        # this is how we can depend on this object
+        self.__platform_match=None
+        self.__is_setup=False
         
 
-def jj(): #delete this.. using to collapse section in editor
-    pass
-##class Part_t:
-##    def __init__(self,alias,parts_file,mode=[],vcs_type=None,default=False,
-##                    append={},prepend={},create_sdk=True,parent_part=None,**kw):
-##                    
-##        self.vcs=vcs_type # how we can get the source, None is local
-##        self.set_as_default_target=default # do we set this as a default build target
-##        self.mode=mode # special mode value used by part file to configure itself
-##        self.file=parts_file # the Parts file to read in
-##        self.create_sdk=create_sdk
-##        self.append=append
-##        self.prepend=append
-##        self.parent=parent_part
-##        self.kw=kw        
-##        g_parts.append(self)
-##        
-##        # other core setup
-##           
-##        # the path and location to the sub .scons file
-##        ## The Alias...
-##
-##        # setup which part is being defined.
-##        # we hold old state as needed. We create the name based on the
-##        # currently defined Part + .<new part name>
-##        if parent_alias!=None:
-##            # existing part is being define, this subpart is defines as
-##            # parentpart.subpart
-##            self.alias=parent_alias+'.'+short_alias 
-##        else:
-##            self.alias=short_alias
-##
-####        #setup state ####needed?
-####        def_env['DEFINING_PART']=alias
-####    
-####        # Part Alias
-####        env['ALIAS']=self.alias
-####        env['PART_ALIAS']=self.alias
-##        # The Alias Parent
-##        self.parent_alias=parent_alias
-##        # The Alias Short Form
-##        self.short_alias=alias
-##
+    # see if we can remove the env arg latter
+    def _setup_(self,_env=None):
+        
+        ss=time.time()
+        # is this core like the iapat object?
+        if _env is None:
+            self.__env=core.generate_config(
+                        self.__prepend.copy(),
+                        self.__append.copy(),
+                        self.__kw.copy()
+                    )
+        else:
+            self.__env=_env
+        #print "env time",time.time()-ss
+        # new way to get env???
+        #self.env=runtime_context.Environment()
+        
+        
+        #basic data
+        ##we need to check if this is a sub Parts 
+        # check for kw for parent_part key
+        self.__parent=self.__kw.get('parent_part',None)         
+        if self.__parent is None:
+            # this is the parent so we apply the global Prefix add Postfix values
+            self.__alias=self.__env.subst('${ALIAS_PREFIX}%s${ALIAS_POSTFIX}'%self.__short_alias)
+            self.__root=self
+            self.__version=version.version('0.0.0')
+        else:            
+            #we have a parent
+            self.__alias=self.__parent.Alias+'.'+self.__short_alias
+            self.__root=self.__parent.Root
+            self.__parent.__sub_parts[self.__short_alias]=self
+        
+        ## resolve the File name for the Part we will load latter
+        self.__make_part_env()
+        if self.__parent is None:
+            dir_tmp=self.__env.Dir('#')
+        else:
+            dir_tmp=self.__env.Dir(self.__parent.__src_path)
+        if self.__vcs is None:
+            # we have no vcs object.. so we take file name as is
+            self.__file=dir_tmp.File(self.__env.subst(self.__file)) # the Parts file to read in
+        else:
+            # we have a vcs object.. ask vcs object for resolved file name
+            self.__vcs.UpdateEnv(self.__env) # update env with vcs level defines
+            self.__file=dir_tmp.File(self.__vcs.PartFileName(self.__env,self.__env.subst(self.__file)))
+        
+        # the src_path we need to make sure SCons as no issues when loading the Part file
+        self.__src_path=os.path.split(self.__file.srcnode().abspath)[0]        
+        
+        ## file info
+        self.__env['PART_FILE']=self.__file
+        self.__env['SRC_DIR']=self.__env['PART_DIR']=self.__src_path
+        
+        ## add information on how to map this Parts
+        ## allow us to make a part platform independent in some way
+        self.__platform_match=copy.copy(self.__env['TARGET_PLATFORM'])
+        if self.__kw.get('platform_independent ',self.__kw.get('platform_indepenent',False)):
+            self.__platform_match=platform_info.SystemPlatform('any','any')
+        if self.__kw.get('os_independent ',self.__kw.get('os_indepenent',False)):
+            self.__platform_match.OS='any'
+        if self.__kw.get('architecture_independent ',self.__kw.get('architecture_indepenent',False)):
+            self.__platform_match.ARCH='any'
+        self.__is_setup=True
+        
+    
+    def _update(self,alias=None,name=None,Version=None,file=None,mode=[],vcs_t=None,default=False,
+            append={},prepend={},create_sdk=True,package_group=None,
+            **kw):
+        '''
+        The logic here is to only add value here until the component is setup
+        Once it is setup we don't want any value to overide existing values. 
+        This mean the Part from the user point of view is read-only.
+        .. need to refactor more ...
+        '''
+        if self.__is_setup == False:
+            self.__alias=alias
+            self.__name=name
+            self.__version=version.version(Version)
+            self.__file=file
+            self.__mode=common.make_list(mode)
+            self.__vcs=vcs_t
+            self.__set_as_default_target=default
+            self.__append=append
+            self.__prepend=prepend
+            self.__create_sdk=create_sdk
+            self.__kw=kw
+            self.__package_group=package_group
+        elif alias==None and name==None and version==None and file==None\
+            and file==None and mode==[] and vcs_type==None and default==False\
+            and append=={} and prepend == {} and create_sdk==True and package_group==None:
+            pass
+        else:
+            reporter.report_error('Part alias = "%s" already has been setup.'%(self.__alias))
+    
+    def _merge(self,otherobj):
+        #turn other object in to this guy the best we can
+        otherobj.__dict__=self.__dict__    
+    
+    # accessors that are more for Parts developer
+    def _set_version(self,version):
+        if self._is_root:
+            self.__version = version
+        else:
+            self.__root._set_version(version)
+            
+    def _set_name(self,name,force_parent=None):
+        if force_parent is not None:
+            self.__name=force_parent+'.'+name
+        elif self.__parent is not None:
+            self.__name=self.__parent.Name+'.'+name
+        elif self.__parent is None:
+            self.__name=name
+        self.__short_name=name
+        common.g_engine._part_manager.add_name_alias(self.__name,self.__alias)
+            
+    def _add_build_context_files(self,lst):
+        ''' 
+        Add files that define part of this components build_context
+        '''
+        
+        if self._is_root:
+            self.__build_context_files.update(lst)
+        else:
+            self.__root._add_build_context_files(lst)
+    
+    def _add_config_context_files(self,lst):
+        ''' 
+        Add information needed for seeing in the configuration files are different
+        In this case we want to store the tool, and the file that was loaded for
+        that tool, if there was any
+        '''
+        if self._is_root:
+            self.__config_context.update(lst)
+        else:
+            self.__root._add_config_context_files(lst)
+            
+    def _uses_part(self,obj):
+        ''' return True if the part passed in is used by this parts'''
+        if self._is_root:
+            # need to test that this works as expected
+            return obj in self._uses
+        return self.__root._uses_part(obj)
+            
+    @property
+    def _uses(self):
+        if self._is_root:
+            try:
+                return self.__cache['uses']
+            except KeyError:
+                tmp=[]
+                for p in self.__uses:
+                    if common.is_string(p):
+                        # assume this is an Alias
+                        p=common.g_engine._part_manager._from_alias(p)
+                        if p is None:
+                            reporter.report_error('Cannot use non existing Part "%s"'%p)
+                    elif isinstance(p,Part_t):
+                        #just a Validation check
+                        pass
+                    else:
+                        reporter.report_error('Inavlid type for a Part to dependon "%s"'%(type(p)))
+                    tmp.append(p)
+                self.__cache['uses']=tmp
+            return self.__cache['uses']
+        else:
+            return self.__root._uses
+                    
+    @property
+    def _file(self):
+        return self.__file
+    
+    @property
+    def _sdk_file(self):
+        return self.__sdk_file
+    
+    @property
+    def _sdk_files(self):
+        return self.__sdk_files
+        
+    @property
+    def _target_files(self):
+        return self.__target_files
+    
+    @property
+    def _part_nodes(self):
+        return self.__part_nodes
+    
+    @property
+    def _part_nodes(self):
+        return self.__part_nodes
+    
+    @property
+    def _installed_files(self):
+        return self.__installed_files
+    
+    @property
+    def _exports(self):
+        return self.__exports
+    
+    @property
+    def _env_exports(self):
+        '''This is for backward compatiblity??'''
+        return self.__env_exports
+    
+    @property
+    def _cache(self):
+        return self.__cache
+    
+    @property
+    def _platform_match(self):
+        return self.__platform_match
+
+    @property
+    def _kw(self):
+        return self.__kw
+
+    @property
+    def _append(self):
+        return self.__append
+
+    @property
+    def _prepend(self):
+        return self.__prepend
+
+    @property
+    def _package_group(self):
+        return self.__package_group     
+    
+    @property
+    def _create_sdk_data(self):
+        return self.__create_sdk_data
+
+    @property
+    def _mode(self):
+        return self.__mode
+      
+    def _set_depends(self,val):
+        """Get the return all(indirect and direct) Parts that this part depends on."""
+        common.extend_if_absent(self.__dependson,val)
+        
+    def _set_full_depends(self,val):
+        """Get the return all(indirect and direct) Parts that this part depends on."""
+        self.__full_dependson=val
+        
+    def _set_part_format(self,s):
+        '''
+            currently set to new or classic.. need to clean up latter to something better
+        '''
+        self.__format=s
+        
+        
+    def _get_part_format(self):
+        return self.__format
+    
+    @property
+    def _is_classic_format(self):
+        return self.__format=='classic' or self.__format is None
+    
+    @property
+    def _is_root(self):
+        return self.__alias == self.__root.Alias
+    
+    @property
+    def _is_read(self):
+        return self.__is_read
+        
+    # some properties ( public use)
+    @property
+    def Alias(self):
+        """Get the current alias."""
+        return self.__alias
+    
+    @property
+    def alias(self):
+        """for backwards compatibility."""
+        return self.__alias
+    
+    @property
+    def Version(self):
+        """Get the current version."""
+        if self.__parent is None:
+            return self.__version
+        return self.__root.Version
+    
+    @property
+    def ShortVersion(self):
+        """Get the current short version."""
+        return self.__root.__version.short_version_string()
+
+    @property
+    def Name(self):
+        """Get the current parent Part name."""
+        if self.__name is None:
+            return self.__alias
+        return self.__name
+
+    @property
+    def ShortName(self):
+        """Get the current parent Part name."""
+        if self.__short_name is None:
+            return self.__short_alias
+        return self.__short_name    
+    
+    @property
+    def ParentName(self):
+        """Get the current parent Part name."""
+        if self.__parent is None:
+            return None
+        return self.__parent.Name
+
+    @property
+    def RootName(self):
+        """Get the current root Part name."""
+        return self.__root.Name
+
+    @property
+    def SourcePath(self):
+        """Get the current parent Part source path."""
+        return self.__src_path
+    
+    def _source_path(self,path):
+        """Get the current parent Part source path."""
+        self.__env['SRC_DIR']=self.__env['PART_DIR']=self.__src_path=path
+        return self.__src_path
+
+    @property
+    def Depends(self):
+        """Get the local/direct Parts this part depends on."""
+        return self.__dependson
+
+    @property
+    def FullDepends(self):
+        """Get the return all(indirect and direct) Parts that this part depends on."""
+        return self.__full_dependson
+    
+    @property
+    def Env(self):
+        """get the default environment used with this Part"""
+        return self.__env
+    
+    @property
+    def Root(self):
+        """Get the current root Part."""
+        return self.__root
+
+    @property
+    def Parent(self):
+        """Get the current parent Part."""
+        return self.__parent
+    
+    def __make_part_env(self):
+        
+        # set alias
+        
+        self.__env['ALIAS']=self.__alias
+        self.__env['PART_ALIAS']=self.__alias
+        # The Alias Parent
+        #part_info['PARENT_ALIAS']=parent_alias
+        
+        # The Alias Short Form
+        self.__env['SHORT_ALIAS']=self.__short_alias
+        
+        ## logger and task spawners
+        spawn=self.__env['PART_SPAWNER']
+        self.__env['PART_LOG_MAPPER']=part_logger.part_logger(self.__env,reporter.g_rpter.console)
+        self.__env['SPAWN']=spawn(self.__env)
+        
+        
+        ## package logic ( as it is currently)
+        self.__env['PARTS_PACKAGE_GROUPS']=self.__package_group
+        if self.__package_group is not None: 
+            packaging.PackageGroup(self.__package_group,self.__alias)
+        
+
+        ## Setup the enviroment BUILD_DIR in the LIBPATH
+        # might need more.. to add as needed
+        libpath=['$BUILD_DIR']
+        self.__env.Append(LIBPATH=libpath)
+        
+        # setup the mode
+        self.__env['MODE']=self.__mode
+        
+        ##alias info
+        self.__env['PART_ROOT_ALIAS']=self.__root.Alias
+        if self.__parent:
+            self.__env['PART_PARENT_ALIAS']=self.__parent.Alias
+        else:
+            self.__env['PART_PARENT_ALIAS']=None
+        
+        ## name info
+        self.__env['PART_NAME']="${PARTNAME('"+self.__alias+"')}"
+        self.__env['PART_SHORT_NAME']="${PARTSHORTNAME('"+self.__alias+"')}"    
+        self.__env['PART_ROOT_NAME']="${PARTS('"+self.__root.__alias+"','Name')}"
+        if self.__parent is None:
+            self.__env['PART_PARENT_NAME']=None
+        else:
+            self.__env['PART_PARENT_NAME']="${PARTS('"+self.__parent.__alias+"','Name')}"
+
+        ## version info
+        self.__env['PART_VERSION']="${PARTS('"+self.__alias+"','Version')}"
+        self.__env['PART_SHORT_VERSION']="${PARTS('"+self.__alias+"','ShortVersion')}"
+        
+    
 ##        # some data we will use for our own DB file
 ##        if common.g_name_alias_map.has_key(alias) == False:
 ##            common.g_name_alias_map[alias]=set()
-##            
-##        #setup the root info
-##        #root_info=part_info
-##        #while root_info['PARENT_ALIAS'] != None:
-##            #root_info=def_env['PART_INFO'][root_info['PARENT_ALIAS']]
-##            #common.g_name_alias_map[alias].add(root_info['ALIAS'])
-##
-##        #the Alias Root
-##        self.root_alias=root_info['ALIAS']    
-##
-##        ## FILE STUFF
-##        if self.parts_file != None:
-##            # force subst to make sure funny path issues are handled
-##            self.parts_file=env.subst(self.parts_file)
-##    
-##            # do any checkout/copy/updates needed
-##            # update the parts_file location
-##            self.parts_file=vcs.process_vcs(env,vcs_type,parts_file)
-##
-##            # work around in Scons bug
-##            if self.parts_file[1] == ':' or self.parts_file[0]=='/':
-##                self.parts_file=env.File(self.parts_file)
-##            else:
-##                curr_path=env.Dir('.').srcnode().abspath
-##                slef.parts_file=env.File(os.path.join(curr_path,self.parts_file))
-##                #parts_file=env.Dir('.').srcnode().File(parts_file)
-##        
-##        #part_info['FILE']=parts_file
-##    
-##        ## The names..
-##        #the short name
-##        self.short_name=None
-##        #the Root name
-##        self.root_name="${PARTNAME('"+self.root_alias+"')}"
-##    
-##        if parent_alias==None:
-##            #The full name
-##            self.name=None
-##            #the Parent name
-##            self.parent_name=None
-##        
-##            # some default version info
-##            self.version=version.version('0.0.0')
-##            self.short_version='0.0'
-##        else:
-##            #The full name
-##            self.name="${PARTNAME('"+parent_alias+"')}.${PARTSHORTNAME('"+part_info['ALIAS']+"')}"
-##            #the Parent name
-##            self.parent_name="${PARTNAME('"+parent_alias+"')}"
-##            
-##            # some default version info
-##            self.version="${PARTS('"+root_info['ALIAS']+"','VERSION')}"
-##            self.short_version="${PARTS('"+root_info['ALIAS']+"','SHORT_VERSION')}"
-##
-##        #refernece to this env .. for better resolution later
-##        #part_info['ENV']=env
-##    
-##        #list of what we dependon 
-##        self.dependson=[]
-##    
-##        # some stuff for the SDK .. need to clean up latter
-##        self.exported_headers=[]
-##        self.EXPORTED_LIBS=[]
-##        self.EXPORTED_BINS=[]
-##
-##        #all the file that are outputted by a builder inside the part
-##        self.target_files=[]
-##    
-##        #def_env[name]=part_info
-##        #if def_env.has_key('PART_INFO')==False:
-##            #def_env['PART_INFO']={}
-##        #if def_env['PART_INFO'].has_key(alias):
-##            #rpt.part_warning(env,'Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
-##        #print 'Parts: Warning= Overriding predefined alias [',alias,'] file=[',def_env['PART_INFO'][alias]['FILE'],'] with data from part file=[',part_info['FILE'],']'
-##    
-##        
-##        
-##        
-##    
-##    def generate(self,env):
-##        
-##    def has_vcs(self):
-##        return self.vcs is not None
-##        
-##    def vcs(self)
-##        return self.vcs
-##    
-##    def installed_files(self,type=None):
-##        ret=filter(,self.installed_files)
-##        return self.installed_files
-##        
-##    def exported_items(self):
-##        #returns list of item type exported, such as headers, flags
-##        
-##    def exported_item(self,type):
-##        
-##
-##        
-        
-
-def make_part_info(env,parts_file,short_alias,parent_alias,vcs_type=None):
-    def_env=SCons.Script.DefaultEnvironment()
-    
-    part_info={}
-    
-    # we assume all parts make SDK.. else they will modify this value latter
-    part_info['MAKES_SDK']=True
-    
-    
-    # the path and location to the sub .scons file
-    ## The Alias...
-
-    # setup which part is being defined.
-    # we hold old state as needed. We create the name based on the
-    # currently defined Part + .<new part name>
-    if parent_alias!=None:
-        # existing part is being define, this subpart is defines as
-        # parentpart.subpart
-        alias=parent_alias+'.'+short_alias 
-    else:
-        alias=env.subst(env.get('ALIAS_PREFIX','')+short_alias+env.get('ALIAS_POSTFIX',''))
-        
-
-    #setup state
-    def_env['DEFINING_PART']=alias
-    
-    # Part Alias
-    part_info['ALIAS']=alias
-    env['ALIAS']=alias
-    env['PART_ALIAS']=alias
-    # The Alias Parent
-    part_info['PARENT_ALIAS']=parent_alias
-    # The Alias Short Form
-    part_info['SHORT_ALIAS']=short_alias
-    env['SHORT_ALIAS']=short_alias
-    # some data we will use for our own DB file
-    if common.g_name_alias_map.has_key(alias) == False:
-        common.g_name_alias_map[alias]=set()
             
-    #setup the root info
-    root_info=part_info
-    while root_info['PARENT_ALIAS'] != None:
-        root_info=def_env['PART_INFO'][root_info['PARENT_ALIAS']]
-        common.g_name_alias_map[alias].add(root_info['ALIAS'])
-
-    #the Alias Root
-    part_info['ROOT_ALIAS']=root_info['ALIAS']    
-
-    ## FILE STUFF
-    if parts_file != None:
-        # force subst to make sure funny path issues are handled
-        parts_file=env.subst(parts_file)
     
-        # do any checkout/copy/updates needed
-        # update the parts_file location
-        parts_file=vcs.process_vcs(env,vcs_type,parts_file)
-        part_info['VCS_OBJECT']=vcs_type
+    def __str__(self):
+        pp = pprint.PrettyPrinter(indent=4)
+        return pp.pformat(self.__dict__)
 
-        # work around in Scons bug
-        if parts_file[1] == ':' or parts_file[0]=='/':
-            parts_file=env.File(parts_file)
+        
+    def _map_alias(self):
+        ''' this function creates all the extra aliases we create'''
+        
+        ##given part alias of "foo" name "FOO"
+        #build alias .. ie build::alias::foo
+        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        # this aliasmap below is modifed to make sure parts that call stuff like
+        # make under the hood or any other action that prevents build directory
+        # from being made, from stopping desired behavior
+        a=self.__env.Alias("_"+build_alias) # _build::foo
+        #build::foo->_build::alias::foo 
+        #          ->Dir($SRC_DIR)
+        a2=self.__env.Alias(build_alias,[a,self.__env.Dir(self.__env.subst('$SRC_DIR'))])
+        # forces all of the build directory to clean
+        self.__env.Clean(a,self.__env.subst('$BUILD_DIR'))
+        # store values for latter.. rethink??
+        self._add_alias("_"+build_alias)
+        self._add_alias(build_alias)
+        # make and map tree in case of subparts
+        # this is stuff like: given build::FOO.sub1.sub2
+        # we make a map like:
+        # build::FOO->build::FOO.sub1->build::FOO.sub1.sub2
+        common.make_alias_tree(self.__env,'${PART_BUILD_CONCEPT}',a2)
+
+        #sdk alias stuff
+        #sdk::alias::foo
+        sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        #sdk::alias::foo->_build::foo
+        a=self.__env.Alias(sdk_alias,[a])
+        self._add_alias(sdk_alias)
+        # make and map tree in case of subparts
+        # this is stuff like: given sdk:FOO.sub1.sub2
+        # we make a map like:
+        # sdk::foo->sdk::FOO.sub1->sdk::FOO.sub1.sub2->_build::alias::foo.sub1.sub2
+        common.make_alias_tree(self.__env,'${PART_SDK_CONCEPT}',a)
+    
+        #install alias stuff.. install::alias::foo
+        install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        a=self.__env.Alias(install_alias,[a])
+        self._add_alias(install_alias)
+        # make and map tree in case of subparts
+        # this is stuff like: given sdk:foo.sub1.sub2
+        # we make a map like:
+        # install::FOO->install::FOO.sub1->install::FOO.sub1.sub2->sdk::alias::foo.sub1.sub2
+        common.make_alias_tree(self.__env,'${PART_INSTALL_CONCEPT}',a)
+    
+        #main alias
+        #foo->install::alias::foo
+        a=self.__env.Alias(self.__alias,[a])
+        self._add_alias(self.__alias)
+        #alias::foo->foo
+        a=self.__env.Alias('${PART_ALIAS_CONCEPT}'+self.__alias,a)
+        self._add_alias(self.__env.subst('${PART_ALIAS_CONCEPT}')+self.__alias)
+        #alias::->alias::foo
+        self.__env.Alias('${PART_ALIAS_CONCEPT}',a)
+        #name::<partname>->alias::foo
+        pv_alias=common.make_alias_tree(self.__env,'${PART_NAME_CONCEPT}',a)
+        #all->name::foo
+        self.__env.Alias('all',[pv_alias])
+        
+        #add to queue the delayed mapping of high level Alias to other high level alias
+        def_env=SCons.Script.DefaultEnvironment()
+        common.g_engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
+        # add call back for latter full mapping of build context
+        common.g_engine.add_preprocess_logic_queue(functors.map_build_context(self))
+
+    def _setup_sdk(self):
+        create_sdk=True
+        if (self.__env['CREATE_SDK'] == False and self.__create_sdk == True):
+            create_sdk=False;
+        
+        if create_sdk==True:
+            #set up the builder for the SDK file
+            v=self.__env.__CreateSDKBuilder__([],self.__file)
+            self.__sdk_file=v[0]
+            self.__env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
+            
+            if self.__parent!=None:
+                sdkname="%s_%s.sdk.parts"%(self.__name,self.Version)
+                args={'alias':self.__short_alias,'parts_file':sdkname,
+                'mode':self.__mode,
+                'vcs_type':None,'default':self.__set_as_default_target,'append':self.__append,'prepend':self.__prepend,
+                'create_sdk':False}
+                self.__parent._create_sdk_data.append(('Part',[common.named_parms(args),
+                common.named_parms(self.__kw)])) 
+
+    def _map_targets(self):
+        ''' 
+        Here we map all known target files that happen in this component 
+        to the alias value, to ensure that it is built in case there are actions
+        that are no mapped correctly to some action that is mapped to the alias
+        such as and sdk or install action
+        '''
+        for i in self.__target_files:
+            self.__env.Alias(self.__alias,i)
+        # we also add them to known nodes at this time
+        self.__part_nodes.update(self.__target_files)
+        
+
+    def IsProcessed(self):
+        return self.__Processed == True
+        
+    def ReadFile(self):
+        # we process the file
+        # and check at the end if we processed a new format or an old format
+        # error on mixed formats??
+        
+        if self.__is_read:
+            print "\033[1;32m %swas already read"%self.__alias
+
+        if self.__is_read==False:
+            # final set up for environment
+            self.__is_read=None
+            #common.g_part_being_processed.append(self.__alias)
+            #self.UpdateOnDisk()
+            
+            ## setup what we want to export
+            # global objects
+            export_map=common.g_parts_objs
+            # add the sections
+            # we do this when we read as there might have been new sections dynamically added
+            for s in common.g_sections:
+                self.__sections[s.name]=s.Type()(self.__env)
+            export_map.update(self.__sections)
+            # These objects need to hard coded in as the need a reference to 
+            # the environment .. fix up latter?
+            AbsFile=node_helpers._AbsFile(self.__env)
+            AbsDir=node_helpers._AbsDir(self.__env)
+            export_map['AbsFile']=AbsFile
+            export_map['AbsDir']=AbsDir
+            # add the environment
+            export_map['env']=self.__env
+            self.__env._log_keys=True
+            # sort of ugly.. but SCon was to aggressive here in storing state
+            try:
+                del self.__file._memo['stat']
+            except KeyError:
+                pass
+            bdir=self.__env.Dir(self.__env.subst('$BUILD_DIR'))
+            sdir=self.__env.Dir(self.__src_path)
+            if (common.g_engine._build_mode=='build') or (os.path.exists(self.__file.srcnode().abspath)==True):
+                if os.path.exists(self.__file.srcnode().abspath)==False:
+                    reporter.report_error('Parts file '+self.__file.srcnode().abspath+" was not found.")
+                
+                # Call the part file        
+                if self.__env['CONTINUE_ON_EXCEPTION']:
+                    # don't error is the Parts file has bad data
+                    # we just report it and go on
+                    # will mostly fail if one needs to build everything
+                    # however if i was to build on a component this 
+                    # probally will allow me to continue without waiting for the 
+                    # one bad component to get fixes
+                    try:
+                        reporter.ResetPartStackFrameInfo()
+                        ret=self.__env.SConscript(
+                            self.__file,
+                            src_dir=self.__env.subst('$SRC_DIR'),
+                            variant_dir=self.__env.subst('$BUILD_DIR'),
+                            duplicate=self.__env['duplicate_build'],
+                            exports=export_map
+                            )
+                    except Exception,ec:
+                        import traceback,StringIO
+                        ec_str=StringIO.StringIO()
+                        traceback.print_exc(file=ec_str)
+                        reporter.report_warning("Exception thrown while processing "+self.__file.srcnode().abspath+"\n"+ec_str.getvalue())
+                        reporter.print_msg("Will try to continue...")
+                        
+                else:
+                    
+                    reporter.ResetPartStackFrameInfo()
+                    
+                    ret=self.__env.SConscript(
+                            self.__file,
+                            src_dir=sdir,
+                            variant_dir=bdir,
+                            duplicate=self.__env['duplicate_build'],
+                            exports=export_map
+                            )
+            #print bdir
+            #print "*",bdir.srcnode()
+            
+            # we tag the Directory nodes so we can latter sort unknown items faster, by checking the directory ownership
+            #pp=pprint.PrettyPrinter()
+            #pp.pprint(bdir.__dict__)
+            self.__env._log_keys=False
+            common.tag_node_ownership(self.__env,bdir)
+            
+            # set file as read
+            self.__is_read=True
+            
+
+
+
+    def UpdateOnDisk(self):
+        if self.__vcs is not None:
+            
+            if self.__vcs.FileExists(self.__env,self.__file):
+                #this file exists. so we check to see if the user wants the sources updated
+                if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
+                    # Flags had been set for this object to update
+                    ret=self.__vcs.Update(self.__env)
+                    if ret:
+                        reporter.report_error("Failure detected during updating sources")
+            else:
+                if self.__env['UPDATE_ALL']==False and self.__vcs.NeedsUpdate(self.__env)==False:
+                    # don't have the file and they did not ask to get it
+                    # so we report a message and do a forced checkout
+                    reporter.report_warning("Sources do not seem to exist, and no update flags given, such as UPDATE_ALL=True\n\
+         Automatically updating component.",show_stack=False)
+                    
+                ret=self.__vcs.CheckOut(self.__env)
+                if ret:
+                    reporter.report_error("Failure detected during checkout sources")
+                    
+    def VcsNeedsToUpdate(self):
+        if self.__vcs is not None:
+            if self.__vcs.FileExists(self.__env,self.__file):
+                #this file exists. so we check to see if the user wants the sources updated
+                if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
+                    return True
+            else:
+                return True
+        return False
+
+    def VcsAllowParallelProcessing(self):
+        return self.__vcs.AllowParallelAction()
+
+    def _hasTargetFiles(self):
+        return self.__target_files != set([])
+
+    def _add_alias(self,name):
+        self.__alias_set.add(self.__env.subst(name))
+
+    
+    ## sections API's
+    def _has_section_defined(self,name):
+        ''' 
+        tests to see if a certain section is defined
+        return None if the file has not been read (ie this is unknown)
+        otherwise it returns True or False
+        '''
+        if self.__is_read:
+            return name in self.__sections
+        return None
+    
+    def _has_valid_sections(self):
+        '''
+        This will function will do two things
+        1) reduce the map of sections to only those that have data
+        2) return true or false if any sections are good
+        Error reporting! If we have bad sections we throw an expections
+        '''
+        # reduce
+        for name,obj in self.__sections.items():
+            # see if the section was even called
+            if obj.isSet():
+                # if so is it valid() in that non optional phases 
+                # have been called
+                if not obj.isValid():
+                #We have an error
+                    reporter.report_error("Section %s did not define all required phases!\n Define phases are:%s\n Required Phases are:%s"%
+                    [name,obj.FoundPhases(),RequiredPhases()])
+            else:
+                #we don't have anything in the section as it was not called
+                # in this case remove it
+                del self.__sections[name]
+        return self.__sections != {}
+    
+    def _has_section_phase_been_called(self,section,phase):
+        '''
+        Tells us if this section and phase has been called already
+        Returns True or False
+        
+        This allow the processfunc of a section to see if it needs to call this
+        section phase or not to prevent wasted time in processing known items
+        '''
+        try:
+            if self.__cache["%s%scalled"%(section,phase)]:
+                return True
+        except KeyError:
+            return False
+        
+    def _call_section(self,section,phase):
+        '''
+        Call the section function defined for a given phase.
+        This will cache the fact that it was called, so it get called only once
+        It will throw an error if there is no such combination defined
+        '''
+        try:
+            if self.__cache["%s%scalled"%(section,phase)]:
+                return
+        except KeyError:
+            tmp=self.__env.fs.getcwd()
+            try:
+                self.__env.fs.chdir(self.__env.Dir(self.__env.subst("$BUILD_DIR")),True)
+            except OSError:
+                self.__env.fs.chdir(self.__env.Dir(self.__env.subst("$BUILD_DIR")))
+                os.chdir(self.__env.Dir(self.__env.subst("$BUILD_DIR")).srcnode().abspath)
+            
+            lst=getattr(self.__sections[section],'func_'+phase)
+            if lst ==[]:
+                reporter.report_warning("No phase function callbacks for %s.%s in Part %s"%(section,phase,self.__name))
+            for i in lst:
+                i(self.__env)
+
+            self.__env.fs.chdir(tmp,True)
+            self.__cache["%s%scalled"%(section,phase)]=True
+
+
+    
+    # some depend on stuff
+    def map_component_info(self,comp_part):
+    
+        cpppath=[]
+        libpath=[]
+        libs=[]
+        cppdefines=[]
+        linkflags=[]
+        ccflags=[]
+        cflags=[]
+        cxxflags=[]
+        
+        # map stuff we dependon
+        if (comp_part.requires & dependson.REQ._CPPPATH_IMPORT):
+            cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
+        if (comp_part.requires & dependson.REQ._LIBPATH_IMPORT):
+            libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
+        if (comp_part.requires & dependson.REQ._LIBS_IMPORT):
+            libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
+        if (comp_part.requires & dependson.REQ._LINKFLAGS_IMPORT):
+            linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
+        if (comp_part.requires & dependson.REQ._CCFLAGS_IMPORT):
+            ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
+        if (comp_part.requires & dependson.REQ._CFLAGS_IMPORT):
+            cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
+        if (comp_part.requires & dependson.REQ._CXXFLAGS_IMPORT):
+            cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
+        if (comp_part.requires & dependson.REQ._CPPDEFINES_IMPORT):
+            cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
+
+        #common.append_if_absent( self.__dependson,comp_part)
+        #add the dependent info
+
+        self.__env.Append(
+            CPPPATH=cpppath,LIBPATH=libpath,LIBS=libs,CPPDEFINES=cppdefines,
+            LINKFLAGS=linkflags,CCFLAGS=ccflags,CFLAGS=cflags,CXXFLAGS=cxxflags
+            )
+    #    reporter.verbose_msg("Duplicate",env.subst($CPPDEFINES))            
+        cpppath=[]
+        libpath=[]
+        libs=[]
+        cppdefines=[]
+        libflags=[]
+        ccflags=[]
+        cflags=[]
+        cxxflags=[]
+        
+        # map what we need to export
+        if (comp_part.requires & dependson.REQ._CPPPATH_EXPORT):
+            cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
+            if 'CPPPATH' not in self.__exports:
+                self.__exports['CPPPATH']=[]
+            self.__exports['CPPPATH']=common.extend_unique(self.__exports['CPPPATH'],cpppath)
+        if (comp_part.requires & dependson.REQ._LIBPATH_EXPORT):
+            libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
+            if 'LIBPATH' not in self.__exports:
+                self.__exports['LIBPATH']=[]
+            self.__exports['LIBPATH']=common.extend_unique(self.__exports['LIBPATH'],libpath)
+        if (comp_part.requires & dependson.REQ._LIBS_EXPORT):
+            libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
+            if 'LIBS' not in self.__exports:
+                self.__exports['LIBS']=[]
+            self.__exports['LIBS']=common.extend_unique(self.__exports['LIBS'],libs)
+        if (comp_part.requires & dependson.REQ._LINKFLAGS_EXPORT):
+            linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
+            if 'LINKFLAGS' not in self.__exports:
+                self.__exports['LINKFLAGS']=[]
+            self.__exports['LINKFLAGS']=common.extend_unique(self.__exports['LINKFLAGS'],linkflags)
+        if (comp_part.requires & dependson.REQ._CCFLAGS_EXPORT):
+            ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
+            if 'CCFLAGS' not in self.__exports:
+                self.__exports['CCFLAGS']=[]
+            self.__exports['CCFLAGS']=common.extend_unique(self.__exports['CCFLAGS'],ccflags)
+        if (comp_part.requires & dependson.REQ._CFLAGS_EXPORT):
+            cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
+            if 'CFLAGS' not in self.__exports:
+                self.__exports['CFLAGS']=[]
+            self.__exports['CFLAGS']=common.extend_unique(self.__exports['CFLAGS'],cflags)
+        if (comp_part.requires & dependson.REQ._CXXFLAGS_EXPORT):
+            cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
+            if 'CXXFLAGS' not in self.__exports:
+                self.__exports['CXXFLAGS']=[]
+            self.__exports['CXXFLAGS']=common.extend_unique(self.__exports['CXXFLAGS'],cxxflags)
+        if (comp_part.requires & dependson.REQ._CPPDEFINES_EXPORT):
+            cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
+            if 'CPPDEFINES' not in self.__exports:
+                self.__exports['CPPDEFINES']=[]
+            self.__exports['CPPDEFINES']=common.extend_unique(self.__exports['CPPDEFINES'],cppdefines)
+            
+        #map up rpath with this.. ( need to fix up the Mac)
+        #if self.env['HOST_PLATFORM']!='win32' and self.env['HOST_PLATFORM'] != 'darwin':
+            
+            #map_rpath_part(part,comp_part)
+            #map_rpath_link_part(part,comp_part)
+
+    def _full_parts_depends_list(self):
+        ''' 
+        make a full depends list ( internal and non internal) 
+        '''
+        
+        if self.__full_dependson == []:
+            dlst=self.__dependson
+            flst=[]
+            for d in dlst:                
+                flst.append(d.part.Alias)
+                tmp=d.part._full_parts_depends_list()
+                common.extend_unique(flst,tmp)
+                self.__full_dependson=flst
+        
+        return self.__full_dependson
+
+    def _parts_root_depends_list(self):
+        ''' 
+        These are the Root Parts needed process this Part correctly
+        The Part it depend on might need other Part, so this is not a
+        full list of items
+        '''
+        
+        if self._cache.get('root_depends') is None:
+            dlst=self.__dependson
+            flst=[self.__root.Alias]
+            self.__cache['root_depends']=[]
+            for d in dlst:
+                tmp=d.part._parts_root_depends_list()
+                common.extend_if_absent(flst,tmp)
+            
+            # do again for each subpart
+            for s in self.__sub_parts.values():
+                tmp=s._parts_root_depends_list()
+                common.extend_if_absent(flst,tmp)
+                
+            self.__cache['root_depends']=flst
+        return self.__cache['root_depends']
+    
+    def _full_parts_root_depends_list(self):
+        ''' 
+        These are the Root Parts needed process this Part correctly
+        This is the full list of all item needed by this Part 
+        and any of the sub Parts and any of the Parts that are dependents
+        '''
+
+        if self.__root._cache.get('root_depends_full') is None:
+            if self._is_root:
+                dlst=self.__dependson
+                flst=[self.__alias]
+                self.__root._cache['root_depends_full']=[]
+                for d in dlst:         
+                    if d.part.Root.Alias != self.Alias:       
+                        tmp=d.part.Root._full_parts_root_depends_list()
+                        common.extend_if_absent(flst,tmp)
+                    
+                # do again for each subpart
+                for s in self.__sub_parts.values():
+                    # get the list of Root parts this sub part needs
+                    tmp=s._parts_root_depends_list()
+                    # add it to the list
+                    # note that we need to get the full list for each of these 
+                    # items.. since there are good chance of duplicates
+                    # we delay to go over this list once latter 
+                    common.extend_if_absent(flst,tmp)
+                    
+                
+                # now we go over the list to make sure all items are here
+                # we do it here as doing it above could be more expensive with 
+                # parts that have lots of sub parts
+                for d in flst:         
+                    if d != self.__root.Alias:       
+                        tmp_pobj=common.g_engine._part_manager._from_alias(d)
+                        tmp=tmp_pobj.Root._full_parts_root_depends_list()
+                        common.extend_if_absent(flst,tmp)
+                
+                    
+                self.__root._cache['root_depends_full']=flst
+            else:
+                return self.__root._full_parts_root_depends_list()
+        
+        return self.__root._cache['root_depends_full']        
+        
+    def _setup_from_cache_data(self,data):
+        '''
+        This will setup this part based on data in the cache
+        The Part manager will call and create sub part as needed
+        The part object should have been created and setup already for this call.
+        This function should only have to setup stuff that this component would 
+        have exported or outputed that needs to be shared with dependent components
+        '''
+        
+        if self.__is_setup ==False:
+            reporter.report_error("Part object setup from cache data requires part_t object to have been created and setup()")
+        # map values that would normally be define in a "new" format
+        # such as name and version
+        self._set_name(data['short_name'])
+        self._set_version(version.version(data['version']))
+        #How to match this component in a dependon call by dependent components
+        self.__platform_match=platform_info.SystemPlatform(data['platform_match'])
+        
+        ## might not need this one....
+        # map what the part would depend on
+        depends_list=[]
+        for d in data['dependson']:
+            depends_list.append(dependson.ComponentRef(**d))        
+        self._set_depends(depends_list)
+            
+        #map exports of this component
+        self.__exports=data['exports']
+        # think this is for backward compatibility only at the moment
+        # however might need to expand on this
+        self.__env.Replace(**data['env_exports'])
+        
+        # need to add sdk file
+        tmp=data.get('sdkfile',{}).get('name',None)
+        self.__sdk_file=self.__env.File(tmp)
+        
+        # load some data that might be touched
+        self.__full_dependson=data['full_depends']
+        self.__cache['root_depends']=data['root_depends']
+        if self._is_root:
+            self.__cache['root_depends_full']=data['full_root_depends']
+            
+        
+    def _get_cache_data(self):#store(self):
+        print "getting data for",self.__alias
+        st=time.time()
+        data={}
+        file={}
+        # basic info
+        data['name']=self.__name
+        data['short_name']=self.__short_name
+        data['alias']=self.__alias
+        data['short_alias']=self.__short_alias
+        data['version']=str(self.Version)
+        # store all known sections that had been defined
+        data['sections']=self.__sections.keys()
+        # store all known aliases we made for the given part
+        data['alias_set']=self.__alias_set
+        # store the root_part
+        data['root_alias']=self.__root.Alias
+        # store the target_platform .. as this might be different from the default
+        data['target_platform']=str(self.__env['TARGET_PLATFORM'])
+        # store the target_platform .. as this might be different from the default
+        data['config']=str(self.__env['CONFIG'])
+        #the infomation on how this part should be matched via dependson
+        data['platform_match']=str(self.__platform_match)
+        #the packge group that this Parts is bound with
+        data['package_group']=self.__package_group
+        #the mode that was passed to create this part
+        data['mode']=self.__mode
+        
+        # here we store that context signiture for values passed in to the 
+        
+        #store any subparts
+        tmp=[]
+        for i in self.__sub_parts.values():
+            tmp+=[i.Alias]
+        data['subparts']=tmp
+        #store parent info
+        tmp=[]
+        i=self.__parent
+        while i is not None:
+            tmp+=[i.Alias]
+            i=i.Parent
+        data['parents']=tmp
+        #file info
+        file={}
+        if self.__file is None:
+            file['name']=self.Parent._file.srcnode().path# check this
+            file['csig']=self.Parent._file.get_csig()
+            file['timestamp']=self.Parent._file.get_timestamp()
         else:
-            curr_path=env.Dir('.').srcnode().abspath
-            parts_file=env.File(os.path.join(curr_path,parts_file))
-            #parts_file=env.Dir('.').srcnode().File(parts_file)
+            file['name']=self.__file.srcnode().path# check this
+            file['csig']=self.__file.get_csig()
+            file['timestamp']=self.__file.get_timestamp()
+        data['file']=file
+        # we want to store the source path to help with part recreation from
+        # cache data
+        data['src_path']=self.__env.Dir(self.__src_path).path
         
-    part_info['FILE']=parts_file
-    
-    ## The names..
-    #the short name
-    part_info['SHORT_NAME']=None
-    #the Root name
-    part_info['ROOT_NAME']="${PARTNAME('"+root_info['ALIAS']+"')}"
-    
-    if parent_alias==None:
-        #The full name
-        part_info['NAME']=None
-        #the Parent name
-        part_info['PARENT_NAME']=None
-        
-        # some default version info
-        part_info['VERSION']=version.version('0.0.0')
-        part_info['SHORT_VERSION']='0.0'
-    else:
-        #The full name
-        part_info['NAME']="${PARTNAME('"+parent_alias+"')}.${PARTSHORTNAME('"+part_info['ALIAS']+"')}"
-        #the Parent name
-        part_info['PARENT_NAME']="${PARTNAME('"+parent_alias+"')}"
+        #direct sdk file data
+        file={}
+        if self.__sdk_file is None:
+            file['name']=self.Parent._sdk_file.srcnode().path# check this
+            file['csig']=self.Parent._sdk_file.get_csig()
+            file['timestamp']=self.Parent._sdk_file.get_timestamp()
             
-        # some default version info
-        part_info['VERSION']="${PARTS('"+root_info['ALIAS']+"','VERSION')}"
-        part_info['SHORT_VERSION']="${PARTS('"+root_info['ALIAS']+"','SHORT_VERSION')}"
-
-    #refernece to this env .. for better resolution later
-    part_info['ENV']=env
-    
-    #list of what we dependon 
-    part_info['DEPENDSON']=[]
-    
-    # some stuff for the SDK .. need to clean up latter
-    part_info['EXPORTED_HEADERS']=[]
-    part_info['EXPORTED_LIBS']=[]
-    part_info['EXPORTED_BINS']=[]
-
-    #all the file that are outputted by a builder inside the part
-    part_info['TARGET_FILES']=[]
-    part_info['INSTALLED_FILES']=[]
-    
-    # not sure if i will need this or not ...
-    part_info['SUB_PARTS']=[]
-    
-    #def_env[name]=part_info
-    if def_env.has_key('PART_INFO')==False:
-        def_env['PART_INFO']={}
-    if def_env['PART_INFO'].has_key(alias):
-        reporter.report_warning('Overriding predefined alias ['+alias+'] file=['+str(def_env['PART_INFO'][alias]['FILE'])+'] with data from part file=['+str(part_info['FILE'])+']')
+        else:
+            file['name']=self.__sdk_file.srcnode().path# check this
+            file['csig']=self.__sdk_file.get_csig()
+            file['timestamp']=self.__sdk_file.get_timestamp()            
+        data['sdkfile']=copy.copy(file)
         
-    
-    return part_info
-    
+        # store what we export
+        # we expand the values here to reduce processing needs latter
+        # the the reason we would store this is to speed up build latter
+        for v in self.__exports.values():
+            if common.is_list(v):
+                for i in v:
+                    if '$' in i:
+                        self.__env.subst(i)
+            else:
+                if '$' in i:
+                    self.__env.subst(i)
+        data['exports']=self.__exports
+        
+        # this is for recreating a part from cache as these values are
+        # set by the user and don't exist by default
+        data['env_exports']=self.__env_exports
+        # data about what this depends on we want the direct depend here
+        # as this will allow us to speed up incremential build latter
+        tmp=[]
+        for d in self.__dependson:
+            tmp.append({
+                'name':d.name,
+                'version_range':str(d.version),
+                'requires':d.requires,
+                'target_platform':str(d.target)
+            })
+        data['dependson']=tmp
+        # data about what this depends on we want the full depend here
+        data['full_depends']=self._full_parts_depends_list()
+        # store all the root_parts we depend on
+        data['root_depends']=self._parts_root_depends_list()
+        # store all the root_parts we depend on
+        data['full_root_depends']=self._full_parts_root_depends_list()
+        #store all known node that are mapped to this component as
+        #a list of strings. we use the SCons DB to store the important data
+        tmp=[]
+        for i in self.__part_nodes:
+            i.disambiguate()
+            # see if node time stamp matches
+            if i.has_builder()==False:
+                # this should be some source node
+                # or a node that should be ignored,
+                # such as a "srcnode" version of a binary that would only exist
+                # in the variant directory.. we test for the last case 
+                # by testing for existance
+                if i.exists(): # should  test that this is not Value node
+                    tmp.append(
+                            {
+                            'name':i.path,
+                            'csig':i.get_csig(),
+                            'timestamp':i.get_timestamp()
+                            }
+                        )
+                    
+            else:
+                dbentry=i.get_stored_info()
+                ninfo=dbentry.ninfo
+                tmpd={'name':i.path}
+                tmpd.update(ninfo.__dict__)
+                tmp.append(tmpd)
+            
+        data['nodes']=tmp
+        #print "target time",time.time()-tt, len(tmp)
+        
+        if self._is_root:
+            # this is build context
+            tmp=[]
+            for i in self.__build_context_files:
+                if i is None:
+                    continue
+                i=self.__env.File(i)
+                # see if node time stamp matches            
+                tmp.append(
+                        {
+                        'name':i.path,
+                        'csig':i.get_csig(),
+                        'timestamp':i.get_timestamp()
+                        }
+                    )
+                        
+            data['build_context']=tmp
+            
+            # this is config context ( like build but for the config files)
+            tmp={}            
+            for k,v in self.__config_context.items():            
+                tmp[k]=[]
+                for f in v:
+                    i=self.__env.File(f)
+                    # see if node time stamp matches            
+                    tmp[k].append({
+                            'name':i.abspath,
+                            'csig':i.get_csig(),
+                            'timestamp':i.get_timestamp()
+                            })
+                    
+            data['config_context']=tmp
+        
+        #print "Finished getting data for",self.__alias, time.time()-st
+        return data
 
-def Part_method(env1,alias,parts_file,mode=[],vcs_type=None,default=False,
-                append={},prepend={},create_sdk=True,package_group=None,**kw):
-    
-    new_kw={}
-    new_append={}
-    new_prepend={}
-    new_kw.update(env1.get('PARTS_KW',{}))
-    new_append.update(env1.get('PARTS_APPEND',{}))
-    new_prepend.update(env1.get('PARTS_PREPEND',{}))
-    package_group=env1.get('PARTS_PACKAGE_GROUPS',package_group)
-    if mode==[]:
-        mode=env1['MODE']
-    new_kw.update(kw)
-    new_append.update(append)
-    new_prepend.update(prepend)
-    Part(alias,parts_file,mode,vcs_type,default,new_append,new_prepend,
-    create_sdk,package_group,**new_kw)
-    tmp=env1.get('PART_INFO',None)
-    if tmp is not None:
-        tmp['SUB_PARTS'].append(env1['PART_ALIAS']+'.'+alias)
-    
-def Part(alias,parts_file,mode=[],vcs_type=None,default=False,
+
+def Part_factory(alias=None,parts_file=None,mode=[],vcs_type=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,
             **kw):
-    reporter.SetPartStackFrameInfo()
-    start_time=time.time()
-    #print "defining" ,alias
-    if common.g_part_mode=='help':
-        return
+    ''' This  function acts a factory to help with Part creation.
+    This way control over making a new Part or getting the existing Part 
+    can be better controled
+    '''
+    name=kw.get('name')
+    Version=kw.get('version')
 
-
-    def_env=SCons.Script.DefaultEnvironment()
-    
-    parent_alias=def_env.get('DEFINING_PART',None)
-    
-    sdk_file=[None]
-    if parent_alias == None:
-        talias=alias#def_env.subst(kw.get('ALIAS_PREFIX',def_env.get('ALIAS_PREFIX',''))+
-                     #           alias+
-                      #          kw.get('ALIAS_POSTFIX',def_env.get('ALIAS_POSTFIX','')))
-        # empty list to save mem if this is a root part
-        sdk.g_sdked_files=set([])
-        # this allows us to decide if we want to continue processing this file or not
-        # if not we will return. The second part of this is to see if we modify the part file
-        # we will read to be the original, or the generated one.
-        sdk_file=core.process_part(talias)
-    else:
+    tmp=common.g_engine._part_manager._get_part(
+        alias=alias,
+        name=name,
+        version=Version,
+        target_platform=kw.get('TARGET_PLATFORM'))
         
-        talias=parent_alias+'.'+alias
+    if tmp:
 
-    if sdk_file == None:
-        #print "Skipping",talias
-        #print talias,'\t\t',time.time() - start_time,"seconds"
-        return    
-    ## process the part
-    part_info={}
+        if Version:
+            del kw['version']
+        if name:
+            del kw['name'] 
+        tmp._update(alias,name,Version,
+            parts_file,mode,vcs_type,default,
+            append,prepend,create_sdk,package_group,
+            **kw)
+        if parts_file:
+            tmp._setup_()
+        return tmp
     
-    ## setup the basics
-    # Get the enviroment to use
-    env=core.generate_config(prepend.copy(),append.copy(),kw.copy())
-    
-    ## logger and task spawners
-    spawn=env['PART_SPAWNER']
-    env['PART_LOG_MAPPER']=part_logger.part_logger(env,reporter.g_rpter.console)
-    env['SPAWN']=spawn(env)
-    
-    # add to our set of Env with builders
-    #common.g_env_w_builders.add(id(env))
+    tmp=Part_t(alias=alias,file=parts_file,mode=mode,vcs_t=vcs_type,
+                    default=default,append=append,prepend=prepend,
+                    create_sdk=create_sdk,package_group=package_group,
+                    **kw)
 
-    if kw != {}:
-        env['PARTS_KW']=kw
-    if append != {}:
-        env['PARTS_APPEND']=append
-    if prepend != {}:
-        env['PARTS_PREPEND']=prepend
-    # get our current ABS path for later use
-    curr_path=env.Dir('.').srcnode().abspath
-    ## Setup the global state 
+    if parts_file:
+        tmp._setup_()
+    common.g_engine._part_manager._add_part(tmp.Alias,tmp)   
     
-    ## store part specfic data
-    base_str=None
-    if sdk_file != [None]:
-        base_str=env.subst('Building from SDK -- ${PART_ALIAS_CONCEPT}')
-        part_info=make_part_info(env,sdk_file,alias,parent_alias,None)
-    else:
-        if parent_alias == None:
-            base_str=env.subst('Building from source -- ${PART_ALIAS_CONCEPT}')
-        
-        part_info=make_part_info(env,parts_file,alias,parent_alias,vcs_type)
-    if base_str:
-        reporter.print_msg(env.subst(base_str+part_info['ALIAS']))
-    alias=part_info['ALIAS']
-    parts_file=part_info['FILE']
+    return tmp
 
-    def_env['PART_INFO'][alias]=part_info
-
-    #helps with debugging
-    env['PART_INFO']=part_info
-    
-    ## package logic ( as it is currently)
-    if package_group:
-        packaging.PackageGroup(package_group,alias)
-    part_info['PACKAGE_GROUPS']=package_group
-    env['PARTS_PACKAGE_GROUPS']=package_group
-
-    ## Setup the enviroment with dependent libs, include, etc...
-    libpath=['$BUILD_DIR']
-    env.Append(LIBPATH=libpath)
-    
-    ## add information on how to map this Parts
-    # allow us to make a part platform indepent in some way
-    # Might want to change this to be a enum like setup
-    part_info['PLATFORM_MATCH']=copy.copy(env['TARGET_PLATFORM'])
-    if kw.get('platform_independent',kw.get('platform_indepenent',False)):
-        part_info['PLATFORM_MATCH']=platform_info.SystemPlatform('any','any')
-    if kw.get('os_independent',kw.get('os_indepenent',False)):
-        part_info['PLATFORM_MATCH'].OS='any'
-    if kw.get('architecture_independent',kw.get('architecture_indepenent',False)):
-        part_info['PLATFORM_MATCH'].ARCH='any'
-    
-
-    # test to what we want to the SRC_DIR to be.. works around
-    # annoying behavior of Root Sconstruct file not working with
-    # with other files not under it directory tree
-    s=os.path.split(part_info['FILE'].srcnode().abspath)[0]
-    if s=='':
-        s=curr_path
-    env['SRC_DIR']=env['PART_DIR']=s
-    
-    if mode == []:
-        mode=env['mode']
-    #env['mode']=common.make_list(kw.get('mode',[]))
-    env['MODE']=common.make_list(mode)
-    
-    ##alias info
-    env['PART_ROOT_ALIAS']=part_info['ROOT_ALIAS']
-    env['PART_PARENT_ALIAS']=part_info['PARENT_ALIAS']
-    
-    ## name info
-    env['PART_NAME']="${PARTNAME('"+alias+"')}"
-    env['PART_SHORT_NAME']="${PARTSHORTNAME('"+alias+"')}"    
-    env['PART_ROOT_NAME']="${PARTS('"+alias+"','ROOT_NAME')}"
-    env['PART_PARENT_NAME']="${PARTS('"+alias+"','PARENT_NAME')}"
-
-    ## version info
-    env['PART_VERSION']="${PARTS('"+alias+"','VERSION')}"
-    env['PART_SHORT_VERSION']="${PARTS('"+alias+"','SHORT_VERSION')}"
-    
-    ## file info
-    env['PART_FILE']=parts_file
-    
-    ##  some backward compatible stuff to later remove
-    ## also we ahve some stuff for mapping the export var correctly while
-    ## handling some ugly wrapper to ceratina object i would rather have as 
-    ## pieces
-    export_map=common.g_parts_objs
-    
-    AbsFile=node_helpers._AbsFile(env)
-    AbsDir=node_helpers._AbsDir(env)
-    
-    export_map['AbsFile']=AbsFile
-    export_map['AbsDir']=AbsDir
-    export_map['env']=env
-    
-    # this should force Scons to be called and warn if the file does not
-    # exist, except when we are cleaning and the checked out version
-    # does not exists
-    ret=None
-    if (common.g_part_mode=='build') or (os.path.exists(parts_file.srcnode().abspath)==True):
-        if os.path.exists(parts_file.srcnode().abspath)==False:
-            reporter.report_warning('Parts file '+parts_file.srcnode().abspath+" was not found. The build may fail")
+def SubPart_factory(env,alias,parts_file,mode=[],vcs_type=None,default=False,
+            append={},prepend={},create_sdk=True,package_group=None,
+            **kw):
             
-        # Call the part file        
-        if env['CONTINUE_ON_EXCEPTION']:
-            try:
-                reporter.ResetPartStackFrameInfo()
-                ret=def_env.SConscript(
-                    parts_file,
-                    src_dir=env.subst('$SRC_DIR'),
-                    variant_dir=env.subst('$BUILD_DIR'),
-                    duplicate=env['duplicate_build'],
-                    exports=export_map
+            
+    return common.g_engine._part_manager._define_sub_part(
+                        env,
+                        alias,
+                        parts_file,
+                        mode,
+                        vcs_type,
+                        default,
+                        append,
+                        prepend,
+                        create_sdk,
+                        package_group,
+                        **kw
                     )
-            except Exception,ec:
-                import traceback,StringIO
-                ec_str=StringIO.StringIO()
-                traceback.print_exc(file=ec_str)
-                reporter.report_warning("Exception thrown while processing "+parts_file.srcnode().abspath+"\n"+ec_str.getvalue())
-                reporter.print_msg("Will try to continue...")
-                #env.Exit(1)
-        else:
-            reporter.ResetPartStackFrameInfo()
-            ret=def_env.SConscript(
-                    parts_file,
-                    src_dir=env.subst('$SRC_DIR'),
-                    variant_dir=env.subst('$BUILD_DIR'),
-                    duplicate=env['duplicate_build'],
-                    exports=export_map
-                    )
+                    
 
-    reporter.SetPartStackFrameInfo()
-    ## Setup SDK stuff
- 
-    if (env['CREATE_SDK'] == False and create_sdk == True):
-        create_sdk=False;
-    
-    pinfo=def_env['PART_INFO'][alias]
-    if create_sdk==True:
-        #set up the builder for the SDK file
-        v=env.__CreateSDKBuilder__([],parts_file)
-        part_info['SDK_FILE']=v[0]
-        # needs to depend on all the file existing in the SDK 
-        # else the builder may fail.
-        env.Requires(v,env.Alias('_${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias))
-        env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias,v)
-        if pinfo.has_key('CREATE_SDK') == False:
-                pinfo['CREATE_SDK']=[]
-        if parent_alias!=None:
-            parent_pinfo=def_env['PART_INFO'][parent_alias]
-            if parent_pinfo.has_key('CREATE_SDK') == False:
-                parent_pinfo['CREATE_SDK']=[]
-            sdkname=pinfo['NAME']+'_'+pinfo['VERSION']+'.sdk.parts'
-            args={'alias':pinfo['SHORT_NAME'],'parts_file':sdkname,
-            'mode':mode,
-            'vcs_type':None,'default':default,'append':append,'prepend':prepend,
-            'create_sdk':False}
-            parent_pinfo['CREATE_SDK'].append(('Part',[common.named_parms(args),
-            common.named_parms(kw)])) 
-    
-
-    ## here we map the alias tree
-
-    # this builder allows us to map what parts tries to map... 
-    # nice for debugging build issues and making depends mapping graphs
-    # need better mapping.. for now we map to abstract 'package'
-    vfile=env._MapUnknowns([],parts_file)
-    env.Alias("version_mapping::",vfile)
-    env.Alias("package",vfile)       
-        
-    #build alias
-    build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
-    # this aliasmap below is modifed to make sure parts that call stuff like
-    # make under the hood or any other action that prevents build directory
-    # from being made, from stopping desired behavior
-    a=env.Alias("_"+build_alias)
-    a2=env.Alias(build_alias,[a,env.Dir(env.subst('$BUILD_DIR'))])
-    env.Clean(a,env.subst('$BUILD_DIR'))
-    common.g_name_alias_map[alias].add("_"+build_alias)
-    common.g_name_alias_map[alias].add(build_alias)
-    common.make_alias_tree(env,'${PART_BUILD_CONCEPT}',a2)
-
-    #sdk alias stuff
-    sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
-    a=env.Alias(sdk_alias,[a])
-    common.g_name_alias_map[alias].add(sdk_alias)
-    common.make_alias_tree(env,'${PART_SDK_CONCEPT}',a)
-    
-    #install alias stuff
-    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
-    a=env.Alias(install_alias,[a])
-    common.g_name_alias_map[alias].add(install_alias)
-    common.make_alias_tree(env,'${PART_INSTALL_CONCEPT}',a)
-    
-    #add to queue the delayed mapping of any dependent stuff
-    def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_parts_alias(env))
-    
-    
-    #main alias
-    a=env.Alias(alias,[a])
-    common.g_name_alias_map[alias].add(alias)
-    
-    a=env.Alias('${PART_ALIAS_CONCEPT}'+alias,a)
-    common.g_name_alias_map[alias].add(env.subst('${PART_ALIAS_CONCEPT}')+alias)
-    # all alias??
-    env.Alias('${PART_ALIAS_CONCEPT}',a)
-    pv_alias=common.make_alias_tree(env,'${PART_NAME_CONCEPT}',a)
-    
-    env.Alias('all',[pv_alias])
-    
-    # basic clean stuff .. note this might clean stuff in a way that 
-    # scons should have clean in other ways but failed to.. 
-    # may cause a false postive bug to be filed
-    ## NOte the all cases we might want to move to a new location
-    #ta=env.Alias(env.subst(part_info['ROOT_ALIAS']))
-##    if common.def_args['OUT_INCLUDE'] == env['OUT_INCLUDE']:
-##        #print alias,env.Dir('$OUT_INCLUDE')
-##        env.Clean(ta,env.Dir('$OUT_INCLUDE'))
-##    if common.def_args['OUT_LIB'] == env['OUT_LIB']:
-##        #print env.Dir('$OUT_LIB').srcnode().abspath
-##        env.Clean(ta,env.Dir('$OUT_LIB'))
-##    if common.def_args['OUT_BIN'] == env['OUT_BIN']:
-##        #print env.Dir('$OUT_BIN').srcnode().abspath
-##        env.Clean(env.Alias('all'),env.Dir('$OUT_BIN'))
-##    if common.def_args['BUILD_DIR'] == env['BUILD_DIR']:
-##        #print "build",env.Dir('$BUILD_DIR').abspath
-##        env.Clean(ta,env.Dir('$BUILD_DIR').abspath)
-##    if common.def_args['OUT_BIN_ROOT'] == env['OUT_BIN_ROOT']:
-##        #print env.Dir('$OUT_BIN').srcnode().abspath
-##        env.Clean(env.Alias('all'),env.Dir('$OUT_BIN_ROOT'))
-##    if common.def_args['OUT_LIB_ROOT'] == env['OUT_LIB_ROOT']:
-##        #print env.Dir('$OUT_BIN').srcnode().abspath
-##        env.Clean(env.Alias('all'),env.Dir('$OUT_LIB_ROOT'))
-##    if common.def_args['OUT_INCLUDE_ROOT'] == env['OUT_INCLUDE_ROOT']:
-##        #print env.Dir('$OUT_BIN').srcnode().abspath
-##        env.Clean(env.Alias('all'),env.Dir('$OUT_INCLUDE_ROOT'))
-##    if common.def_args['BUILD_DIR_ROOT'] == env['BUILD_DIR_ROOT']:
-##        #print env.Dir('$OUT_BIN').srcnode().abspath
-##        env.Clean(env.Alias('all'),env.Dir('$BUILD_DIR_ROOT'))
-
-    #double check that the Part name mapping has been defined
-    # if the user did not call PartName() then this would not be setup
-    if def_env.has_key('PART_IDS')==False:
-        def_env['PART_IDS']={}
-    # See that the ID Alias list exists
-    name=env.PartName()
-    if name not in def_env['PART_IDS']:
-        def_env['PART_IDS'][name]=[]
-        # Append to the ID list with new alias
-        def_env['PART_IDS'][name].append(alias)
-        pinfo['NAME']=name
-
-    # must be last statement for this function
-    if default==True:
-        def_env.Default(pv_alias)
-    
-    def_env['DEFINING_PART']=parent_alias   
-    #print alias,'\t\t',time.time() - start_time,"seconds"
-    reporter.ResetPartStackFrameInfo()
-    
-
-
-    
 # This is what we want to be setup in parts
+
+
+
 from SCons.Script.SConscript import SConsEnvironment
 
 # adding logic to Scons Enviroment object
-SConsEnvironment.Part=Part_method
+SConsEnvironment.Part=SubPart_factory
 
 # add configuartion varaible needed for part
 common.AddVariable('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}','Namespace used to just build a a given target')
 
-common.AddVariable('ALIAS_POSTFIX','','')
+common.AddVariable('ALIAS_POSTFIX','',' ')
 common.AddVariable('ALIAS_PREFIX','','')
 
 common.AddVariable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to express building via an Alias target')
@@ -726,5 +1324,5 @@ common.AddVariable('BUILD_DIR_ROOT','#build', 'Root directory for building a giv
 common.AddVariable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$ALIAS', 'Full path used to for building a given build configuration/variant')
 
 
-common.add_global_value('Part',Part)
-common.add_global_value('part',Part)
+common.add_global_value('Part',Part_factory)
+common.add_global_value('part',Part_factory)

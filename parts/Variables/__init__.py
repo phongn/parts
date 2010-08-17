@@ -63,7 +63,10 @@ class Variables:
         option.converter = converter
         
         if self.options.has_key(option.key):
+            # need to refactor some code to allow this to work correctly .. use print till then
+            # issue is in Common.py AddVariable stuff
             print "Varible option [",option.key,"] is was already defined"
+            #reporter.report_warning("Varible option [",option.key,"] is was already defined")
         self.options[option.key]=option
 
     def keys(self):

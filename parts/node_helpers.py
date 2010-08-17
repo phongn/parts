@@ -5,7 +5,55 @@ yet as i need a way to safely add the global object to parts export statement
 
 import SCons.Script
 import common
+import reporter
 import os
+
+
+class ninfotmp(object):
+    def __init__(self):
+        self.timestamp=0
+        self.csig=0 
+
+def node_up_to_date(node):
+    ''' 
+    Expects a Scons node objects, will test aginst stored info 
+    to see if it is uptodate
+    '''
+    
+    if isinstance(node,SCons.Node.Node):
+        node.disambiguate()
+        dbentry=node.get_stored_info()
+        ninfo=dbentry.ninfo
+    elif common.is_string(node):
+        node=common.g_engine.def_env.Entry(node)
+        node.disambiguate()
+        dbentry=node.get_stored_info()
+        ninfo=dbentry.ninfo
+    else:
+        ninfo=ninfotmp()
+        ninfo.timestamp=node['timestamp']
+        ninfo.csig=node['csig']
+        node=common.g_engine.def_env.Entry(node['name'])
+        node.disambiguate()
+    # see if node time stamp matches
+    tmp=getattr(ninfo,'timestamp',None)
+    if tmp is None:
+        reporter.verbose_msg("update_check","'%s' does not exist in the SCons DB"%(node))
+        return False
+    if node.exists() == False:
+        reporter.verbose_msg("update_check","'%s' does not exist"%(node))
+        return False
+    if node.get_timestamp() != tmp:
+        # timestamp did not match.. try md5
+        reporter.verbose_msg("update_check","TimeStamp diff in '%s'"%(node))
+        if node.get_csig() != getattr(ninfo,'csig',0):
+            # md5 failure
+            #print ninfo.__dict__,node.get_csig()
+            reporter.verbose_msg("update_check","%s is out of date because of differences"%(node))
+            return False
+    #reporter.verbose_msg("update_check","%s seems to be unmodified"%(node))
+    return True
+
 
 class _AbsFile:
     def __init__(self,env):
@@ -20,10 +68,14 @@ class _AbsDir:
         return self.env.Dir(str(path),self.env['SRC_DIR']).srcnode().abspath
 
 def AbsFile(env,path):
-    return env.File(str(path),env['SRC_DIR']).srcnode().abspath
+    tmp=env.File(str(path),env['SRC_DIR'])
+    common.tag_node_ownership(env,tmp.Dir('.'))
+    return tmp.srcnode().abspath
 
 def AbsDir(env,path):
-    return env.Dir(str(path),env['SRC_DIR']).srcnode().abspath
+    tmp = env.Dir(str(path),env['SRC_DIR'])
+    common.tag_node_ownership(env,tmp)
+    return tmp.srcnode().abspath
     
     
 def SymLinkEnv(env,name,linkto):#,*args,**kw):

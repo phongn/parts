@@ -6,7 +6,7 @@ import parts.core as core
 import parts.node_helpers as node_helpers
 import parts.pattern as pattern
 import parts.functors as functors
-import parts.parts
+import parts.parts as parts
 import parts.reporter as reporter 
 
 #map unit testing stuff.. clean up depends.. 
@@ -72,69 +72,59 @@ else:
     print "PARTS: Writing Test Scripts -- Done"
     
 
-
+from parts.target_type import target_type
 def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,**kw):
+    
+    #to help with user errors
     reporter.SetPartStackFrameInfo()
-    ## make a new enviroment to prevent conflicts with pdb files and output names
-    #env2=core.generate_config({},{},kw)
-    env2=env.Clone(**kw)
-    def_env=SCons.Script.DefaultEnvironment()
-
-    ## extra mapping for unit testing
-    env2['UNIT_TEST_TARGET']=target
-      
-    short_alias=env2.subst('${UTEST_PREFIX}${UNIT_TEST_TARGET}')
+    targets=SCons.Script.BUILD_TARGETS
+    for t in targets:
+        tmp=target_type(t)
+        if tmp.concept == 'utest' or tmp.concept == 'run_utest':
+            break
+    else:
+        return []
     
-    old_val=def_env['DEFINING_PART']
-
-    ## some basic mappings we want from the orginal part
-    ## probally need more, might want to think about how to refactor this 
-    ##common.g_env_w_builders.add(id(env2))
-    part_info=parts.parts.make_part_info(env2,None,short_alias,env['ALIAS'])
-    #small hack to help with error messages
-    part_info['FILE']=env['PART_INFO']['FILE']
-    part_info['MAKES_SDK']=False
-    #part_info['BASE_PATH']=env['PART_INFO']['BASE_PATH']
+    ## make a new Part object
+    parent_obj=common.g_engine._part_manager._from_env(env)
+    short_alias=env.subst('${UTEST_PREFIX}%s'%target)
+    pobj=parts.Part_t(
+        env.subst('${UTEST_PREFIX}%s'%target),
+        parent_obj._file,
+        create_sdk=False,
+        parent_part=parent_obj,
+        __is_read=True,
+        **kw)
+    pobj._setup_(env.Clone(**kw))
     
-    alias=env2['ALIAS']
-    def_env['PART_INFO'][alias]=part_info
-    #helps with debugging
-    env2['PART_INFO']=part_info
-
-    ### clean this up
-    ##alias info
-    env2['PART_ALIAS']=part_info['ALIAS']
-    env2['PART_ROOT_ALIAS']=part_info['ROOT_ALIAS']
-    env2['PART_PARENT_ALIAS']=part_info['PARENT_ALIAS']
+    common.g_engine._part_manager._add_part(pobj.Alias,pobj)
+    # setup basic stuff we need for this part
     
-    ## name info
-    env2['PART_NAME']="${PARTS('"+alias+"','NAME')}"
-    env2['PART_SHORT_NAME']="${PARTS('"+alias+"','SHORT_NAME')}"    
-    env2['PART_ROOT_NAME']="${PARTS('"+alias+"','ROOT_NAME')}"
-    env2['PART_PARENT_NAME']="${PARTS('"+alias+"','PARENT_NAME')}"
-
-    ## version info
-    env2['PART_VERSION']="${PARTS('"+alias+"','VERSION')}"
-    env2['PART_SHORT_VERSION']="${PARTS('"+alias+"','SHORT_VERSION')}"
     
-
-    env2.PartName(short_alias)
+    # tweak Environment
+    pobj.Env['UNIT_TEST_TARGET']=target
+    if src_dir != '.':
+        pobj._source_path(node_helpers.AbsDir(env,src_dir))
+        
+    
+    # set the name
+    pobj.Env.PartName(short_alias)
+    
     ## setup the varible with paths
     curr_path=node_helpers.AbsDir(env,'.')
     orig_src_dir=common.relpath(node_helpers.AbsDir(env,src_dir),curr_path)
     if src_dir!='.':
         src_dir=common.relpath(env.Dir(os.path.join(curr_path,src_dir)).srcnode().abspath,env.Dir('.').abspath)
 
-    build_dir_leaf=env2['UNIT_TEST_TARGET']
+    build_dir_leaf=pobj.Env['UNIT_TEST_TARGET']
     #build_dir=os.path.join(env.subst('$BUILD_DIR'),build_dir_leaf)
-    build_dir=env2.subst('$BUILD_DIR')
+    build_dir=pobj.Env.subst('$BUILD_DIR')
     
-
-    ##map autodepends stuff
-    env2.DependsOn([env2.Component(env.PartName(),env.PartVersion())])
+    ## map autodepends stuff
+    pobj.Env.DependsOn([pobj.Env.Component(env.PartName(),env.PartVersion())])
     
     ## flatten the sources
-    source=env.Flatten(source)
+    source=pobj.Env.Flatten(source)
     
     ## process the sources
     src_files=[]
@@ -155,10 +145,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
                 f=f[len(orig_src_dir)+1:]
             src_files.append(os.path.join(build_dir,f))
         else:
-            print "Unknown type in unit_test() in unit_test.py"
+            reporter.report_warning("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
     
     ## flatten the sources
-    data_src=env.Flatten(data_src)
+    data_src=pobj.Env.Flatten(data_src)
     
     ## process any data files
     out=[]
@@ -166,64 +156,62 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     for s in data_src:
         if isinstance(s,pattern.Pattern):
             t,sr=s.target_source(dest_dir)
-            out+=env2.CCopyAs(target=t,source=sr)
+            out+=pobj.Env.CCopyAs(target=t,source=sr)
             #print "Pattern type"
         elif isinstance(s,SCons.Node.FS.Dir):
             #get all file in the directory
             #... add code...
-            out+=env2.CCopy(target=dest_dir,source=s)
+            out+=pobj.Env.CCopy(target=dest_dir,source=s)
             #print "Dir type"
         elif isinstance(s,SCons.Node.FS.File):
-            out+=env2.CCopy(target=dest_dir,source=s)
+            out+=pobj.Env.CCopy(target=dest_dir,source=s)
             #print "File type"
         elif isinstance(s,SCons.Node.Node):
-            out+=env2.CCopy(target=dest_dir,source=s)
+            out+=pobj.Env.CCopy(target=dest_dir,source=s)
         elif common.is_string(s):
             if s[:len(orig_src_dir)]==orig_src_dir:
                 s=s[len(orig_src_dir)+1:]
-            out+=env2.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
+            out+=pobj.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
         else:
-            print "Parts: Warning! -- Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME')
+            reporter.report_warning("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
 
     
     ## the current path
-    env2.Append(CPPPATH= [src_dir]) 
+    pobj.Env.Append(CPPPATH= [src_dir]) 
         
     ## change the build dir
-    env2.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
+    pobj.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
     
     ## the option to build with PDB or not
-    if make_pdb==True and env2['PLATFORM'] == 'win32': 
-        env2['PDB']=build_dir+"/"+env2['UNIT_TEST_TARGET_NAME']+'.pdb'
+    # might not to do this any more... as teh PDB will work correctly on non windows systems
+    if make_pdb==True and pobj.Env['TARGET_PLATFORM'] == 'win32': 
+        pobj.Env['PDB']=build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME']+'.pdb'
     else:
-        env2['PDB']=None
+        pobj.Env['PDB']=None
     
     ## the unit test we want to build
-    ret = env2.Program(target=build_dir+"/"+env2['UNIT_TEST_TARGET_NAME'],source=src_files)
+    ret = pobj.Env.Program(target=build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME'],source=src_files)
+    common.tag_node_ownership(pobj.Env,pobj.Env.Dir(build_dir))
     
-    # build alias stuff
-    if common.g_name_alias_map.has_key(alias) == False:
-        common.g_name_alias_map[alias]=set()
-    # add to set of known aliases
-    common.g_name_alias_map[alias].add(alias)
-    
+    #build alias
     build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-    a=env2.Alias("_"+build_alias,ret)        
-    common.g_name_alias_map[alias].add("_"+build_alias)
+    a=pobj.Env.Alias("_"+build_alias)     
     
     tmp=[]
     for i in ret:
         if isinstance(i,SCons.Node.FS.File)or isinstance(i,SCons.Node.Node) or common.is_string(i):
-            if common.is_catagory_file(env,'INSTALL_LIB_PATTERN',i):
-                tmp+=env2.CCopy(target='$INSTALL_LIB',source=i)
+            if common.is_catagory_file(pobj.Env,'INSTALL_LIB_PATTERN',i):
+                tmp+=pobj.Env.CCopy(target='$INSTALL_LIB',source=i)
             else:#if common.is_catagory_file(env,'SDK_BIN_PATTERN',i):
-                tmp+=env2.CCopy(target='$INSTALL_BIN',source=i)
+                tmp+=pobj.Env.CCopy(target='$INSTALL_BIN',source=i)
     ret = tmp
     
      #install alias stuff
-    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias
+    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+pobj.Alias
     a=env.Alias(install_alias,a+ret)
-    common.g_name_alias_map[alias].add(install_alias)
+    # setup basic aliases
+    #pobj._map_alias()
+
     
 ## finish this below....    
     
@@ -232,24 +220,23 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    scripts_out=env2.__UTEST__(build_dir+"/"+env2['UNIT_TEST_TARGET_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
+    scripts_out=pobj.Env.__UTEST__(build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
     
     ## here we map a bunch of aliases
     
-    core_alias=env2.Alias(alias,a+scripts_out+out)
+    core_alias=pobj.Env.Alias(pobj.Alias,a+scripts_out+out)
     #add to queue the delayed mapping of any dependent stuff
-    def_env['PREPROCESS_LOGIC_QUEUE'].append(functors.map_parts_alias(env2))
+    common.g_engine.add_preprocess_logic_queue(functors.map_parts_alias(pobj.Env))
     
-    base_alias=env2.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
-    base_alias2=env2.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=env2.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=env2.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
+    base_alias=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
+    base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
+    base_alias3=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
+    base_alias4=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
     
     ## map just this test to build
-    #alias_out=make_build_alias(env2,base_alias,base_alias2,base_alias3,base_alias4)
-    alias_out=common.make_alias_tree(env2,'${BUILD_UTEST_CONCEPT}',base_alias,base_alias2,base_alias3,base_alias4)
-    test_all_outs=env2.Alias(env2['UTEST_ALL'], alias_out)
-    common.g_name_alias_map[alias].add(env2['UTEST_ALL'])
+    alias_out=common.make_alias_tree(pobj.Env,'${BUILD_UTEST_CONCEPT}',base_alias,base_alias2,base_alias3,base_alias4)
+    test_all_outs=pobj.Env.Alias(pobj.Env['UTEST_ALL'], alias_out)
+    pobj._add_alias(pobj.Env['UTEST_ALL'])
     
 
     ## the command action to Run this stuff
@@ -257,10 +244,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## map just this test to run    
     # map top level run alias... first one maps to build based 'base_alias'
-    base_alias=env2.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',base_alias,env2.Action(cmd))
-    base_alias2=env2.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=env2.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=env2.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
+    base_alias=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',base_alias,pobj.Env.Action(cmd))
+    base_alias2=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
+    base_alias3=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
+    base_alias4=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
     
     env.AlwaysBuild(base_alias)
     env.AlwaysBuild(base_alias2)
@@ -268,119 +255,20 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     env.AlwaysBuild(base_alias4)    
     
     #run_alias_out=make_run_alias(env2,None,base_alias)
-    run_alias_out=common.make_alias_tree(env2,'${RUN_UTEST_CONCEPT}',base_alias)
+    run_alias_out=common.make_alias_tree(pobj.Env,'${RUN_UTEST_CONCEPT}',base_alias)
     
     ## map it to all tests to run
-    a=env2.Alias(env2['RUN_UTEST_ALL'], run_alias_out)
-    common.g_name_alias_map[alias].add(env2['RUN_UTEST_ALL'])
+    a=pobj.Env.Alias(pobj.Env['RUN_UTEST_ALL'], run_alias_out)
+    pobj._add_alias(pobj.Env['RUN_UTEST_ALL'])
     
     ## map the run case to build
-    env2.AlwaysBuild(a)
+    pobj.Env.AlwaysBuild(a)
 
-    def_env['DEFINING_PART']=old_val
     reporter.ResetPartStackFrameInfo()
     return ret
-
-
-def make_build_alias(env,name_version,
-    name_shortversion=None,
-    name_majorversion=None,
-    name_only=None):
     
 
-    # utest::$PART_NAME_$VERSION
-    name='${BUILD_UTEST_CONCEPT}${PART_NAME}_${PART_VERSION}'
-    #print 'mapping',env.subst(name),'->',name_version[0]
-    n_ver_alias=env.Alias(name, name_version)
-    # utest::$PART_NAME_$SHORT_VERSION
-    
-    name='${BUILD_UTEST_CONCEPT}${PART_NAME}_${PART_SHORT_VERSION}'
-    if name_shortversion == None:
-        #print 'mapping',env.subst(name),'->',n_ver_alias[0]
-        n_sver_alias=env.Alias(name, n_ver_alias)
-    else:
-        #print 'mapping',env.subst(name),'->',n_ver_alias[0],name_shortversion[0]
-        n_sver_alias=env.Alias(name, [n_ver_alias,name_shortversion])
-        
-    # utest::$PART_NAME_$MAJOR_VERSION
-    name='${BUILD_UTEST_CONCEPT}${PART_NAME}_'+str(env.PartVersion().major())
-    if name_majorversion == None:
-        #print 'mapping',env.subst(name),'->',n_sver_alias[0]
-        n_mver_alias=env.Alias(name, n_sver_alias)
-    else:
-        #print 'mapping',env.subst(name),'->',n_sver_alias[0],name_majorversion[0]
-        n_mver_alias=env.Alias(name, [n_sver_alias,name_majorversion])
-    # utest::$PART_NAME
-    name='${BUILD_UTEST_CONCEPT}${PART_NAME}'
-    if name_only == None:
-        #print 'mapping',env.subst(name),'->',n_mver_alias[0]
-        name_alias=env.Alias(name, n_mver_alias)
-    else:
-        #print 'mapping',env.subst(name),'->',n_mver_alias[0],name_only[0]
-        name_alias=env.Alias(name, [n_mver_alias,name_only])
-    
-    # clean up thsi statement once we clean up the Part vars
-    if env['PART_INFO']['PARENT_ALIAS'] != None:
-        def_env=SCons.Script.DefaultEnvironment()
-        parent_env=def_env['PART_INFO'][env['PART_INFO']['PARENT_ALIAS']]['ENV']
-        return make_build_alias(parent_env,n_ver_alias,n_sver_alias,n_mver_alias,name_alias)
-    
-    return name_alias
-    
-    
-def make_run_alias(env,action,name_version,
-    name_shortversion=None,
-    name_majorversion=None,
-    name_only=None):
-    
 
-    # utest::$PART_NAME_$VERSION
-    runname='${RUN_UTEST_CONCEPT}${PART_NAME}_${PART_VERSION}'
-    #print 'mapping',env.subst(runname),'->',name_version[0]
-    if action ==None:
-        n_ver_alias=env.Alias(runname, name_version)
-    else:
-        n_ver_alias=env.Alias(runname, name_version, action)
-    
-    # utest::$PART_NAME_$SHORT_VERSION
-    runname='${RUN_UTEST_CONCEPT}${PART_NAME}_${PART_SHORT_VERSION}'
-    if name_shortversion == None:
-        #print 'mapping',env.subst(runname),'->',n_ver_alias[0]
-        n_sver_alias=env.Alias(runname, n_ver_alias)
-    else:
-        #print 'mapping',env.subst(runname),'->',n_ver_alias[0],name_shortversion[0]
-        n_sver_alias=env.Alias(runname, [n_ver_alias,name_shortversion])
-        
-    # utest::$PART_NAME_$MAJOcoolR_VERSION
-    runname='${RUN_UTEST_CONCEPT}${PART_NAME}_'+str(env.PartVersion().major())
-    if name_majorversion == None:
-        #print 'mapping',env.subst(runname),'->',n_sver_alias[0]
-        n_mver_alias=env.Alias(runname, n_sver_alias)
-    else:
-        #print 'mapping',env.subst(runname),'->',n_sver_alias[0],name_majorversion[0]
-        n_mver_alias=env.Alias(runname, [n_sver_alias,name_majorversion])
-    # utest::$PART_NAME
-    runname='${RUN_UTEST_CONCEPT}${PART_NAME}'
-    if name_only == None:
-        #print 'mapping',env.subst(runname),'->',n_mver_alias[0]
-        name_alias=env.Alias(runname, n_mver_alias)
-    else:
-        #print 'mapping',env.subst(runname),'->',n_mver_alias[0],name_only[0]
-        name_alias=env.Alias(runname, [n_mver_alias,name_only])
-
-    # make it run all the time
-    env.AlwaysBuild(n_ver_alias)
-    env.AlwaysBuild(n_sver_alias)
-    env.AlwaysBuild(n_mver_alias)
-    env.AlwaysBuild(name_alias)
-    
-    # clean up thsi statement once we clean up the Part vars
-    if env['PART_INFO']['PARENT_ALIAS'] != None:
-        def_env=SCons.Script.DefaultEnvironment()
-        parent_env=def_env['PART_INFO'][env['PART_INFO']['PARENT_ALIAS']]['ENV']
-        return make_run_alias(parent_env,None,n_ver_alias,n_sver_alias,n_mver_alias,name_alias)
-    
-    return name_alias
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

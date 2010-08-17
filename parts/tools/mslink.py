@@ -317,7 +317,7 @@ def generate(env):
     env['LDMODULEEMITTER'] = [ldmodEmitter]
     env['LDMODULECOM'] = compositeLdmodAction
     
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslink',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslink',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env,'link')

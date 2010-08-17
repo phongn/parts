@@ -25,4 +25,4 @@ for t in found_tests:
         
 print
 print "Running tests"
-unittest.TextTestRunner(verbosity=2).run(suite)
+unittest.TextTestRunner(sys.stdout,verbosity=2).run(suite)

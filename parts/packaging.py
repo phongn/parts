@@ -1,6 +1,7 @@
 import common
 import SCons.Script
 import reporter
+import metatag
 
 g_package_groups={}
 
@@ -14,6 +15,7 @@ def PackageGroup(name,parts=[]):
     or Dir ( and like items) are not being handled at this time as we really
     don't know where we want to put the files in the package.
     '''
+    
     tmp=[]
     name=SCons.Script.DefaultEnvironment().subst(name)
     parts=common.make_list(parts)
@@ -109,7 +111,7 @@ def GetPackageGroupFiles(name,no_pkg=False):
 def SortPackageGroups():
 
     grps=PackageGroups() # get the groups
-    def_env=SCons.Script.DefaultEnvironment() #get reference to default environment
+    
     # reset the cache for this name
     common._INSTALLED_PACKAGING_GROUPS={}
     common._INSTALLED_NO_PACKAGING_GROUPS={}
@@ -122,30 +124,28 @@ def SortPackageGroups():
         for obj in obj_lst:            
             if isinstance(obj,SCons.Node.FS.File):
                 files=[obj]
-                map_objs=def_env.get('PACKAGE_GROUP_FILTER',[])
-                env=def_env
+                map_objs=common.g_engine.def_env.get('PACKAGE_GROUP_FILTER',[])
             else: # assume this is a part
-                pinfo=def_env['PART_INFO'][get_part_alias(obj)]
-                env=pinfo['ENV']
-                map_objs=env.get('PACKAGE_GROUP_FILTER',[])
-                files=pinfo['INSTALLED_FILES']
+                pobj=common.g_engine._part_manager._from_alias(obj)
+                map_objs=pobj.Env.get('PACKAGE_GROUP_FILTER',[])
+                files=pobj._installed_files
                 
             for f in files:
-                _no_pkg=def_env.MetaTagValue(f,'no_package','package',False)
-                group_val=env.MetaTagValue(f,'group','package',None)
+                _no_pkg=metatag.MetaTagValue(f,'no_package','package',False)
+                group_val=metatag.MetaTagValue(f,'group','package',None)
                 if group_val is None:
                     group_val=name
                     #apply meta tag to file
-                    env.MetaTag(f,'package',group=group_val)
+                    metatag.MetaTag(f,'package',group=group_val)
                     #apply any mappings
                     
                     for tmp in map_objs.items():
                         key,tests=tmp
                         for t in tests:
                             if t(f):
-                                env.MetaTag(f,'package',group=key)
+                                metatag.MetaTag(f,'package',group=key)
                                 #get new group value
-                                reporter.verbose_msg('packageing',"Remapping",f,"from package_group",group_val,'to',key)
+                                reporter.verbose_msg('packaging',"Remapping",f,"from package_group",group_val,'to',key)
                                 group_val=key
                                 break
                     

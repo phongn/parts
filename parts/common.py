@@ -7,7 +7,6 @@ import string
 import os
 import imp
 import sys
-import re
 
 import Variables
 
@@ -17,28 +16,28 @@ import SCons.Errors
 import SCons.Tool
 import SCons.Util
 
+
+g_build_context_files=set()
+
 g_engine=None
 g_part_frame=[]
 
 g_builders={}
 #g_args={}
 g_env_cache={}
+# global object to add to parts call
 g_parts_objs={}
 
-g_part_mode=''
 
-# node we have processed
-#g_parts_node=set()
-# enviroments with builders
-# or ones that are used created by the part call which we always assume to have one
-#g_env_w_builders=set()
+#g_parts={} 
+#g_name_alias={}
+# state object of what is being processed.
+g_part_being_processed=[]
 
-#def_args={}
 def_vars=[]
 ## adding stuff here as the Varible are falling apart on handing objects
 g_defaultoverides={'PACKAGE_GROUP_FILTER':{}}
-# holds the set of alias that are created by parts
-g_name_alias_map={}
+
 # set of the part we know we want to build
 g_buildable_part=set()
 # set of alias we are targeting to be build as source
@@ -51,6 +50,8 @@ g_depends_data={}
 g_mappers={}
 # these are the global functions we define to the SConstruct
 g_globals={}
+# these are all teh sections that have been defined
+g_sections=set()
 
 # path to where Parts is installed
 g_parts_path=os.path.abspath(os.path.split(__file__)[0])
@@ -64,6 +65,10 @@ g_base_env= SCons.Script.Environment(tools=[])
 def get_basic_SCon_env(**kw):
     return g_base_env.Clone(**kw)
 
+def add_section(section):
+    # add
+    g_sections.add(section)
+    
 def add_mapper(mapper):
     g_mappers[mapper.name]=mapper
 
@@ -92,6 +97,43 @@ def AddListVariable(key,default,help,allowed_values=[],map={}):
     def_vars.append(Variables.ListVariable2(key,help,default,allowed_values,map))    
 
 ##########################################################
+
+
+def is_processing_part(part_obj):
+    # we this part is processed that we don't need to worry about it
+    if part_obj.IsProcessed():
+        return False
+    # check to see if the "root" part is being processed
+    # as if this is the case we don't want to process it again
+    if part_obj.root.alias in g_part_being_processed:
+        return True
+    return False
+    
+def try_load_part_component(env,comp):
+    curr_define_part=get_part(env)
+    name_list=comp.name.split('.')[0]
+    root_name=name_list[0]
+    ver_range=comp.version
+    
+    # try to see if we can resolve the component 
+    
+    # Check DB for match
+    
+    # If that failed try manual laoding of Parts till we get a hit
+    # or detact deadlock
+    
+    # first we try to find something that looks likes it
+    
+    # check to see if we are laoding a sub part
+    
+    # here we try to find the best match root part
+    
+        
+    
+    # then we just start load stuff till we get a hit
+    
+    # if that fails return None to have calling code
+    # add a mapper to resolve latter or error out
 
 
 ###############
@@ -204,7 +246,7 @@ def extend_unique(obj,lst):
     to a list in a unique way
     '''
     for i in lst:
-        obj=append_unique(obj,i)
+        append_unique(obj,i)
     return obj
 
 def pre_extend_unique(obj,lst):
@@ -214,7 +256,7 @@ def pre_extend_unique(obj,lst):
     '''
     
     for i in lst:
-        obj=prepend_unique(obj,i)
+        prepend_unique(obj,i)
     return obj
 
 def append_unique(obj,val):
@@ -229,18 +271,23 @@ def append_unique(obj,val):
 def prepend_unique(obj,val):
     ''' The purpose of this funtion is to add the object to a list in a unique way'''
     if not val in obj:
-        obj=[val]+obj
+        obj[0:0]=[val]
     else:
         obj.remove(val)
-        obj=[val]+obj
+        obj[0:0]=[val]
     
+    return obj
+
+def append_if_absent(obj,val):
+    if not val in obj:
+        obj.append(val)
     return obj
 
 def extend_if_absent(obj,val):
     ''' The purpose of this funtion is to add to the object only the list elements which are unique'''
-    tmp=[]
+    
     for element in val:
-        if element not in obj:            
+        if element not in obj:
             obj.append(element)
     return obj
 
@@ -306,6 +353,22 @@ def option_bool(val,option, default=False):
 #def is_bin_file(env,file):
 #    '''This function returns True is the argument looks like a file that would be copied to a BIN directory'''
 #    return is_catagory_file(env,'BIN_PATTERN',file)
+
+def tag_node_ownership(env,node):
+    alias=env['PART_ALIAS']
+    tmp=env.MetaTagValue(node,'owners','parts',[])
+    if alias not in tmp:
+        #print "Tagged",alias, node
+        env.MetaTag(node,'parts',owners=[alias]+tmp)
+        
+    tmp=env.MetaTagValue(node.srcnode(),'owners','parts',[])
+    if alias not in tmp:
+        #print "Tagged",alias, node.srcnode()
+        env.MetaTag(node.srcnode(),'parts',owners=[alias]+tmp)
+    
+    for k,e in node.entries.items():
+        if isinstance(e,SCons.Node.FS.Dir) and k != '.' and k!='..':
+            tag_node_ownership(env,e)
 
 
 ## amazing enough python never added a relpath function....
@@ -501,7 +564,7 @@ def gen_arg(env,sdk_path,value):
     return ret
 
 def func_gen(env,sdk_path,func,values):
-    s='env.'+func+'('
+    s='    env.'+func+'('
     i=len(values)
     for v in values:
         i=i-1
@@ -520,36 +583,36 @@ def make_alias_tree(env,concept,
     action=None,
     always_build=False):
     
-    alias=env.subst('$ALIAS')
-    if g_name_alias_map.has_key(alias)==False:
-        g_name_alias_map[alias]=set()
-    
-    
-    name=env.subst(concept+'${PART_NAME}_${PART_VERSION}')
-    g_name_alias_map[alias].add(name)
-    
+    pobj=g_engine._part_manager._from_env(env)
+        
+    name="%s%s_%s"%(concept,pobj.Name,pobj.Version)#env.subst(concept+'${PART_NAME}_${PART_VERSION}')
+    pobj._add_alias(name)
+    #print name,"->",name_version[0]
     if action ==None:
         n_ver_alias=env.Alias(name, name_version)
     else:
         n_ver_alias=env.Alias(name, name_version, action)
     
-    name=env.subst(concept+'${PART_NAME}_${PART_SHORT_VERSION}')
-    g_name_alias_map[alias].add(name)
+    name="%s%s_%s"%(concept,pobj.Name,pobj.ShortVersion)#env.subst(concept+'${PART_NAME}_${PART_SHORT_VERSION}')
+    pobj._add_alias(name)
+    #print name,"->",n_ver_alias[0]
     if name_shortversion == None:
         n_sver_alias=env.Alias(name, n_ver_alias)
     else:
         n_sver_alias=env.Alias(name, [n_ver_alias,name_shortversion])
         
     
-    name=env.subst(concept+'${PART_NAME}_')+str(env.PartVersion().major())
-    g_name_alias_map[alias].add(name)
+    name="%s%s_%s"%(concept,pobj.Name,pobj.Version.major())#env.subst(concept+'${PART_NAME}_')+str(env.PartVersion().major())
+    pobj._add_alias(name)
+    #print name,"->",n_sver_alias[0]
     if name_majorversion == None:
         n_mver_alias=env.Alias(name, n_sver_alias)
     else:
         n_mver_alias=env.Alias(name, [n_sver_alias,name_majorversion])
     
-    name=env.subst(concept+'${PART_NAME}')
-    g_name_alias_map[alias].add(name)
+    name="%s%s"%(concept,pobj.Name)#env.subst(concept+'${PART_NAME}')
+    pobj._add_alias(name)
+    #print name,"->",n_mver_alias[0]
     if name_only == None:
         name_alias=env.Alias(name, n_mver_alias)
     else:
@@ -561,16 +624,17 @@ def make_alias_tree(env,concept,
         env.AlwaysBuild(n_mver_alias)
         env.AlwaysBuild(name_alias)
     
-    # clean up thsi statement once we clean up the Part vars
-    if env['PART_INFO']['PARENT_ALIAS'] != None:
-        def_env=SCons.Script.DefaultEnvironment()
-        parent_env=def_env['PART_INFO'][env['PART_INFO']['PARENT_ALIAS']]['ENV']
+    # clean up this statement once we clean up the Part vars
+
+    if pobj.Parent is not None:
+        parent_env=pobj.Parent.Env
         return make_alias_tree(parent_env,concept,n_ver_alias,n_sver_alias,n_mver_alias,name_alias,always_build=always_build)
     
     return name_alias
 
 
 ############################## Platform Maps ################################
+import re
 g_arch_map = {
 'ia32':'x86',
 'x86':'x86',
@@ -634,7 +698,7 @@ def UpdatePlatformRegEx():
         else:
             os_str = os_str + '|' + os
    
-    g_valid_platform_re = re.compile('(' + os_str + ')*(-*)(' + arch_str + ')*',re.IGNORECASE)
+    g_valid_platform_re = re.compile('(?P<os>' + os_str + ')?(?P<sep1>-)?(?P<arch>' + arch_str + ')?$',re.IGNORECASE)
 
     
 def UpdateValidArchList():
@@ -653,6 +717,7 @@ def UpdateValidOSList():
 
 UpdateValidArchList()
 UpdateValidOSList()
+
 
 
 

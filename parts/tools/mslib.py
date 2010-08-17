@@ -54,7 +54,7 @@ def generate(env):
     env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
     env['LIBPREFIX']   = ''
     env['LIBSUFFIX']   = '.lib'
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslib',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslib',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env,'lib')

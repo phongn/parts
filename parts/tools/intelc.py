@@ -23,7 +23,6 @@ def generate(env):
         env['AR']        = 'xiar'
         env['LD']        = 'xild' # not used by default
 
-    IntelCommon.Intelc.MergeShellEnv(env)
     
     if is_windows:
         # Look for license file dir
@@ -49,8 +48,10 @@ def generate(env):
                                         % (envlicdir, defaultlicdir))
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
         
+    IntelCommon.Intelc.MergeShellEnv(env)
+    
     # fix this up so we can control its printing to screen better.
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return IntelCommon.Intelc.Exists(env)

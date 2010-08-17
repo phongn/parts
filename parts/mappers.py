@@ -1,4 +1,4 @@
-
+import thread
 import os
 import common
 import SCons.Script 
@@ -8,131 +8,126 @@ import SCons.Script.Main
 import traceback
 import StringIO
 
+g_complex_sub={}
 
 class mapper(object):
     def __init__(self):
         self.stackframe=reporter.GetPartStackFrameInfo()
-
-
-
-def sub_lst(env,lst,def_env={"PARTS_COMPLEX_SUB":0}):
-    ''' Utility function to help with returning list from env.subst() as this function
-    doesn't like the returning of lists. This returns a list seperated by the binary value of 1
-    which is not used as a normal printing character.'''
-    ret=[]
-    def_env["PARTS_COMPLEX_SUB"]=def_env["PARTS_COMPLEX_SUB"]+1
-    for i in lst:
-        v=env.subst(str(i)).split("\1")
-        #ret.extend(v)
-        ret=common.extend_unique(ret,v)
-    def_env["PARTS_COMPLEX_SUB"]=def_env["PARTS_COMPLEX_SUB"]-1
-    return ret#common.make_unique(ret)
-
-def find_matching_version(def_env,env,id,ver_range,alias_lst):
-    ''' this function is used by the part_ID_mapper to help find the lastest 
-    version number of a given part. It was pulled out as a seperate function to 
-    mainly to help the readbility of the rather large partID mapper function'''
-    
-    pinfo=None
-    ret=None
-    last_ver=None
-    arch=env['TARGET_PLATFORM']
-    
-    try:
-        for i in alias_lst[id]:
-            if def_env['PART_INFO'].has_key(i) == False:
-                reporter.report_error(
-                    "Default Env doesn't have key",i,
-                    exit=False
-                    )
-                #because the exceptionthrown will not get threw the try catch in subst()
-                env.Exit(1)
-            pinfo=def_env['PART_INFO'][i]
-            if pinfo['NAME'] == id:
-                # get the version info
-                tmp=pinfo['VERSION']
-                #if this is a string we need subst it to get real version
-                if common.is_string(tmp):
-                    this_ver=version.version(env.subst(tmp))
-                else:
-                    # else we assume this is a version object
-                    this_ver=tmp
-                    
-                if this_ver in ver_range and this_ver > last_ver and arch==pinfo['PLATFORM_MATCH']:
-                    last_ver=this_ver
-                    ret=pinfo
-                            
-    except Exception, ec:
-        #print type(ec),ec
+        
+    def alias_missing(self,env):
+        if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):                
+            
+            reporter.report_warning(self.name,"Alias", self.part_alias,"was not defined",
+                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
+                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                stackframe=self.stackframe
+                )
+        else:
+            reporter.report_error(
+                self.name+" Alias",self.part_alias,"was not defined",
+                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
+                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                stackframe=self.stackframe,
+                exit=False
+                )
+            #because the exceptionthrown will not get threw the try catch in subst()
+            env.Exit(1)
+            
+    def name_to_alias_failed(self,env):
+        found_data=''
+        name_to_alias=common.g_engine._part_manager._alias_list(self.name)
+        
+        for a in name_to_alias:
+            tmp=common.g_engine._part_manager._from_alias(a)
+            found_data+=" Alias=%s, version=%s, matching platforms=%s\n"%(tmp.Alias,tmp.Version,tmp._platform_match)
+        if found_data=='':
+            found_data=" Nothing was found"
+            
         reporter.report_error(
-            "Looking up Name <%s> in Name->Alias map %s\n version range <%s>\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-            (id,str(alias_lst),str(ver_range),env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+            self.name+": Part name <%s> did not define version that matches version range of <%s> for %s architechture\n Found:\n%s"%\
+            (self.part_name,str(self.ver_range),env['TARGET_PLATFORM'].ARCH,found_data),
+            "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
+            (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+            stackframe=self.stackframe,
             exit=False
             )
         #because the exceptionthrown will not get threw the try catch in subst()
         env.Exit(1)
-    return ret
+        
+    def unexpected_error(self,env):
+        ec_str=StringIO.StringIO()
+        traceback.print_exc(file=ec_str)
+        reporter.report_error(
+            "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+            stackframe=self.stackframe,
+            exit=False
+            )
+        #because the exceptionthrown will not get threw the try catch in subst()
+        env.Exit(1)
+
+
+def sub_lst(env,lst,thread_id):
+    ''' Utility function to help with returning list from env.subst() as this function
+    doesn't like the returning of lists. This returns a list seperated by the binary value of 1
+    which is not used as a normal printing character.'''
+    ret=[]
+    g_complex_sub[thread_id]=g_complex_sub[thread_id]+1
+    for i in lst:
+        v=env.subst(str(i)).split("\1")
+        #ret.extend(v)
+        ret=common.extend_unique(ret,v)
+    g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
+    return ret#common.make_unique(ret)
+
 
 class part_mapper(mapper):
-    ''' This class maps the part vars in the Default enviroment to the actual 
-    value stored the in default Env PART_INFO map. It then returns the value
+    ''' This class maps the part property in the Part object. It then returns the value
     of the property for the requested part alias. It has to do a small hack to 
     replace a the property in the actual Env else a SCons issue with subst and lists
     causes the subst to fail.
     '''
     name='PARTS'
-    def __init__(self,part_name,part_prop,ignore=False):
+    def __init__(self,alias,prop,ignore=False):
         mapper.__init__(self)
-        self.part_name = part_name
-        self.part_prop = part_prop
+        self.part_alias = alias
+        self.part_prop = prop
         self.ignore=ignore
 
     def __call__(self, target, source, env, for_signature):
         try:
-            def_env=SCons.Script.DefaultEnvironment()
-            
-            pinfo = def_env['PART_INFO'].get(self.part_name,None)
-            if pinfo == None:
-                if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
-                    
-                    reporter.report_warning(self.name,"mapper: Part",self.part_name,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe)
-                else:
-                    reporter.report_error(
-                        self.name,"mapper: Part",self.part_name,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
-                        )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
+            thread_id=thread.get_ident() 
+            if thread_id not in g_complex_sub:
+                g_complex_sub[thread_id] = 0
+            reporter.verbose_msg(['parts_mappers'],"Getting part object for alias:",self.part_alias)
+                
+            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
+            if pobj == None:
+                self.alias_missing(env)
                 return ''
-            ret=pinfo.get(self.part_prop,None)
+            
+            ret=getattr(pobj,self.part_prop,None)
             if ret== None:
-                if pinfo.has_key(self.part_prop)==False and self.ignore==False:
+                if self.ignore==False:
                     reporter.report_warning(self.name,"mapper: Property ",
-                        self.part_name+'.'+self.part_prop," was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                        self.part_alias+'.'+self.part_prop," was not defined",
                         stackframe=self.stackframe
                         )
                 return ''
-            penv=pinfo['ENV']
+            reporter.verbose_msg(['parts_mappers'],'Property %s = "%s" for part alias "%s"'%(self.part_prop,ret,self.part_alias))
+            penv=pobj.Env
             if common.is_list(ret):
                 if len(ret)>1:
-                    ret=sub_lst(penv,ret,def_env)
-                pinfo[self.part_prop]=ret
-                if def_env["PARTS_COMPLEX_SUB"]==0:
-                    #print "before PARTS()",env[self.part_prop],ret
-                    idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+self.part_prop+"')}")
+                    ret=sub_lst(penv,ret,thread_id)
+                
+                setattr(pobj,self.part_prop,ret)
+                if g_complex_sub[thread_id]==0:
+                    reporter.verbose_msg(['parts_mappers'],"before PARTS()",env[self.part_prop],ret)
+                    idx=env[self.part_prop].index("${"+self.name+"('"+self.part_alias+"','"+self.part_prop+"')}")
                     if common.is_list(env[self.part_prop]):
                         env[self.part_prop][idx:idx+1]=ret
                     else:
                         env[self.part_prop]=[ret]
-                    #print "after PARTS()",env[self.part_prop]
+                    reporter.verbose_msg(['parts_mappers'], "after PARTS()",env[self.part_prop])
                     if ret == []:
                         return ""
                     else:
@@ -147,9 +142,7 @@ class part_mapper(mapper):
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -170,120 +163,170 @@ class part_id_mapper(mapper):
     name='PARTID'
     def __init__(self,id,ver_range,part_prop,ignore=False):
         mapper.__init__(self)
-        self.part_id = id
+        self.part_name = id
         self.ver_range = version.version_range(ver_range)
-        self.part_prop = part_prop
+        self.part_prop = part_prop.lower()
         self.ignore=ignore
 
     def __call__(self, target, source, env, for_signature):
         try:
-            #print "PARTID resolving","${PARTID('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
-            def_env=SCons.Script.DefaultEnvironment()
-            
-            
-            #first we need to get the id to alias map
-            id_to_alias = def_env.get('PART_IDS',{})     
-            
-            if self.part_id not in id_to_alias:
-                if env["PARTS_MODE"]=='build':
-                    if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
-                        reporter.report_warning(self.name,
-                            "Did not find Part name <%s> in internal name->alias dictionary"%(self.part_id),
-                            "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                            (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                            print_once=True,
-                            stackframe=self.stackframe
-                            )
-                    else:
-                        reporter.report_error(
-                            self.name,"Did not find Part name <"+self.part_id+"> in name->alias dictionary",
-                            "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                            (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                            stackframe=self.stackframe,
-                            exit=False
-                            )                        
-                        #because the exceptionthrown will not get threw the try catch in subst()
-                        env.Exit(1)
-                        
-                return ''
             
             #Find matching verion pinfo
-            pinfo=find_matching_version(def_env,env,self.part_id,self.ver_range,id_to_alias)
+            pobj=common.g_engine._part_manager._from_nvp(
+                self.part_name,
+                self.ver_range,
+                env['TARGET_PLATFORM']
+            )
+                        
+            if pobj == None:
+                self.name_to_alias_failed(env)
             
-            if pinfo == None:
-                reporter.report_error(
-                    self.name+": Part name <%s> did not define version that matches version range of <%s> for %s ARCHITECTURE"%\
-                    (self.part_id,str(self.ver_range),env['TARGET_PLATFORM'].ARCH),
-                    "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                    (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                    stackframe=self.stackframe,
-                    exit=False
-                    )
-                #because the exceptionthrown will not get threw the try catch in subst()
-                env.Exit(1)
-                
-            
-            ret=pinfo.get(self.part_prop,None)
+            ret=getattr(pobj,self.part_prop,None)
             if ret== None:
                 if self.ignore==False:
-                    reporter.report_error(
-                        self.name+": Property",pinfo["ALIAS"]+'.'+self.part_prop,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
+                    reporter.report_warning(self.name,"mapper: Property ",
+                        pobj.Alias+'.'+self.part_prop," was not defined",
+                        stackframe=self.stackframe
                         )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
-                else:
-                    ret= ""
+                return ''
+            reporter.verbose_msg(['partid_mapper'],'Property %s = "%s" for part alias "%s"'%(self.part_prop,ret,pobj.Alias))
+            penv=pobj.Env
+
+            thread_id=thread.get_ident() 
+            if thread_id not in g_complex_sub:
+                g_complex_sub[thread_id] = 0
                 
-                            
-            penv=pinfo['ENV']
             if common.is_list(ret):
-                
                 if len(ret)>1:
-                    ret=sub_lst(penv,ret,def_env)
-                
-                pinfo[self.part_prop]=ret
-                if def_env["PARTS_COMPLEX_SUB"]==0:
-                    key="${"+self.name+"('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop
-                    if self.ignore==False:
-                        key=key+"')}"
+                    ret=sub_lst(penv,ret,thread_id)
+                #setattr(pobj,self.part_prop,ret)
+                if g_complex_sub[thread_id]==0:
+                    reporter.verbose_msg(['partid_mapper'],"before",self.name,env[self.part_prop],ret)
+                    if self.ignore == True:
+                        idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"',True)}")
                     else:
-                        key=key+"',True)}"
-                    
-                    #print "before PARTID()",env[self.part_prop],ret,key
-                    idx=env[self.part_prop].index(key)
-                    #env[self.part_prop][idx:idx+1]=ret
-                    env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)#ret                    
-                    #print "after PARTID()",env[self.part_prop]
+                        idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"')}")
+                    if common.is_list(env[self.part_prop]):
+                        env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
+                    else:
+                        env[self.part_prop]=[ret]
+                    reporter.verbose_msg(['partid_mapper'], "after",self.name,env[self.part_prop])
                     if ret == []:
-                        #print "PARTID resolving -- Done 1a",ret
                         return ""
                     else:
-                        #print "PARTID resolving -- Done 1b",ret[0]
                         return ret[0]
                 else:
-                    #print "PARTID resolving -- Done 2","\1".join(ret)
                     return "\1".join(ret)
             else:
-                #print "PARTID resolving -- Done 3",penv.subst(str(ret))
                 return penv.subst(str(ret))
+            
         except Exception,ec:
+            
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
             #because the exceptionthrown will not get threw the try catch in subst()
             env.Exit(1)
             
-        #print "PARTID resolving -- Done 4",ret
+        return ret
+
+class part_id_export_mapper(mapper):
+    ''' This class maps the part name and version range to the correct alias in 
+    the Default enviroment to the actual value stored the in default Env PART_INFO map.
+    It then returns the value of the property for the requested part alias. 
+    It has to do a small hack to replace a the property in the actual Env else a SCons
+    issue with subst and lists causes the subst to fail.
+    '''
+    name='PARTIDEXPORTS'
+    def __init__(self,id,ver_range,part_prop,ignore=False):
+        mapper.__init__(self)
+        self.part_name = id
+        self.ver_range = version.version_range(ver_range)
+        self.part_prop = part_prop
+        self.ignore=ignore
+
+    def __call__(self, target, source, env, for_signature):
+        try:
+            pobj_org=common.g_engine._part_manager._from_env(env)
+           #Find matching verion pinfo
+            pobj=common.g_engine._part_manager._from_nvp(
+                self.part_name,
+                self.ver_range,
+                env['TARGET_PLATFORM']
+            )
+                        
+            if pobj == None:
+                self.name_to_alias_failed(env)
+            
+            ret=pobj._exports.get(self.part_prop,[])
+            
+            reporter.verbose_msg(['partexport_mapper'],'Property %s = "%s" for part alias "%s"'%(self.part_prop,ret,pobj.Alias))
+            penv=pobj.Env
+
+            thread_id=thread.get_ident() 
+            if thread_id not in g_complex_sub:
+                g_complex_sub[thread_id] = 0
+                
+            if common.is_list(ret):
+                if len(ret)>1:
+                    ret=sub_lst(penv,ret,thread_id)
+                    pobj._exports[self.part_prop]=ret
+                if g_complex_sub[thread_id]==0:
+                    
+                    if self.ignore == True:
+                        str_val="${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"',True)}"
+                        
+                    else:
+                        str_val="${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
+                    
+                    try:
+                        # set the value in the exports to prevent recusive hitting of this again latter
+                        # value might not exist in cases of programs or components that are on the top 
+                        # of the tree.. so if we get a KeyError we can ignore it
+                        idx=pobj_org._exports[self.part_prop].index(str_val)
+                        pobj_org._exports[self.part_prop][idx:idx+1]=ret
+                    except KeyError:
+                        pass
+                    except ValueError:
+                        pass
+                    try:
+                        reporter.verbose_msg(['partexport_mapper'],"before",self.name,env[self.part_prop],ret)
+                        idx=env[self.part_prop].index(str_val)
+                        if common.is_list(env[self.part_prop]):
+                            env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
+                        else:
+                            env[self.part_prop]=[ret]
+                        reporter.verbose_msg(['partexport_mapper'], "after",self.name,env[self.part_prop])
+                    except KeyError, e:
+                        reporter.verbose_msg(['partexport_mapper'], "KeyError",e)
+                    except ValueError:
+                        pass
+                    
+                    if ret == []:
+                        return ""
+                    else:
+                        return ret[0]
+                else:
+                    return "\1".join(ret)
+            else:
+                return penv.subst(str(ret))
+            
+        except Exception,ec:
+            
+            ec_str=StringIO.StringIO()
+            traceback.print_exc(file=ec_str)
+            reporter.report_error(
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                stackframe=self.stackframe,
+                exit=False
+                )
+            #because the exceptionthrown will not get threw the try catch in subst()
+            env.Exit(1)
+            
         return ret
 
 class part_lib_mapper(mapper):
@@ -296,122 +339,92 @@ class part_lib_mapper(mapper):
     name='PARTLIB'
     def __init__(self,id,ver_range,part_prop,ignore=False):
         mapper.__init__(self)
-        self.part_id = id
+        self.part_name = id
         self.ver_range = version.version_range(ver_range)
         self.part_prop = part_prop
         self.ignore=ignore
 
     def __call__(self, target, source, env, for_signature):
         try:
-            #print "PARTID resolving","${PARTID('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
-            def_env=SCons.Script.DefaultEnvironment()
-            
-            
-            #first we need to get the id to alias map
-            id_to_alias = def_env.get('PART_IDS',{})     
-            
-            if self.part_id not in id_to_alias:
-                if env["PARTS_MODE"]=='build':
-                    if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
-                        reporter.report_warning(self.name,
-                            "Did not find Part name <%s> in internal name->alias dictionary"%(self.part_id),
-                            "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                            (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                            print_once=True,
-                            stackframe=self.stackframe
-                            )
-                    else:
-                        reporter.report_error(
-                            self.name,"Did not find Part name <"+self.part_id+"> in name->alias dictionary",
-                            "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                            (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                            stackframe=self.stackframe,
-                            exit=False
-                            )                        
-                        #because the exceptionthrown will not get threw the try catch in subst()
-                        env.Exit(1)
-                        
-                return ''
-            
+            pobj_org=common.g_engine._part_manager._from_env(env)
             #Find matching verion pinfo
-            pinfo=find_matching_version(def_env,env,self.part_id,self.ver_range,id_to_alias)
+            pobj=common.g_engine._part_manager._from_nvp(
+                self.part_name,
+                self.ver_range,
+                env['TARGET_PLATFORM']
+            )
+            if pobj == None:
+                self.name_to_alias_failed(env)
             
-            if pinfo == None:
-                reporter.report_error(
-                    self.name+": Part name <%s> did not define version that matches version range of <%s> for %s ARCHITECTURE"%\
-                    (self.part_id,str(self.ver_range),env['TARGET_PLATFORM'].ARCH),
-                    "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                    (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                    stackframe=self.stackframe,
-                    exit=False
-                    )
-                #because the exceptionthrown will not get threw the try catch in subst()
-                env.Exit(1)
-                
+            ret=pobj._exports.get(self.part_prop,[])
             
-            ret=pinfo.get(self.part_prop,None)
-            if ret== None:
-                if self.ignore==False:
-                    reporter.report_error(
-                        self.name+": Property",pinfo["ALIAS"]+'.'+self.part_prop,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
-                        )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
-                else:
-                    ret= ""
+            reporter.verbose_msg(['partlib_mapper'],'Property %s = "%s" for part name "%s"'%(self.part_prop,ret,pobj.Name))
+            penv=pobj.Env
+
+            thread_id=thread.get_ident() 
+            if thread_id not in g_complex_sub:
+                g_complex_sub[thread_id] = 0
                 
-                            
-            penv=pinfo['ENV']
             if common.is_list(ret):
-                
                 if len(ret)>1:
-                    ret=sub_lst(penv,ret,def_env)
-                
-                pinfo[self.part_prop]=ret
-                if def_env["PARTS_COMPLEX_SUB"]==0:
-                    key="${"+self.name+"('"+self.part_id+"','"+str(self.ver_range)+"','"+self.part_prop
-                    if self.ignore==False:
-                        key=key+"')}"
+                    ret=sub_lst(penv,ret,thread_id)
+                pobj._exports[self.part_prop]=ret
+                if g_complex_sub[thread_id]==0:
+                    if self.ignore == True:
+                        str_val="${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"',True)}"
+                        
                     else:
-                        key=key+"',True)}"
+                        str_val="${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"')}"
                     
-                    #print "before PARTID()",env[self.part_prop],ret,key
-                    idx=env[self.part_prop].index(key)
-                    #env[self.part_prop][idx:idx+1]=ret
-                    env[self.part_prop][0:idx+1] = common.extend_unique(env[self.part_prop][0:idx],ret) # Pratim says : I am not sure why LHS has idx+1                   
-                    #print "after PARTID()",env[self.part_prop]
+                    try:
+                        # set the value in the exports to prevent recusive hitting of this again latter
+                        # value might not exist in cases of programs or components that are on the top 
+                        # of the tree.. so if we get a KeyError we can ignore it
+                        idx=pobj_org._exports[self.part_prop].index(str_val)
+                        pobj_org._exports[self.part_prop][idx:idx+1]=ret
+                    except KeyError:
+                        pass
+                    except ValueError:
+                        pass                    
+                        
+                    try:
+                        reporter.verbose_msg(['partlib_mapper'],"before",self.name,env[self.part_prop],ret)
+                        idx=env[self.part_prop].index(str_val)
+                        if common.is_list(env[self.part_prop]):
+                            env[self.part_prop][0:idx+1]=common.extend_unique(env[self.part_prop][0:idx],ret)
+                        else:
+                            env[self.part_prop]=[ret]
+                        reporter.verbose_msg(['partlib_mapper'], "after",self.name,env[self.part_prop])
+                    except KeyError, e:
+                        reporter.verbose_msg(['partlib_mapper'], "KeyError",e)
+                    except ValueError:
+                        pass
+                        
+                    
                     if ret == []:
-                        #print "PARTID resolving -- Done 1a",ret
                         return ""
                     else:
-                        #print "PARTID resolving -- Done 1b",ret[0]
                         return ret[0]
                 else:
-                    #print "PARTID resolving -- Done 2","\1".join(ret)
                     return "\1".join(ret)
             else:
-                #print "PARTID resolving -- Done 3",penv.subst(str(ret))
                 return penv.subst(str(ret))
+            
         except Exception,ec:
+            
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
             #because the exceptionthrown will not get threw the try catch in subst()
             env.Exit(1)
             
-        #print "PARTID resolving -- Done 4",ret
         return ret
 
+            
 class part_subst_mapper(mapper):
     ''' This class maps the part vars in the Default enviroment to the actual 
     value stored the in default Env PART_INFO map. It then returns the value
@@ -421,45 +434,27 @@ class part_subst_mapper(mapper):
     values not fully filled in.
     '''
     name='PARTSUB'
-    def __init__(self,part_name,part_prop):
+    def __init__(self,part_alias,substr):
         mapper.__init__(self)
-        self.part_name = part_name
-        self.part_prop = part_prop
+        self.part_alias = part_alias
+        self.substr = substr
 
     def __call__(self, target, source, env, for_signature):
         try:
             def_env=SCons.Script.DefaultEnvironment()
             
-            pinfo = def_env['PART_INFO'].get(self.part_name,None)
-            if pinfo == None:
-                if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
-                    
-                    reporter.report_warning(self.name,"Alias",self.part_name,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe
-                        )
-                else:
-                    reporter.report_error(
-                        self.name+" Alias "+self.part_name+" was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
-                        )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
-                return 'None'
-            penv=pinfo['ENV']
-            ret = penv.subst(self.part_prop)
+            pobj = common.g_engine._part_manager._from_alias(self.part_alias)
+            if pobj == None:
+                self.alias_missing(env)
+                return None
+            penv=pobj.Env
+            ret = penv.subst(self.substr)
             #print 'PARTS: Verbose -- PARTSUB MAPPED',"#${PARTSUB('"+self.part_name+"','"+self.part_prop+"')} to",ret
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -477,38 +472,18 @@ class part_name_mapper(mapper):
 
     def __call__(self, target, source, env, for_signature):
         try:
-            def_env=SCons.Script.DefaultEnvironment()
+            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
+            try:
+                ret=pobj.Name
+            except AttributeError: 
+                self.alias_missing(env)
+                return None
             
-            pinfo = def_env['PART_INFO'].get(self.part_alias,None)
-            if pinfo == None:
-                if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
-                    
-                    reporter.report_warning(self.name,"Alias",self.part_alias,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe)
-                else:
-                    reporter.report_error(
-                        self.name+" Alias "+ self.part_alias+" was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
-                        )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
-                return 'None'
-            if pinfo['NAME']==None:
-                ret=pinfo['ALIAS']
-            else:
-                ret=pinfo['NAME']
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -522,46 +497,24 @@ class part_shortname_mapper(mapper):
     and short name
     '''
     name='PARTSHORTNAME'
-    def __init__(self,part_name):
+    def __init__(self,part_alias):
         mapper.__init__(self)
-        self.part_name = part_name
+        self.part_alias = part_alias
 
     def __call__(self, target, source, env, for_signature):
         try:
-            def_env=SCons.Script.DefaultEnvironment()
+            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
             
-            pinfo = def_env['PART_INFO'].get(self.part_name,None)
-            if pinfo == None:
-                if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):                
-                    
-                    reporter.report_warning(self.name,"Alias", self.part_alias,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe
-                        )
-                else:
-                    reporter.report_error(
-                        self.name+" Alias",self.part_name,"was not defined",
-                        "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                        (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
-                        stackframe=self.stackframe,
-                        exit=False
-                        )
-                    #because the exceptionthrown will not get threw the try catch in subst()
-                    env.Exit(1)
-                    
-                return 'None'
-            if pinfo['SHORT_NAME']==None:
-                ret=pinfo['SHORT_ALIAS']
-            else:
-                ret=pinfo['SHORT_NAME']
+            if pobj == None:
+                self.alias_missing(env)
+                return None
+                
+            ret=pobj.ShortName
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             reporter.report_error(
-                "Exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
-                (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
+                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -601,6 +554,7 @@ class relpath_mapper(mapper):
 
 common.add_mapper(part_mapper)
 common.add_mapper(part_id_mapper)
+common.add_mapper(part_id_export_mapper)
 common.add_mapper(part_subst_mapper)
 common.add_mapper(part_name_mapper)
 common.add_mapper(part_shortname_mapper)

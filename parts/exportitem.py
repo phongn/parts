@@ -11,14 +11,14 @@ class EXPORT_TYPES:
     PATH_FILE=3
 
 
-def export_path(env,target_dirs,source_dirs,pinfo,prop,use_src=False,create_sdk=True):
+def export_path(env,target_dirs,source_dirs,pobj,prop,use_src=False,create_sdk=True):
     
     # We have three case basicaly of type of paths we pass
     # 1) is the SDK/final path for the file
     # 2) is the build path for the file
     # 3) is the source pasth of the file
     ret=[]
-    tmp=pinfo[prop]
+    tmp=pobj._exports[prop]
     if use_src: # ie use Raw Source Directories
         for s in source_dirs:
             # setting up the libpaths
@@ -56,13 +56,11 @@ def export_path(env,target_dirs,source_dirs,pinfo,prop,use_src=False,create_sdk=
                 target_dir=final_path
                 tmp.append(target_dir)
                 ret.append(target_dir)
-                
-    #pinfo[prop].extend(ret)
     return ret
 
 _reg=re.compile('[\w\-\.]*.so.([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)', re.I)
              
-def export_file(env,targets,pinfo,prop):
+def export_file(env,targets,pobj,prop):
     ret=[]
     for t in targets:
         if common.is_string(t):
@@ -78,11 +76,14 @@ def export_file(env,targets,pinfo,prop):
             continue
         elif file.endswith('.so-gz'):
             file = file[:-6]
-        pinfo[prop]=[file]+pinfo[prop]
+
+        pobj._exports[prop]=[file]+pobj._exports[prop]
+        
     return ret
 
 def export_file_path(env,targets,pinfo,prop,use_src):
     ret=[]
+    prop_val=pobj._exports[prop]
     for t in targets:
         if common.is_string(t):
             t=env.File(t)
@@ -92,9 +93,9 @@ def export_file_path(env,targets,pinfo,prop,use_src):
         if use_src==False:
             # use build directory
             if build_path not in pinfo[prop]:
-                pinfo[prop].append(build_path)
+                prop_val.append(build_path)
         elif final_path not in pinfo[prop]:
-                pinfo[prop].append(final_path)
+                prop_val.append(final_path)
     return ret
 
 
@@ -121,28 +122,23 @@ def ExportLIBS(env,values,create_sdk=True):
 
 def ExportItem(env,prop,values,create_sdk=True):
     reporter.SetPartStackFrameInfo(True)
-    def_env=SCons.Script.DefaultEnvironment()
-    define_part=def_env.get('DEFINING_PART',None)
-    pinfo=def_env['PART_INFO'][define_part]
+    pobj=common.g_engine._part_manager._from_env(env)
     
     # set the create SDK value
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
     
-    if pinfo.has_key(prop)==False:
-        pinfo[prop]=[]
-    if common.is_list(values)==False:
-        values=[values]
-    values=SCons.Script.Flatten(values)
-   
+    if pobj._exports.has_key(prop)==False:
+        pobj._exports[prop]=[]
+        
+    values=common.make_list(values)
+       
     for v in values:
-        v=str(v)
-        if v not in pinfo[prop]:
-            pinfo[prop].append(v)
+        common.append_unique(pobj._exports[prop],str(v))
+        
     if create_sdk:
-        if pinfo.has_key('CREATE_SDK') == False:
-            pinfo['CREATE_SDK']=[]
-        pinfo['CREATE_SDK'].append(('ExportItem',[prop,values,False]))
+        pobj._create_sdk_data.append(('ExportItem',[prop,values,False]))
+        
     reporter.ResetPartStackFrameInfo()
 
 # This is what we want to be setup in parts

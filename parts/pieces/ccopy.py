@@ -13,47 +13,80 @@ from parts.part_logger import part_nil_logger
 if sys.platform == 'win32':
     import ctypes
     def ccopy_hard_soft(dest,source):
+        # we only deal with files in our cases
+        reporter.verbose_msg("ccopy","ccopy_hard_soft dest=%s source=%s"%(dest,source))
         try:
-            ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source))
+            ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
+            if ret==0:
+                reporter.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             try:
-                # we only deal with files in our cases
-                ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(source),0)
+                #get the relpath
+                tmp=os.path.split(source)
+                tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
+                ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+                if ret==0:
+                    reporter.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    raise IOError,ctypes.FormatError(ctypes.GetLastError())
             except:
-                ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
+                ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
                     raise ctypes.WinError()
 
     def ccopy_soft_hard(dest,source):    
+        # we only deal with files in our cases
+        reporter.verbose_msg("ccopy","ccopy_soft_hard dest=%s source=%s"%(dest,source))
+        #get the relpath
+        tmp=os.path.split(source)
+        tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
         try:
-            # we only deal with files in our cases
-            ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(source),0)
+            ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+            if ret==0:
+                reporter.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             try:
-                ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source))
+                ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
+                if ret==0:
+                    reporter.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    raise IOError,ctypes.FormatError(ctypes.GetLastError())
             except:
-                ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
+                ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
                     raise ctypes.WinError()
                 
     def ccopy_hard(dest,source):
+        # we only deal with files in our cases
+        reporter.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
         try:
-            ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source))
+            ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
+            if ret==0:
+                reporter.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
-            ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
+            ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
                 raise ctypes.WinError()
         
     def ccopy_soft(dest,source):
+        # we only deal with files in our cases
+        #get the relpath
+        reporter.verbose_msg("ccopy","ccopy_soft dest=%s source=%s"%(dest,source))
+        tmp=os.path.split(source)
+        tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
         try:
-            # we only deal with files in our cases
-            ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(source),0)
+            ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+            if ret==0:
+                reporter.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
-            ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
+            ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
                 raise ctypes.WinError()
         
     def ccopy_copy(dest,source):
+        reporter.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
         ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
         if ret==0:
             raise ctypes.WinError()
@@ -167,6 +200,23 @@ class CCopy(object):
     hard_copy=4
     soft_copy=5
 
+def convert(str):
+    if common.is_string(str):
+        if str=='hard-soft-copy':
+            return CCopy.hard_soft_copy
+        elif str=='soft-hard-copy':
+            return CCopy.soft_hard_copy
+        elif str=='hard-copy':
+            return CCopy.hard_copy
+        elif str=='soft-copy':
+            return CCopy.soft_copy
+        elif str=='copy':
+            return CCopy.copy
+        else:
+            reporter.report_warning("unknown string value for CCOPY_LOGIC")
+    return str
+    
+
 
 def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
 
@@ -179,7 +229,10 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     
     #setup copy function
     if copy_logic == CCopy.default:
-        copy_logic=env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
+        copy_logic=convert(
+            env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
+            )
+ 
     if copy_logic == CCopy.copy:
         copy_logic=env.__CCopyBuilderC__
     elif copy_logic == CCopy.hard_soft_copy:
@@ -230,8 +283,12 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
 def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     result = []
     #setup copy function
+    
     if copy_logic == CCopy.default:
-        copy_logic=env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
+        copy_logic=convert(
+            env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
+            )
+            
     if copy_logic == CCopy.copy:
         copy_logic=env.__CCopyBuilderC__
     elif copy_logic == CCopy.hard_soft_copy:
@@ -271,9 +328,20 @@ SConsEnvironment.CCopyAs=CCopyAsWrapper
 SConsEnvironment._SDKCOPY_=_sdk_copy
 SConsEnvironment._SDKCOPYAs_=_sdk_copyas
 
+def copy_hard_soft_action(target,source,env):
+    return CCopyFunc(target, source, env,ccopy_hard_soft)
+def copy_soft_hard_action(target,source,env):
+    return CCopyFunc(target, source, env,ccopy_soft_hard)
+def copy_hard_action(target,source,env):
+    return CCopyFunc(target, source, env,ccopy_hard)
+def copy_soft_action(target,source,env):
+    return CCopyFunc(target, source, env,ccopy_soft)
+def copy_copy_action(target,source,env):
+    return CCopyFunc(target, source, env,ccopy_copy)
+
 common.AddBuilder('__CCopyBuilderHSC__',SCons.Builder.Builder(
         action         = SCons.Action.Action(
-            lambda target, source, env: CCopyFunc(target, source, env,ccopy_hard_soft),
+            copy_hard_soft_action,
             CCopyStringFunc),
         target_factory = SCons.Node.FS.Entry,
         source_factory = SCons.Node.FS.Entry,
@@ -283,7 +351,7 @@ common.AddBuilder('__CCopyBuilderHSC__',SCons.Builder.Builder(
 
 common.AddBuilder('__CCopyBuilderSHC__',SCons.Builder.Builder(
         action         = SCons.Action.Action(
-            lambda target, source, env: CCopyFunc(target, source, env,ccopy_soft_hard),
+            copy_soft_hard_action,
             CCopyStringFunc),
         target_factory = SCons.Node.FS.Entry,
         source_factory = SCons.Node.FS.Entry,
@@ -293,7 +361,7 @@ common.AddBuilder('__CCopyBuilderSHC__',SCons.Builder.Builder(
 
 common.AddBuilder('__CCopyBuilderHC__',SCons.Builder.Builder(
         action         = SCons.Action.Action(
-            lambda target, source, env: CCopyFunc(target, source, env,ccopy_hard),
+            copy_hard_action,
             CCopyStringFunc),
         target_factory = SCons.Node.FS.Entry,
         source_factory = SCons.Node.FS.Entry,
@@ -302,7 +370,7 @@ common.AddBuilder('__CCopyBuilderHC__',SCons.Builder.Builder(
         ))
 common.AddBuilder('__CCopyBuilderSC__',SCons.Builder.Builder(
         action         = SCons.Action.Action(
-            lambda target, source, env: CCopyFunc(target, source, env,ccopy_soft),
+            copy_soft_action,
             CCopyStringFunc),
         target_factory = SCons.Node.FS.Entry,
         source_factory = SCons.Node.FS.Entry,
@@ -311,7 +379,7 @@ common.AddBuilder('__CCopyBuilderSC__',SCons.Builder.Builder(
         ))
 common.AddBuilder('__CCopyBuilderC__',SCons.Builder.Builder(
         action         = SCons.Action.Action(
-            lambda target, source, env: CCopyFunc(target, source, env,ccopy_copy),
+            copy_copy_action,
             CCopyStringFunc),
         target_factory = SCons.Node.FS.Entry,
         source_factory = SCons.Node.FS.Entry,
@@ -323,6 +391,7 @@ common.add_global_value('CCopy',CCopy)
 common.add_parts_object('CCopy',CCopy)        
         
         
-common.AddEnumVariable('CCOPY_LOGIC','hard-soft-copy','',['hard-soft-copy','soft-hard-copy','hard-copy','soft-copy','copy'])
+common.AddEnumVariable('CCOPY_LOGIC','hard-soft-copy',
+        '',['hard-soft-copy','soft-hard-copy','hard-copy','soft-copy','copy'])
         
         

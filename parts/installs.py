@@ -1,4 +1,4 @@
-import os,sys
+import os
 import SCons.Script
 #import SCons.Environment
 import SCons.Tool.install
@@ -185,26 +185,25 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
         source=[source]
     source=SCons.Script.Flatten(source)
     
-    def_env=SCons.Script.DefaultEnvironment()
     
-    alias=env['ALIAS']
-    pinfo=def_env['PART_INFO'][alias]
+    pobj=common.g_engine._part_manager._from_env(env)
 
     
-    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+alias        
+    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
     installed_files,src_files = ProcessInstall(env,target,source,sub_dir,install_alias,create_sdk,sdk_dir,no_pkg,**kw)
     
     # assign to install alias
     env.Alias(install_alias,installed_files)
     # add installed file to Part object
-    pinfo['INSTALLED_FILES'].extend(installed_files)
+    pobj._installed_files.extend(installed_files)
     
-    env.MetaTag(installed_files, PACKAGING_ALIAS = env['ALIAS'])
+    #env.MetaTag(installed_files, PACKAGING_ALIAS = env['ALIAS'])
+    env.MetaTag(installed_files, 'package',part_alias = env['ALIAS'])
+    env.MetaTag(installed_files, 'package',part_name = env.subst('$PART_NAME'))
+    env.MetaTag(installed_files, 'package',part_name = env.subst('$PART_VERSION'))
     
     if create_sdk:
-        if pinfo.has_key('CREATE_SDK') == False:
-            pinfo['CREATE_SDK']=[]
-        pinfo['CREATE_SDK'].append(('InstallItem',[target, common._make_rel(src_files), sub_dir,"",no_pkg,False]))
+        pobj._create_sdk_data.append(('InstallItem',[target, common._make_rel(src_files), sub_dir,"",no_pkg,False]))
     reporter.ResetPartStackFrameInfo()
     return installed_files
 
@@ -481,7 +480,7 @@ common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
 #common.AddListVariable('AUTO_TAG_INSTALL',[('*.pdb',{'no_package':True})],'')
 common.AddBoolVariable('AUTO_TAG_ON_INSTALL',True,'')
 
-if 'win32' == sys.platform:
+if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
 else:
     common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')

@@ -1,5 +1,4 @@
 import parts.common as common
-import parts.reporter as reporter
 import SCons.Script
 import os
 
@@ -12,7 +11,7 @@ def scanner_function(node, env, path):
 
     ret=[]
     def_env=SCons.Script.DefaultEnvironment()
-    alias=env['ALIAS']
+    alias=env['PART_ALIAS']
     depends=def_env['PART_INFO'][alias]['DEPENDSON']
 
     for d in depends:
@@ -54,11 +53,11 @@ def mapping_bf(target, source, env):
             '\n\tVersion: '+str(env.subst(def_env['PART_INFO'][a]['VERSION']))+'\n')
     if lst==[]:
         f.write("No dependents defined")
-    reporter.print_msg( "PARTS: Writing -- Done")
+    print "PARTS: Writing -- Done"
     
 
 common.AddBuilder('_MapUnknowns',SCons.Script.Builder(
         action = SCons.Script.Action(mapping_bf,mapping_bf_str),
         emitter=mapping_bfe,
-        target_scanner=SCons.Scanner.Base(scanner_function)
+        target_scanner=SCons.Script.DefaultEnvironment().Scanner(scanner_function)
         ))

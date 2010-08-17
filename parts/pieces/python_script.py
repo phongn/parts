@@ -23,7 +23,7 @@ def py_blde(target, source, env):
     fp, pathname, description = imp.find_module(base[:-3],[path])
     
     
-    #need to replace '.' with some otehr value else it will try to load a 
+    #need to replace '.' with some other value else it will try to load a 
     # non-existing parent module
     mod_name=source[0].srcnode().abspath[:-3].replace('.','<dot>')
     

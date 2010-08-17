@@ -7,6 +7,7 @@ import SCons.Util
 import SCons.Environment
 import os
 import sys
+import thread
 
 
 from SCons.Script import _SConscript 
@@ -93,19 +94,27 @@ if sys.platform=='win32':
     __builtin__.open=shared_open
     _SConscript.open=_orginial_open
     
+    # ideally this should be done with a reimpl of SCons.Node.FS.LocalFS
+    def win32_rm(path):
+        r=ctypes.windll.kernel32.DeleteFileW(unicode(path))
+        if r ==0 :
+            raise OSError,ctypes.FormatError(ctypes.GetLastError())
    
-    
+    os.remove=win32_rm
+    os.unlink=win32_rm
 
 # this class allows us to add object varible that get a reference to the env
 # that holds it
 class bindable(object):
     pass
 
+import common
+
 OrigSConscript_exception=_SConscript.SConscript_exception
 def PartSConscript_exception(file=None):
     ''' this is silly in general, but is done to allow the remapping of stream 
     to work better as the orginal code get the stream before I remap it as it is
-    a default option. This prevents sys.stderr from beting used by have my 
+    a default option. This prevents sys.stderr from being used by have my 
     stderr used be used.'''
     if file==None:
         file=sys.stderr
@@ -124,6 +133,11 @@ def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
         
 
 def Parts__setitem__(self,key,val):
+    if getattr(self,'_log_keys',False):
+        if self.has_key(key)==False:
+            pobj=common.g_engine._part_manager._from_env(self)
+            if pobj and common.is_string(val):
+                pobj._env_exports[key]=val
     self._orig__setitem__(key,val)
     if isinstance(val,bindable):
         try:
@@ -131,6 +145,10 @@ def Parts__setitem__(self,key,val):
         except:
             self.bindable_vars=[key]
         val._bind(self,key)
+
+def Parts__getitem__(self,key):
+    return self._orig__getitem__(key)
+    
 
 
 class PartPathDirsWrapper:
@@ -143,10 +161,9 @@ class PartPathDirsWrapper:
         #print "$$$",obj.variable
     def __call__(self, env, dir, target=None, source=None, argument=None):
         import mappers
-        def_env=SCons.Script.DefaultEnvironment()
         prop_lst=env.get(self.obj.variable,[])
         if prop_lst!=[]:
-            ret=mappers.sub_lst(env,prop_lst,def_env)
+            ret=mappers.sub_lst(env,prop_lst,thread.get_ident())
             env[self.obj.variable]=ret
         #print 'Scanner', target[0]        
         return self.obj(env,dir,target,source,argument)
@@ -164,50 +181,59 @@ def Scanner_override():
 cc=[]
 cct=[]
 
+
 Orig_BuildWrapper=SCons.Environment.BuilderWrapper
 class Parts_BuilderWrapper(Orig_BuildWrapper):
 
     def __call__(self, target=None, source=SCons.Environment._null, *args, **kw):
         
-        # get default env
-        def_env=SCons.Script.DefaultEnvironment()
-        # get current part info
-        alias=def_env.get('DEFINING_PART')
+        # self.object should be the env value
+        pobj=common.g_engine._part_manager._from_env(self.object)   
         
-
+        # clean up source value to make it a list as the builder would expect it
+        # this help me latter in dealing with the values myself
+        # we don't make them real nodes as we don't know what the builder wants
+        if SCons.Util.is_String(source):
+            source=[source] # make it a list
+        elif source==SCons.Environment._null:
+            pass # leave it alone
+        elif SCons.Util.is_List(source):
+            # flatten the list
+            source = SCons.Util.flatten(source)
+            
+        
         dup=kw.get("allow_duplicates",False)
         found=False
         if dup:
             #Get info for help store info matches better
-            if alias is not None:
-                pinfo=def_env['PART_INFO'][alias]
-                name=pinfo.get('NAME')
-                srcpath=pinfo['ENV']['SRC_DIR']
+            if pobj is not None:
+                name=pobj.Name
+                srcpath=pobj.SourcePath
             else:
                 name=None
                 srcpath=None
             # make key
-            if SCons.Util.is_String(source):
-                s=os.path.split(str(source))[1]
-            elif source==SCons.Environment._null:
+            
+            if source==SCons.Environment._null:
                 s="_null"
-            elif SCons.Util.is_List(source):
+            elif source != []:# SCons.Util.is_List(source):
                 s=os.path.split(str(source[0]))[1]
             else:
-                s=os.path.split(str(source))[1]
+                s="_null"
+                
             
             if target == []:
                 key=(srcpath,s,self.name,name)
             else:
                 key=(target,s,self.name,name)
-            #print key
+            
             #test for match
             if key in cc:
                 #print "seen this one!!!!!!!!!!!!!!!!!!!",cc.index(key)
                 #print key
                 tmp= cct[cc.index(key)]
                 found=True
-                
+        
         if not found:
             tmp=Orig_BuildWrapper.__call__(self,target, source, *args, **kw)
         
@@ -215,9 +241,10 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
         if dup:
             cc.append(key)
             cct.append(tmp)
-        if alias is not None:
-            pinfo=def_env['PART_INFO'][alias]
-            pinfo['TARGET_FILES'].extend(tmp)
+        if pobj is not None:
+            pobj._target_files.update(tmp)
+        else:
+            print tmp[0], 'missing'
         return tmp
 
 
@@ -271,25 +298,61 @@ def Parts_find_deepest_user_frame(tb):
 
 SCons.Script.Main.find_deepest_user_frame=Parts_find_deepest_user_frame
 
-# override DefaultEnvironment to allow resetting of values with SetOptionDefault
+import poptions
 
-import poptions,common
+scons_DefaultEnvironment=SCons.Script.DefaultEnvironment
 
 def Part_DefaultEnvironment(*args,**kw):
-
+    if common.g_engine is None or common.g_engine.def_env is None:
+        return scons_DefaultEnvironment(*args,**kw)
     try:
         if poptions.SetOptionDefault._modified==False:
             return Part_DefaultEnvironment._cache
     except AttributeError:
         pass
     #remake the def env
-    common.g_engine.setup_defenv()
+    common.g_engine._setup_defenv()
     #store in chache
     Part_DefaultEnvironment._cache=common.g_engine.def_env
     poptions.SetOptionDefault._modified=False
     return Part_DefaultEnvironment._cache
 
 SCons.Script.DefaultEnvironment=Part_DefaultEnvironment
+
+
+# this code overides scons build targets so we can do some processing before 
+# Scons tries to build the tree.
+
+import SCons.Script.Main
+scons_build_targets = SCons.Script.Main._build_targets
+
+
+def _build_targets(fs, options, targets, target_top):
+    
+        # call engine
+    if common.g_engine.Process(fs, options, targets, target_top) == False:
+        ret= None
+    else:
+        # call Scons function is there is nothing wrong 
+        # with the engine/addin Process call
+        ret= scons_build_targets(fs, options, targets, target_top)
+        
+    return ret
+
+SCons.Script.Main._build_targets = _build_targets
+
+
+# this overides the builer call so I can get the file that called the builder.
+# this allow be a simple test to see what file to check for changes of build
+# context
+
+scons_builder=SCons.Builder.Builder
+
+def Part_Builder(**kw):
+    common.g_build_context_files.add(sys._getframe(1).f_code.co_filename)
+    return scons_builder(**kw)
+
+SCons.Builder.Builder=Part_Builder
 
 
 from SCons.Script.SConscript import SConsEnvironment
@@ -301,6 +364,9 @@ SConsEnvironment.Clone=PartsClone
 # override __setitem__ bind env with bindable objects when set
 SConsEnvironment._orig__setitem__=SConsEnvironment.__setitem__
 SConsEnvironment.__setitem__=Parts__setitem__
+
+SConsEnvironment._orig__getitem__=SConsEnvironment.__getitem__
+SConsEnvironment.__getitem__=Parts__getitem__
 
 # override the builder wrapper to allow us to get the files defined in the scope of a part
 SCons.Environment.BuilderWrapper=Parts_BuilderWrapper

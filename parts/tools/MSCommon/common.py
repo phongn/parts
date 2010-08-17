@@ -2,7 +2,6 @@ import os
 import SCons.Util
 from parts.tools.Common.ToolSetting import ToolSetting
 import parts.platform_info 
-from parts.tools.Common.Finders import RegFinder
 
 logfile = os.environ.get('SCONS_MSCOMMON_DEBUG')
 if logfile:
@@ -24,52 +23,55 @@ def is_win64():
 def read_reg(value):
     return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]
 
+def get_current_sdk():
+    ''' get SDK path based on reg key used for vc 9.0 and newer'''
+    # note this key is used for both 32-bit and 64-bit systems
+    # this mean the that default path will always be program file/xxx
+    # even on 64-bit systems
+    key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'
+    dir=''
+    try:
+        dir=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, key)[0]
+        debug('Found SDK dir in registry: %s' % dir)
+    except WindowsError, e:
+        debug('Did not find SDK dir key %s in registry' % \
+              (key))
+    return dir
 
 def framework_root():
+    VS_HKEY_BASE="\\"
+    comps=''
+    if is_win64():
+        VS_HKEY_BASE="\\Wow6432Node\\"
+    key = 'Software%sMicrosoft\\.NETFramework\\InstallRoot' % (VS_HKEY_BASE)
     try:
-        return framework_root.cache
-    except AttributeError:
-        r=RegFinder([
-                'SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\SxS\\VC7\\FrameworkDir32',
-                'SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7\\FrameworkDir32'
-                    ])
-        r2=RegFinder([
-                'SOFTWARE\\Wow6432Node\\Microsoft\\.NETFramework\\InstallRoot',
-                'SOFTWARE\\Microsoft\\.NETFramework\\InstallRoot'
-                    ])
-        dir=r()
-        if dir is None:
-            dir=r2()
-            if os.path.exists(dir) == False:
-                 return ''
-        framework_root.cache=dir
-        return framework_root.cache
+        comps = read_reg(key)
+        debug('Found framework dir in registry: %s' % comps)
+    except WindowsError, e:
+        debug('Did not find framework dir key %s in registry' % \
+              (key))
+        return ''
+    return comps
         
 def framework_root64():
     ''' currently this value when added seem to be messed up in the scripts
     on 32-bit OS systems. Since this path is always bad, we don't add it in these
     cases'''
-    
+    comps=''     
+    key = 'Software\\Microsoft\\.NETFramework\\InstallRoot'
     try:
-        return framework_root64.cache
-    except AttributeError:
-        r=RegFinder([
-                'SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\SxS\\VC7\\FrameworkDir64',
-                'SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7\\FrameworkDir64'
-                    ])
-        r2=RegFinder([
-                'SOFTWARE\\Wow6432Node\\Microsoft\\.NETFramework\\InstallRoot',
-                'SOFTWARE\\Microsoft\\.NETFramework\\InstallRoot'
-                    ])
-        dir=r()
-        if dir is None:
-            dir=r2()
-            if dir[-3:] != '64\\':
-             dir=dir[:-1]+'64\\'
-             if os.path.exists(dir) == False:
-                 return ''
-        framework_root64.cache=dir
-        return framework_root64.cache
+        comps = read_reg(key)
+        if comps[-3:] != '64\\':
+            comps=comps[:-1]+'64\\'
+            if os.path.exists(comps) == False:
+                debug('Did not find framework64 dir')
+                return ''
+        debug('Found framework64 dir in registry: %s' % comps)
+    except WindowsError, e:
+        debug('Did not find framework64 dir key %s in registry' % \
+              (key))
+        return ''
+    return comps
 
 def validate_vars(env):
     """Validate the PCH and PCHSTOP construction variables."""

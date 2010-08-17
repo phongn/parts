@@ -1,25 +1,9 @@
-from common import msvc,framework_root,framework_root64
+from common import msvc,framework_root,framework_root64,get_current_sdk
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
-import parts.reporter as reporter
 import os
 import SCons.Platform
-
-def get_current_sdk():
-    ''' get SDK path based on reg key used for vc 9.0'''
-    # note this key is used for both 32-bit and 64-bit systems
-    # this mean the that default path will always be program file/xxx
-    # even on 64-bit systems
-    try:
-        return get_current_sdk.cache
-    except AttributeError:
-        r=RegFinder([r'SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'])
-        dir=r()
-        if dir is None:
-            dir=''
-        get_current_sdk.cache=dir
-        return get_current_sdk.cache
 
 ## version 9 .. 2008
 # 32-bit
@@ -74,7 +58,7 @@ msvc.Register(
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
                         ,
                         'LIBPATH':
-                            '${MSVC.VCINSTALL}ATLMFC/LIB'+os.pathsep+
+                            '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
                             get_current_sdk()+'/lib'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT}/v2.0.50727'
@@ -132,7 +116,7 @@ msvc.Register(
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
-                            get_current_sdk()+'lib/x64'+os.pathsep+
+                            get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
                         ,
@@ -196,14 +180,14 @@ msvc.Register(
                             get_current_sdk()+'/include'
                         ,
                         'LIB':
-                            '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}lib/AMD64'+os.pathsep+
+                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
+                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'
                         ,
                         'LIBPATH':
-                            '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
+                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.FRAMEWORK_ROOT64}/v2.0.50727'

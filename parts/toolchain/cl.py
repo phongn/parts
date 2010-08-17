@@ -11,7 +11,7 @@ def resolve(env,version):
     
     func=lambda x : cl_setup(x,version)
     return [
-                ('cl',func),
+                ('msvc',func),
                 ('mslink',func),
                 ('masm',func),
                 ('mslib',func),

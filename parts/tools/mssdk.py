@@ -20,7 +20,7 @@ def generate(env):
     """Add construction variables for an MS SDK to an Environment."""
 
     mssdk.MergeShellEnv(env)
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mssdk',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mssdk',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
     return
 
 def exists(env,version=None):

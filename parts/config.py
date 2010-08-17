@@ -44,7 +44,7 @@ class configuration:
         
     def merge(self,ver,cfg):
         
-        # need range to for store key later
+        # need range for store key later
         ver_rng=version.version_range()
         for v_range,val in self.ver_rng.iteritems():
             if ver in v_range:        
@@ -122,6 +122,7 @@ class _ConfigurationSet:
         # add note if depends on is a list.. only support single base
         self.depends=dependsOn
         self.map={}
+        self.defining_file=None
         
 
     def has_tool(self,tool):
@@ -155,8 +156,11 @@ class _ConfigurationSet:
     
     def Name(self):
         return self.name
-            
-    def add_config_setting(self,tool,ver_rng,host,target,settings,ver_mapper):
+    
+    def DefiningFile(self):
+        return self.defining_file        
+    
+    def add_config_setting(self,tool,ver_rng,host,target,settings,ver_mapper,files):
         
         if tool in self.map:
             if host in self.map[tool]:
@@ -165,23 +169,29 @@ class _ConfigurationSet:
                         if ver_rng in self.map[tool][host][target]['version']:
                             self.map[tool][host][target]['versions'][ver_rng].update(settings)
                             self.map[tool][host][target]['default_ver_func']=ver_mapping
+                            self.map[tool][host][target]['defining_files']=files
                         else:
                             self.map[tool][host][target]['versions'][ver_rng]=settings
                             self.map[tool][host][target]['default_ver_func']=ver_mapping
+                            self.map[tool][host][target]['defining_files']=files
                     else:
                         self.map[tool][host][target].update({
                                         "default_ver_func":ver_mapper,
-                                        "versions":{ver_rng:settings}
+                                        "versions":{ver_rng:settings},
+                                        'defining_files':files
+                                        
                                     })
                 else:
                     self.map[tool][host].update({target:{
                                         "default_ver_func":ver_mapper,
-                                        "versions":{ver_rng:settings}
+                                        "versions":{ver_rng:settings},
+                                        'defining_files':files
                                     }})
             else:
                 self.map[tool].update({host:{target:{
                                         "default_ver_func":ver_mapper,
-                                        "versions":{ver_rng:settings}
+                                        "versions":{ver_rng:settings},
+                                        'defining_files':files
                                     }}})
         else:           
             self.map[tool]={host:
@@ -189,7 +199,8 @@ class _ConfigurationSet:
                                 target:
                                     {
                                         "default_ver_func":ver_mapper,
-                                        "versions":{ver_rng:settings}
+                                        "versions":{ver_rng:settings},
+                                        'defining_files':files
                                     }
                                 }
                             }
@@ -234,15 +245,22 @@ class _ConfigurationSet:
         return ver_config
     
     def resolve_version(self,tool,host,target,env):
-        # this shoudl be called be cause we check that such as config existed first
-        tool_config=self.map.get(tool,None)
+        # this should be called because we check that such as config existed first
+        #tool_config=self.map.get(tool,None)
         return self.map[tool][host][target]['default_ver_func'](env)
+    
+    def defining_files(self,tool,host,target):
+        '''
+        this is called to get the files that define this configuration
+        We want this to help with quick configuration up-to-date checks latter
+        '''
+        #tool_config=self.map.get(tool,None)
+        return self.map[tool][host][target]['defining_files']
 
 def DefineConfiguration(name,dependsOn='default'):
     # add configuration
     if g_configuration.has_key(name):
-        #print "ConfigurationSet",name," already exists"
-        reporter.report_warning("ConfigurationSet",name," already exists")
+        print "ConfigurationSet",name," already exists"
         # warning is it exists?
     #add dependance
     g_configuration[name]=_ConfigurationSet(name,dependsOn)
@@ -258,7 +276,6 @@ def load_cfg(name):
     dep=g_configuration[name].Dependent()
     
     if g_configuration.has_key(dep)==False and dep is not None:
-    
         load_cfg(dep)
 
 def make_name_list(tool,host,target):
@@ -362,7 +379,38 @@ def make_name_dict(tool,host,target):
     return nl
 
 
-
+def found_config_files(name,tool,host,target):
+    ''' 
+    Just see if we can find the file that would be loaded, if any.
+    This is more for build context testing. To see if something changed
+    '''
+    ret=set()
+    dep=g_configuration[name].Dependent()
+    if dep is not None:
+        ret=found_config_files(dep,tool,host,target)
+    name_list=make_name_list(tool,host,target)
+    for k in name_list:
+        try:
+            reporter.verbose_msg('configuration',"trying to load file <%s.py>"%k)
+            mod=load_module.load_module(
+                    load_module.get_site_directories(
+                            os.path.join('configurations',name)
+                            ),
+                    k,
+                    'config'+name
+                    )
+            
+            ret.add(os.path.abspath(mod.__file__)[:-1])
+            break;
+        except ImportError:
+            pass
+        except Exception,ec:
+            ec_str=StringIO.StringIO()
+            traceback.print_exc(file=ec_str)
+            reporter.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
+            
+    return ret
+    
 
 def load_tool_config(env,name,tool,host,target):
     
@@ -372,7 +420,7 @@ def load_tool_config(env,name,tool,host,target):
     base_settings=({},{})
     base_ver_mapper=null_ver_mapper
     # do we have this config loaded already?
-    if dep != None:
+    if dep is not None:
         if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
             # if not load it
             load_tool_config(env,dep,tool,host,target)    
@@ -381,9 +429,10 @@ def load_tool_config(env,name,tool,host,target):
     name_list=make_name_list(tool,host,target)
     found=True
     ver=None
+    mod=None
     for k in name_list:
         try:
-            reporter.verbose_msg('configuration',"trying to load file <%s>"%k)
+            reporter.verbose_msg('configuration',"trying to load file <%s.py>"%k)
             mod=load_module.load_module(
                     load_module.get_site_directories(
                             os.path.join('configurations',name)
@@ -391,7 +440,10 @@ def load_tool_config(env,name,tool,host,target):
                     k,
                     'config'+name
                     )
-            reporter.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,k))
+            reporter.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
+            
+            #g_config_context[tool]=mod.__file__
+            files=set([mod.__file__[:-1]])
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break
@@ -400,38 +452,40 @@ def load_tool_config(env,name,tool,host,target):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
+            reporter.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
             
         
     else:
+        # store that we don't have a config file for this tool
+        #g_config_context[tool]=None
+        files=set()
         if dep == None:
             reporter.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
         found=False # nothing found
-
+    
     ## Last we merge settings and store
     if dep != None:
         # Get base settings
         reporter.verbose_msg('configuration','Getting dependent configuration settings',dep)
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
+        files.update(g_configuration[dep].defining_files(tool,host,target))
     
     if found==True:
         # merge setting
         reporter.verbose_msg('configuration',"Merging configurtation settings")
         settings,ver_rng=mod.config.merge(ver,base_settings)
-        #print settings
-        #store setting
         reporter.verbose_msg('configuration',"Storing settings")
-        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func)
+        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
     else:
         reporter.verbose_msg('configuration',"Storing settings")
-        g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper)
+        g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper,files)
 
 def get_config(env,name,tool,host,target):
     # is "meta" config loaded
     if g_configuration.has_key(name)==False:
         #if not load it
-        
         load_cfg(name)
+        
     config=g_configuration[name]
     # is tool loaded?
     ver=None
@@ -441,11 +495,29 @@ def get_config(env,name,tool,host,target):
     # if version is None get a real version
     if ver==None:
         ver=config.resolve_version(tool,host,target,env)
+    files=config.defining_files(tool,host,target)
     # get settings    
     settings=config.get_config_setting(env,tool,ver,host,target)
     if settings==None:
-        return ({},{})
-    return settings
+        return ({},{}),files
+    return settings,files
+
+
+def get_defining_config_files(name,tool,host,target):
+    '''
+    This function just gets the file defining a conifguration
+    Which is needed for testing purposes
+    '''
+    # is "meta" config loaded
+    if g_configuration.has_key(name)==False:
+        #if not load it
+        load_cfg(name)
+    # is tool loaded?
+    return found_config_files(name,tool,host,target)
+    
+    
+    
+
 
 ## compatibility object
 import env_overrides
@@ -474,6 +546,8 @@ class config_type_wrapper(str,env_overrides.bindable):
         self.__dict__['env']=env
     
 def apply_config(env,name=None):
+    global g_config_context
+    g_config_context={}
     # get tools set to configure
     tools=env['CONFIGURED_TOOLS']
     #print "Configured Tool to get configuration from",tools
@@ -488,8 +562,15 @@ def apply_config(env,name=None):
     reporter.verbose_msg('configuration'"Applying configuration <%s>"%name)
     #print "tools that have been configured",tools
     for t in tools:
-        settings,setting_extra=get_config(env,name,t,host,target)
+        tmp,files=get_config(env,name,t,host,target)
+        settings,setting_extra=tmp
         #print t,settings,setting_extra
+        try:
+            env['_CONFIG_CONTEXT'][t]=files
+        except KeyError:
+            env['_CONFIG_CONTEXT']={}
+            env['_CONFIG_CONTEXT'][t]=files
+        
         for flag,items in settings.iteritems():
             
             # replace values
@@ -514,6 +595,8 @@ def apply_config(env,name=None):
         tmp=setting_extra.get('post_process_func',[])
         for f in tmp:
             f(env)
+    
+    
                 
 def _isconfigbasedon(env,name,config):                
     try:

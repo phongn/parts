@@ -1,5 +1,6 @@
 
 import parts.common as common
+
 import SCons.Script
 
 def part_name(env,id=None,parent_name=None):
@@ -10,43 +11,22 @@ def part_name(env,id=None,parent_name=None):
     '''
     if id == None:
         return get_part_name(env)
-    def_env=SCons.Script.DefaultEnvironment()
-    alias=def_env['DEFINING_PART']
+    
+    alias=env['PART_ALIAS']
     if alias != None:
-        parent=def_env['PART_INFO'][alias]['PARENT_ALIAS']
-        #print 'Parent',parent
-        if parent_name !=None:
-            def_env['PART_INFO'][alias]['NAME']=parent_name+'.'+id
-        elif parent == None:
-            def_env['PART_INFO'][alias]['NAME']=id
-        elif def_env['PART_INFO'][parent]['NAME']!=None:
-            def_env['PART_INFO'][alias]['NAME']=def_env['PART_INFO'][parent]['NAME']+'.'+id
+        part_obj=common.g_engine._part_manager._from_env(env)
+        if parent_name is not None:
+            part_obj._set_name(id,parent_name)
         else:
-            pass # unknown at this time
-            #def_env['PART_INFO'][alias]['NAME']="${PARTS('"+parent+"','NAME')}."+id
-        def_env['PART_INFO'][alias]['SHORT_NAME']=id
-        mid=def_env['PART_INFO'][alias]['NAME']
-        #print 'part name',mid
-        #print 'short part name',id
-        
-        if mid != None:
-            # See that PART_IDS was setup
-            if def_env.has_key('PART_IDS')==False:
-                def_env['PART_IDS']={}
-            # See that the ID Alias list exists
-            if mid not in def_env['PART_IDS']:
-                def_env['PART_IDS'][mid]=[]
-            # Append to the ID list with new alias
-            def_env['PART_IDS'][mid].append(alias)
-                    
-        return mid
+            part_obj._set_name(id)
+        return part_obj.Name
     return None
 
 def get_part_name(env):
-    return env.subst('$PART_NAME')
+    return common.g_engine._part_manager._from_env(env).Name
 
 def get_part_short_name(env):
-    return env.subst('$PART_SHORT_NAME')
+    return common.g_engine._part_manager._from_env(env).ShortName
 
 
 

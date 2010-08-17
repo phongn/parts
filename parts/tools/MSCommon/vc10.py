@@ -1,26 +1,11 @@
-from common import msvc,framework_root,framework_root64
+from common import msvc,framework_root,framework_root64,get_current_sdk
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
-import parts.reporter as reporter
 import os
 import SCons.Platform
 
-def get_current_sdk():
-    '''Get SDK path based on reg key used for vc 10.0'''
-
-    try:
-        return get_current_sdk.cache
-    except AttributeError:
-        r=RegFinder([
-                r'SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v7.0A\InstallationFolder',
-                r'SOFTWARE\Microsoft\Microsoft SDKs\Windows\v7.0A\InstallationFolder'
-                    ])
-        dir=r()
-        if dir is None:
-            dir=''
-        get_current_sdk.cache=dir
-        return get_current_sdk.cache
+## Need to verify the paths, but this seems to work well enough.
 
 ## version 10 .. 2010
 # 32-bit
@@ -50,39 +35,32 @@ msvc.Register(
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
-            'FRAMEWORK_ROOT64':framework_root64(),
-            'WINSDK_ROOT':get_current_sdk()
+            'FRAMEWORK_ROOT64':framework_root64()
             },
             shell_vars={
                         'PATH':
                             '${MSVC.VCINSTALL}/bin'+os.pathsep+
+                            get_current_sdk()+'/bin'+os.pathsep+
+                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VC/VCPackages'+os.pathsep+
-                            '${MSVC.VCINSTALL}/HTML Help Workshop'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/NETFX4.0 Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin'
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'                            
                             ,
-                            
                         'INCLUDE':
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/include'
+                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
+                            get_current_sdk()+'/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib'+os.pathsep
+                            '${MSVC.VCINSTALL}/lib'+os.pathsep+
+                            get_current_sdk()+'/lib'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'
                         ,
                         'LIBPATH':
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib'
+                            '${MSVC.VCINSTALL}ATLMFC/LIB'+os.pathsep+
+                            get_current_sdk()+'/lib'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
@@ -110,50 +88,43 @@ msvc.Register(
                     r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC'
                 ])
             ],
-            script=ScriptFinder('${MSVC.VCINSTALL}/bin/AMD64/vcvars64.bat.bat'),
+            script=ScriptFinder('${MSVC.VCINSTALL}/bin/AMD64/vcvarsamd64.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
-            'FRAMEWORK_ROOT64':framework_root64(),
-            'WINSDK_ROOT':get_current_sdk()
+            'FRAMEWORK_ROOT64':framework_root64()
             },
             shell_vars={
                         'PATH':
                             '${MSVC.VCINSTALL}/bin/AMD64'+os.pathsep+
+                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
+                            get_current_sdk()+'/bin/x64'+os.pathsep+
+                            get_current_sdk()+'/bin'+os.pathsep+
+                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VC/VCPackages'+os.pathsep+
-                            '${MSVC.VCINSTALL}/HTML Help Workshop'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools/x64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/NETFX4.0 Tools/x64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/x64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'                            
                             ,
-                            
                         'INCLUDE':
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/include'
+                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
+                            get_current_sdk()+'/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/AMD64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/x64'+os.pathsep
+                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
+                            get_current_sdk()+'lib/x64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'LIBPATH':
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/AMD64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/x64'
+                            get_current_sdk()+'/lib/x64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
-            test_file='cl.exe'
+            test_file='AMD64/cl.exe'
             )
         ]
     )
@@ -185,40 +156,35 @@ msvc.Register(
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
-            'FRAMEWORK_ROOT64':framework_root64(),
-            'WINSDK_ROOT':get_current_sdk()
+            'FRAMEWORK_ROOT64':framework_root64()
             },
             shell_vars={
                         'PATH':
                             '${MSVC.VCINSTALL}/bin/x86_amd64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/bin/'+os.pathsep+
+                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
+                            get_current_sdk()+'/bin/x64'+os.pathsep+
+                            get_current_sdk()+'/bin'+os.pathsep+
+                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VC/VCPackages'+os.pathsep+
-                            '${MSVC.VCINSTALL}/HTML Help Workshop'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/NETFX4.0 Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin'
+                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                             ,
-                            
                         'INCLUDE':
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/include'
+                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
+                            get_current_sdk()+'/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/AMD64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/x64'+os.pathsep
+                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
+                            get_current_sdk()+'/lib/x64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'LIBPATH':
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/AMD64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/x64'
+                            '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
+                            get_current_sdk()+'/lib/x64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
@@ -227,75 +193,7 @@ msvc.Register(
         ]
     )  
 
-# ia64 native 
-# not fully test as we lack a machine
-msvc.Register(
-    hosts=[SystemPlatform('win32','ia64')],
-    targets=[SystemPlatform('win32','ia64')],
-    info=[
-        ToolInfo(
-            version='10.0',
-            install_scanner=[
-                RegFinder([
-                    r'Software\Wow6432Node\Microsoft\VisualStudio\10.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VisualStudio\10.0\Setup\VC\ProductDir',
-                    r'Software\Wow6432Node\Microsoft\VCExpress\10.0\Setup\VC\ProductDir',
-                    r'Software\Microsoft\VCExpress\10.0\Setup\VC\ProductDir'
-                ]),
-                EnvFinder([
-                    'VS100COMNTOOLS'
-                ],'../../VC'),
-                PathFinder([
-                    r'C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC'
-                    r'C:\Program Files\Microsoft Visual Studio 10.0\VC'
-                ])
-            ],
-            script=ScriptFinder('${MSVC.VCINSTALL}/bin/x86_ia64/vcvars_ia64.bat'),
-            subst_vars={
-            'VCINSTALL':'${MSVC.INSTALL_ROOT}',
-            'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
-            'FRAMEWORK_ROOT':framework_root(),
-            'FRAMEWORK_ROOT64':framework_root64(),
-            'WINSDK_ROOT':get_current_sdk()
-            },
-            shell_vars={
-                        'PATH':
-                            '${MSVC.VCINSTALL}/bin/ia64'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VC/VCPackages'+os.pathsep+
-                            '${MSVC.VCINSTALL}/HTML Help Workshop'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/NETFX4.0 Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin'
-                            ,
-                            
-                        'INCLUDE':
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
-                            '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/include'
-                        ,
-                        'LIB':
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/ia64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/ia64'+os.pathsep
-                        ,
-                        'LIBPATH':
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/ia64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/ia64'
-                        ,
-                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
-                        },
-            test_file='x86_ia64/cl.exe'
-            )
-        ]
-    )    
-
+# ia64 native .. support gone.. or only installed with server 2008 sdk on ia64 boxes?
 # ia64 cross 
 msvc.Register(
     hosts=[SystemPlatform('win32','any')],
@@ -323,40 +221,34 @@ msvc.Register(
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
-            'FRAMEWORK_ROOT64':framework_root64(),
-            'WINSDK_ROOT':get_current_sdk()
+            'FRAMEWORK_ROOT64':framework_root64()
             },
             shell_vars={
                         'PATH':
                             '${MSVC.VCINSTALL}/bin/x86_ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/bin/'+os.pathsep+
+                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
+                            get_current_sdk()+'/bin/ia64'+os.pathsep+
+                            get_current_sdk()+'/bin'+os.pathsep+
+                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v3.5'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VC/VCPackages'+os.pathsep+
-                            '${MSVC.VCINSTALL}/HTML Help Workshop'+os.pathsep+
-                            '${MSVC.VCINSTALL}/Team Tools/Performance Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin/NETFX4.0 Tools'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/bin'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'                            
                             ,
-                            
                         'INCLUDE':
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/include'
+                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
+                            get_current_sdk()+'/include'
                         ,
                         'LIB':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/ia64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/ia64'+os.pathsep
+                            '${MSVC.VCINSTALL}/lib/ia64'+os.pathsep+
+                            get_current_sdk()+'/lib/ia64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'LIBPATH':
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v3.5'+os.pathsep+
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/LIB/ia64'+os.pathsep+
-                            '${MSVC.WINSDK_ROOT}/lib/ia64'
+                            get_current_sdk()+'/lib/ia64'+os.pathsep+
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },

@@ -2,6 +2,7 @@ import unittest
 import SCons.Script
 from parts.platform_info import *
 from parts.parts import *
+from parts.reporter import PartRuntimeError
 
 
 class TestPlatform(unittest.TestCase):
@@ -38,19 +39,42 @@ class TestPlatform(unittest.TestCase):
         self.assertTrue(s1 == s2)
         
     def test_platform7(self):
-        s1 = SystemPlatform('x86','win32')
-        s2 = SystemPlatform('win32','x86')
-        self.assertFalse(s1 == s2)
+        try:
+            #This should fail to create 
+            s1 = SystemPlatform('x86','win32')
+        except PartRuntimeError, e:
+            self.assertTrue(True)
+            return
+        self.assertTrue(False)
 
     def test_platform8(self):
-        s1 = SystemPlatform('x86','win32')
-        s2 = SystemPlatform('win32','x86')
-        self.assertTrue(s1 != s2)
+        
+        target_os=self.env['TARGET_OS']
+        target_arch=self.env['TARGET_ARCH']
+            
+        s1 = SystemPlatform('any','any')
+        self.env['TARGET_PLATFORM']=s1
+        self.assertEqual(self.env['TARGET_OS'],target_os)
+        self.assertEqual(self.env['TARGET_ARCH'],target_arch)
+        self.assertEqual(self.env['TARGET_PLATFORM'],"%s-%s"%(target_os,target_arch))
 
     def test_platform9(self):
-        s1 = SystemPlatform('x86','win32')
-        s2 = SystemPlatform('win32','x86')
-        self.assertTrue(s1 == s2)
+        target_os=self.env['TARGET_OS']
+        target_arch=self.env['TARGET_ARCH']
+        if target_os=='win32':
+            new_os='posix'
+        else:
+            new_os='win32'
+
+        if target_arch=='x86':
+            new_arch='x86_64'
+        else:
+            new_arch='x86'
+            
+        s1 = SystemPlatform(new_os,new_arch)
+        self.env['TARGET_PLATFORM']=s1
+        self.assertEqual(self.env['TARGET_OS'],s1.OS)
+        self.assertEqual(self.env['TARGET_ARCH'],s1.ARCH)
         
     def test_platform10(self):        
         s1 = SystemPlatform('win32','x86')
@@ -85,8 +109,18 @@ class TestPlatform(unittest.TestCase):
 
     def test_platform17(self):
         try:
+            #This should fail to create 
             s1 = SystemPlatform('foo','bar')
         except PartRuntimeError, e:
-            self.assertTrue(False)
+            self.assertTrue(True)
             return
-        self.assertTrue(True)        
+        self.assertTrue(False)
+
+    def test_platform18(self):
+        try:
+            #This should fail to create 
+            s1 = SystemPlatform('x86-win32')
+        except PartRuntimeError, e:
+            self.assertTrue(True)
+            return
+        self.assertTrue(False)        

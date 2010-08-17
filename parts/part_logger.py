@@ -3,6 +3,7 @@ import console
 import SCons.Script
 import subprocess,sys,string,os
 import thread,threading 
+import reporter
 
 
 ##is_windows = (sys.platform == "win32")
@@ -206,7 +207,7 @@ class part_logger:
     def __init__(self,env,console):
         self.env=env
         def_env=SCons.Script.DefaultEnvironment()
-        self.reporter=def_env['PARTS_REPORTER']
+        self.reporter=reporter.g_rpter
         self.block_text=2#SCons.Script.GetOption('num_jobs') > 1
         self.cache={}
 

@@ -240,7 +240,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['BUILDERS']['PCH'] = pch_builder
     
     # fix this up so we can control its printing to screen better.
-    reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env)#msvc_exists(env,'cl')
