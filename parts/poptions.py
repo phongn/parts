@@ -15,8 +15,6 @@ from optparse import OptionValueError
 # used to help scripts set defaults when there is no config script
 def SetOptionDefault(key,value):
 
-    def_env=SCons.Script.DefaultEnvironment()
-    
     args = sys.argv[1:]
     if common.g_engine._build_mode=='help':
         return
@@ -28,6 +26,7 @@ def SetOptionDefault(key,value):
             pass
         else:
             ### clean up
+            def_env=SCons.Script.DefaultEnvironment()
             directory=def_env.Dir(def_env['LOG_ROOT_DIR'])
             tmp=def_env.subst(value)
             if tmp=='TEXT_LOGGER':
