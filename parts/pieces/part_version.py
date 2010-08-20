@@ -14,7 +14,7 @@ def part_version(env,ver=None):
 
     part_obj=common.g_engine._part_manager._from_env(env)       
     ret=version.version(ver)
-    if part_obj.Version != '0.0.0':
+    if part_obj.Version != '0.0.0' and ret != part_obj.Version:
         reporter.report_warning("Version already set to %s, ignoring new value of %s"%(part_obj.Root.Version,ret))
         return part_obj.Version 
     part_obj._set_version(ret)
