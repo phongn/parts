@@ -287,8 +287,9 @@ class part_manager(object):
         # or if the part has a direct toplevel depends statement in the Part
         # creation call. For new style Parts this might help, or is pointless 
         root_parts.sort(pcmp)
+        out_date_list=[]
         if self.__cache_bad==False and common.g_engine._build_mode=='build':
-            out_date_list=[]
+            
             uttt=time.time()
             if SCons.Script.GetOption("incremental-cache"):
                 #select some type of fast incremtail logic
@@ -313,7 +314,7 @@ class part_manager(object):
         for p in root_parts:
             
             # we go through all defined root parts
-            if self.__cache_bad==False and p.Alias not in out_date_list:
+            if self.__cache_bad==False and p.Alias not in out_date_list and common.g_engine._build_mode=='build':
                 cache=datacache.GetCache("part-"+p.Alias)
                 reporter.print_msg("%s is up-to-date loading cache"%p.Alias)
                 p._setup_from_cache_data(cache)
