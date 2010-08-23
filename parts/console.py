@@ -3,6 +3,18 @@ import color
 import sys
 import thread
 
+class NullStream(object):
+
+    def __init__(self):
+        pass
+    
+    def write(self,s):
+        pass
+        
+    
+    def writeLines(self,str_list):
+        pass
+
 class Console:
     ''' only support output operations at this time'''
     out_stream=1
@@ -14,12 +26,24 @@ class Console:
     def __init__(self,process_color=False):
 
         self.m_lock=thread.allocate_lock() # used to sync output cases across streams
+
+        if color.is_win32:
+            try:
+                self.conio=open('con:','w')
+            except Exception,ec:
+                self.conio= NullStream()               
+        else:
+            try: 
+                self.conio=open('/dev/tty','w')
+            except Exception,ec:
+                self.conio=NullStream()        
         
         if color.is_win32==True:
             if color.default_color==color.ConsoleColor(0,0):
-                process_color=None
-        if process_color is None:
-            #self.__console=ansi_stream.ColorTextStream(conio,use_color=process_color)                
+                process_color=False
+                
+        if process_color ==False:
+            self.__console=ansi_stream.ColorTextStream(conio,use_color=process_color)                
             self.Output=ansi_stream.ColorTextStream(
                                         sys.__stdout__,
                                         self.m_lock,
@@ -98,8 +122,7 @@ class Console:
         
     def Write(self,msg):
         ## write data
-        print msg
-        pass#self.__console.Write(msg)
+        self.__console.Write(msg)
     
 
 

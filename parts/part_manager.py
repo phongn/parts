@@ -459,6 +459,9 @@ class part_manager(object):
         if anything is we can't return early
         '''
         ret=[]
+        cnt=0;
+        total=len(root_parts)*1.0
+        reporter.print_console("%s%%"%(cnt/total*100))
         for p in root_parts:
             st=time.time()
             reporter.verbose_msg("update_check",'Checking if Part "%s" is up-to-date'%p.Alias)
@@ -468,6 +471,9 @@ class part_manager(object):
                 self.__cache_bad=True
                 break
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
+            cnt+=1
+            reporter.print_console("%s%%"%(cnt/total*100))
+        reporter.print_console('100%%')
         return ret
             
         

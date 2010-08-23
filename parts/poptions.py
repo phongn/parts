@@ -308,7 +308,7 @@ SCons.Script.AddOption("--disable-parts-cache",
                         
 SCons.Script.AddOption("--disable-incremental-cache","--disable-inc-cache", 
             dest="incremental-cache",
-            default=True,
+            default=False,
             action="store_false",
             help='Disable Parts fast incremental logic')
 

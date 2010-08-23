@@ -407,7 +407,7 @@ class Part_t(object):
     @property
     def Version(self):
         """Get the current version."""
-        if self.__parent is None:
+        if self._is_root:
             return self.__version
         return self.__root.Version
     

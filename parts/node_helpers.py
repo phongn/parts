@@ -24,17 +24,20 @@ def node_up_to_date(node):
         node.disambiguate()
         dbentry=node.get_stored_info()
         ninfo=dbentry.ninfo
+        
     elif common.is_string(node):
         node=common.g_engine.def_env.Entry(node)
         node.disambiguate()
         dbentry=node.get_stored_info()
         ninfo=dbentry.ninfo
+        
     else:
         ninfo=ninfotmp()
-        ninfo.timestamp=node['timestamp']
-        ninfo.csig=node['csig']
+        ninfo.timestamp=node.get('timestamp')
+        ninfo.csig=node.get('csig')
         node=common.g_engine.def_env.Entry(node['name'])
         node.disambiguate()
+        
     # see if node time stamp matches
     tmp=getattr(ninfo,'timestamp',None)
     if tmp is None:

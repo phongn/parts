@@ -87,20 +87,22 @@ def is_message(str):
     
 class reporter:
     def __init__(self,logger,silent,verbose):
-
+        global trace_msg
+        global verbose_msg
         # so we can process any text that is being outputted by some other means
         use_color=SCons.Script.GetOption('use_color')
-        trace=SCons.Script.GetOption('trace')
+        self.trace=SCons.Script.GetOption('trace')
+        redirected=os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False
         
         if use_color is not None and use_color.has_key('defaults') and \
             (os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False):
                 use_color=None
-        if trace == []:
-            global trace_msg
-            def empty():
-                pass
-            trace_msg=empty
 
+        if self.trace==[]:
+            trace_msg=_empty_msg
+        else:
+            trace_msg=_trace_msg
+            
         # remap the streams.  (may want to delay even more...)
         sys.stdout=streamer(self.stdout)
         sys.stderr=streamer(self.stderr)
@@ -111,7 +113,12 @@ class reporter:
         self.already_printed = set()
         self.silent=silent
         self.verbose=verbose
-    
+        
+        if verbose==[]:
+            verbose_msg=_empty_msg
+        else:
+            verbose_msg=_verbose_msg
+
     def ShutDown(self):
         self.logger.ShutDown()
         self.console.ShutDown()
@@ -305,6 +312,10 @@ class reporter:
         '''Unlike stdout and stderr, stdverbose doesn't really exist.. '''
         self.console.Verbose.write(msg)
         self.logger.logverbose(msg)
+
+    def stdconsole(self,msg,remap=True):
+        '''writes to the Console directly... nice for progress effects'''
+        self.console.write(msg)
         
 
 # no need to redirect data.. assume it is correct.
@@ -322,7 +333,11 @@ def print_msg(*lst,**kw):
     msg=map(str,lst)
     g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 
-def verbose_msg(catagory,*lst,**kw):
+def _empty_msg(catagory,*lst,**kw):
+    pass
+
+def _verbose_msg(catagory,*lst,**kw):
+
     catagory=common.make_list(catagory)
     catagory.append('all')
     if g_rpter is not None:
@@ -335,11 +350,20 @@ def verbose_msg(catagory,*lst,**kw):
             if c in ver:
                 msg=map(str,lst)
                 sys.stdout.write('Parts: Verbose: ['+tmp[0]+"] "+kw.get('sep',' ').join(msg)+kw.get('end','\n'))
-                break        
+                break
+
+verbose_msg=_verbose_msg
         
-def trace_msg(*lst,**kw):
+def _trace_msg(catagory,*lst,**kw):
+    catagory=common.make_list(catagory)
     msg=map(str,lst)
     g_rpter.stdtrace(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+
+trace_msg=_trace_msg
+
+def print_console(*lst,**kw):
+    msg=map(str,lst)
+    g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\r'))
 
 ## user level functions
 # global version (for Sconstruct file)
