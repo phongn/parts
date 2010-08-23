@@ -8,7 +8,7 @@ class ColorTextStream(object):
     command codes for color
     '''
 
-    def __init__(self,stream,out_lock,col=color.ConsoleColor(),use_color=False):
+    def __init__(self,stream,out_lock,col=color.ConsoleColor(),use_color=False,flush=False):
         #the stream object
         self.stream=stream
         self.m_lock=out_lock
@@ -19,6 +19,7 @@ class ColorTextStream(object):
             self.ProcessColor=False
         else:
             self.ProcessColor =use_color
+        self.flush=flush
     
     def write(self,s):
         self.m_lock.acquire()
@@ -29,6 +30,12 @@ class ColorTextStream(object):
                 self._WriteNoColor(s)
         finally:
             self.m_lock.release()
+            
+    def flush(self):
+        self.m_lock.acquire()
+        self.stream.flush()
+        self.m_lock.release()
+        
         
     
     def writeLines(self,str_list):
@@ -67,6 +74,7 @@ class ColorTextStream(object):
                     state=1
                     if tmp_str!='':
                         self.stream.write(tmp_str)
+                        if self.flush: self.stream.flush()
                         tmp_str=''
                 elif s == '[' and state==1:
                     state=2
@@ -122,8 +130,10 @@ class ColorTextStream(object):
                     tmp_str+=s
             if tmp_str != '':
                 self.stream.write(tmp_str)
+                if self.flush: self.stream.flush()
         else:
             self.stream.write(in_str)
+            if self.flush: self.stream.flush()
             
     def _WriteNoColor(self,in_str):
         '''Will just strip the codes'''
@@ -135,6 +145,7 @@ class ColorTextStream(object):
             if s == '\033':
                 state=1
                 self.stream.write(tmp_str)
+                if self.flush: self.stream.flush()
                 tmp_str=''
             elif s == '[' and state==1:
                 state=2
@@ -156,3 +167,4 @@ class ColorTextStream(object):
                 tmp_str+=s
         if tmp_str != '':
             self.stream.write(tmp_str)
+            if self.flush: self.stream.flush()

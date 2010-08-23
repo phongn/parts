@@ -294,9 +294,9 @@ class part_manager(object):
             if SCons.Script.GetOption("incremental-cache"):
                 #select some type of fast incremtail logic
                 if SCons.Script.GetOption("incremental-dependent-checks"):
-                    out_date_list=self._setup_fast_incremental_no_update_check(root_parts)
-                else:
                     out_date_list=self._setup_fast_incremental(root_parts)
+                else:
+                    out_date_list=self._setup_fast_incremental_no_update_check(root_parts)
                     
                     
             elif SCons.Script.GetOption("update_check_exit"):
@@ -461,7 +461,7 @@ class part_manager(object):
         ret=[]
         cnt=0;
         total=len(root_parts)*1.0
-        reporter.print_console("%s%%"%(cnt/total*100))
+        reporter.print_console("%3.2f%%"%(cnt/total*100))
         for p in root_parts:
             st=time.time()
             reporter.verbose_msg("update_check",'Checking if Part "%s" is up-to-date'%p.Alias)
@@ -472,7 +472,7 @@ class part_manager(object):
                 break
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
             cnt+=1
-            reporter.print_console("%s%%"%(cnt/total*100))
+            reporter.print_console("%3.2f%%"%(cnt/total*100))
         reporter.print_console('100%%')
         return ret
             
@@ -486,6 +486,9 @@ class part_manager(object):
         '''
         out_date_list=[]
         reporter.print_msg("Processing Targets to see what is up-to-date")
+        cnt=0;
+        total=len(root_parts)*1.0
+        reporter.print_console("%3.2f%%"%(cnt/total*100))
         uttt=time.time()
         for p in root_parts:
             st=time.time()
@@ -506,6 +509,8 @@ class part_manager(object):
                         # since this part is out of data.. and it could have sub-parts that are out of date
                         # we have to force build the whole object, otherwise it might not become up-to-date
                         SCons.Script.BUILD_TARGETS.append(p.Alias)
+                        cnt+=1
+                        reporter.print_console("%3.2f%%"%(cnt/total*100))
                         reporter.verbose_msg("update_check",'Part "%s" is out of date because it depends on a Part "%s" that is out of date'%(p.Alias,x))
                         continue
             # we store failures as we assume that this is less than
@@ -515,8 +520,10 @@ class part_manager(object):
                 # since this part is out of data.. and it could have sub-parts that are out of date
                 # we have to force build the whole object, otherwise it might not become up-to-date
                 SCons.Script.BUILD_TARGETS.append(p.Alias)
+            cnt+=1
+            reporter.print_console("%3.2f%%"%(cnt/total*100))
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
-            
+        reporter.print_console('100%%')
         return out_date_list
         
     def _setup_fast_incremental_no_update_check(self,root_parts):
@@ -544,6 +551,7 @@ class part_manager(object):
                     if self.is_whole_part_up_to_date(p.Alias)==False:
                         ret.append(p.Alias)
                     reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
+        
         if self.__cache_bad==False and  ret !=[]:
             reporter.report_warning("*******************************************************************************",show_stack=False)
             reporter.report_warning("Update checks on dependents are being skipped, Build may fail or outputs may be corrupted!",show_stack=False)

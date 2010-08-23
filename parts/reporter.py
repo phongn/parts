@@ -363,7 +363,7 @@ trace_msg=_trace_msg
 
 def print_console(*lst,**kw):
     msg=map(str,lst)
-    g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\r'))
+    g_rpter.stdconsole(kw.get('sep',' ').join(msg)+kw.get('end','\r'))
 
 ## user level functions
 # global version (for Sconstruct file)

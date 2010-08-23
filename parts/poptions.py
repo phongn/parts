@@ -308,14 +308,14 @@ SCons.Script.AddOption("--disable-parts-cache",
                         
 SCons.Script.AddOption("--disable-incremental-cache","--disable-inc-cache", 
             dest="incremental-cache",
-            default=False,
+            default=True,
             action="store_false",
             help='Disable Parts fast incremental logic')
 
 SCons.Script.AddOption("--disable-incremental-dependent-checks",
             dest="incremental-dependent-checks",
-            default=False,
-            action="store_true",
+            default=True,
+            action="store_false",
             help='Assume the dependents are up-to-date. Skipping update checks on dependents. May result in corrupt build!!!')
             
 SCons.Script.AddOption("--disable-update-check-exit",

@@ -26,10 +26,10 @@ class Console:
     def __init__(self,process_color=False):
 
         self.m_lock=thread.allocate_lock() # used to sync output cases across streams
-
+        
         if color.is_win32:
             try:
-                self.conio=open('con:','w')
+                self.conio=open('con:','w')        
             except Exception,ec:
                 self.conio= NullStream()               
         else:
@@ -43,7 +43,12 @@ class Console:
                 process_color=False
                 
         if process_color ==False:
-            self.__console=ansi_stream.ColorTextStream(conio,use_color=process_color)                
+            self.__console=ansi_stream.ColorTextStream(
+                                        self.conio,
+                                        self.m_lock,
+                                        use_color=True,
+                                        flush=True
+                                        )                
             self.Output=ansi_stream.ColorTextStream(
                                         sys.__stdout__,
                                         self.m_lock,
@@ -76,7 +81,13 @@ class Console:
                                     )
             
         else:
-            #self.__console=ansi_stream.ColorTextStream(conio,color.Purple,use_color=process_color)                
+            self.__console=ansi_stream.ColorTextStream(
+                                    self.conio,
+                                    self.m_lock,
+                                    color.ConsoleColor(color.BrightMagenta),
+                                    use_color=True,
+                                    flush=True
+                                    )                
             self.Output=ansi_stream.ColorTextStream(
                                         sys.__stdout__,
                                         self.m_lock,
@@ -120,9 +131,11 @@ class Console:
         
 
         
-    def Write(self,msg):
+    def write(self,msg):
         ## write data
-        self.__console.Write(msg)
+        #sys.__stdout__.write("%s"%msg)
+        self.__console.write(msg)
+        
     
 
 
