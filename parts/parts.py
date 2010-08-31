@@ -125,6 +125,9 @@ class Part_t(object):
         self.__platform_match=None
         self.__is_setup=False
         
+        # use to help with ordering in a compatible way between classic and new formats
+        self.__order_value=0
+        
 
     # see if we can remove the env arg latter
     def _setup_(self,_env=None):
@@ -363,6 +366,14 @@ class Part_t(object):
     @property
     def _mode(self):
         return self.__mode
+    
+    def _set_order_value(self,x):
+        self.__order_value=x
+    
+    @property
+    def _order_value(self):
+        return self.__order_value
+    
       
     def _set_depends(self,val):
         """Get the return all(indirect and direct) Parts that this part depends on."""

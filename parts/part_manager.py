@@ -76,6 +76,7 @@ class part_manager(object):
         self.__name_to_alias={} #a dictionary of a known Parts name and possible alias that match
         self.__to_map_parts=[] # stuff that needs to be mapped, else it is wasted space
         self.__cache_bad=False # used to help prevent wasting time on cases of incomplete cache data
+        self.__part_count=0 # number of parts we have defined.. 
     
     def _get_stored_root_alias(self,alias):
         '''
@@ -251,33 +252,33 @@ class part_manager(object):
             root_parts=tmp
             
         def pcmp(x,y):
-            if x.Alias == y.Alias: return 0
+            
+            #if x.Alias == y.Alias: return 0
             xcache=datacache.GetCache("part-"+x.Alias)
             ycache=datacache.GetCache("part-"+y.Alias)
             
             if ycache:
                 # Y uses X
                 xiny = x.Alias in ycache['full_root_depends'] or y._uses_part(x)
+                ylen = len(ycache['full_root_depends'])
             else:
                 xiny=y._uses_part(x)
+                ylen = len(y._uses)
             if xcache:
                 # X uses Y
                 yinx = y.Alias in xcache['full_root_depends'] or x._uses_part(y)
+                xlen = len(xcache['full_root_depends'])
             else:
                 yinx= x._uses_part(y)
+                xlen = len(x._uses)
             
             if xiny: return -1
             elif yinx: return 1
-            # if we are here we don't have cache information
-            # or these two don't have any relationship.
-            # given the case of no chache we want to push items with requires 
-            # stuff down(latter) the list so stuff it might depend on is read first
-            # sort by length of _uses list, else alias string size
-            xlen = len(x._uses)
-            ylen = len(y._uses)
-            if xlen > ylen: return 1
-            elif ylen < xlen: return -1
-            return cmp(x.Alias,y.Alias)
+            # sort my length of some sort of dependance lenght
+            elif xlen > ylen: return 1
+            elif xlen < ylen: return -1
+            return cmp(x._order_value,y._order_value)
+            
             
         #is everything up to date on disk update file on disk?
         self.UpdateOnDisk(  )
@@ -290,9 +291,16 @@ class part_manager(object):
         # for classic formats mainly... only works if we have datacache stored
         # or if the part has a direct toplevel depends statement in the Part
         # creation call. For new style Parts this might help, or is pointless 
-        root_parts.sort(key=lambda p: len(p._uses) )
-        if not self.__cache_bad: root_parts.sort(pcmp)
+        
+        root_parts.sort(pcmp)
+        
+        
         print [i.Alias for i in root_parts]
+##        for i in root_parts:
+##            print i.Alias
+##            print datacache.GetCache("part-"+i.Alias)['full_root_depends']
+##            print
+        
         out_date_list=[]
         if self.__cache_bad==False and common.g_engine._build_mode=='build':
             
@@ -448,6 +456,8 @@ class part_manager(object):
         if key is None:
             self.__to_map_parts.append(object)
             return
+        self.__part_count+=1
+        object._set_order_value(self.__part_count)
         self.parts[key]=object
         
     def _clean_unknown(self,known_pobj):
