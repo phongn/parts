@@ -280,9 +280,10 @@ class Part_t(object):
                 for p in self.__uses:
                     if common.is_string(p):
                         # assume this is an Alias
+                        tmp_alias=p
                         p=common.g_engine._part_manager._from_alias(p)
                         if p is None:
-                            reporter.report_error('Cannot use non existing Part "%s"'%p)
+                            reporter.report_error('Cannot use non existing Part "%s"'%tmp_alias)
                     elif isinstance(p,Part_t):
                         #just a Validation check
                         pass
@@ -507,6 +508,7 @@ class Part_t(object):
         self.__env.Append(LIBPATH=libpath)
         
         # setup the mode
+        self.__mode.extend(self.__env['mode'])
         self.__env['MODE']=self.__mode
         
         ##alias info
@@ -543,13 +545,15 @@ class Part_t(object):
     def _map_alias(self):
         ''' this function creates all the extra aliases we create'''
         
+        vfile=self.__env._MapUnknowns([],self.__file)
+        
         ##given part alias of "foo" name "FOO"
         #build alias .. ie build::alias::foo
         build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
         # this aliasmap below is modifed to make sure parts that call stuff like
         # make under the hood or any other action that prevents build directory
         # from being made, from stopping desired behavior
-        a=self.__env.Alias("_"+build_alias) # _build::foo
+        a=self.__env.Alias("_"+build_alias,vfile) # _build::foo
         #build::foo->_build::alias::foo 
         #          ->Dir($SRC_DIR)
         a2=self.__env.Alias(build_alias,[a,self.__env.Dir(self.__env.subst('$SRC_DIR'))])
@@ -1180,7 +1184,8 @@ class Part_t(object):
         for i in self.__part_nodes:
             i.disambiguate()
             # see if node time stamp matches
-            if i.has_builder()==False:
+            dbentry=i.get_stored_info()
+            if i.has_builder()==False or getattr(dbentry,'ninfo',None) is None:
                 # this should be some source node
                 # or a node that should be ignored,
                 # such as a "srcnode" version of a binary that would only exist
@@ -1196,7 +1201,6 @@ class Part_t(object):
                         )
                     
             else:
-                dbentry=i.get_stored_info()
                 ninfo=dbentry.ninfo
                 tmpd={'name':i.path}
                 tmpd.update(ninfo.__dict__)
@@ -1249,6 +1253,7 @@ def Part_factory(alias=None,parts_file=None,mode=[],vcs_type=None,default=False,
     This way control over making a new Part or getting the existing Part 
     can be better controled
     '''
+
     name=kw.get('name')
     Version=kw.get('version')
 

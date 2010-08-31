@@ -40,7 +40,7 @@ def generate(env):
         env['CXX']=env['CXX']+' -m32' 
 
  # fix this up so we can control its printing to screen better.
-    reporter.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))
+    #reporter.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))
 
 
 def exists(env):

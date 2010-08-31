@@ -7,6 +7,7 @@ def _parse_target(target):
     '''
     if target is None:
         return {}
+    
     seperator=common.g_engine.def_env.subst("$ALIAS_SEPARTATOR")
     t=target.split(seperator,1)   
     if len(t) == 1:
@@ -25,27 +26,33 @@ def _parse_target(target):
         #This is the same as build everything
         return {'concept':t[0],'all':True}
     else:
-        tmp=t.split(seperator)
+        tmp=t[1].split(seperator)
         if len(tmp) == 1:
-            #we have a name
-            #Figure out if this "concept" is a saying use a name
-            if tmp[0]=='name':
-                # it is equal to name, this means the concept is the default
+            # here we have the case of <concept>::<value>
+            # value is assume to be some sort of name value
+            
+            if t[0]=='name':
+                #we have a name
+                #it is equal to name, this means the concept is the default
+                # ie the name::foo_1 case
                 _concept=None
             else:
-                _concept=tmp[0]
+                # we have some concept. the utest::foo_1 case
+                _concept=t[0]
             # see if this has a version value given to it as well
-            tmp=tmp.split('_',1)
+            tmp=t[1].split('_',1)
             if len(tmp)==1:
                 return {'concept':_concept,'name':tmp[0]}
             return {'concept':_concept,'name':tmp[0],'version':tmp[1]}
         elif tmp[1]=='':
-            # utest::alias:: like case
+            # <concept>::name or <concept>::alias like case
             _concept=t[0]
             if tmp[0] in ['alias','name']:
                 return {'concept':_concept,'all':True}
             else:
-                # bad value
+                # bad value given that we are going to treat
+                # <concept>::name or <concept>::alias as the same as <concept>::
+                # this is soemthing else which we don't understand at the moment
                 reporter.report_error('target value "%s" is bad'%(target))
                 
         elif tmp[1]!='':
@@ -53,7 +60,7 @@ def _parse_target(target):
             _concept=t[0]
             # we need to reparse this as it could be something like
             # concept::alias::foo or concept::name::foo_1.2 ( second case is impiled)
-            tmp=parse_target(tmp[1])
+            tmp=parse_target(t[1])
             
             ret={'concept':_concept,'name':tmp[0],'version':tmp[1]}
         else:

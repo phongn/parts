@@ -10,16 +10,11 @@ import os
 def scanner_function(node, env, path):
 
     ret=[]
-    def_env=SCons.Script.DefaultEnvironment()
-    alias=env['PART_ALIAS']
-    depends=def_env['PART_INFO'][alias]['DEPENDSON']
-
-    for d in depends:
-        val=d.resolve_alias(env)
-        if val == "":
-            #don't need to warn here as it was already warned by primary depends mapper
-            continue
-        ret.append(def_env['PART_INFO'][val]['FILE'])
+    pobj=common.g_engine._part_manager._from_env(env)
+    
+    for d in pobj.Depends:
+        if d.part._file:           
+            ret.append(d.part._file)
     return ret        
 
 
@@ -37,21 +32,16 @@ def mapping_bfe(target, source, env):
 
 def mapping_bf(target, source, env):
     f = open(str(target[0]), 'wb')
-    def_env=SCons.Script.DefaultEnvironment()
-    lst=def_env['PART_INFO'][env['ALIAS']]['DEPENDSON']
-    f.write('PARTS: Mapping of dependents for part alias: '+env['ALIAS']+'\n')
-    #print 'Mapping of dependents for part alias:',env['ALIAS']
-
-    for i in lst:
-        a=env.subst(i.alias_mapping_string())
-        #print i,'expanded to part Alias:',a,'Name:',def_env['PART_INFO'][a]['NAME'],'Version:',def_env['PART_INFO'][a]['VERSION']
-        if a == '':
+    pobj=common.g_engine._part_manager._from_env(env)
+    
+    f.write('PARTS: Mapping of dependents for part Alias: %s Name: %s Version: %s\n'%(pobj.Alias,pobj.Name,pobj.Version))
+    
+    for i in pobj.Depends:
+        if i.part is None:
             f.write(i.alias_mapping_string()+' was not defined in the SConstruct file')
         else:
-            f.write(i.alias_mapping_string()+' expanded to Part -\n\tAlias: '+a+
-            '\n\tName: '+str(env.subst(def_env['PART_INFO'][a]['NAME']))+
-            '\n\tVersion: '+str(env.subst(def_env['PART_INFO'][a]['VERSION']))+'\n')
-    if lst==[]:
+            f.write('%s expanded to Part -\n\tAlias: %s\n\tName: %s\n\tVersion: %s\n'%(i.alias_mapping_string(),i.part.Alias,i.part.Name,i.part.Version))
+    if pobj.Depends==[]:
         f.write("No dependents defined")
     print "PARTS: Writing -- Done"
     

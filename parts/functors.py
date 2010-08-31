@@ -79,7 +79,7 @@ def gen_rpath_link(alias):
     
     pobj=common.g_engine._part_manager._from_alias(alias)
     
-    dlst=pobj.DependsOn
+    dlst=pobj.Depends
     env=pobj.Env
     rplst=[]
 
@@ -103,7 +103,7 @@ def gen_rpath_link(alias):
                                         )
             continue
         try:
-            rtmp=common.g_engine._part_manager._from_alias(d_alias).cache['rlink']
+            rtmp=common.g_engine._part_manager._from_alias(d_alias)._cache['rlink']
             # add saved data
             for i in rtmp:
                 common.append_unique(rplst,i)

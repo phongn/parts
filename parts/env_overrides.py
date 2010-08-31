@@ -241,22 +241,28 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
         if dup:
             cc.append(key)
             cct.append(tmp)
-        if pobj is not None:
+            
+        #don't add it to the Parts target list if this has no part or
+        #if the actions here are part of a AutoConfigure set of calls
+        if pobj is not None and 'SConfSourceBuilder' not in self.object['BUILDERS']:
             pobj._target_files.update(tmp)
         else:
             print tmp[0], 'missing'
         return tmp
 
+try:
+    SCons.Util._semi_deepcopy_inst
+    def my_semi_deepcopy(x):
+        ''' fixes issues with deepcopy'''
+        copier = SCons.Util._semi_deepcopy_dispatch.get(type(x))
+        if copier:
+            return copier(x)
+        else:
+            return SCons.Util._semi_deepcopy_inst(x)
 
-def my_semi_deepcopy(x):
-    ''' fixes issues with deepcopy'''
-    copier = SCons.Util._semi_deepcopy_dispatch.get(type(x))
-    if copier:
-        return copier(x)
-    else:
-        return SCons.Util._semi_deepcopy_inst(x)
-
-SCons.Util.semi_deepcopy=my_semi_deepcopy
+    SCons.Util.semi_deepcopy=my_semi_deepcopy
+except AttributeError:
+    pass
 
 
 # overides for better error reporting

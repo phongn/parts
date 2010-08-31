@@ -36,7 +36,6 @@ class mapper(object):
     def name_to_alias_failed(self,env):
         found_data=''
         name_to_alias=common.g_engine._part_manager._alias_list(self.name)
-        
         for a in name_to_alias:
             tmp=common.g_engine._part_manager._from_alias(a)
             found_data+=" Alias=%s, version=%s, matching platforms=%s\n"%(tmp.Alias,tmp.Version,tmp._platform_match)

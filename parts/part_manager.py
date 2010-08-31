@@ -20,6 +20,7 @@ class vcs_task(object):
     '''
     def __init__(self,part):
         self.part = part
+        self.__failed=False
         
     def prepare(self):
         pass
@@ -32,11 +33,12 @@ class vcs_task(object):
         ''' this is what we call to do the checkout'''
         self.part.UpdateOnDisk()
         
-    def exception_set(self):
-        pass
+    def exception_set(self,exception=None):
+        self.__failed=True
         
     def failed(self):
-        pass
+        if self.__failed:
+            reporter.report_error("Check out task failed")
         
     def executed(self):
         pass
@@ -71,7 +73,7 @@ class part_manager(object):
     def __init__(self):
         self.sections=common.g_sections
         self.parts={} # a dictionary of all parts objects by there alias value
-        self.name_to_alias={} #a dictionary of a known Parts name and possible alias that match
+        self.__name_to_alias={} #a dictionary of a known Parts name and possible alias that match
         self.__to_map_parts=[] # stuff that needs to be mapped, else it is wasted space
         self.__cache_bad=False # used to help prevent wasting time on cases of incomplete cache data
     
@@ -255,24 +257,26 @@ class part_manager(object):
             
             if ycache:
                 # Y uses X
-                xiny = x.Alias in ycache['full_root_depends']
+                xiny = x.Alias in ycache['full_root_depends'] or y._uses_part(x)
             else:
-                xiny=False
+                xiny=y._uses_part(x)
             if xcache:
                 # X uses Y
-                yinx = y.Alias in xcache['full_root_depends']
+                yinx = y.Alias in xcache['full_root_depends'] or x._uses_part(y)
             else:
-                yinx=False
-            if xiny and yinx: 
-                # if we got here we need to see is the User said if the Part
-                # uses the other part.. needed for classic format ordering issues
-                # the new format is not effect by this
-                if x._uses_part(y): return 1
-                elif y._uses_part(x): return -1
-                else:return cmp(x.Alias,y.Alias)
-            elif xiny: return -1
-            elif yinx: return 1
+                yinx= x._uses_part(y)
             
+            if xiny: return -1
+            elif yinx: return 1
+            # if we are here we don't have cache information
+            # or these two don't have any relationship.
+            # given the case of no chache we want to push items with requires 
+            # stuff down(latter) the list so stuff it might depend on is read first
+            # sort by length of _uses list, else alias string size
+            xlen = len(x._uses)
+            ylen = len(y._uses)
+            if xlen > ylen: return 1
+            elif ylen < xlen: return -1
             return cmp(x.Alias,y.Alias)
             
         #is everything up to date on disk update file on disk?
@@ -286,7 +290,9 @@ class part_manager(object):
         # for classic formats mainly... only works if we have datacache stored
         # or if the part has a direct toplevel depends statement in the Part
         # creation call. For new style Parts this might help, or is pointless 
-        root_parts.sort(pcmp)
+        root_parts.sort(key=lambda p: len(p._uses) )
+        if not self.__cache_bad: root_parts.sort(pcmp)
+        print [i.Alias for i in root_parts]
         out_date_list=[]
         if self.__cache_bad==False and common.g_engine._build_mode=='build':
             
@@ -509,8 +515,6 @@ class part_manager(object):
                         # since this part is out of data.. and it could have sub-parts that are out of date
                         # we have to force build the whole object, otherwise it might not become up-to-date
                         SCons.Script.BUILD_TARGETS.append(p.Alias)
-                        cnt+=1
-                        reporter.print_console("%3.2f%%"%(cnt/total*100))
                         reporter.verbose_msg("update_check",'Part "%s" is out of date because it depends on a Part "%s" that is out of date'%(p.Alias,x))
                         continue
             # we store failures as we assume that this is less than
@@ -647,19 +651,21 @@ class part_manager(object):
             
         return ret
 
-    def _alias_list(self,name):
+    def _alias_list(self,name=None):
         '''
         given an a part name return a list of all parts alias that 
         could be matches for that name
         '''
-        return self.name_to_alias.get(name,set([]))
+        if name is None:
+            return self.__name_to_alias
+        return self.__name_to_alias.get(name,set([]))
     
     def add_name_alias(self,name,alias):
         try:
-            self.name_to_alias[name].add(alias)
+            self.__name_to_alias[name].add(alias)
         except KeyError:
-            self.name_to_alias[name]=set()
-            self.name_to_alias[name].add(alias)
+            self.__name_to_alias[name]=set()
+            self.__name_to_alias[name].add(alias)
 
     def is_whole_part_up_to_date(self,alias):
         ''' 

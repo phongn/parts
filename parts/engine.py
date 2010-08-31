@@ -394,8 +394,8 @@ class parts_addon(object):
             self.__post_process_queue=[]
             reporter.print_msg("Done -- Processing post logic queue")
         
-        for p in self.part_manager.parts.values():
-            p.Env.subst(p.Env['ENV']['INCLUDE'])
+        #for p in self.part_manager.parts.values():
+            #p.Env.subst(p.Env['ENV']['INCLUDE'])
             
     def map_known_nodes(self):
         '''
