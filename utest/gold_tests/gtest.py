@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import subprocess
 import time
 import threading
@@ -609,7 +610,6 @@ class Engine(object):
         # do the call
         output=stream_writter(os.path.join(test_dir,"_tmp_%s_%s"%(test.name,test_run.name)))
         command_line="cd %s && %s"%(test_dir,test_run.cmd)
-        print command_line
         proc = subprocess.Popen(
             command_line,
             shell=True,
@@ -642,7 +642,6 @@ class Engine(object):
 
         p1.close()
         p2.close()
-        print "return code",proc.returncode
         return proc.returncode
 
 class pipeRedirector:
@@ -651,7 +650,7 @@ class pipeRedirector:
         while l != '':
             l = self.pipein.readline()
             self.time=time.time()
-                
+            sys.__stdout__.write(l)    
             if l != "":
                 self.writer(l)
 

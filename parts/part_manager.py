@@ -75,7 +75,7 @@ class part_manager(object):
         self.parts={} # a dictionary of all parts objects by there alias value
         self.__name_to_alias={} #a dictionary of a known Parts name and possible alias that match
         self.__to_map_parts=[] # stuff that needs to be mapped, else it is wasted space
-        self.__cache_bad=False # used to help prevent wasting time on cases of incomplete cache data
+        self.__cache_bad=SCons.Script.GetOption("parts_cache") == False # used to help prevent wasting time on cases of incomplete cache data
         self.__part_count=0 # number of parts we have defined.. 
     
     def _get_stored_root_alias(self,alias):
@@ -476,7 +476,7 @@ class part_manager(object):
         '''
         ret=[]
         cnt=0;
-        total=len(root_parts)*1.0
+        total=len(root_parts)*1.0+1
         reporter.print_console("%3.2f%%"%(cnt/total*100))
         for p in root_parts:
             st=time.time()
@@ -503,7 +503,7 @@ class part_manager(object):
         out_date_list=[]
         reporter.print_msg("Processing Targets to see what is up-to-date")
         cnt=0;
-        total=len(root_parts)*1.0
+        total=len(root_parts)*1.0+1
         reporter.print_console("%3.2f%%"%(cnt/total*100))
         uttt=time.time()
         for p in root_parts:
@@ -535,7 +535,7 @@ class part_manager(object):
                 # we have to force build the whole object, otherwise it might not become up-to-date
                 SCons.Script.BUILD_TARGETS.append(p.Alias)
             cnt+=1
-            reporter.print_console("%3.2f%%"%(cnt/total*100))
+            reporter.print_console("************************************************ %3.2f%%"%(cnt/total*100))
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
         reporter.print_console('100%%')
         return out_date_list

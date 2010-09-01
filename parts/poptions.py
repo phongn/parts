@@ -282,7 +282,6 @@ SCons.Script.AddOption("--mode",
         
 SCons.Script.AddOption("--show-progress",
             dest='show_progress',
-            default=True,
             nargs='?',
             callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'show_progress'),
             type='string',
@@ -291,6 +290,7 @@ SCons.Script.AddOption("--show-progress",
             
 SCons.Script.AddOption("--hide-progress",
             dest='show_progress',
+            default=True,
             action="store_false",
             help='Controls if progress state is shown')
 

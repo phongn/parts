@@ -2,6 +2,10 @@ import ansi_stream
 import color
 import sys
 import thread
+# for non windows 
+import struct
+import fcntl
+import termios
 
 class NullStream(object):
 
@@ -11,8 +15,10 @@ class NullStream(object):
     def write(self,s):
         pass
         
-    
     def writeLines(self,str_list):
+        pass
+    
+    def flush(self):
         pass
 
 class Console:
@@ -24,8 +30,8 @@ class Console:
     trace_stream=5
     verbose_stream=6
     def __init__(self,process_color=False):
-
-        self.m_lock=thread.allocate_lock() # used to sync output cases across streams
+        self.clearline=False
+        self.__lock=thread.allocate_lock() # used to sync output cases across streams
         
         if color.is_win32:
             try:
@@ -35,6 +41,7 @@ class Console:
         else:
             try: 
                 self.conio=open('/dev/tty','w')
+                
             except Exception,ec:
                 self.conio=NullStream()        
         
@@ -44,83 +51,85 @@ class Console:
                 
         if process_color ==False:
             self.__console=ansi_stream.ColorTextStream(
+                                        self,
                                         self.conio,
-                                        self.m_lock,
                                         use_color=True,
-                                        flush=True
-                                        )                
+                                        flush=True,
+                                        do_clearline=False
+                                    )          
             self.Output=ansi_stream.ColorTextStream(
+                                        self,            
                                         sys.__stdout__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             self.Error=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stderr__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             self.Warning=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stderr__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             self.Message=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             self.Trace=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             self.Verbose=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         use_color=False
                                     )
             
         else:
             self.__console=ansi_stream.ColorTextStream(
-                                    self.conio,
-                                    self.m_lock,
-                                    color.ConsoleColor(color.BrightMagenta),
-                                    use_color=True,
-                                    flush=True
+                                        self,
+                                        self.conio,
+                                        color.ConsoleColor(color.BrightMagenta),
+                                        use_color=True,
+                                        flush=True,
+                                        do_clearline=False
                                     )                
             self.Output=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stdout'],
                                         use_color=True
                                     )
             self.Error=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stderr'],
                                         use_color=True
                                     )
             self.Warning=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stdwrn'],
                                         use_color=True
                                     )
             self.Message=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stdmsg'],
                                         use_color=True
                                     )
             self.Trace=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stdtrace'],
                                         use_color=True
                                     )
             self.Verbose=ansi_stream.ColorTextStream(
+                                        self,
                                         sys.__stdout__,
-                                        self.m_lock,
                                         process_color['stdverbose'],
                                         use_color=True
                                     )
@@ -133,10 +142,77 @@ class Console:
         
     def write(self,msg):
         ## write data
-        #sys.__stdout__.write("%s"%msg)
         self.__console.write(msg)
+        self.clearline=True
         
-    
+    def flush(self):
+        ## write data
+        self.__console.flush()
+        
+    if color.is_win32:
+        @property
+        def Width(self):
+            # move to common var prevent repeating the getting of common value
+            handle = ctypes.windll.kernel32.GetStdHandle(-12)        
+            string_buffer = ctypes.create_string_buffer(22)        
+            ret = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(handle, string_buffer)            
+            wattr=0
+            if ret:
+                (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
+                return  right - left + 1
+            return 80
+        
+        @property
+        def Height(self):
+            # move to common var prevent repeating the getting of common value
+            handle = ctypes.windll.kernel32.GetStdHandle(-12)        
+            string_buffer = ctypes.create_string_buffer(22)        
+            ret = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(handle, string_buffer)            
+            wattr=0
+            if ret:
+                (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
+                return  bottom - top + 1
+            return 40
+    else:
+        @property
+        def Width(self):
+            width = 0
+            try:
+                tmp = struct.pack('HHHH', 0, 0, 0, 0)
+                data = fcntl.ioctl(1, termios.TIOCGWINSZ, tmp)
+                width = struct.unpack('HHHH', data)[1]
+            except IOError:
+                pass     
+            # something went wrong
+            if width <= 0:
+                width = 80
 
+            return width
+        
+        @property
+        def Height(self):
+            height = 0
+            try:
+                tmp = struct.pack('HHHH', 0, 0, 0, 0)
+                data = fcntl.ioctl(1, termios.TIOCGWINSZ, tmp)
+                height = struct.unpack('HHHH', data)[0]
+            except IOError:
+                pass     
+            # something went wrong
+            if height <= 0:
+                height = 40
+
+            return height
+    
+        
+    def ClearLine(self):
+        s=" "*self.Width+"\r"
+        self.__console.write(s,lock=not self.__lock.locked)
+        
+    def lock(self):
+        self.__lock.acquire()
+        
+    def release(self):
+        self.__lock.release()
 
 

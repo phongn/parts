@@ -17,11 +17,13 @@ import build_section
 
 # create the engine
 common.g_engine=engine.parts_addon()
-# start up logic ... runs during import of the code
-common.g_engine.Start() # sets up everything
 
 ### import the pieces
 import pieces
+
+# start up logic ... runs during import of the code
+common.g_engine.Start() # sets up everything
+
 
 # import extra funcion 
 ## this will be viewed as global function to the user in the Sconstruct file

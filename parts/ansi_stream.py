@@ -3,15 +3,18 @@ import color
 import sys
 win32=sys.platform == 'win32'
 
+
+
 class ColorTextStream(object):
     '''Basically is an object that wraps a stream and process color ansi 
     command codes for color
     '''
 
-    def __init__(self,stream,out_lock,col=color.ConsoleColor(),use_color=False,flush=False):
+    def __init__(self,console,stream,col=color.ConsoleColor(),use_color=False,
+                    flush=False,do_clearline=True):
+        self.console=console
         #the stream object
         self.stream=stream
-        self.m_lock=out_lock
         # default colors for this stream 
         self.color=col
         self.reset=color.ConsoleColor(color.SystemColor)
@@ -19,28 +22,37 @@ class ColorTextStream(object):
             self.ProcessColor=False
         else:
             self.ProcessColor =use_color
-        self.flush=flush
+        self.do_flush=flush
+        self.do_clearline=do_clearline
+        
+        
     
-    def write(self,s):
-        self.m_lock.acquire()
+    def write(self,s,lock=True):
+        if lock: self.console.lock()
+        if self.console.clearline and self.do_clearline:
+            self.console.clearline=False
+            self.console.ClearLine()
         try:
             if self.ProcessColor :            
                 self._WriteColor(self.color.ansi_value()+s+self.reset.ansi_value())
             else:
                 self._WriteNoColor(s)
         finally:
-            self.m_lock.release()
+            if lock: self.console.release()
             
-    def flush(self):
-        self.m_lock.acquire()
+    def flush(self,lock=True):
+        if lock: self.console.lock()
         self.stream.flush()
-        self.m_lock.release()
+        if lock: self.console.release()
         
         
     
-    def writeLines(self,str_list):
+    def writeLines(self,str_list,lock=True):
         
-        self.m_lock.acquire()
+        if lock: self.console.acquire()
+        if self.console.clearline and self.do_clearline:
+            self.console.clearline=False
+            self.console.ClearLine()
         try:
             if self.ProcessColor :
                 self._WriteColor(self.color.ansi_value())
@@ -51,7 +63,7 @@ class ColorTextStream(object):
                 for s in str_list:
                     self._WriteNoColor(s)
         finally:
-            self.m_lock.release()
+            if lock: self.console.release()
         
     if win32:
         def SetColor(self,console_color):
@@ -74,7 +86,7 @@ class ColorTextStream(object):
                     state=1
                     if tmp_str!='':
                         self.stream.write(tmp_str)
-                        if self.flush: self.stream.flush()
+                        if self.do_flush: self.stream.flush()
                         tmp_str=''
                 elif s == '[' and state==1:
                     state=2
@@ -130,10 +142,10 @@ class ColorTextStream(object):
                     tmp_str+=s
             if tmp_str != '':
                 self.stream.write(tmp_str)
-                if self.flush: self.stream.flush()
+                if self.do_flush: self.stream.flush()
         else:
             self.stream.write(in_str)
-            if self.flush: self.stream.flush()
+            if self.do_flush: self.stream.flush()
             
     def _WriteNoColor(self,in_str):
         '''Will just strip the codes'''
@@ -145,7 +157,7 @@ class ColorTextStream(object):
             if s == '\033':
                 state=1
                 self.stream.write(tmp_str)
-                if self.flush: self.stream.flush()
+                if self.do_flush: self.stream.flush()
                 tmp_str=''
             elif s == '[' and state==1:
                 state=2
@@ -167,4 +179,4 @@ class ColorTextStream(object):
                 tmp_str+=s
         if tmp_str != '':
             self.stream.write(tmp_str)
-            if self.flush: self.stream.flush()
+            if self.do_flush: self.stream.flush()

@@ -96,7 +96,7 @@ class reporter:
         
         if use_color is not None and use_color.has_key('defaults') and \
             (os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False):
-                use_color=None
+                use_color=False
 
         if self.trace==[]:
             trace_msg=_empty_msg

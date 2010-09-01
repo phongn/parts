@@ -645,17 +645,19 @@ class parts_addon(object):
 
     def _setup_progress_meter(self):
         reporter.verbose_msg("startup","Setting up show-progress feature")
+        print reporter.g_rpter.console.Width
         if SCons.Script.GetOption('show_progress'):
-            if self.def_env['HOST_OS'] == 'win32':
-                try:
-                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('con:','w'),overwrite=True)
-                except Exception,ec:
-                    pass                
-            else:
-                try: 
-                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
-                except Exception,ec:
-                    pass
+            SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=reporter.g_rpter.console,overwrite=True)
+##            if self.def_env['HOST_OS'] == 'win32':
+##                try:
+##                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('con:','w'),overwrite=True)
+##                except Exception,ec:
+##                    pass                
+##            else:
+##                try: 
+##                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
+##                except Exception,ec:
+##                    pass
 
     def add_preprocess_logic_queue(self,funcobj):
         self.__post_process_queue.append(funcobj)
