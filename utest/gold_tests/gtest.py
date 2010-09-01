@@ -26,7 +26,7 @@ gtest.py
 
 
 cwd_dir=os.path.split(__file__)[0]
-test_root=os.path.join(cwd_dir,"gtest_run")
+test_root=os.path.join(cwd_dir,"_run_sandbox")
 parts_path=os.path.abspath(os.path.normpath('../../'))
 os.environ['PYTHONPATH']=parts_path
 
@@ -54,7 +54,7 @@ class Test(object):
         self.location=location
         self.run_serial=False
         self.summary=''
-        self.sconstruct_file='sconstruct'
+        self.sconstruct_file=None
         self.copy_directory=False #true to copy contents of test directory else path of directory to copy
         self.run=[]
 
@@ -70,8 +70,16 @@ class Test(object):
         self.run.append(tmp)
         return tmp
     
-    def AddUpdateCheck(self,target='all'):
-        tmp=TestRun(self,"up-to-date-check-run-%s"%len(self.run))
+    def AddUpdateCheckSCons(self,target='all'):
+        tmp=TestRun(self,"up-to-date-scons-run-%s"%len(self.run))
+        tmp.cmd='scons -Q %s --disable-parts-cache'%target
+        tmp.returncode=0
+        #add stream test
+        self.run.append(tmp)
+        return tmp
+    
+    def AddUpdateCheckParts(self,target='all'):
+        tmp=TestRun(self,"up-to-date-parts-run-%s"%len(self.run))
         tmp.cmd='scons -Q %s'%target
         tmp.returncode=0
         #add stream test
@@ -287,19 +295,19 @@ class TestResult(object):
             self.returncode_actual=val
             
     def TestStdout(self):
-        self.stdout=self.testrun.streams.TestStdout(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdout=self.testrun.streams.TestStdout(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
     
     def TestStderr(self):
-        self.stderr=self.testrun.streams.TestStderr(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stderr=self.testrun.streams.TestStderr(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestStdVerbose(self):
-        self.stdverbose=self.testrun.streams.TestStdVerbose(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdverbose=self.testrun.streams.TestStdVerbose(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
     
     def TestStdTrace(self):
-        self.stdtrace=self.testrun.streams.TestStdTrace(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdtrace=self.testrun.streams.TestStdTrace(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestFullStream(self):
-        self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestFiles(self):
         for file in self.testrun.disk.files:
@@ -486,9 +494,9 @@ class Engine(object):
             print "Looking for tests in",root
             if '.svn' in dirs:
                 dirs.remove('.svn')
-            for d in dirs:
-                if d.startswith("_tmp_"):
-                    dirs.remove(d)
+            #for d in dirs:
+            #    if d.startswith("_tmp_"):
+            #        dirs.remove(d)
             for f in files:
                 if f.endswith('.test.py'):
                     name=f[:-len('.test.py')]
@@ -527,10 +535,19 @@ class Engine(object):
         #copy the scontruct file
         tmp=os.path.join(test_dir,"sconstruct")
         if test.sconstruct_file is None:
+            if os.path.exists(os.path.join(test.location,"SConstruct_"+test.name)):
+                shutil.copy2(os.path.join(test.location,"SConstruct_"+test.name),tmp)
+            if os.path.exists(os.path.join(test.location,"Sconstruct_"+test.name)):
+                shutil.copy2(os.path.join(test.location,"Sconstruct_"+test.name),tmp)
             if os.path.exists(os.path.join(test.location,"sconstruct_"+test.name)):
-                shutil.copy2(os.path.join(test.location,"sconstruct_"+test.name),tmp)
+                shutil.copy2(os.path.join(test.location,"sconstruct_"+test.name),tmp)                
+            elif os.path.exists(os.path.join(test.location,"SConstruct")):
+                shutil.copy2(os.path.join(test.location,"SConstruct"),tmp)
+            elif os.path.exists(os.path.join(test.location,"Sconstruct")):
+                shutil.copy2(os.path.join(test.location,"Sconstruct"),tmp)
             elif os.path.exists(os.path.join(test.location,"sconstruct")):
                 shutil.copy2(os.path.join(test.location,"sconstruct"),tmp)
+
         elif type(test.sconstruct_file) is types.StringType:
             if os.path.exists(test.sconstruct_file):
                 shutil.copy2(test.sconstruct_file,tmp)
@@ -590,8 +607,9 @@ class Engine(object):
             
     def spawn_command(self,test,test_run,test_dir):
         # do the call
-        output=stream_writter(os.path.join(test_dir,"_tmp_"+test.name))
+        output=stream_writter(os.path.join(test_dir,"_tmp_%s_%s"%(test.name,test_run.name)))
         command_line="cd %s && %s"%(test_dir,test_run.cmd)
+        print command_line
         proc = subprocess.Popen(
             command_line,
             shell=True,
@@ -624,6 +642,7 @@ class Engine(object):
 
         p1.close()
         p2.close()
+        print "return code",proc.returncode
         return proc.returncode
 
 class pipeRedirector:
@@ -761,6 +780,6 @@ class stream_writter(object):
 if __name__ == '__main__':
     engine=Engine()
     engine.start()
-    if os.path.exists(test_root):
-        shutil.rmtree(test_root)
+    #if os.path.exists(test_root):
+    #    shutil.rmtree(test_root)
 
