@@ -4,6 +4,32 @@ import subprocess
 import time
 import threading
 import difflib
+import types
+import shutil
+
+'''
+gtest -- for gold file testing
+
+Expected directory layout
+
+gtest.py
+    /<group>
+        <test name>.test.py
+        sconstruct_<test_name> or sconstruct (or custome value via test.sconstruct_file) this value will be copied to test area as "sconstruct".
+                                    If no find it will assume "Sconstruct" is in directory copy ( given there is a copy), else error 
+            /<sub_dir contains sample code>
+
+    /templates -- contains command test case structure to help with reuse 
+        /<template_name>
+
+'''
+
+
+cwd_dir=os.path.split(__file__)[0]
+test_root=os.path.join(cwd_dir,"gtest_run")
+parts_path=os.path.abspath(os.path.normpath('../../'))
+os.environ['PYTHONPATH']=parts_path
+
 
 full_stream_file='stream.both.txt'
 out_stream_file='stream.out.txt'
@@ -11,14 +37,65 @@ err_stream_file='stream.err.txt'
 verbose_stream_file='stream.verbose.txt'
 trace_stream_file='stream.trace.txt'
 
+if os.path.exists(test_root):
+    shutil.rmtree(test_root)
+
+def TestTemplate(name):
+    return os.path.join(cwd_dir,'templates',name)    
+
 class Test(object):
+    ''' This Define a basic test. A basic test is a set of TestRun
+    Each test Run run soem kind of command, and fro each run we can test
+    Some state to make sure everything is OK.
+    '''
     def __init__(self,name,location):
         #traits
         self.name=name
         self.location=location
         self.run_serial=False
+        self.summary=''
+        self.sconstruct_file='sconstruct'
+        self.copy_directory=False #true to copy contents of test directory else path of directory to copy
+        self.run=[]
 
+    def AddTestRun(self,name='general'):
+        tmp=TestRun(self,"%s-%s"%(name,len(self.run)))
+        self.run.append(tmp)
+        return tmp
+
+    def AddCleanRun(self,target='all'):
+        tmp=TestRun(self,"clean-run-%s"%len(self.run))
+        tmp.cmd='scons -c %s'%target
+        tmp.returncode=0
+        self.run.append(tmp)
+        return tmp
+    
+    def AddUpdateCheck(self,target='all'):
+        tmp=TestRun(self,"up-to-date-check-run-%s"%len(self.run))
+        tmp.cmd='scons -Q %s'%target
+        tmp.returncode=0
+        #add stream test
+        self.run.append(tmp)
+        return tmp
+        
+    def AddUOutOfDateCheck(self,target="all"):
+        tmp=TestRun(self,"out-of-date-check-run-%s"%len(self.run))
+        tmp.cmd='scons -Q %s'%target
+        tmp.returncode=1
+        #add stream test
+        self.run.append(tmp)
+        return tmp
+        
+            
+
+class TestRun(object):
+    '''
+    A test run allows us to test a certain command and see if certian actions happened as excepted
+    Speceial cases of Test run may test it a test is up-to-date, or out-of -date
+    '''
+    def __init__(self,test,name):
         #required setup
+        self.name=name
         self.cmd="" # this is the command we want to run
         
         # possible stuff we can test
@@ -26,19 +103,27 @@ class Test(object):
         self.returncode=None # can be a int
         # time
         self.time=Time()
-        self.streams=Stream(self)
+        self.streams=Stream(test,self)
         self.disk=Disk(self)
-        
-
 
 class Time(object):
+    ''' Allows us to test that something happened within a certain time.
+    If we go over the time we can exit the test and say we had a failure
+    '''
     def __init__(self):
         self.total=None
         self.interval=None
 
 class Stream(object):
-    def __init__(self,test):
+    '''
+    this allows us to test against different streams. Parts add "virtual" streams
+    As it no really possible to add new streams given modern console logic
+    Each stream can be tested against a gold file. By default the stream is diffed with
+    the python difflib. However custom diff logic can be setup by setting the <stream>_tester attribute
+    '''
+    def __init__(self,test,testrun):
         self.test=test
+        self.testrun=testrun
         self.stdout=None # only the stdout text
         self.stdout_tester=difflib.context_diff
         self.stderr=None # only the stderr text
@@ -104,6 +189,9 @@ class Stream(object):
             self.full_stream_tester)
 
 class File(object):
+    '''
+    Allows us to test for a file. We can test for size, existance and content
+    '''
     def __init__(self,test,name,exists=None,size=None,content=None):
         self.test=test
         self.name=name
@@ -141,11 +229,15 @@ class File(object):
         
 
 class Dir(object):
+    ''' allow us to test for the existance of a Directory'''
     def __init__(self,name,exists=None):
         self.name=name
         self.exists=exists
 
 class Disk(object):
+    '''
+    allows use to define what kind of disk based test we want to do
+    '''
     def __init__(self,test):
         self.test=test
         self.files=[]
@@ -162,8 +254,9 @@ class Disk(object):
         self.dirs.append(Dir(name,exists))
 
 class TestResult(object):
-    def __init__(self,test):
+    def __init__(self,test,testrun):
         self.test=test
+        self.testrun=testrun
         self.returncode=None
         self.returncode_actual=None
         self.time_interval=None
@@ -177,9 +270,9 @@ class TestResult(object):
         self.full_stream=None
 
     def TestTime(self):
-        if self.test.time.interval is not None and self.time_interval != False:
+        if self.testrun.time.interval is not None and self.time_interval != False:
             self.time_interval=True
-        if self.test.time.total is not None and self.time_total != False:
+        if self.testrun.time.total is not None and self.time_total != False:
             self.time_total=True
             
     def TestTotalTimeFailed(self):
@@ -189,27 +282,27 @@ class TestResult(object):
         self.time_interval=False
         
     def TestReturnCode(self,val):
-        if self.test.returncode is not None:
-            self.returncode=(val==self.test.returncode)
+        if self.testrun.returncode is not None:
+            self.returncode=(val==self.testrun.returncode)
             self.returncode_actual=val
             
     def TestStdout(self):
-        self.stdout=self.test.streams.TestStdout(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdout=self.testrun.streams.TestStdout(os.path.join(self.test.location,"_tmp_"+self.test.name))
     
     def TestStderr(self):
-        self.stderr=self.test.streams.TestStderr(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stderr=self.testrun.streams.TestStderr(os.path.join(self.test.location,"_tmp_"+self.test.name))
         
     def TestStdVerbose(self):
-        self.stdverbose=self.test.streams.TestStdVerbose(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdverbose=self.testrun.streams.TestStdVerbose(os.path.join(self.test.location,"_tmp_"+self.test.name))
     
     def TestStdTrace(self):
-        self.stdtrace=self.test.streams.TestStdTrace(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.stdtrace=self.testrun.streams.TestStdTrace(os.path.join(self.test.location,"_tmp_"+self.test.name))
         
     def TestFullStream(self):
-        self.full_stream=self.test.streams.TestFullStream(os.path.join(self.test.location,"_tmp_"+self.test.name))
+        self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.location,"_tmp_"+self.test.name))
         
     def TestFiles(self):
-        for file in self.test.disk.files:
+        for file in self.testrun.disk.files:
             tmp={}
             if os.path.isfile(file.name):
                 tmp['exists']=True
@@ -220,7 +313,7 @@ class TestResult(object):
             self.files[file.name]=tmp
     
     def TestDirs(self):
-        for dir in self.test.disk.dirs:
+        for dir in self.testrun.disk.dirs:
             tmp={}
             if os.path.isdir(dir.name):
                 tmp['exists']=True
@@ -270,7 +363,7 @@ class Engine(object):
         
 
     def start(self):
-        
+        print "starting"
         # scan for tests
         self.scan_for_tests()
         # see if we have a select list of tests to run else run all of them
@@ -287,40 +380,45 @@ class Engine(object):
     def makereport(self):
         
         num_failures=0
-        for rst in self.results.values():
+        for rstlst in self.results.values():
+          print_name=True
+          for rst in rstlst:
             if rst.quick_sumary() is not None:
                 # we have a error to report
                 num_failures=num_failures+1
-                print rst.test.name,"had failures! Summary:"
+                if print_name:
+                    print_name=False
+                    print "Test %s had failures! Summary:"%(rst.test.name)
+                print "    Test run %s:"%(rst.testrun.name)
                 ## report if there was any timing issues
                 # interval time
-                print "Time Interval:",
-                if rst.test.time.interval is None:
+                print "\tTime Interval:",
+                if rst.testrun.time.interval is None:
                     print "Not tested"
                 elif rst.time_interval == True:
                     print "Passed"
                 else:
                     print "Failed"
                 #total time    
-                print "Time Total:",
-                if rst.test.time.total is None:
+                print "\tTime Total:",
+                if rst.testrun.time.total is None:
                     print "Not tested"
                 elif rst.time_total == True:
                     print "Passed"
                 else:
                     print "Failed"
                 ## report if there was issue with return code
-                print "Return code:",
-                if rst.test.returncode is None:
+                print "\tReturn code:",
+                if rst.testrun.returncode is None:
                     print "Not tested"
                 elif rst.returncode == True:
                     print "Passed"
                 else:
-                    print "Failed! expected:%s actual%s"%(rst.test.returncode,rst.returncode_actual)
+                    print "Failed! expected: %s actual: %s"%(rst.testrun.returncode,rst.returncode_actual)
                 ## report any diff with the stream
                 #stdout
-                print "stdout stream:",
-                if rst.test.streams.stdout is None:
+                print "\tstdout stream:",
+                if rst.testrun.streams.stdout is None:
                     print "Not tested"
                 elif rst.stdout == "":
                     print "Passed"
@@ -330,8 +428,8 @@ class Engine(object):
                     print rst.stdout
                     print "**************"
                 #stderr
-                print "stderr stream:",
-                if rst.test.streams.stderr is None:
+                print "\tstderr stream:",
+                if rst.testrun.streams.stderr is None:
                     print "Not tested"
                 elif rst.stdout == "":
                     print "Passed"
@@ -341,8 +439,8 @@ class Engine(object):
                     print rst.stdout
                     print "**************"
                 
-                print "stdverbose stream:",
-                if rst.test.streams.stdverbose is None:
+                print "\tstdverbose stream:",
+                if rst.testrun.streams.stdverbose is None:
                     print "Not tested"
                 elif rst.stdverbose == "":
                     print "Passed"
@@ -351,8 +449,8 @@ class Engine(object):
                     print "**** diff ****"
                     print rst.stdverbose
                     print "**************"
-                print "stdtrace stream:",
-                if rst.test.streams.stdtrace is None:
+                print "\tstdtrace stream:",
+                if rst.testrun.streams.stdtrace is None:
                     print "Not tested"
                 elif rst.stdtrace == "":
                     print "Passed"
@@ -361,8 +459,8 @@ class Engine(object):
                     print "**** diff ****"
                     print rst.stdtrace
                     print "**************"
-                print "full_stream stream:",
-                if rst.test.streams.full_stream is None:
+                print "\tfull_stream stream:",
+                if rst.testrun.streams.full_stream is None:
                     print "Not tested"
                 elif rst.full_stream == "":
                     print "Passed"
@@ -402,19 +500,58 @@ class Engine(object):
                     
 
     def run_test(self,test):
-        print "Running Test", test.name,'in',test.location,
-        testresult=TestResult(test)
+        '''Runs the testruns of a given test'''
+
+        #First we need to load a given test
+        print "Loading Test", test.name,'in',test.location,
+        
         ## load the test data. this mean exec the data
         #create the locals we want to pass
-        locals={'test':test}
+        locals={'test':test,'TestTemplate':TestTemplate}
         #get full path
         tmp=os.path.join(test.location,test.name+".test.py")
         execfile(tmp,{},locals)
-        #exec open(tmp,"rb").read() in globals(),locals
-        print ".",
+        print "Done"
+        print "Creating test run directory data"
+        # create test directory ( test_root+test_location+test_name)
+        test_dir=os.path.normpath(os.path.join(test_root,test.location,test.name))
+        # copy and directory data
+        
+        if test.copy_directory == True:
+        # if this bool True copy the directory tree that has the test in it
+            shutil.copytree(test.location,test_dir)
+        elif type(test.copy_directory) is types.StringType and os.path.exists(test.copy_directory):
+            shutil.copytree(test.copy_directory,test_dir)
+        else:
+            os.makedirs(test_dir)
+        #copy the scontruct file
+        tmp=os.path.join(test_dir,"sconstruct")
+        if test.sconstruct_file is None:
+            if os.path.exists(os.path.join(test.location,"sconstruct_"+test.name)):
+                shutil.copy2(os.path.join(test.location,"sconstruct_"+test.name),tmp)
+            elif os.path.exists(os.path.join(test.location,"sconstruct")):
+                shutil.copy2(os.path.join(test.location,"sconstruct"),tmp)
+        elif type(test.sconstruct_file) is types.StringType:
+            if os.path.exists(test.sconstruct_file):
+                shutil.copy2(test.sconstruct_file,tmp)
+            if os.path.exists(os.path.join(test.location,test.sconstruct_file)):
+                shutil.copy2(os.path.join(test.location,test.sconstruct_file),tmp)
+            
+            #We want to copy the test run data to a temp run directory
+        ret=[]
+        # run each sequence, or each until we get an Error
+        for t in test.run:    
+            ret.append(self.do_test_run(test,t,test_dir))
+        return ret
+
+        
+
+    def do_test_run(self,test,testrun,test_dir):        
+        testresult=TestResult(test,testrun)
         rcode=-1
+        print "Test %s run %s "%(test.name,testrun.name),
         try:
-            rcode =self.spawn_command(test)
+            rcode =self.spawn_command(test,testrun,test_dir)
         ## get any time based tests that failed
             # this means the process was killed
         except TimeIntervalError:
@@ -451,10 +588,10 @@ class Engine(object):
 
 
             
-    def spawn_command(self,test):
+    def spawn_command(self,test,test_run,test_dir):
         # do the call
-        output=stream_writter(os.path.join(test.location,"_tmp_"+test.name))
-        command_line="cd %s && %s"%(test.location,test.cmd)
+        output=stream_writter(os.path.join(test_dir,"_tmp_"+test.name))
+        command_line="cd %s && %s"%(test_dir,test_run.cmd)
         proc = subprocess.Popen(
             command_line,
             shell=True,
@@ -470,14 +607,14 @@ class Engine(object):
         while running:
             curr_time=time.time()
             # test time interval
-            if test.time.interval is not None:
-                if not p1.ok(test.time.interval,curr_time) or not p1.ok(test.time.interval,curr_time):
+            if test_run.time.interval is not None:
+                if not p1.ok(test_run.time.interval,curr_time) or not p1.ok(test_run.time.interval,curr_time):
                     # we have an error
                     raise TimeIntervalError()
             # test total time
-            if test.time.total is not None:
+            if test_run.time.total is not None:
                 
-                if test.time.total < (curr_time - start_time):
+                if test_run.time.total < (curr_time - start_time):
                     # we have an error
                     raise TimeTotalError()
             #time.sleep(1)
@@ -545,9 +682,8 @@ class stream_writter(object):
 
         self.cache= []
 
-    def smart_match(self,str):
-        
-        if re.match("Verbose: \[\w*\]",str) is not None:
+    def smart_match(self,str):        
+        if re.match("Parts: Verbose: \[\w*\]",str) is not None:
             self.verbose.write(str)
         elif re.match("Trace: \[\w*\]",str) is not None:
             self.trace.write(str)
@@ -577,6 +713,7 @@ class stream_writter(object):
     def _empty_cache(self):
         
         for text in self.cache:
+            
             if text[0] == stream_writter.stdout:
                 brkup=text[1].split('\n')
                 grpstr=''
@@ -599,7 +736,7 @@ class stream_writter(object):
             elif text[0] == stream_writter.stderr:
                 brkup=text[1].split('\n')
                 grpstr=''
-                
+                    
                 for s in brkup:
                     if s == '':
                         pass
@@ -624,5 +761,6 @@ class stream_writter(object):
 if __name__ == '__main__':
     engine=Engine()
     engine.start()
-
+    if os.path.exists(test_root):
+        shutil.rmtree(test_root)
 
