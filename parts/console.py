@@ -2,10 +2,13 @@ import ansi_stream
 import color
 import sys
 import thread
-# for non windows 
+ 
 import struct
-import fcntl
-import termios
+import ctypes
+# for non windows
+if not color.is_win32:
+    import fcntl
+    import termios
 
 class NullStream(object):
 
@@ -206,7 +209,7 @@ class Console:
     
         
     def ClearLine(self):
-        s=" "*self.Width+"\r"
+        s="\r"+(" "*(self.Width-1))+"\r"
         self.__console.write(s,lock=not self.__lock.locked)
         
     def lock(self):
