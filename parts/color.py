@@ -26,6 +26,31 @@ BrightMagenta = 0x0D
 BrightAqua = 0x0E
 BrightCyan= 0x0E
 BrightWhite = 0x0F
+
+def color_to_str(color):
+    if color==Dim: return "Dim"
+    if color==Bold: return "Bold"
+    if color==Bright: return "Bright"
+    if color==SystemColor: return "SystemColor"
+    if color==Default: return "Default"
+    if color==Black: return "Black"
+    if color==Red: return "Red"
+    if color==Green: return "Green"
+    if color==Yellow: return "Yellow"
+    if color==Blue: return "Blue"
+    if color==Purple: return "Purple/Magenta"
+    if color==Aqua: return "Aqua/Cyan"
+    if color==White: return "White"
+    if color==Gray: return "Gray"
+    if color==BrightRed: return "BrightRed"
+    if color==BrightGreen: return "BrightGreen"
+    if color==BrightYellow: return "BrightYellow"
+    if color==BrightBlue: return "BrightBlue"
+    if color==BrightPurple: return "BrightPurple/BrightMagenta"
+    if color==BrightAqua: return "BrightAqua/BrightCyan"
+    if color==BrightWhite: return "BrightWhite"
+    return "Unknown Color"
+
         
 class ConsoleColor:
     def __init__(self,fg_color=Default,bk_color=Default):
@@ -186,6 +211,9 @@ class ConsoleColor:
             ret="\033[0m"+ret    
         
         return ret
+    
+    def __repr__(self):
+        return "<%s instance fg:%s bk:%s>"%(self.__class__,color_to_str(self.fg_color),color_to_str(self.bk_color))
 
 is_win32=sys.platform == 'win32'
 if is_win32:
@@ -238,23 +266,23 @@ def parse_color(str):
             return Purple
         elif col in ['6','aqua','cyan','a','c']:
             return Aqua
-        elif col in ['7','white','lightgrey','w','lg']:
+        elif col in ['7','white','lightgrey','lightgray','w','lg']:
             return White
-        elif col in ['8','gray']:
+        elif col in ['8','gray','grey']:
             return Gray
         elif col in ['9','brightred','br']:
             return BrightRed
-        elif col in ['10','a','brightgreen','bg']:
+        elif col in ['10','brightgreen','bg']:
             return BrightGreen
-        elif col in ['11','b','brightyellow','by']:
+        elif col in ['11','brightyellow','by']:
             return BrightYellow
-        elif col in ['12','c','brightblue','bb']:
+        elif col in ['12','brightblue','bb']:
             return BrightBlue
-        elif col in ['13','d','brightpurple','brightmagenta','bp','bm']:
+        elif col in ['13','brightpurple','brightmagenta','bp','bm']:
             return BrightPurple
-        elif col in ['14','e','brightaqua','brightcyan','ba','bc']:
+        elif col in ['14','brightaqua','brightcyan','ba','bc']:
             return BrightAqua
-        elif col in ['15','f','brightwhite','bw']:
+        elif col in ['15','brightwhite','bw']:
             return BrightWhite
         elif col in ['default']:
             return Default

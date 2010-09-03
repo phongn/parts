@@ -1,0 +1,3 @@
+usage: scons [OPTION] [TARGET] ...
+SCons error: Error:  darwin-z7000 is not a valid --target_platform value
+Value must be in form of <Plaform>-<Architecture>

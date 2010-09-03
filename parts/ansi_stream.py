@@ -10,60 +10,87 @@ class ColorTextStream(object):
     command codes for color
     '''
 
-    def __init__(self,console,stream,col=color.ConsoleColor(),use_color=False,
-                    flush=False,do_clearline=True):
-        self.console=console
+    def __init__(self,console,stream):
+        self.__console=console
         #the stream object
-        self.stream=stream
+        self.__stream=stream
         # default colors for this stream 
-        self.color=col
-        self.reset=color.ConsoleColor(color.SystemColor)
-        if col.Background() == color.Default and col.Foreground() == color.Default:
-            self.ProcessColor=False
-        else:
-            self.ProcessColor =use_color
-        self.do_flush=flush
-        self.do_clearline=do_clearline
+        self.__color=color.ConsoleColor()
+        self.__reset_color=color.ConsoleColor(color.SystemColor)
+        self.__process_color=False
+        self.__force_flush=False
+        self.__clear_line=True
         
-        
+    def _set_color(self,val):
+        self.__color=val
+    def _get_color(self):
+        return self.__color
+    # control what color is used
+    Color=property(_get_color,_set_color)
+    
+    def _set_process_color(self,val):
+        self.__process_color=val
+    def _get_process_color(self):
+        # test if we have a bad color
+        #if self.__color.Background() == color.Default and self.__color.Foreground() == color.Default:
+        #    return False
+        return self.__process_color
+    # controls if the color should be processed
+    ProcessColor=property(_get_process_color,_set_process_color)
+
+    def _set_force_flush(self,val):
+        self.__force_flush=val
+    def _get_force_flush(self):
+        return self.__force_flush
+    #controls if after a write we force a flush
+    ForceFlush=property(_get_force_flush,_set_force_flush)
+    
+    def _set_clear_line(self,val):
+        self.__clear_line=val
+    def _get_clear_line(self):
+        return self.__clear_line
+    #controls if clear the whole console line before we write
+    # needed when switching between stream that write to a stream
+    # vs a raw console
+    ClearLine=property(_get_clear_line,_set_clear_line)
     
     def write(self,s,lock=True):
-        if lock: self.console.lock()
-        if self.console.clearline and self.do_clearline:
-            self.console.clearline=False
-            self.console.ClearLine()
+        if lock: self.__console.lock()
+        if self.__console.clearline and self.__clear_line:
+            self.__console.clearline=False
+            self.__console.ClearLine()
         try:
             if self.ProcessColor :            
-                self._WriteColor(self.color.ansi_value()+s+self.reset.ansi_value())
+                self._WriteColor(self.__color.ansi_value()+s+self.__reset_color.ansi_value())
             else:
                 self._WriteNoColor(s)
         finally:
-            if lock: self.console.release()
+            if lock: self.__console.release()
             
     def flush(self,lock=True):
-        if lock: self.console.lock()
-        self.stream.flush()
-        if lock: self.console.release()
+        if lock: self.__console.lock()
+        self.__stream.flush()
+        if lock: self.__console.release()
         
         
     
     def writeLines(self,str_list,lock=True):
         
-        if lock: self.console.acquire()
-        if self.console.clearline and self.do_clearline:
-            self.console.clearline=False
-            self.console.ClearLine()
+        if lock: self.__console.acquire()
+        if self.__console.clearline and self.__clear_line:
+            self.__console.clearline=False
+            self.__console.ClearLine()
         try:
             if self.ProcessColor :
-                self._WriteColor(self.color.ansi_value())
+                self._WriteColor(self.__color.ansi_value())
                 for s in str_list:
                     self._WriteNoColor(s)
-                self._WriteColor(self.reset.ansi_value())
+                self._WriteColor(self.__reset_color.ansi_value())
             else:
                 for s in str_list:
                     self._WriteNoColor(s)
         finally:
-            if lock: self.console.release()
+            if lock: self.__console.release()
         
     if win32:
         def SetColor(self,console_color):
@@ -85,8 +112,8 @@ class ColorTextStream(object):
                 if s == '\033':
                     state=1
                     if tmp_str!='':
-                        self.stream.write(tmp_str)
-                        if self.do_flush: self.stream.flush()
+                        self.__stream.write(tmp_str)
+                        if self.__force_flush: self.__stream.flush()
                         tmp_str=''
                 elif s == '[' and state==1:
                     state=2
@@ -141,11 +168,11 @@ class ColorTextStream(object):
                 else:           
                     tmp_str+=s
             if tmp_str != '':
-                self.stream.write(tmp_str)
-                if self.do_flush: self.stream.flush()
+                self.__stream.write(tmp_str)
+                if self.__force_flush: self.__stream.flush()
         else:
-            self.stream.write(in_str)
-            if self.do_flush: self.stream.flush()
+            self.__stream.write(in_str)
+            if self.__force_flush: self.__stream.flush()
             
     def _WriteNoColor(self,in_str):
         '''Will just strip the codes'''
@@ -156,8 +183,8 @@ class ColorTextStream(object):
         for s in in_str:
             if s == '\033':
                 state=1
-                self.stream.write(tmp_str)
-                if self.do_flush: self.stream.flush()
+                self.__stream.write(tmp_str)
+                if self.__force_flush: self.__stream.flush()
                 tmp_str=''
             elif s == '[' and state==1:
                 state=2
@@ -178,5 +205,5 @@ class ColorTextStream(object):
             else:           
                 tmp_str+=s
         if tmp_str != '':
-            self.stream.write(tmp_str)
-            if self.do_flush: self.stream.flush()
+            self.__stream.write(tmp_str)
+            if self.__force_flush: self.__stream.flush()

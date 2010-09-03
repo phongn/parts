@@ -24,7 +24,7 @@ class NullStream(object):
     def flush(self):
         pass
 
-class Console:
+class Console(object):
     ''' only support output operations at this time'''
     out_stream=1
     error_stream=2
@@ -32,116 +32,83 @@ class Console:
     message_stream=4
     trace_stream=5
     verbose_stream=6
-    def __init__(self,process_color=False):
+    def __init__(self):
+        
         self.clearline=False
         self.__lock=thread.allocate_lock() # used to sync output cases across streams
         
-        if color.is_win32:
-            try:
-                self.conio=open('con:','w')        
-            except Exception,ec:
-                self.conio= NullStream()               
-        else:
-            try: 
-                self.conio=open('/dev/tty','w')
-                
-            except Exception,ec:
-                self.conio=NullStream()        
+        try:        
+            if color.is_win32:
+                conio=open('con:','w')        
+            else:
+                conio=open('/dev/tty','w')
+        except Exception,ec:
+            conio=NullStream()        
         
-        if color.is_win32==True:
-            if color.default_color==color.ConsoleColor(0,0):
-                process_color=False
+        #if color.is_win32==True:
+         #   if color.default_color==color.ConsoleColor(0,0):
+        self.__process_color=False
                 
-        if process_color ==False:
-            self.__console=ansi_stream.ColorTextStream(
-                                        self,
-                                        self.conio,
-                                        use_color=True,
-                                        flush=True,
-                                        do_clearline=False
-                                    )          
-            self.Output=ansi_stream.ColorTextStream(
-                                        self,            
-                                        sys.__stdout__,
-                                        use_color=False
-                                    )
-            self.Error=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stderr__,
-                                        use_color=False
-                                    )
-            self.Warning=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stderr__,
-                                        use_color=False
-                                    )
-            self.Message=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        use_color=False
-                                    )
-            self.Trace=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        use_color=False
-                                    )
-            self.Verbose=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        use_color=False
-                                    )
+        
+        self.__console=ansi_stream.ColorTextStream(
+                                    self,
+                                    conio,
+                                ) 
+        self.__console.Flush=True
+        self.__console.ClearLine=False
+        self.Output=ansi_stream.ColorTextStream(
+                                    self,            
+                                    sys.__stdout__
+                                )
+        self.Error=ansi_stream.ColorTextStream(
+                                    self,
+                                    sys.__stderr__
+                                )
+        self.Warning=ansi_stream.ColorTextStream(
+                                    self,
+                                    sys.__stderr__
+                                )
+        self.Message=ansi_stream.ColorTextStream(
+                                    self,
+                                    sys.__stdout__
+                                )
+        self.Trace=ansi_stream.ColorTextStream(
+                                    self,
+                                    sys.__stdout__
+                                )
+        self.Verbose=ansi_stream.ColorTextStream(
+                                    self,
+                                    sys.__stdout__
+                                )
             
-        else:
-            self.__console=ansi_stream.ColorTextStream(
-                                        self,
-                                        self.conio,
-                                        color.ConsoleColor(color.BrightMagenta),
-                                        use_color=True,
-                                        flush=True,
-                                        do_clearline=False
-                                    )                
-            self.Output=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stdout'],
-                                        use_color=True
-                                    )
-            self.Error=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stderr'],
-                                        use_color=True
-                                    )
-            self.Warning=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stdwrn'],
-                                        use_color=True
-                                    )
-            self.Message=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stdmsg'],
-                                        use_color=True
-                                    )
-            self.Trace=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stdtrace'],
-                                        use_color=True
-                                    )
-            self.Verbose=ansi_stream.ColorTextStream(
-                                        self,
-                                        sys.__stdout__,
-                                        process_color['stdverbose'],
-                                        use_color=True
-                                    )
     
     def ShutDown(self):
         sys.stdout=sys.__stdout__
         sys.stdout=sys.__stderr__
         
 
+    def _set_color(self,val):
+        self.__console.Color=val
+    def _get_color(self):
+        return self.__console.Color
+    # control what color is used
+    Color=property(_get_color,_set_color)   
+    
+    def _set_process_color(self,val):
+        self.__process_color=val
+        self.__console.ProcessColor=self.__process_color
+        self.Output.ProcessColor=self.__process_color
+        self.Error.ProcessColor=self.__process_color
+        self.Warning.ProcessColor=self.__process_color
+        self.Message.ProcessColor=self.__process_color
+        self.Trace.ProcessColor=self.__process_color
+        self.Verbose.ProcessColor=self.__process_color
+        
+        
+    def _get_process_color(self):
+        return self.__process_color
+    # controls if the color should be processed
+    ProcessColor=property(_get_process_color,_set_process_color)     
         
     def write(self,msg):
         ## write data

@@ -648,8 +648,11 @@ class Part_t(object):
         that are no mapped correctly to some action that is mapped to the alias
         such as and sdk or install action
         '''
-        for i in self.__target_files:
-            self.__env.Alias(self.__alias,i)
+        
+        # seems to be an issue for compatibility
+        # only do this in new format...
+##        for i in self.__target_files:
+##            self.__env.Alias(self.__alias,i)
         # we also add them to known nodes at this time
         self.__part_nodes.update(self.__target_files)
         

@@ -269,22 +269,26 @@ class parts_addon(object):
         self.__cache_key=None
         self.__build_mode=None
         
-        
         # start up the reporter which controls the streams and all output
+        use_color=SCons.Script.GetOption('use_color')
+        # need to trace this before we set the colors else the tests break
+        reporter.trace_msg("use_color_option","use_color =",use_color)
+        redirected=os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False        
+        if use_color is not None and use_color.has_key('defaults') and redirected:
+                use_color=False
+                
         log_obj=logger.QueueLogger
-        log_obj=log_obj('','')#(directory.abspath,env['LOG_FILE_NAME'])
-        reporter.g_rpter=reporter.reporter(
+        log_obj=log_obj('','')
+        reporter.g_rpter.Setup(
             log_obj,
-            SCons.Script.GetOption('silent'),
-            SCons.Script.GetOption('verbose')
+            silent=SCons.Script.GetOption('silent'),
+            verbose=SCons.Script.GetOption('verbose'),
+            trace=SCons.Script.GetOption('trace'),
+            use_color=use_color
             )
-        reporter.verbose_msg("init","Starting up Parts")
-        
-        reporter.verbose_msg("init","Registering exit handler")
-        atexit.register(self.ShutDown)
         
     def Start(self):
-        
+        reporter.verbose_msg("init","Starting up Parts")
         # setup variable
         self._setup_variables()
         # setup command line arguments
@@ -303,6 +307,10 @@ class parts_addon(object):
         
         # setup managers
         self.part_manager=part_manager.part_manager()
+        
+        reporter.verbose_msg("init","Registering exit handler")
+        atexit.register(self.ShutDown)
+        
         
                 
     def ShutDown(self):
@@ -615,6 +623,24 @@ class parts_addon(object):
 
         SCons.Script.ARGUMENTS.update(overides)
         
+        # this is basically just tests code... 
+        tmp=SCons.Script.GetOption('target_platform')
+        reporter.trace_msg("target_platform_option","target_platform =",tmp)
+        if tmp:
+            reporter.trace_msg("target_platform_option_arch","target_arch =",tmp.ARCH)
+            reporter.trace_msg("target_platform_option_os","target_os =",tmp.OS)
+        
+        reporter.trace_msg("build_config_option","build_config =",SCons.Script.GetOption('build_config'))
+        reporter.trace_msg("tool_chain_option","tool_chain =",SCons.Script.GetOption('tool_chain'))
+        reporter.trace_msg("mode_option","mode =",SCons.Script.GetOption('mode'))
+        reporter.trace_msg("ccopy_logic_option","ccopy_logic =",SCons.Script.GetOption('ccopy_logic'))
+        reporter.trace_msg("cfg_file_option","cfg_file =",SCons.Script.GetOption('cfg_file'))
+        reporter.trace_msg("logger_option","logger =",SCons.Script.GetOption('logger'))
+        reporter.trace_msg("show_progress_option","show_progress =",SCons.Script.GetOption('show_progress'))
+        reporter.trace_msg("parts_cache_option","parts_cache =",SCons.Script.GetOption('parts_cache'))
+        reporter.trace_msg("incremental_cache_option","incremental_cache =",SCons.Script.GetOption('incremental_cache'))
+        reporter.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
+        reporter.trace_msg("vcs_jobs_option","vcs_jobs =",SCons.Script.GetOption('vcs_jobs'))
         
     def _setup_sdk(self):
         return
@@ -645,7 +671,6 @@ class parts_addon(object):
 
     def _setup_progress_meter(self):
         reporter.verbose_msg("startup","Setting up show-progress feature")
-        print reporter.g_rpter.console.Width
         if SCons.Script.GetOption('show_progress'):
             SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=reporter.g_rpter.console,overwrite=True)
 ##            if self.def_env['HOST_OS'] == 'win32':

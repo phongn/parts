@@ -100,12 +100,12 @@ class part_mapper(mapper):
             reporter.verbose_msg(['parts_mappers'],"Getting part object for alias:",self.part_alias)
                 
             pobj=common.g_engine._part_manager._from_alias(self.part_alias)
-            if pobj == None:
+            if pobj is None:
                 self.alias_missing(env)
                 return ''
             
             ret=getattr(pobj,self.part_prop,None)
-            if ret== None:
+            if ret is None:
                 if self.ignore==False:
                     reporter.report_warning(self.name,"mapper: Property ",
                         self.part_alias+'.'+self.part_prop," was not defined",
@@ -177,11 +177,11 @@ class part_id_mapper(mapper):
                 env['TARGET_PLATFORM']
             )
                         
-            if pobj == None:
+            if pobj is None:
                 self.name_to_alias_failed(env)
             
             ret=getattr(pobj,self.part_prop,None)
-            if ret== None:
+            if ret is None:
                 if self.ignore==False:
                     reporter.report_warning(self.name,"mapper: Property ",
                         pobj.Alias+'.'+self.part_prop," was not defined",
@@ -258,7 +258,7 @@ class part_id_export_mapper(mapper):
                 env['TARGET_PLATFORM']
             )
                         
-            if pobj == None:
+            if pobj is None:
                 self.name_to_alias_failed(env)
             
             ret=pobj._exports.get(self.part_prop,[])
@@ -352,7 +352,7 @@ class part_lib_mapper(mapper):
                 self.ver_range,
                 env['TARGET_PLATFORM']
             )
-            if pobj == None:
+            if pobj is None:
                 self.name_to_alias_failed(env)
             
             ret=pobj._exports.get(self.part_prop,[])
@@ -443,7 +443,7 @@ class part_subst_mapper(mapper):
             def_env=SCons.Script.DefaultEnvironment()
             
             pobj = common.g_engine._part_manager._from_alias(self.part_alias)
-            if pobj == None:
+            if pobj is None:
                 self.alias_missing(env)
                 return None
             penv=pobj.Env
@@ -504,7 +504,7 @@ class part_shortname_mapper(mapper):
         try:
             pobj=common.g_engine._part_manager._from_alias(self.part_alias)
             
-            if pobj == None:
+            if pobj is None:
                 self.alias_missing(env)
                 return None
                 

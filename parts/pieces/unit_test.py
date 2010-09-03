@@ -78,12 +78,12 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     #to help with user errors
     reporter.SetPartStackFrameInfo()
     targets=SCons.Script.BUILD_TARGETS
-    for t in targets:
-        tmp=target_type(t)
-        if tmp.concept == 'utest' or tmp.concept == 'run_utest':
-            break
-    else:
-        return []
+##    for t in targets:
+##        tmp=target_type(t)
+##        if tmp.concept == 'utest' or tmp.concept == 'run_utest':
+##            break
+##    else:
+##        return []
     
     ## make a new Part object
     parent_obj=common.g_engine._part_manager._from_env(env)

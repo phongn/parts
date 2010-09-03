@@ -75,7 +75,7 @@ class part_manager(object):
         self.parts={} # a dictionary of all parts objects by there alias value
         self.__name_to_alias={} #a dictionary of a known Parts name and possible alias that match
         self.__to_map_parts=[] # stuff that needs to be mapped, else it is wasted space
-        self.__cache_bad=SCons.Script.GetOption("parts_cache") == False # used to help prevent wasting time on cases of incomplete cache data
+        self.__cache_bad=SCons.Script.GetOption("parts_cache") # used to help prevent wasting time on cases of incomplete cache data
         self.__part_count=0 # number of parts we have defined.. 
     
     def _get_stored_root_alias(self,alias):
@@ -302,12 +302,13 @@ class part_manager(object):
 ##            print
         
         out_date_list=[]
+        
         if self.__cache_bad==False and common.g_engine._build_mode=='build':
             
             uttt=time.time()
-            if SCons.Script.GetOption("incremental-cache"):
+            if SCons.Script.GetOption("incremental_cache"):
                 #select some type of fast incremtail logic
-                if SCons.Script.GetOption("incremental-dependent-checks"):
+                if SCons.Script.GetOption("incremental_dependent_checks"):
                     out_date_list=self._setup_fast_incremental(root_parts)
                 else:
                     out_date_list=self._setup_fast_incremental_no_update_check(root_parts)

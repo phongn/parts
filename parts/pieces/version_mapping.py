@@ -23,7 +23,8 @@ def mapping_bf_str(target = None, source = None, env = None):
     
 def mapping_bfe(target, source, env):
     # get target file
-    tf= env.subst('$ALIAS')+'_'+env.subst('$PART_VERSION')
+    pobj=common.g_engine._part_manager._from_env(env)
+    tf= "%s_%s"%(pobj.Alias,pobj.Version)
     # make new name
     tout=[os.path.join('$BUILD_DIR_ROOT',tf+'.version.mapping')]
     

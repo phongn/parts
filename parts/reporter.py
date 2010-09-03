@@ -13,10 +13,9 @@ import SCons.Script
 import SCons.Script.Main
 import SCons.Errors
 
-class PartRuntimeError(SCons.Errors.UserError):
+class PartRuntimeError(SCons.Errors.StopError):
     pass
-
-g_rpter=None
+    
 class streamer:
     def __init__(self,outfunc):
         self.outfunc=outfunc
@@ -86,38 +85,54 @@ def is_message(str):
 
     
 class reporter:
-    def __init__(self,logger,silent,verbose):
+    def __init__(self):
         global trace_msg
         global verbose_msg
         # so we can process any text that is being outputted by some other means
-        use_color=SCons.Script.GetOption('use_color')
-        self.trace=SCons.Script.GetOption('trace')
-        redirected=os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False
-        
-        if use_color is not None and use_color.has_key('defaults') and \
-            (os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False):
-                use_color=False
+        self.trace=[]
 
+        # remap the streams.  (may want to delay even more...)
+        self.console=console.Console()
+        sys.stdout=streamer(self.stdout)
+        sys.stderr=streamer(self.stderr)
+        
+        # setup the rest of the stuff    
+        self.logger=logger.QueueLogger()
+        self.already_printed = set()
+        self.silent=False
+        self.verbose=[]
+        self.__is_setup=False
+        
+            
+    def Setup(self,logger,silent,verbose,trace,use_color):
+        
+        self.silent=silent                
+        if use_color == False:
+            self.console.ProcessColor=False
+        else:
+            self.console.ProcessColor=True
+            self.console.Color=use_color['console']
+            self.console.Output.Color=use_color['stdout']
+            self.console.Error.Color=use_color['stderr']
+            self.console.Warning.Color=use_color['stdwrn']
+            self.console.Message.Color=use_color['stdmsg']
+            self.console.Trace.Color=use_color['stdverbose']
+            self.console.Verbose.Color=use_color['stdtrace']
+        
+        self.trace=trace
         if self.trace==[]:
             trace_msg=_empty_msg
         else:
             trace_msg=_trace_msg
             
-        # remap the streams.  (may want to delay even more...)
-        sys.stdout=streamer(self.stdout)
-        sys.stderr=streamer(self.stderr)
-        
-        # setup the rest of the stuff    
-        self.console=console.Console(use_color)
-        self.logger=logger
-        self.already_printed = set()
-        self.silent=silent
         self.verbose=verbose
-        
         if verbose==[]:
             verbose_msg=_empty_msg
         else:
             verbose_msg=_verbose_msg
+            
+        self.logger=logger
+        self.__is_setup=True
 
     def ShutDown(self):
         self.logger.ShutDown()
@@ -129,7 +144,7 @@ class reporter:
         reset the log data when our logger is a QueueLogger to the new 
         logger object by adding data in QueueLogger to new object
         '''
-        if type(self.logger) is logger.QueueLogger:
+        if type(self.logger) is logger.QueueLogger and type(obj) is not logger.QueueLogger:
             for t, msg in self.logger.queue:
                 if t == console.Console.out_stream:
                     obj.logout(msg)
@@ -144,8 +159,11 @@ class reporter:
                 elif t==console.Console.verbose_stream:
                     obj.logverbose(msg)
             self.logger=obj
-        
-        
+
+    @property
+    def isSetup(self):
+        return self.__is_setup
+
     def part_warning(self,msg,print_once=False,stackframe=None,show_stack=True):
         
         s="Parts: Warning: "+msg        
@@ -188,7 +206,7 @@ class reporter:
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.verbose:
-                s='Verbose: ['+tmp[0]+"] "+msg
+                s='Verbose: [%s] %s'%(tmp[0],msg)
                 self.stdverbose(s)
                 break
 
@@ -196,7 +214,7 @@ class reporter:
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.trace:
-                s='Trace: '+catagory+msg    
+                s='Trace: [%s] %s'%(tmp[0],msg)
                 self.stdtrace(s)
             
     def user_warning(self,env,msg,print_once=False,stackframe=None,show_stack=True):
@@ -318,6 +336,8 @@ class reporter:
         self.console.write(msg)
         
 
+g_rpter=reporter()
+
 # no need to redirect data.. assume it is correct.
 def report_error(*lst,**kw):
     msg=map(str,lst)
@@ -340,24 +360,19 @@ def _verbose_msg(catagory,*lst,**kw):
 
     catagory=common.make_list(catagory)
     catagory.append('all')
-    if g_rpter is not None:
-        msg=map(str,lst)
-        g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
-    else:
-        tmp=catagory
-        ver=SCons.Script.GetOption('verbose')
-        for c in tmp:
-            if c in ver:
-                msg=map(str,lst)
-                sys.stdout.write('Parts: Verbose: ['+tmp[0]+"] "+kw.get('sep',' ').join(msg)+kw.get('end','\n'))
-                break
+    if g_rpter.isSetup==False:
+        g_rpter.verbose=SCons.Script.GetOption('verbose')
+    msg=map(str,lst)
+    g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 
 verbose_msg=_verbose_msg
         
 def _trace_msg(catagory,*lst,**kw):
     catagory=common.make_list(catagory)
+    if g_rpter.isSetup==False:
+        g_rpter.trace=SCons.Script.GetOption('trace')
     msg=map(str,lst)
-    g_rpter.stdtrace(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    g_rpter.trace_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
 
 trace_msg=_trace_msg
 

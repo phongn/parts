@@ -47,9 +47,8 @@ def SetOptionDefault(key,value):
                     'logger')  
                 log_obj=mod.__dict__.get(tmp,logger.nil_logger)
             #####
-            if type(reporter.g_rpter.logger) is logger.QueueLogger:
-                log_obj=log_obj(directory.abspath,def_env['LOG_FILE_NAME'])
-                reporter.g_rpter.reset_logger(log_obj)
+            log_obj=log_obj(directory.abspath,def_env['LOG_FILE_NAME'])
+            reporter.g_rpter.reset_logger(log_obj)
             
     reporter.print_msg('Setting default value of',key,'to',value)
     common.g_defaultoverides[key]=value
@@ -57,30 +56,12 @@ def SetOptionDefault(key,value):
 
 
 def opt_target(option, opt, value, parser):
-    lst=value.split('-')
-    if len(lst) > 2:
-        raise OptionValueError("Error:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % o)
-    if len(lst) == 1:
-        # nice to a have short cut
-        tmp=platform_info.MapArchitecture(lst[0])
-        if tmp == '':
-            #assume this was a platform
-            parser.values.target_platform=platform_info.SystemPlatform(
-                lst[0],platform_info._host_sys.ARCH
-                )
-        else:
-            #assume this is a architure
-            parser.values.target_platform=platform_info.SystemPlatform(
-                    platform_info._host_sys.OS,lst[0]
-                    )
-    else:
-        p=lst[0]
-        a=lst[1]
-        if p == '':
-            p=platform_info._host_sys.OS
-        if a == '':
-            a=platform_info._host_sys.Architecture
-        parser.values.target_platform=platform_info.SystemPlatform(p,a)
+    
+    tmp=platform_info.target_convert(value,error=False)
+    if tmp is None:
+        raise OptionValueError("Error:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % value)
+    
+    parser.values.target_platform=tmp
 
 def opt_chain(option, opt, value, parser):
     tmp=value.split(',')
@@ -140,6 +121,7 @@ def opt_color(option, opt, value, parser):
         colors=None
     elif tmp in set(['full','default','darkbg','y', 'yes', 'true', 't', '1', 'on' ]):
         colors={
+            'console': color.ConsoleColor(color.BrightMagenta),
             'stdout':color.ConsoleColor(color.Dim),
             'stderr':color.ConsoleColor(color.BrightRed),
             'stdwrn':color.ConsoleColor(color.BrightYellow),
@@ -149,6 +131,7 @@ def opt_color(option, opt, value, parser):
             }
     elif tmp in ['simple']:
         colors={
+            'console':color.ConsoleColor(color.Bright),
             'stdout':color.ConsoleColor(),
             'stderr':color.ConsoleColor(color.BrightRed),
             'stdwrn':color.ConsoleColor(color.BrightYellow),
@@ -160,6 +143,7 @@ def opt_color(option, opt, value, parser):
     else:
         tmp=value.split(',')
         colors={
+            'console':color.ConsoleColor(color.BrightMagenta),
             'stdout':color.ConsoleColor(color.Dim),
             'stderr':color.ConsoleColor(color.BrightRed),
             'stdwrn':color.ConsoleColor(color.BrightYellow),
@@ -175,6 +159,8 @@ def opt_color(option, opt, value, parser):
             except:
                 raise OptionValueError("Error: Invalid value for setting color: %s" % value)
             k=k.lower()
+            if k in ['con','tty','console']:
+                colors['console']=color.parse_color(v)
             if k in ['o','out','stdout']:
                 colors['stdout']=color.parse_color(v)
             if k in ['e','err','error','stderr']:
@@ -197,29 +183,25 @@ def opt_logging(option, opt, value, parser):
     if value is None:
         value ='text'
     tmp=value.lower()
-    if tmp in opt_true_values:
-        def_logger='text'
-        mod=load_module.load_module(
-            load_module.get_site_directories('loggers'),
-            def_logger,
-            'logger')
-        parser.values.logger=mod.__dict__.get(def_logger,logger.nil_logger)
-    elif tmp in opt_false_values:
-        parser.values.logger=logger.nil_logger
-    else:
-        mod=load_module.load_module(
-            load_module.get_site_directories('loggers'),
-            value,
-            'logger')
-        parser.values.logger=mod.__dict__.get(value,logger.nil_logger)
+    try:
+        if tmp in opt_true_values:
+            def_logger='text'
+            mod=load_module.load_module(
+                load_module.get_site_directories('loggers'),
+                def_logger,
+                'logger')
+            parser.values.logger=mod.__dict__.get(def_logger,logger.nil_logger)
+        elif tmp in opt_false_values:
+            parser.values.logger=logger.nil_logger
+        else:
+            mod=load_module.load_module(
+                load_module.get_site_directories('loggers'),
+                value,
+                'logger')
+            parser.values.logger=mod.__dict__.get(value,logger.nil_logger)
+    except ImportError:
+        raise OptionValueError('No logger called "%s" was found' % value)
 
-
-SCons.Script.AddOption("--cfg-file","--config-file",
-            dest='cfg_file',
-            default='parts.cfg',
-            nargs=1, type='string',
-            action='store',
-            help='Configuration file used to store common settings')
 
 SCons.Script.AddOption("--verbose",
             dest='verbose',
@@ -246,7 +228,7 @@ SCons.Script.AddOption("--log",
             action='callback',
             help='True to use default logger, else name of logger to use')
 
-SCons.Script.AddOption("--build-config","--buildconfig","--cfg",
+SCons.Script.AddOption("--build-config","--buildconfig","--bldcfg","--bcfg","--cfg",
             dest='build_config',
             default=None,
             nargs=1, type='string',
@@ -307,13 +289,13 @@ SCons.Script.AddOption("--disable-parts-cache",
             help='Disable Parts data cache from being used')
                         
 SCons.Script.AddOption("--disable-incremental-cache","--disable-inc-cache", 
-            dest="incremental-cache",
+            dest="incremental_cache",
             default=True,
             action="store_false",
             help='Disable Parts fast incremental logic')
 
 SCons.Script.AddOption("--disable-incremental-dependent-checks",
-            dest="incremental-dependent-checks",
+            dest="incremental_dependent_checks",
             default=True,
             action="store_false",
             help='Assume the dependents are up-to-date. Skipping update checks on dependents. May result in corrupt build!!!')
@@ -345,6 +327,7 @@ SCons.Script.AddOption("--enable-color","--use-color","--color",
 SCons.Script.AddOption("--disable-color",
             dest='use_color',
             default={
+            'console':color.ConsoleColor(color.BrightMagenta),
             'stdout':color.ConsoleColor(color.Dim),
             'stderr':color.ConsoleColor(color.BrightRed),
             'stdwrn':color.ConsoleColor(color.BrightYellow),
@@ -358,7 +341,7 @@ SCons.Script.AddOption("--disable-color",
             action='callback',
             help='Controls if console color support is used')
 
-SCons.Script.AddOption("--ccopy",'--copy-logic',
+SCons.Script.AddOption("--ccopy",'--ccopy-logic','--copy-logic',
             dest='ccopy_logic',
             default=None,
             nargs=1,
@@ -375,6 +358,14 @@ SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             type='int',
             action='store',
             help='Level of concurrent VCS checkouts/updates that can happen at once. Defaults to -j value if not set') 
+
+# move to end as work around to a bug in SCons            
+SCons.Script.AddOption("--cfg-file","--config-file",
+            dest='cfg_file',
+            default='parts.cfg',
+            nargs=1, type='string',
+            action='store',
+            help='Configuration file used to store common settings')
 
 
 common.add_global_value('SetOptionDefault',SetOptionDefault)

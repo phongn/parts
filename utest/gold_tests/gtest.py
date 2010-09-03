@@ -35,6 +35,7 @@ os.environ['PYTHONPATH']=parts_path
 full_stream_file='stream.both.txt'
 out_stream_file='stream.out.txt'
 err_stream_file='stream.err.txt'
+wrn_stream_file='stream.wrn.txt'
 verbose_stream_file='stream.verbose.txt'
 trace_stream_file='stream.trace.txt'
 
@@ -137,11 +138,13 @@ class Stream(object):
         self.stdout_tester=difflib.context_diff
         self.stderr=None # only the stderr text
         self.stderr_tester=difflib.context_diff
+        self.stdwrn=None # only the stdwrn text
+        self.stdwrn_tester=difflib.context_diff
         self.stdverbose=None # filtered data that was outputted to Parts stdverbose
         self.stdverbose_tester=difflib.context_diff
         self.stdtrace=None #filetered data that was outputted to Parts stdtrace
         self.stdtrace_tester=difflib.context_diff
-        self.full_stream=None # both stdout ad stderr
+        self.full_stream=None # both stdout and stderr
         self.full_stream_tester=difflib.context_diff
     
     def _testbase(self,infile,goldfile,tester):
@@ -172,6 +175,14 @@ class Stream(object):
         return self._testbase(os.path.join(base,err_stream_file),
             self.stderr,
             self.stderr_tester)
+            
+    def TestStdwrn(self,base):
+    
+        if self.stdwrn is None:
+            return None
+        return self._testbase(os.path.join(base,wrn_stream_file),
+            self.stdwrn,
+            self.stdwrn_tester)
         
     def TestStdVerbose(self,base):
     
@@ -274,6 +285,7 @@ class TestResult(object):
         self.dirs={}
         self.stdout=None
         self.stderr=None
+        self.stdwrn=None
         self.stdverbose=None
         self.trace=None
         self.full_stream=None
@@ -296,19 +308,22 @@ class TestResult(object):
             self.returncode_actual=val
             
     def TestStdout(self):
-        self.stdout=self.testrun.streams.TestStdout(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+        self.stdout=self.testrun.streams.TestStdout(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
     
     def TestStderr(self):
-        self.stderr=self.testrun.streams.TestStderr(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+        self.stderr=self.testrun.streams.TestStderr(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+    
+    def TestStdwrn(self):
+        self.stdwrn=self.testrun.streams.TestStdwrn(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestStdVerbose(self):
-        self.stdverbose=self.testrun.streams.TestStdVerbose(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+        self.stdverbose=self.testrun.streams.TestStdVerbose(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
     
     def TestStdTrace(self):
-        self.stdtrace=self.testrun.streams.TestStdTrace(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+        self.stdtrace=self.testrun.streams.TestStdTrace(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestFullStream(self):
-        self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.location,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
+        self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestFiles(self):
         for file in self.testrun.disk.files:
@@ -344,6 +359,8 @@ class TestResult(object):
             return "Failed - stdout mismatch"
         if self.stderr is not None and len(self.stderr) > 0:
             return "Failed - stderr mismatch"
+        if self.stdwrn is not None and len(self.stdwrn) > 0:
+            return "Failed - stdwrn mismatch"
         if self.stdverbose is not None and len(self.stdverbose) > 0:
             return "Failed - stdverbose mismatch"
         if self.stdtrace is not None and len(self.stdtrace) > 0:
@@ -440,14 +457,25 @@ class Engine(object):
                 print "\tstderr stream:",
                 if rst.testrun.streams.stderr is None:
                     print "Not tested"
-                elif rst.stdout == "":
+                elif rst.stderr == "":
                     print "Passed"
                 else:
                     print "Failed"
                     print "**** diff ****"
-                    print rst.stdout
+                    print rst.stderr
                     print "**************"
-                
+                #stdwrn
+                print "\tstdwrn stream:",
+                if rst.testrun.streams.stdwrn is None:
+                    print "Not tested"
+                elif rst.stdwrn == "":
+                    print "Passed"
+                else:
+                    print "Failed"
+                    print "**** diff ****"
+                    print rst.stdwrn
+                    print "**************"
+                #stdverbose
                 print "\tstdverbose stream:",
                 if rst.testrun.streams.stdverbose is None:
                     print "Not tested"
@@ -458,6 +486,7 @@ class Engine(object):
                     print "**** diff ****"
                     print rst.stdverbose
                     print "**************"
+                #stdtrace
                 print "\tstdtrace stream:",
                 if rst.testrun.streams.stdtrace is None:
                     print "Not tested"
@@ -524,6 +553,7 @@ class Engine(object):
         print "Creating test run directory data"
         # create test directory ( test_root+test_location+test_name)
         test_dir=os.path.normpath(os.path.join(test_root,test.location,test.name))
+        test.test_dir=test_dir
         # copy and directory data
         
         if test.copy_directory == True:
@@ -559,17 +589,17 @@ class Engine(object):
         ret=[]
         # run each sequence, or each until we get an Error
         for t in test.run:    
-            ret.append(self.do_test_run(test,t,test_dir))
+            ret.append(self.do_test_run(test,t))
         return ret
 
         
 
-    def do_test_run(self,test,testrun,test_dir):        
+    def do_test_run(self,test,testrun):        
         testresult=TestResult(test,testrun)
         rcode=-1
         print "Test %s run %s "%(test.name,testrun.name),
         try:
-            rcode =self.spawn_command(test,testrun,test_dir)
+            rcode =self.spawn_command(test,testrun)
         ## get any time based tests that failed
             # this means the process was killed
         except TimeIntervalError:
@@ -593,6 +623,7 @@ class Engine(object):
         ## test any streams tests
         testresult.TestStdout()
         testresult.TestStderr()
+        testresult.TestStdwrn()
         testresult.TestStdVerbose()
         testresult.TestStdTrace()
         testresult.TestFullStream()
@@ -606,10 +637,10 @@ class Engine(object):
 
 
             
-    def spawn_command(self,test,test_run,test_dir):
+    def spawn_command(self,test,test_run):
         # do the call
-        output=stream_writter(os.path.join(test_dir,"_tmp_%s_%s"%(test.name,test_run.name)))
-        command_line="cd %s && %s"%(test_dir,test_run.cmd)
+        output=stream_writter(os.path.join(test.test_dir,"_tmp_%s_%s"%(test.name,test_run.name)))
+        command_line="cd %s && %s"%(test.test_dir,test_run.cmd)
         proc = subprocess.Popen(
             command_line,
             shell=True,
@@ -650,7 +681,7 @@ class pipeRedirector:
         while l != '':
             l = self.pipein.readline()
             self.time=time.time()
-            sys.__stdout__.write(l)    
+            #sys.__stdout__.write(l)    
             if l != "":
                 self.writer(l)
 
@@ -676,13 +707,51 @@ class pipeRedirector:
         self.thread = None
         self.writer = None
 
+test_search=0
+test_match=1
+
+verbose_tests =[
+    (test_match,re.compile('Parts: Verbose: \[\w*\]',re.IGNORECASE))
+    ]
+    
+trace_tests =[
+    (test_match,re.compile('Trace: \[\w*\]',re.IGNORECASE))
+    ]
+    
 warning_tests = [
-    re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE)
+    (test_search,re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE))
     ]
 
-error_tests =[
-    re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)
-    ]
+##error_tests =[
+##    (test_search,re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)),
+##    (test_match,re.compile('fail$',re.IGNORECASE))
+##    ]
+
+
+def do_test(test,str):
+    if test[0]==test_search:
+        return test[1].search(str)
+    elif test[0]==test_match:
+        return test[1].match(str)
+    
+def is_warning(str):
+    for test in warning_tests:
+        if do_test(test,str):
+            return True
+    return False
+
+def is_verbose(str):
+    for test in verbose_tests:
+        if do_test(test,str):
+            return True
+    return False
+
+def is_trace(str):
+    for test in trace_tests:
+        if do_test(test,str):
+            return True
+    return False
+
 
 class stream_writter(object):
 
@@ -694,17 +763,24 @@ class stream_writter(object):
             os.makedirs(path)
         self.both=file(os.path.join(path,full_stream_file),'wb')
         self.errfile=file(os.path.join(path,err_stream_file),'wb')
+        self.wrnfile=file(os.path.join(path,wrn_stream_file),'wb')
         self.outfile=file(os.path.join(path,out_stream_file),'wb')
-        self.verbose=file(os.path.join(path,verbose_stream_file),'wb')
-        self.trace=file(os.path.join(path,trace_stream_file),'wb')
+        self.verbosefile=file(os.path.join(path,verbose_stream_file),'wb')
+        self.tracefile=file(os.path.join(path,trace_stream_file),'wb')
 
         self.cache= []
 
     def smart_match(self,str):        
-        if re.match("Parts: Verbose: \[\w*\]",str) is not None:
-            self.verbose.write(str)
-        elif re.match("Trace: \[\w*\]",str) is not None:
-            self.trace.write(str)
+        if is_warning(str):
+            self.wrnfile.write(str)
+            return True
+        elif is_verbose(str):
+            self.verbosefile.write(str)
+            return True
+        elif is_trace(str):
+            self.tracefile.write(str)
+            return True
+        return False
         
 
     def WriteOut(self,str):
@@ -744,13 +820,13 @@ class stream_writter(object):
                         grpstr+=s+'\n'
                     else:
                         self.both.write(grpstr)
-                        self.outfile.write(grpstr)
-                        self.smart_match(grpstr)
+                        if not self.smart_match(grpstr):
+                            self.outfile.write(grpstr)
                         grpstr=s+'\n'
                 else:
                     self.both.write(grpstr)
-                    self.outfile.write(grpstr)
-                    self.smart_match(grpstr)
+                    if not self.smart_match(grpstr):
+                        self.outfile.write(grpstr)
             elif text[0] == stream_writter.stderr:
                 brkup=text[1].split('\n')
                 grpstr=''
@@ -764,13 +840,13 @@ class stream_writter(object):
                         grpstr+=s+'\n'
                     else:
                         self.both.write(grpstr)
-                        self.errfile.write(grpstr)
-                        self.smart_match(grpstr)
+                        if not self.smart_match(grpstr):
+                            self.errfile.write(grpstr)
                         grpstr=s+'\n'
                 else:
                     self.both.write(grpstr)
-                    self.errfile.write(grpstr)
-                    self.smart_match(grpstr)
+                    if not self.smart_match(grpstr):
+                        self.errfile.write(grpstr)
             else:
                 # we have some error or unknown code
                 pass

@@ -48,7 +48,7 @@ def get_tools(env,tlset):
                     SCons.Tool.Tool(t[0],toolpath=load_module.get_site_directories('tools'))#env['toolpath'])
                     new_list.extend([(t[0],{})])
                 except:
-                    reporter.report_warning("Failed to load Unknown ToolChain or Tool:",t[0])
+                    reporter.report_error("Failed to load Unknown ToolChain or Tool:",t[0],show_stack=False)
                     pass
         else:
             #This has been handled

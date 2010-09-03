@@ -223,11 +223,13 @@ _host_sys=SystemPlatform()
 def HostSystem():
     return _host_sys
 
-def target_convert(str_val, raw_val=None,base=None):
+def target_convert(str_val, raw_val=None,base=None,error=True):
     host_sys= base is None and _host_sys or base
     lst = ValidatePlatform(str_val)    
     if not lst:
-        reporter.report_error( " " + str_val + " is not a valid target_system value\n")        
+        if error:
+            reporter.report_error( " " + str_val + " is not a valid target_system value\n")        
+        return None
     else:
         p=lst[0]
         a=lst[1]
