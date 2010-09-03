@@ -10,7 +10,8 @@ xmlComment = re.compile(r'(.*)(<!--)(.*)(-->)(.*)')
 
 commentStart = re.compile(r'(<!--)');
 commentEnd = re.compile(r'(-->)');
-keepCommentIfString='<!--PUBLIC';
+#keepCommentIfString='<!--PUBLIC';
+keepCommentIfString='<!--ZXCVBNM'; # FIXME : find a better way to make keepCommentString Optional
 commentStartString = '<!--';
 
 def scanFile(env,infile, outfile):
@@ -72,7 +73,8 @@ def stripRecursive(env,line ):
 
 def stripXmlComments(target, source, env):
     i = 0
-    for tfile in target:                                                  
+    
+    for tfile in target:        
         scanFile(env, source[i], tfile)
         i+=1
     return 0
@@ -80,31 +82,44 @@ def stripXmlComments(target, source, env):
 def stripXmlComments_emitter(target, source, env):
     output=[]
     if len(target) != 1:
-        reporter.report_error("Only one input is allowed")
-    
+        reporter.report_error("Only one input is allowed")    
     try:
         dnodes = env.arg2nodes(target, env.fs.Dir)
     except TypeError:
-        reporter.report_error("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))
-    
+        reporter.report_error("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))    
     for s in source:
         path,base=os.path.split(s.path)
         output.append(env.File(base,dnodes[0]))
-
+    
     return (output, source)
 
 common.AddBuilder('__StripXMLComments__',SCons.Script.Builder(
         action=SCons.Script.Action(stripXmlComments),  
         emitter=stripXmlComments_emitter,
         target_factory=SCons.Node.FS.Entry
+        #target_factory = SCons.Node.FS.File
         ))
 
     
-def StripXMLComments(env,target, source,**kw):
-        return env.__StripXMLComments__(target,source,**kw)        
+def StripXMLComments(env,target, source, sub_dir = '.',**kw):
+    if sub_dir is not '.':
+        tmp_target = os.path.join(target,sub_dir)
+    else:
+        tmp_target = target
+    
+    return env.__StripXMLComments__(tmp_target,source,**kw)
+
+def StripXMLCommentsAs(env,target,source,**kw):
+    
+    output = []
+    for target_i,source_i in zip(target,source):
+        target_path = os.path.split(str(target_i))[0]
+        output += StripXMLComments(env,target_path,source_i)
+    return output
         
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.StripXMLComments=StripXMLComments        
+SConsEnvironment.StripXMLCommentsAs=StripXMLCommentsAs

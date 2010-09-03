@@ -50,7 +50,7 @@ def addXmlHeader_emitter(target, source, env):
     
     for s in source:
         path,base=os.path.split(s.path)
-        output.append(env.File(base,target[0]))
+        output.append(env.File(base,target[0]))    
     return (output, source)
 
 common.AddBuilder('__AddXmlHeader__',SCons.Script.Builder(
@@ -60,11 +60,23 @@ common.AddBuilder('__AddXmlHeader__',SCons.Script.Builder(
         ))
 
     
-def AddXmlHeader(env,target, source,**kw):
-        return env.__AddXmlHeader__(target,source,**kw)        
+def AddXmlHeader(env,target, source,sub_dir = '.',**kw):
+    if sub_dir is not '.':
+        tmp_target = os.path.join(target,sub_dir)
+    else:
+        tmp_target = target    
+    return env.__AddXmlHeader__(tmp_target,source,**kw)
+
+def AddXmlHeaderAs(env,target,source,**kw):
+    output = []
+    for target_i,source_i in zip(target,source):
+        target_path = os.path.split(str(target_i))[0]
+        output += AddXmlHeader(env,target_path,source_i)
+    return output
         
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.AddXmlHeader=AddXmlHeader        
+SConsEnvironment.AddXmlHeaderAs=AddXmlHeaderAs
