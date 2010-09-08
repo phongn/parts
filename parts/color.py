@@ -291,6 +291,6 @@ def parse_color(str):
         elif col in ['dim']:
             return Dim
         else:
-            raise OptionValueError("Error: Invalid color value <%s>" % col)
+            raise OptionValueError('Error: Invalid color value "%s"' % col)
     return ConsoleColor(_get_col(fg),_get_col(bk))
         

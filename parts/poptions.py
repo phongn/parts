@@ -157,22 +157,38 @@ def opt_color(option, opt, value, parser):
                 # need better lgic to validate arguments.. but this will do for now
                 k,v=t.split('=')
             except:
-                raise OptionValueError("Error: Invalid value for setting color: %s" % value)
+                raise OptionValueError('Error: Invalid stream type to set color for: "%s" valid stream types are:\n\
+ console, con, tty\n\
+ stdout, out, o\n\
+ stderr, error, err, e\n\
+ stdwrn, warning, wrn, w\n\
+ stdmsg, message, msg, m\n\
+ stdverbose, verbose, ver, v\n\
+ stdtrace, trace, t' % t)
             k=k.lower()
-            if k in ['con','tty','console']:
+            if k in ['c','con','tty','console']:
                 colors['console']=color.parse_color(v)
-            if k in ['o','out','stdout']:
+            elif k in ['o','out','stdout']:
                 colors['stdout']=color.parse_color(v)
-            if k in ['e','err','error','stderr']:
+            elif k in ['e','err','error','stderr']:
                 colors['stderr']=color.parse_color(v)
-            if k in ['w','wrn','warning','stdwrn']:
+            elif k in ['w','wrn','warning','stdwrn']:
                 colors['stdwrn']=color.parse_color(v)
-            if k in ['m','msg','message','stdmsg']:
+            elif k in ['m','msg','message','stdmsg']:
                 colors['stdmsg']=color.parse_color(v)
-            if k in ['v','ver','verbose','stdverbose']:
+            elif k in ['v','ver','verbose','stdverbose']:
                 colors['stdverbose']=color.parse_color(v)
-            if k in ['t','trace','stdtrace']:
+            elif k in ['t','trace','stdtrace']:
                 colors['stdtrace']=color.parse_color(v)
+            else:
+                raise OptionValueError('Error: Invalid stream type to set color for: "%s" valid stream types are:\n\
+ console, con, tty, c\n\
+ stdout, out, o\n\
+ stderr, error, err, e\n\
+ stdwrn, warning, wrn, w\n\
+ stdmsg, message, msg, m\n\
+ stdverbose, verbose, ver, v\n\
+ stdtrace, trace, t' % k)
     if colors==False:
         raise OptionValueError("Invalid value for setting color: %s" % value)
     

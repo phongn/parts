@@ -103,19 +103,19 @@ class Test(object):
         self.run=[]
 
     def AddTestRun(self,name='general'):
-        tmp=TestRun(self,"%s-%s"%(name,len(self.run)))
+        tmp=TestRun(self,"%s-%s"%(len(self.run),name))
         self.run.append(tmp)
         return tmp
 
     def AddCleanRun(self,target='all'):
-        tmp=TestRun(self,"clean-run-%s"%len(self.run))
+        tmp=TestRun(self,"%s-clean-run"%len(self.run))
         tmp.cmd='scons -c %s'%target
         tmp.returncode=0
         self.run.append(tmp)
         return tmp
     
     def AddUpdateCheckSCons(self,target='all'):
-        tmp=TestRun(self,"up-to-date-scons-run-%s"%len(self.run))
+        tmp=TestRun(self,"%s-up-to-date-scons-run"%len(self.run))
         tmp.cmd='scons -Q %s --disable-parts-cache'%target
         tmp.returncode=0
         #add stream test
@@ -123,7 +123,7 @@ class Test(object):
         return tmp
     
     def AddUpdateCheckParts(self,target='all'):
-        tmp=TestRun(self,"up-to-date-parts-run-%s"%len(self.run))
+        tmp=TestRun(self,"%s-up-to-date-parts-run"%len(self.run))
         tmp.cmd='scons -Q %s'%target
         tmp.returncode=0
         #add stream test
@@ -131,7 +131,7 @@ class Test(object):
         return tmp
         
     def AddUOutOfDateCheck(self,target="all"):
-        tmp=TestRun(self,"out-of-date-check-run-%s"%len(self.run))
+        tmp=TestRun(self,"%s-out-of-date-check-run"%len(self.run))
         tmp.cmd='scons -Q %s'%target
         tmp.returncode=1
         #add stream test
@@ -767,10 +767,10 @@ warning_tests = [
     (test_search,re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE))
     ]
 
-##error_tests =[
-##    (test_search,re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)),
-##    (test_match,re.compile('fail$',re.IGNORECASE))
-##    ]
+error_tests =[
+    (test_search,re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)),
+    (test_match,re.compile('fail$',re.IGNORECASE))
+    ]
 
 
 def do_test(test,str):
@@ -778,6 +778,12 @@ def do_test(test,str):
         return test[1].search(str)
     elif test[0]==test_match:
         return test[1].match(str)
+
+def is_error(str):
+    for test in error_tests:
+        if do_test(test,str):
+            return True
+    return False
     
 def is_warning(str):
     for test in warning_tests:
@@ -816,7 +822,10 @@ class stream_writter(object):
         self.cache= []
 
     def smart_match(self,str):        
-        if is_warning(str):
+        if is_error(str):
+            self.errfile.write(str)
+            return True
+        elif is_warning(str):
             self.wrnfile.write(str)
             return True
         elif is_verbose(str):

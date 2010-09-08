@@ -529,27 +529,18 @@ t.cmd="scons all --use-color=c=r:g,o=y:b,e=g:br,w=3:4,m=10:13,v=bold:default,t=b
 t.returncode=0
 t.streams.stdtrace='gold/color_good4.gold'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 t=test.AddTestRun("bad")
 t.cmd="scons all --use-color=foo --trace=use_color_option --tc=null --hide-progress"
 t.returncode=2
-t.streams.stdtrace='gold/color_bad1.gold'
+t.streams.stderr='gold/color_bad1.gold'
 
+t=test.AddTestRun("bad")
+t.cmd="scons all --use-color=c=r:g,o=y,b:e=g:br,w=3:4,m=10:13,v=bold:default,t=blk:white --trace=use_color_option --tc=null --hide-progress"
+t.returncode=2
+t.streams.stderr='gold/color_bad2.gold'
+
+t=test.AddTestRun("bad")
+t.cmd="scons all --use-color=stdout=badcolor --trace=use_color_option --tc=null --hide-progress"
+t.returncode=2
+t.streams.stderr='gold/color_bad3.gold'
 
