@@ -856,9 +856,12 @@ class stream_writter(object):
             if text[0] == stream_writter.stdout:
                 brkup=text[1].split('\n')
                 grpstr=''
+                #strip the end if it is ''
+                if brkup[-1]=='':
+                    brkup=brkup[:-1]
                 for s in brkup:
                     if s == '':
-                        pass
+                        grpstr+=s+'\n'
                     elif grpstr == '':
                         grpstr=s+'\n'
                     elif s[0]==' ' or s[0]=='\t': # group indented text
@@ -875,10 +878,12 @@ class stream_writter(object):
             elif text[0] == stream_writter.stderr:
                 brkup=text[1].split('\n')
                 grpstr=''
-                    
+                #strip the end if it is ''
+                if brkup[-1]=='':
+                    brkup=brkup[:-1]                
                 for s in brkup:
                     if s == '':
-                        pass
+                        grpstr+=s+'\n'
                     elif grpstr == '':
                         grpstr=s+'\n'
                     elif s[0]==' ' or s[0]=='\t': # group indented text
