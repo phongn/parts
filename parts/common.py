@@ -385,7 +385,7 @@ def relpath(to_dir, from_dir=os.curdir):
     
     # On the windows platform the target may be on a completely different drive from the base.
     if os.name in ['nt','dos','os2'] and from_dir_list[0] != to_dir_list[0]:
-        # we coudl error .. but instead I return the to_path
+        # we could error .. but instead I return the to_path
         return os.path.abspath(to_dir)
 
     # Starting from the filepath root, work out how much of the filepath is

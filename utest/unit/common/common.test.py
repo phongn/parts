@@ -81,12 +81,13 @@ class TestRelPath(unittest.TestCase):
 
     def setUp(self):
         pass            
-        
+    @unittest.skipUnless(sys.platform.startswith('win'),"Requires windows")    
     def test_path1(self):
         relative_path = relpath('C:\devel\product','C:\devel')
         #print relative_path
         self.assertEqual(relative_path,'product')
-
+        
+    @unittest.skipUnless(sys.platform.startswith('win'),"Requires windows")
     def test_path2(self):
         relative_path = relpath('C:\Documents and Settings\product','C:\Documents and Settings')
         #print relative_path

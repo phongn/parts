@@ -130,10 +130,13 @@ def ChipArchitecture():
 class SystemPlatform(env_overrides.bindable):
     def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
         
-        platform_str = os + '-' + arch
+        if arch == ChipArchitecture():
+            platform_str = os
+        else:
+            platform_str = os + '-' + arch
         lst = ValidatePlatform(platform_str)
-        if not lst:
-            lst = ValidatePlatform(os)
+        #if not lst:
+            #lst = ValidatePlatform(os)
         if not lst:
             reporter.report_error( " " + platform_str + " is not a valid target_system value\n")            
         

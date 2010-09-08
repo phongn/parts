@@ -54,12 +54,13 @@ class Console(object):
                                     self,
                                     conio,
                                 ) 
-        self.__console.Flush=True
+        self.__console.ForceFlush=True
         self.__console.ClearLine=False
         self.Output=ansi_stream.ColorTextStream(
                                     self,            
                                     sys.__stdout__
                                 )
+        self.Output.ForceFlush=True
         self.Error=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stderr__
@@ -68,18 +69,22 @@ class Console(object):
                                     self,
                                     sys.__stderr__
                                 )
+        
         self.Message=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
+        self.Message.ForceFlush=True
         self.Trace=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
+        self.Trace.ForceFlush=True
         self.Verbose=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
+        self.Verbose.ForceFlush=True
             
     
     def ShutDown(self):

@@ -188,7 +188,7 @@ class TestVersions(unittest.TestCase):
         self.assertTrue(ver1 >= ver2)
         self.assertFalse(ver1 < ver2)
         self.assertTrue(ver1 > ver2)
-        
+                
     def test_version_compare_string(self):
         '''Test version comparison with strings.'''
         ver = version('1.2.3')
@@ -198,4 +198,37 @@ class TestVersions(unittest.TestCase):
         self.assertTrue('2.0' >= ver)
         self.assertTrue(ver < '3.2')
         self.assertTrue(ver > '0.1')
+        
+    def test_version_compare_char_both_with_string(self):
+        '''Test version comparison where both have characters and one is a raw srting'''
+        ver1 = version('1.2.3b')
+        ver2 = '1.2.3a'
+        self.assertFalse(ver1 == ver2)
+        self.assertTrue(ver1 != ver2)
+        self.assertFalse(ver1 <= ver2)
+        self.assertTrue(ver1 >= ver2)
+        self.assertFalse(ver1 < ver2)
+        self.assertTrue(ver1 > ver2)
+        
+    def test_version_compare_special_both_with_string(self):
+        '''Test version comparison where both have special strings and one is a raw srting.'''
+        ver1 = version('1.2.3alpha')
+        ver2 = '1.2.3beta'
+        self.assertFalse(ver1 == ver2)
+        self.assertTrue(ver1 != ver2)
+        self.assertTrue(ver1 <= ver2)
+        self.assertFalse(ver1 >= ver2)
+        self.assertTrue(ver1 < ver2)
+        self.assertFalse(ver1 > ver2)
+        
+    def test_version_compare_special_long_with_string(self):
+        '''Test version comparison with many subparts including specials and one is a raw srting.'''
+        ver1 = version('1.2.3beta1rc5')
+        ver2 = '1.2.3beta1'
+        self.assertFalse(ver1 == ver2)
+        self.assertTrue(ver1 != ver2)
+        self.assertTrue(ver1 <= ver2)
+        self.assertFalse(ver1 >= ver2)
+        self.assertTrue(ver1 < ver2)
+        self.assertFalse(ver1 > ver2)
         

@@ -52,7 +52,7 @@ class TestVersionRange(unittest.TestCase):
         range = version_range('!1.5-1.9')
         self.assertFalse('1.6' in range)
         
-        print "Should 1.9 be in '!1.5-1.9'?",
+        #Should 1.9 be in '!1.5-1.9'?
         self.assertTrue('1.9' in range)
         
         self.assertTrue('2.0' in range)
@@ -64,7 +64,7 @@ class TestVersionRange(unittest.TestCase):
         self.assertFalse('1.4.5' in range)
         self.assertFalse('3.0' in range)
         
-        print "Should 1.4.7 be in '1.0-2.0, !1.4.5-1.4.7'?",
+        #Should 1.4.7 be in '1.0-2.0, !1.4.5-1.4.7'?
         self.assertTrue('1.4.7' in range)
         
     def test_version_range_empty(self):
