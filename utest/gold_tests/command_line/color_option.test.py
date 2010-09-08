@@ -223,7 +223,7 @@ t.streams.stdtrace='gold/color_red.gold'
 
 #green
 t=test.AddTestRun("green")
-t.cmd="scons all --use-color=t=3 --trace=use_color_option --tc=null --hide-progress"
+t.cmd="scons all --use-color=t=2 --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_green.gold'
 
@@ -238,24 +238,24 @@ t.returncode=0
 t.streams.stdtrace='gold/color_green.gold'
 
 #yellow
-t=test.AddTestRun("green")
-t.cmd="scons all --use-color=t=4 --trace=use_color_option --tc=null --hide-progress"
+t=test.AddTestRun("yellow")
+t.cmd="scons all --use-color=t=3 --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_yellow.gold'
 
-t=test.AddTestRun("green")
+t=test.AddTestRun("yellow")
 t.cmd="scons all --use-color=t=yellow --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_yellow.gold'
 
-t=test.AddTestRun("green")
+t=test.AddTestRun("yellow")
 t.cmd="scons all --use-color=t=y --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_yellow.gold'
 
 #blue
 t=test.AddTestRun("blue")
-t.cmd="scons all --use-color=t=5 --trace=use_color_option --tc=null --hide-progress"
+t.cmd="scons all --use-color=t=4 --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_blue.gold'
 
@@ -518,14 +518,14 @@ t.returncode=0
 t.streams.stdtrace='gold/color_bold.gold'
 
 #dim
-t=test.AddTestRun("default")
+t=test.AddTestRun("dim")
 t.cmd="scons all --use-color=t=dim --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_dim.gold'
 
 #mass set
 t=test.AddTestRun("good")
-t.cmd="scons all --use-color=c=r:g,o=y:b,e=g,br,w=3:4,m=10:13,v=bold:default,t=blk:white --trace=use_color_option --tc=null --hide-progress"
+t.cmd="scons all --use-color=c=r:g,o=y:b,e=g:br,w=3:4,m=10:13,v=bold:default,t=blk:white --trace=use_color_option --tc=null --hide-progress"
 t.returncode=0
 t.streams.stdtrace='gold/color_good4.gold'
 

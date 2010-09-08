@@ -7,6 +7,7 @@ import threading
 import difflib
 import types
 import shutil
+import stat
 
 '''
 gtest -- for gold file testing
@@ -26,6 +27,47 @@ gtest.py
 '''
 
 
+ERROR_STR= """Error removing %(path)s, %(error)s """
+
+def rmgeneric(path, __func__):
+
+    try:
+        __func__(path)
+        #print 'Removed ', path
+    except OSError, (errno, strerror):
+        print ERROR_STR % {'path' : path, 'error': strerror }
+        return False
+    return True
+            
+def removeall(path):
+    ''' 
+    This allow for a simple removeall of data on windows or linux. Python
+    in general does not like read-only directory deleting. This allow us to 
+    remove these files from the test area without issue.
+    '''
+
+    if not os.path.isdir(path):
+        return
+    
+    files=os.listdir(path)
+
+    for x in files:
+        fullpath=os.path.join(path, x)
+        if os.path.isfile(fullpath):
+            f=os.remove
+            st = os.stat(fullpath)
+            os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+            for i in range(1,10):
+                if rmgeneric(fullpath, f):
+                    break
+                time.sleep(1)
+        elif os.path.isdir(fullpath):
+            removeall(fullpath)
+            f=os.rmdir
+            st = os.stat(fullpath)
+            os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+            rmgeneric(fullpath, f)
+
 cwd_dir=os.path.split(__file__)[0]
 test_root=os.path.join(cwd_dir,"_run_sandbox")
 parts_path=os.path.abspath(os.path.normpath('../../'))
@@ -40,7 +82,7 @@ verbose_stream_file='stream.verbose.txt'
 trace_stream_file='stream.trace.txt'
 
 if os.path.exists(test_root):
-    shutil.rmtree(test_root)
+    removeall(test_root)
 
 def TestTemplate(name):
     return os.path.join(cwd_dir,'templates',name)    
@@ -610,16 +652,19 @@ class Engine(object):
             
         #    pass
         print".",
-        
+    
         ## test return code
         testresult.TestReturnCode(rcode)
-        print"." ,       
+        print"." ,   
+    
         ## test if any file existance,size content tests
         testresult.TestFiles()
         print".",
+    
         ## test and directory existance tests
         testresult.TestDirs()
         print".",
+    
         ## test any streams tests
         testresult.TestStdout()
         testresult.TestStderr()
@@ -856,5 +901,5 @@ if __name__ == '__main__':
     engine=Engine()
     engine.start()
     #if os.path.exists(test_root):
-    #    shutil.rmtree(test_root)
+    #    removeall(test_root)
 

@@ -50,12 +50,12 @@ t.streams.stdtrace='gold/ccopy_good5.gold'
 
 #error cases
 
-t=test.AddTestRun("good")
+t=test.AddTestRun("bad")
 t.cmd="scons all --ccopy-logic=hard --trace=ccopy_logic_option --tc=null --hide-progress"
 t.returncode=2
 t.streams.stderr='gold/ccopy_bad1.gold'
 
-t=test.AddTestRun("good")
+t=test.AddTestRun("bad")
 t.cmd="scons all --ccopy-logic=copy,foo --trace=ccopy_logic_option --tc=null --hide-progress"
 t.returncode=2
 t.streams.stderr='gold/ccopy_bad2.gold'
