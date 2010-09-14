@@ -367,6 +367,15 @@ SCons.Script.AddOption("--ccopy",'--ccopy-logic','--copy-logic',
             action='store',
             help='Control how Parts copy logic will work must be hard-soft-copy,soft-hard-copy, soft-copy, hard-copy, copy') 
 
+SCons.Script.AddOption('--update',
+            dest='update',
+            default=[],
+            nargs='?',
+            callback=lambda option, opt, value, parser:opt_list(option, opt, value, parser,'update'),
+            type='string',
+            action='callback',
+            help='Controls if Parts should update the Vcs object, and which Parts to update.') 
+
 SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             dest='vcs_jobs',
             default=0,

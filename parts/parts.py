@@ -173,8 +173,8 @@ class Part_t(object):
             self.__file=dir_tmp.File(self.__env.subst(self.__file)) # the Parts file to read in
         else:
             # we have a vcs object.. ask vcs object for resolved file name
-            self.__vcs.UpdateEnv(self.__env) # update env with vcs level defines
-            self.__file=dir_tmp.File(self.__vcs.PartFileName(self.__env,self.__env.subst(self.__file)))
+            self.__vcs._setup_(self) # update env with vcs level defines
+            self.__file=dir_tmp.File(self.__vcs.PartFileName)
         
         # the src_path we need to make sure SCons as no issues when loading the Part file
         self.__src_path=os.path.split(self.__file.srcnode().abspath)[0]        
@@ -489,6 +489,13 @@ class Part_t(object):
         """Get the current parent Part."""
         return self.__parent
     
+    @property
+    def Vcs(self):
+        """Get the current parent Part."""
+        if self.__vcs:
+            return self.__vcs
+        return vcs.null()
+    
     def __make_part_env(self):
         
         # set alias
@@ -752,39 +759,39 @@ class Part_t(object):
 
 
 
-    def UpdateOnDisk(self):
-        if self.__vcs is not None:
-            
-            if self.__vcs.FileExists(self.__env,self.__file):
-                #this file exists. so we check to see if the user wants the sources updated
-                if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
-                    # Flags had been set for this object to update
-                    ret=self.__vcs.Update(self.__env)
-                    if ret:
-                        reporter.report_error("Failure detected during updating sources")
-            else:
-                if self.__env['UPDATE_ALL']==False and self.__vcs.NeedsUpdate(self.__env)==False:
-                    # don't have the file and they did not ask to get it
-                    # so we report a message and do a forced checkout
-                    reporter.report_warning("Sources do not seem to exist, and no update flags given, such as UPDATE_ALL=True\n\
-         Automatically updating component.",show_stack=False)
-                    
-                ret=self.__vcs.CheckOut(self.__env)
-                if ret:
-                    reporter.report_error("Failure detected during checkout sources")
-                    
-    def VcsNeedsToUpdate(self):
-        if self.__vcs is not None:
-            if self.__vcs.FileExists(self.__env,self.__file):
-                #this file exists. so we check to see if the user wants the sources updated
-                if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
-                    return True
-            else:
-                return True
-        return False
-
-    def VcsAllowParallelProcessing(self):
-        return self.__vcs.AllowParallelAction()
+    #def UpdateOnDisk(self):
+    #    if self.__vcs is not None:
+    #        
+    #        if self.__vcs.FileExists(self.__env,self.__file):
+    #            #this file exists. so we check to see if the user wants the sources updated
+    #            if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
+    #                # Flags had been set for this object to update
+    #                ret=self.__vcs.Update(self.__env)
+    #                if ret:
+    #                    reporter.report_error("Failure detected during updating sources")
+    #        else:
+    #            if self.__env['UPDATE_ALL']==False and self.__vcs.NeedsUpdate(self.__env)==False:
+    #                # don't have the file and they did not ask to get it
+    #                # so we report a message and do a forced checkout
+    #                reporter.report_warning("Sources do not seem to exist, and no update flags given, such as UPDATE_ALL=True\n\
+    #     Automatically updating component.",show_stack=False)
+    #                
+    #            ret=self.__vcs.CheckOut(self.__env)
+    #            if ret:
+    #                reporter.report_error("Failure detected during checkout sources")
+    #                
+    #def VcsNeedsToUpdate(self):
+    #    if self.__vcs is not None:
+    #        if self.__vcs.FileExists(self.__env,self.__file):
+    #            #this file exists. so we check to see if the user wants the sources updated
+    #            if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
+    #                return True
+    #        else:
+    #            return True
+    #    return False
+    #
+    #def VcsAllowParallelProcessing(self):
+    #    return self.__vcs.AllowParallelAction()
 
     def _hasTargetFiles(self):
         return self.__target_files != set([])

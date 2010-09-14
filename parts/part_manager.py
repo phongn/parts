@@ -4,7 +4,9 @@ import reporter
 import datacache
 import node_helpers
 import platform_info
+import vcs
 from target_type import target_type
+
 
 import SCons.Script
 import time
@@ -13,60 +15,60 @@ import os
 import SCons.Job
  
 
-class vcs_task(object):
-    ''' 
-    This is a simple class that does nothing more than have the Part update
-    itself on disk. This is used to for parallel checkouts/updates.
-    '''
-    def __init__(self,part):
-        self.part = part
-        self.__failed=False
-        
-    def prepare(self):
-        pass
-        
-    def needs_execute(self):
-        ''' this always need to execute'''
-        return 1
-    
-    def execute(self):
-        ''' this is what we call to do the checkout'''
-        self.part.UpdateOnDisk()
-        
-    def exception_set(self,exception=None):
-        self.__failed=True
-        
-    def failed(self):
-        if self.__failed:
-            reporter.report_error("Check out task failed")
-        
-    def executed(self):
-        pass
-
-    def postprocess(self):
-        pass
-
-
-class vcs_taskmaster(object):
-    def __init__(self):
-        self.__i = 0
-        self.__tasks = []
-    def append(self,x) :
-        if x is None:
-            self.__tasks.append(None)
-        else:
-            self.__tasks.append(vcs_task(x))
-    def next_task(self):
-        t = self.__tasks[self.__i]
-        if t is not None:
-            self.__i += 1
-        return t
-    def stop(self):
-        pass
-    def cleanup(self):
-        pass
-    def _has_tasks(self):
-        return self.__tasks != []
+#class vcs_task(object):
+#    ''' 
+#    This is a simple class that does nothing more than have the Part update
+#    itself on disk. This is used to for parallel checkouts/updates.
+#    '''
+#    def __init__(self,part):
+#        self.part = part
+#        self.__failed=False
+#        
+#    def prepare(self):
+#        pass
+#        
+#    def needs_execute(self):
+#        ''' this always need to execute'''
+#        return 1
+#    
+#    def execute(self):
+#        ''' this is what we call to do the checkout'''
+#        self.part.UpdateOnDisk()
+#        
+#    def exception_set(self,exception=None):
+#        self.__failed=True
+#        
+#    def failed(self):
+#        if self.__failed:
+#            reporter.report_error("Check out task failed")
+#        
+#    def executed(self):
+#        pass
+#
+#    def postprocess(self):
+#        pass
+#
+#
+#class vcs_taskmaster(object):
+#    def __init__(self):
+#        self.__i = 0
+#        self.__tasks = []
+#    def append(self,x) :
+#        if x is None:
+#            self.__tasks.append(None)
+#        else:
+#            self.__tasks.append(vcs_task(x))
+#    def next_task(self):
+#        t = self.__tasks[self.__i]
+#        if t is not None:
+#            self.__i += 1
+#        return t
+#    def stop(self):
+#        pass
+#    def cleanup(self):
+#        pass
+#    def _has_tasks(self):
+#        return self.__tasks != []
     
 class part_manager(object):
     
@@ -427,17 +429,18 @@ class part_manager(object):
     def UpdateOnDisk(self):
         # we need to see if any part needs to be checked out or updated
         #loop each part and ask it need to be updated
-        p_list=vcs_taskmaster()
-        s_list=vcs_taskmaster()
+        p_list=vcs.task_master.task_master()
+        s_list=vcs.task_master.task_master()
         for p in self.parts.values():
             # if so add to queue for checkout
-            if p.VcsNeedsToUpdate():
+            vcsobj=p.Vcs
+            if vcsobj.NeedsToUpdate():
                 # we check to see if the vcs object allow for the 
                 # parallel checkout policy.
-                if p.VcsAllowParallelProcessing():
-                    p_list.append(p)
+                if vcsobj.AllowParallelAction():
+                    p_list.append(vcsobj)
                 else:
-                    s_list.append(p)
+                    s_list.append(vcsobj)
                     
         #checkout anything in the queue
         if p_list._has_tasks():

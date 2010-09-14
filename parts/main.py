@@ -12,6 +12,7 @@ import filters
 import version_info
 import engine
 import poptions,installs
+import vcs
 
 import build_section
 
