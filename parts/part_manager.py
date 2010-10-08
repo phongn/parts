@@ -77,7 +77,7 @@ class part_manager(object):
         self.parts={} # a dictionary of all parts objects by there alias value
         self.__name_to_alias={} #a dictionary of a known Parts name and possible alias that match
         self.__to_map_parts=[] # stuff that needs to be mapped, else it is wasted space
-        self.__cache_bad=SCons.Script.GetOption("parts_cache") # used to help prevent wasting time on cases of incomplete cache data
+        self.__cache_bad=not SCons.Script.GetOption("parts_cache") # used to help prevent wasting time on cases of incomplete cache data
         self.__part_count=0 # number of parts we have defined.. 
     
     def _get_stored_root_alias(self,alias):
@@ -283,7 +283,7 @@ class part_manager(object):
             
             
         #is everything up to date on disk update file on disk?
-        self.UpdateOnDisk(  )
+        self.UpdateOnDisk( root_parts )
         
         # update check.. here we will:
         # 1) try to see if we can exit early cause everything is up-to-date
@@ -319,7 +319,6 @@ class part_manager(object):
             elif SCons.Script.GetOption("update_check_exit"):
                 out_date_list=self._setup_out_of_date(root_parts)
                 
-                       
             reporter.verbose_msg("update_check_time","Total Time for update check: %s seconds"%(time.time()-uttt))
             if out_date_list == [] and self.__cache_bad==False and SCons.Script.GetOption("update_check_exit"):
                 reporter.print_msg("Everything seem to be up-to-date. Shutting down...")
@@ -426,35 +425,50 @@ class part_manager(object):
         '''
         return part._has_valid_sections()
         
-    def UpdateOnDisk(self):
+    def UpdateOnDisk(self,part_set=None):
+        ''' Update any parts that need to be updated on disk
+        
+        @param part_set The set of Part to see if they are up-to-date, if test all Parts
+        '''
         # we need to see if any part needs to be checked out or updated
         #loop each part and ask it need to be updated
         p_list=vcs.task_master.task_master()
         s_list=vcs.task_master.task_master()
-        for p in self.parts.values():
+        if part_set is None:
+            part_set=self.parts.values()
+        for p in part_set:
             # if so add to queue for checkout
             vcsobj=p.Vcs
             if vcsobj.NeedsToUpdate():
                 # we check to see if the vcs object allow for the 
                 # parallel checkout policy.
+                
                 if vcsobj.AllowParallelAction():
                     p_list.append(vcsobj)
                 else:
                     s_list.append(vcsobj)
+            
+                
                     
         #checkout anything in the queue
-        if p_list._has_tasks():
-            # get value for level of number of concurrent checkouts
-            vcs_j=SCons.Script.GetOption('vcs_jobs')
-            if vcs_j == 0:
-                vcs_j=SCons.Script.GetOption('num_jobs')
-            p_list.append(None)
-            jobs = SCons.Job.Jobs(vcs_j, p_list)
-            jobs.run()
-        if s_list._has_tasks():
-            p_list.append(None)
-            jobs = SCons.Job.Jobs(1, s_list)
-            jobs.run()
+        try:
+            if p_list._has_tasks():
+                # get value for level of number of concurrent checkouts
+                vcs_j=SCons.Script.GetOption('vcs_jobs')
+                if vcs_j == 0:
+                    vcs_j=SCons.Script.GetOption('num_jobs')
+                p_list.append(None)
+                jobs = SCons.Job.Jobs(vcs_j, p_list)
+                jobs.run()
+            if s_list._has_tasks():
+                p_list.append(None)
+                jobs = SCons.Job.Jobs(1, s_list)
+                jobs.run()
+        finally:
+            for p in part_set:
+                p.Vcs.PostProcess()
+            datacache.SaveCache(key='vcs')
+            
         
     def _add_part(self,key,object):
         if key is None:
@@ -616,6 +630,34 @@ class part_manager(object):
         '''
         return self._from_alias(env.get('PART_ALIAS'))
     
+    def _name_from_refstr(self,refstr):
+        ''' returns the name of a part the ref string would point to
+        
+        @param refstr The string that refers to a part name, such as alias::foo
+        
+        This returns a Part name to a root part or None if nothing is found
+        '''
+        # clean up more later...
+        if refstr.startswith('alias::'):
+            # we have an alias
+            tmp=self._from_alias(refstr[len('alias::'):])
+            if tmp:
+                return tmp.Name
+            else:
+                return None
+        else: 
+            if refstr.startswith('name::'):
+                refstr=refstr[len('name::'):]
+            #else assume name ( assuming it is root??)
+        
+            # see if we have a name match
+            alias_lst=self._alias_list(name)
+            if alias_lst == []:
+                return None
+            return refstr
+        
+            
+        
     def _from_nvp(self,name,ver_range,target_platform,local_space=None):
         ret=None
         last_ver=None
@@ -714,7 +756,7 @@ class part_manager(object):
         # see if we have data at all for this alias
         data=datacache.GetCache("part-"+alias)
         if data is None:
-            #if "utest@" not in alias:
+            
             reporter.verbose_msg("update_check","%s is out of date because there no DataCache file"%alias)
             self.is_whole_part_up_to_date.cache[alias]=False
             return False
@@ -772,6 +814,7 @@ class part_manager(object):
                 if check_all==False: self.is_part_up_to_date.cache[alias]=False
                 return False
             for f in flist:
+                
                 if f['name'] in cfg_files:
                     #this file is in the set of previous found files
                     # check if file has changed
@@ -781,7 +824,7 @@ class part_manager(object):
                             if check_all==False: self.is_part_up_to_date.cache[alias]=False
                             if not check_all: return False        
                 else:
-                    reporter.verbose_msg("update_check",'%s is out of date because the set of files defining configuration "%s" for tool "%s" are different.'%(alias,data['config'],t))
+                    reporter.verbose_msg("update_check",'%s is out of date because the set of files defining configuration "%s" for tool "%s" are different.\n The file "%s" was not in set of: %s'%(alias,data['config'],t,f['name'],cfg_files))
                     if check_all==False: self.is_part_up_to_date.cache[alias]=False
                     return False
                     
@@ -794,7 +837,7 @@ class part_manager(object):
                 if not check_all: return False
 
         #test each node that we mapped to this Component
-        for t in data['nodes']:                
+        for t in data.get('nodes',[]):                
             if node_helpers.node_up_to_date(t) == False:
                 had_error=True
                 if check_all==False: self.is_part_up_to_date.cache[alias]=False
@@ -823,7 +866,7 @@ class part_manager(object):
                 else:
                     # else are there different node bound to this Component
                     # or did the part file change in some way
-                    save_data=len(tmp['nodes']) != len(p._part_nodes) and \
+                    save_data=len(tmp.get('nodes',[])) != len(p._part_nodes) and \
                      self.is_whole_part_up_to_date(p.Alias) == False
             
                 if save_data:

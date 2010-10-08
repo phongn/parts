@@ -149,7 +149,6 @@ class namespace(dict,env_overrides.bindable):
         ''' This is ugly but because SCons does not have a good recursive subst
         code, I need to subst stuff here before SCons can try to, else it will
         try to set this object to Null string, causing an unwanted error'''
-        #print "Get **************", name, self[name]
         tmp=self[name]
         if (is_string(tmp) or tmp is None) and self.__dict__.has_key('env'):
             return self.env.subst(tmp)
@@ -173,6 +172,11 @@ class namespace(dict,env_overrides.bindable):
         return tmp
     def _bind(self,env,key):
         self.__dict__['env']=env
+        
+    def clone(self):
+        tmp=namespace(**self.copy())
+        tmp._bind(None,None)
+        return tmp
 
 
 def process_tool_arg(lst):

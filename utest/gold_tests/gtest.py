@@ -148,6 +148,7 @@ class TestRun(object):
     def __init__(self,test,name):
         #required setup
         self.name=name
+        self.test=test
         self.cmd="" # this is the command we want to run
         
         # possible stuff we can test
@@ -156,7 +157,7 @@ class TestRun(object):
         # time
         self.time=Time()
         self.streams=Stream(test,self)
-        self.disk=Disk(self)
+        self.disk=Disk(test)
 
 class Time(object):
     ''' Allows us to test that something happened within a certain time.
@@ -257,18 +258,28 @@ class File(object):
     def __init__(self,test,name,exists=None,size=None,content=None):
         self.test=test
         self.name=name
-        self.exists=None
-        self.size=None
-        self.content=None
+        self.exists=exists
+        self.size=size
+        self.content=content
         self.content_tester=difflib.context_diff
+
+    @property
+    def FullName(self):        
+
+        #get base path
+        tmp=os.path.normpath(os.path.join(self.test.test_dir,self.name))
+        return tmp
+
         
     def TestSize(self):
         
         # see if we want to test this:
         if self.size is None:
             return None
+        # get file full path
         
-        # open file 
+        # open file
+        
         # seek to get size()
         
         return (self.size==file_size,file_size)
@@ -306,12 +317,12 @@ class Disk(object):
         self.dirs=[]
 
     def file(self,name,exists=None,size=None,content=None):
-        tmp=File(name,exists,size,content)
+        tmp=File(self.test,name,exists,size,content)
         self.__dict__[name]=tmp
         self.files.append(File(self.test,name,exists,size,content))
 
     def dir(self,name,exists=None):
-        tmp=Dir(name,exists)
+        tmp=Dir(self.test,name,exists)
         self.__dict__[name]=tmp
         self.dirs.append(Dir(name,exists))
 
@@ -368,15 +379,21 @@ class TestResult(object):
         self.full_stream=self.testrun.streams.TestFullStream(os.path.join(self.test.test_dir,"_tmp_%s_%s"%(self.test.name,self.testrun.name)))
         
     def TestFiles(self):
-        for file in self.testrun.disk.files:
+        for _file in self.testrun.disk.files:
             tmp={}
-            if os.path.isfile(file.name):
-                tmp['exists']=True
+            if os.path.isfile(_file.FullName):
+                tmp['exists']= (_file.exists == True)
+                tmp['exists_actual']=True
             else:
-                tmp['exists']=False
-            tmp['size'],tmp['size_actual']=file.TestSize()
-            tmp['content']=file.TestContent()
-            self.files[file.name]=tmp
+                tmp['exists']= (_file.exists == False)
+                tmp['exists_actual']=False
+            # do we test size
+            if _file.size:
+                tmp['size'],tmp['size_actual']=_file.TestSize()
+            if _file.content:
+                tmp['content']=_file.TestContent()
+                
+            self.files[_file.name]=tmp
     
     def TestDirs(self):
         for dir in self.testrun.disk.dirs:
@@ -410,7 +427,7 @@ class TestResult(object):
         if self.full_stream is not None and len(self.full_stream) > 0:
             return "Failed - fullstream mismatch"
         for k,v in self.files.items():
-            if v['exists']==False or v['size']==False or (v['content']is not None and len(v['content']) > 0):
+            if v['exists']==False or v.get('size',True)==False or (v.get('content') is not None and len(v.get('content',"")) > 0):
                 return "Failed - File test:",k
         
         for k,v in self.dirs.items():
@@ -551,6 +568,21 @@ class Engine(object):
                     print "**************"
                 
                 # report any isses with files
+                if rst.files:
+                    for k,v in rst.files.items():
+                        print "\tFile: %s"%k
+                        
+                        if v['exists'] == False and v['exists_actual']== True:
+                            print "\t\texists: Failed! Does not exits, but it should"
+                        if v['exists'] == False and v['exists_actual']== False:
+                            print "\t\texists: Failed! Does exits, but it should not"
+                        if v['exists'] == True and v['exists_actual']== False:
+                            print "\t\texists: Passed! Does not exits"
+                        if v['exists'] == True and v['exists_actual']== True:
+                            print "\t\texists: Passed! Does exits"
+                            
+                            #elif t =='size' and r == False:
+                    
                 # report any isses with dirs
                 
         if num_failures > 0:
@@ -596,6 +628,7 @@ class Engine(object):
         # create test directory ( test_root+test_location+test_name)
         test_dir=os.path.normpath(os.path.join(test_root,test.location,test.name))
         test.test_dir=test_dir
+        
         # copy and directory data
         
         if test.copy_directory == True:
@@ -756,7 +789,7 @@ test_search=0
 test_match=1
 
 verbose_tests =[
-    (test_match,re.compile('Parts: Verbose: \[\w*\]',re.IGNORECASE))
+    (test_match,re.compile('Verbose: \[\w*\]',re.IGNORECASE))
     ]
     
 trace_tests =[

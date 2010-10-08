@@ -83,12 +83,12 @@ class Pattern(object):
         # make list of paths to search
         paths=[base_path]
         for path in paths:
-            #print "trying", path
+            
             #for this path get the list of item in it
 ##            try:
 ##                # try to see if we had scanned this already
 ##                files=g_db[path]
-##                #print "Hit!",path
+
 ##                for f in files:
 ##                    if common.is_list(f):
 ##                        currpath = os.path.join(path,f[0])
@@ -103,15 +103,15 @@ class Pattern(object):
 ##                        except KeyError:
 ##                            m[key]=[currpath]
 ##            except KeyError:
-                #print "miss!",path
+                
                 g_db[path]=[]
                 # don't have it.. so make the chache and do the search
                 for file in os.listdir(path):
                     # combine the path and the file
                     currpath = os.path.join(path,file)
-                    #print 'Currpath=',currpath
+                    
                     key=os.path.join(self.sub_dir,path[l+1:])
-                    #print 'Value=',currpath
+                    
                     # see if this is really a path
                     is_dir=os.path.isdir(currpath)
                     if is_dir and self.recursive and file[0]!='.':
@@ -123,8 +123,6 @@ class Pattern(object):
                             paths.append(currpath)
                     elif is_dir == False and common.matches(currpath[l+1:], self.includes, self.excludes):
                         # else see if it matches pattern and store if it does          
-                        #print 'File=',currpath
-                        #print 'Key=',key
                         tmp=os.path.split(currpath)
                         try:
                             m[key].append(currpath)

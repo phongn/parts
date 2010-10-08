@@ -448,7 +448,7 @@ class part_subst_mapper(mapper):
                 return None
             penv=pobj.Env
             ret = penv.subst(self.substr)
-            #print 'PARTS: Verbose -- PARTSUB MAPPED',"#${PARTSUB('"+self.part_name+"','"+self.part_prop+"')} to",ret
+            
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)

@@ -38,6 +38,7 @@ class task_master(object):
         return t
     
     def stop(self):
+        self.__i= len(self.__tasks)
         pass
         
     def cleanup(self):

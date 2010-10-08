@@ -5,8 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{8f62fc3b-b6cf-46be-a8da-7c9c423a9db5}</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>scons</StartupFile>
-    <SearchPath>C:\Python26\Lib\site-packages\scons-1.2.0\SCons</SearchPath>
+    <StartupFile>s</StartupFile>
+    <SearchPath>C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\;C:\Users\jlkenny\code\parts</SearchPath>
     <WorkingDirectory>../</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
@@ -25,6 +25,10 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
   </ItemGroup>
@@ -178,13 +182,23 @@
     <None Include="tool_mapping.py" />
     <None Include="Variables\ListVariable.py" />
     <None Include="Variables\__init__.py" />
-    <None Include="vcs\init.py" />
-    <None Include="vcs\vcs.py" />
+    <None Include="vcs\base.py" />
+    <None Include="vcs\file_system.py" />
+    <None Include="vcs\null.py" />
+    <None Include="vcs\reuse.py" />
+    <None Include="vcs\svn.py" />
+    <None Include="vcs\task.py" />
+    <None Include="vcs\task_master.py" />
+    <None Include="vcs\__init__.py" />
     <None Include="version.py" />
     <None Include="version_info.py" />
     <None Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts_tigris\trunk\parts\" />
   </ItemGroup>
 </Project>

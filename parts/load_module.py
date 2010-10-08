@@ -56,25 +56,29 @@ def get_site_directories(subdir):
 def load_module(path,name,type):
     """Return the imported module
     made more generic so Parts can reuse the logic
-    instead of using the C&P anit-patttern.
+    instead of using the C&P anti-patttern.
     """
     
     modname='<'+type+'>'+name
     if not sys.modules.has_key(modname):
         reporter.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
         file, path1, desc = imp.find_module(name,path)
+        oldPath = sys.path[:]
+        sys.path.extend(path)
         
         try:
             mod = imp.load_module(modname, file, path1, desc)
             reporter.verbose_msg("load_module","Module was loaded from <%s>"%path1)
         except ImportError,e:
-            #ec_str=StringIO.StringIO()
-            #traceback.print_exc(file=ec_str)
+            ec_str=StringIO.StringIO()
+            traceback.print_exc(file=ec_str)
             reporter.verbose_msg("load_module","Failed to load module!")
-            #reporter.trace_msg("Stack:\n%s"%(ec_str.getvalue()))
+            reporter.verbose_msg(["load_module_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
             if file:
                 file.close()
             raise SCons.Errors.UserError, "No module named '%s'" % (name)
+        finally:
+            sys.path = oldPath
         if file:
             file.close()
         

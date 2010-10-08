@@ -103,7 +103,7 @@ def GetPackageGroupFiles(name,no_pkg=False):
     except KeyError:
         # no cache value.. re build list
         SortPackageGroups()  
-        #print "Remapping",name
+        
             
     # return what we got, if not in rebuilt list return empty list
     return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or common._INSTALLED_PACKAGING_GROUPS.get(name,[]))

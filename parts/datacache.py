@@ -1,5 +1,6 @@
 import cPickle
 import os
+import fnmatch
 import reporter
 import common
 import SCons.Script
@@ -22,7 +23,7 @@ def load_cache_data(datafile):
     return None
 
 def store_cache_data(datafile,data):
-    print "storing data file",datafile
+    #print "storing data file",datafile
     path,filename=os.path.split(datafile)
     if not os.path.exists(path):
         os.makedirs(path)
@@ -39,7 +40,8 @@ def GetCache(name,key=None):
     if SCons.Script.GetOption("parts_cache") == False:
         return None
     #if key is None get default key
-    key=_get_default_key()
+    if key is None:
+        key=_get_default_key()
     filename=os.path.join(".parts.cache",key,name+".cache")
     # see if we have it already loaded
     try:
@@ -59,8 +61,9 @@ def StoreData(name,data,key=None):
     set the value of this cache and save the data
     '''
     global __cache
-    #if key is None get default key
-    key=_get_default_key()
+    if key is None: #get default key
+        key=_get_default_key()
+        
     filename=os.path.join(".parts.cache",key,name+".cache")
     __cache[filename]=data
     __dirty_cache.append(filename)
@@ -72,43 +75,84 @@ def SaveCache(name=None,key=None):
     else it will save on the data of a given item, it it exists
     '''
     global __cache,__dirty_cache
-    if name is None and key is not None:
-        print "error"
-    elif name is None:
+    
+    # store everything for a given key
+    if name is None and key:
+        tmp=os.path.join(".parts.cache",key,"*.cache")
+        for k in __dirty_cache[:]:
+            #see if the path matched
+            if fnmatch.fnmatchcase(k, tmp):
+                store_cache_data(k,__cache[k])
+                __dirty_cache.remove(k)
+                
+    # store everything case
+    elif name is None and key is None:
         for k in __dirty_cache:
             store_cache_data(k,__cache[k])
         __dirty_cache=[]
-        
-    else:
-        #if key is None get default key
+    
+    # store everything for a given name and default key
+    elif name and key is None:
         key=_get_default_key()
         filename=os.path.join(".parts.cache",key,name+".cache")
-        try:
-            if filename in __dirty_cache:
-                data=__cache[filename]
-                store_cache_data(filename,data)
-                __dirty_cache.remove(filename)
-        except KeyError:
-            pass
         
-def ClearCache(name=None,key=None):
+        if filename in __dirty_cache:
+            data=__cache[filename]
+            store_cache_data(filename,data)
+            __dirty_cache.remove(filename)
+        
+    
+    # store a give name for a given key
+    else:
+        filename=os.path.join(".parts.cache",key,name+".cache")
+
+        if filename in __dirty_cache:
+            data=__cache[filename]
+            store_cache_data(filename,data)
+            __dirty_cache.remove(filename)
+        
+def ClearCache(name=None,key=None,save=False):
     '''
     Clear out the cache of data in memory
     '''
-    global __cache
-    if name is None and key is not None:
-        print "error"
-    elif name is None:
-        del __cache
-        __cache={}
-    else:
-        #if key is None get default key
-        key=_get_default_key()
-        filename=os.path.join(".parts.cache",key,name+".cache")
+    global __cache,__dirty_cache
+    
+    def clear_item(item):
         try:
-            del __cache[filename]
+            del __cache[item]
+            __dirty_cache.remove(item)
         except KeyError:
             pass
+        except ValueError:
+            pass
+    
+    if save:
+        SaveCache(name,key)
+     # clear everything for a given key
+    if name is None and key:
+        tmp=os.path.join(".parts.cache",key,"*.cache")
+        for k in __cache.keys():
+            #see if the path matched
+            if fnmatch.fnmatchcase(k, tmp):
+                clear_item(k)
+                
+    # clear everything case
+    elif name is None and key is None:
+        del __cache
+        __cache={}
+        del __dirty_cache
+        __dirty_cache=[]
+    # clear everything for a given name and default key
+    elif name and key is None:
+        key=_get_default_key()
+        filename=os.path.join(".parts.cache",key,name+".cache")
+        clear_item(filename)
+    
+    # clear a give name for a given key
+    else:
+        filename=os.path.join(".parts.cache",key,name+".cache")
+        clear_item(filename)
+
     
         
 def _get_default_key():

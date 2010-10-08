@@ -166,13 +166,13 @@ class _ConfigurationSet:
             if host in self.map[tool]:
                 if target in self.map[tool][host]:
                     if self.map[tool][host][target].has_key('versions'):
-                        if ver_rng in self.map[tool][host][target]['version']:
+                        if ver_rng in self.map[tool][host][target]['versions']:
                             self.map[tool][host][target]['versions'][ver_rng].update(settings)
                             self.map[tool][host][target]['default_ver_func']=ver_mapping
                             self.map[tool][host][target]['defining_files']=files
                         else:
                             self.map[tool][host][target]['versions'][ver_rng]=settings
-                            self.map[tool][host][target]['default_ver_func']=ver_mapping
+                            self.map[tool][host][target]['default_ver_func']=ver_mapper
                             self.map[tool][host][target]['defining_files']=files
                     else:
                         self.map[tool][host][target].update({
@@ -400,7 +400,10 @@ def found_config_files(name,tool,host,target):
                     'config'+name
                     )
             
-            ret.add(os.path.abspath(mod.__file__)[:-1])
+            if mod.__file__.endswith('.py'): 
+                ret.add(os.path.abspath(mod.__file__))
+            else:
+                ret.add(os.path.abspath(mod.__file__)[:-1])
             break;
         except ImportError:
             pass
@@ -443,7 +446,10 @@ def load_tool_config(env,name,tool,host,target):
             reporter.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
             
             #g_config_context[tool]=mod.__file__
-            files=set([mod.__file__[:-1]])
+            if mod.__file__.endswith('.py'):
+                files=set([mod.__file__])
+            else:
+                files=set([mod.__file__[:-1]])
             #Map version if unknown
             ver=mod.config.map_none_version(env)
             break

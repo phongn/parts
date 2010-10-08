@@ -111,6 +111,21 @@ def opt_bool_enum(option, opt, value, parser,var,enum,negate=False):
         raise OptionValueError('Invalid value for option "%s" value "%s"\n Valid options are %s' % 
                 (var.replace('-','_'),value,set(enum)|opt_true_values|opt_false_values))
 
+def opt_update(option, opt, value, parser):
+    if value is None:
+        parser.values.update=True
+        return
+    tmp=value.split(',')
+    if len(tmp) > 1:
+        parser.values.update=tmp
+        return
+    tmp2=tmp[0].lower()
+    if tmp2 in opt_true_values:
+        parser.values.update=True
+    elif tmp2 in opt_false_values:
+        parser.values.update=False
+    else:
+        parser.values.update=tmp
 
 def opt_color(option, opt, value, parser):
     if value is None:
@@ -367,14 +382,32 @@ SCons.Script.AddOption("--ccopy",'--ccopy-logic','--copy-logic',
             action='store',
             help='Control how Parts copy logic will work must be hard-soft-copy,soft-hard-copy, soft-copy, hard-copy, copy') 
 
-SCons.Script.AddOption('--update',
+SCons.Script.AddOption('--vcs-update','--update',
             dest='update',
-            default=[],
+            default='auto',
             nargs='?',
-            callback=lambda option, opt, value, parser:opt_list(option, opt, value, parser,'update'),
+            callback=opt_update,
             type='string',
             action='callback',
             help='Controls if Parts should update the Vcs object, and which Parts to update.') 
+            
+SCons.Script.AddOption("--enable-vcs-clean","--vcs-clean",
+            dest='vcs_clean',            
+            default=False,
+            nargs='?',
+            callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'vcs_clean'),
+            type='string',
+            action='callback',
+            help='Controls is VCS update should ensure a clean, unmodifed, factory defaults update.')
+            
+SCons.Script.AddOption("--vcs-logic",
+            dest='vcs_logic',
+            default='check',
+            nargs=1,
+            type='choice',
+            choices=['none','exists','check','force'],
+            action='store',
+            help='Control logic of how Parts will automatically do vcs up date checks. Values must be none, exists, check, force') 
 
 SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             dest='vcs_jobs',
@@ -391,6 +424,15 @@ SCons.Script.AddOption("--cfg-file","--config-file",
             nargs=1, type='string',
             action='store',
             help='Configuration file used to store common settings')
-
+            
+## policy values            
+SCons.Script.AddOption("--vcs-policy",
+            dest='vcs_policy',
+            default='update',
+            nargs=1,
+            type='choice',
+            choices=['warning','error','update'],
+            action='store',
+            help='Policy in how Parts should react if the automatic vcs check find that it is out of date. The policy values can be warning, error, update')         
 
 common.add_global_value('SetOptionDefault',SetOptionDefault)

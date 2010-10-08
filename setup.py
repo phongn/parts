@@ -126,9 +126,9 @@ if os.path.exists(syspath) == False:
 		
 if os.access(syspath,os.W_OK ) == False:
     syspath=os.path.join(os.path.expanduser('~'))
-    local_overrides=get_data_files(syspath,'.parts-site','.parts-site')
+    local_overrides=get_data_files(syspath,'parts-site','.parts-site')
 else:
-    local_overrides=get_data_files(syspath,'.parts-site','parts-site')
+    local_overrides=get_data_files(syspath,'parts-site','parts-site')
     
 
 ## 

@@ -117,6 +117,9 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
     sources=SCons.Script.Flatten(sources)
     
     pobj=common.g_engine._part_manager._from_env(env)
+    # this is for classic formats and compatible behavior with 0.9
+    pobj._sdk_or_installed_called=True
+    
     target_paths=[]
     
     if sub_dir=='':
@@ -461,7 +464,7 @@ common.AddVariable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%H%M'),'
 common.AddVariable('PART_SDK_CONCEPT','sdk${ALIAS_SEPARTATOR}','')
 
 #common.add_config_var('SDK_ROOT','#sdks/${PART_ROOT_NAME}_${PART_VERSION}${SVN_REVISION==None and DATE_TIME_STAMP or SVN_REVISION}_${ARCHITECTURE}')
-common.AddVariable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_PLATFORM}/${PART_ROOT_NAME}_${SVN_REVISION==None and PART_VERSION or PART_VERSION+"."+SVN_REVISION}',
+common.AddVariable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_PLATFORM}/${PART_ROOT_NAME}_${PART_VERSION}',
 					'Root Directory used for copy SDKs to')
 common.AddVariable('SDK_LIB_ROOT','$SDK_ROOT/lib','Full SDK directory for the lib concept')
 common.AddVariable('SDK_BIN_ROOT','$SDK_ROOT/bin','Full SDK directory for the bin concept')

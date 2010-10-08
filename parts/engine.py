@@ -268,6 +268,7 @@ class parts_addon(object):
         self.__post_process_queue=[]
         self.__cache_key=None
         self.__build_mode=None
+        self.__had_error=False
         
         # start up the reporter which controls the streams and all output
         use_color=SCons.Script.GetOption('use_color')
@@ -306,7 +307,7 @@ class parts_addon(object):
         self._setup_progress_meter()
         
         # setup managers
-        self.part_manager=part_manager.part_manager()
+        self.__part_manager=part_manager.part_manager()
         
         reporter.verbose_msg("init","Registering exit handler")
         atexit.register(self.ShutDown)
@@ -319,12 +320,12 @@ class parts_addon(object):
         bf_lst=SCons.Script.GetBuildFailures()
         
         # write out data cache files..given nothing went wrong and 
-        # we had soemthing to build
+        # we had something to build
         
         # store our data
         targets=SCons.Script.BUILD_TARGETS
-        # check to see that we even have targets to process
-        if targets != [] and SCons.Script.Main.exit_status == 0 and self.__build_mode=='build' and self.__use_cache == True:
+        # check to see that we even have targets to process, and that there are no error conditions
+        if targets != [] and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__build_mode=='build' and self.__use_cache == True:
             self.store_db_data() 
         
         
@@ -377,7 +378,7 @@ class parts_addon(object):
             reporter.g_rpter.logger=logger.nil_logger
                     
         #process the Parts if any exist
-        self.part_manager.ProcessParts()
+        self.__part_manager.ProcessParts()
                 
         # process Queue
         self.parts_process_queue()        
@@ -402,7 +403,7 @@ class parts_addon(object):
             self.__post_process_queue=[]
             reporter.print_msg("Done -- Processing post logic queue")
         
-        #for p in self.part_manager.parts.values():
+        #for p in self.__part_manager.parts.values():
             #p.Env.subst(p.Env['ENV']['INCLUDE'])
             
     def map_known_nodes(self):
@@ -446,7 +447,7 @@ class parts_addon(object):
                         reporter.verbose_msg(["node_sorting","node_sorting_failures"],v,"\033[1;31mMapping not found")
                         continue
                     for i in tlst:
-                        self.part_manager.parts[i]._part_nodes.add(v)
+                        self.__part_manager.parts[i]._part_nodes.add(v)
                         reporter.verbose_msg("node_sorting",v,"mapped to \033[1;32m%s"%i)
                     
                     
@@ -455,7 +456,7 @@ class parts_addon(object):
                     
                     alias=v.env.get("PART_ALIAS",None)
                     if alias:
-                        pobj=self.part_manager.parts[alias]
+                        pobj=self.__part_manager.parts[alias]
                         if v.has_builder():
                             add_builder_context_files(pobj,v.builder)
                         pobj._part_nodes.add(v)
@@ -481,7 +482,7 @@ class parts_addon(object):
         # map known nodes
         self.map_known_nodes()
         # get data for Parts that we need to store
-        alist,alias_set=self.part_manager.StoreCacheData()
+        alist,alias_set=self.__part_manager.StoreCacheData()
         
         tmp={}
         if is_Sconstruct_up_to_date():
@@ -713,7 +714,7 @@ Use -H or --help-options for a list of scons options
         vars=copy.deepcopy(common.g_defaultoverides)        
         vars.update(SCons.Script.ARGUMENTS)
         # stuff that is getting mapped in more than one way
-        # that needs to be white listed from being part of the chache key
+        # that needs to be white listed from being part of the cache key
         white_list=[
             'CONFIG',
             'config',
@@ -721,7 +722,8 @@ Use -H or --help-options for a list of scons options
             'toolchain',
             'tools',
             'mode',
-            'CCOPY_LOGIC'
+            'CCOPY_LOGIC',
+            'BUILD_BRANCH'
             ]
         for k,v in vars.items():
             if k not in white_list:
@@ -736,7 +738,7 @@ Use -H or --help-options for a list of scons options
             'file',
             'mode',
             'repository',
-            'site_dir',
+            'site_dir'
             #'tool_chain', # we use the different value to get a better match for this
             #'target_platform' # we get this from the def_env
         ]
@@ -780,8 +782,15 @@ Use -H or --help-options for a list of scons options
     
     @property
     def _part_manager(self,):
-        return self.part_manager
+        return self.__part_manager
     
+    @property
+    def HadError(self):
+        return self.__had_error
+    
+    @HadError.setter
+    def HadError(self,value):
+        self.__had_error=value
    
 
 

@@ -30,11 +30,10 @@ def unit_test_script_bfe(target, source, env):
 
 def unit_test_script_bf(target, source, env):
     f = open(str(target[0]), 'wb')
-    #rel_path=common.relpath(os.path.split(source[0].abspath)[0],os.path.split(target[0].abspath)[0])
-    #cmd=os.path.join(rel_path,os.path.split(source[0].abspath)[1])
+    
     cmd=env.subst("$UNIT_TEST_RUN_COMMAND")
     command_env=env.get('UNIT_TEST_ENV',{})
-    #print env.subst("$UNIT_TEST_RUN_COMMAND")
+    
     # update the value
     for k,v in command_env.iteritems():
         command_env[k]=env.subst(v)
@@ -74,16 +73,17 @@ else:
 
 from parts.target_type import target_type
 def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,**kw):
-    
+        
     #to help with user errors
     reporter.SetPartStackFrameInfo()
     targets=SCons.Script.BUILD_TARGETS
-##    for t in targets:
-##        tmp=target_type(t)
-##        if tmp.concept == 'utest' or tmp.concept == 'run_utest':
-##            break
-##    else:
-##        return []
+    for t in targets:
+        tmp=target_type(t)
+        sep_len=len(env.subst("$ALIAS_SEPARTATOR"))
+        if tmp.concept == env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
+            break
+    else:
+        return []
     
     ## make a new Part object
     parent_obj=common.g_engine._part_manager._from_env(env)

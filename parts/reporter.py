@@ -340,6 +340,7 @@ g_rpter=reporter()
 
 # no need to redirect data.. assume it is correct.
 def report_error(*lst,**kw):
+    common.g_engine.HadError=True
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
     g_rpter.part_error(msg,kw.get('stackframe',None),kw.get('show_stack',True),kw.get('exit',True))

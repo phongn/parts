@@ -187,7 +187,8 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     
     
     pobj=common.g_engine._part_manager._from_env(env)
-
+    # this is for classic formats and compatible behavior with 0.9
+    pobj._sdk_or_installed_called=True
     
     install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
     installed_files,src_files = ProcessInstall(env,target,source,sub_dir,install_alias,create_sdk,sdk_dir,no_pkg,**kw)

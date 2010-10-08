@@ -40,7 +40,7 @@ def _parse_target(target):
                 # we have some concept. the utest::foo_1 case
                 _concept=t[0]
             # see if this has a version value given to it as well
-            tmp=t[1].split('_',1)
+            tmp=t[1].rsplit('@',1)
             if len(tmp)==1:
                 return {'concept':_concept,'name':tmp[0]}
             return {'concept':_concept,'name':tmp[0],'version':tmp[1]}
@@ -60,9 +60,9 @@ def _parse_target(target):
             _concept=t[0]
             # we need to reparse this as it could be something like
             # concept::alias::foo or concept::name::foo_1.2 ( second case is impiled)
-            tmp=parse_target(t[1])
-            
-            ret={'concept':_concept,'name':tmp[0],'version':tmp[1]}
+            tmp=_parse_target(t[1])
+            tmp.update({'concept':_concept})
+            return tmp
         else:
             #error to many :: breaks
             reporter.report_error('target value "%s" as to make seperators "%s"'%(target,seperator))

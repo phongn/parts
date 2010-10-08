@@ -159,10 +159,10 @@ class map_rpath_part:
                     #r=relpath(self.env.Dir(p).path,self.env.Dir('$OUT_BIN').path)
                     if r not in rlst:
                         rlst.append(r)
-                        #print ' \t',r
+                        
             rlst=common.make_unique_str(rlst)
             self.env.Replace(RPATH=rlst)
-            #print 'RPATH LIST',self.env['RPATH']
+            
           
 class map_build_context:
     ''' 

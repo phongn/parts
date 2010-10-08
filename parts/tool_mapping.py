@@ -14,7 +14,6 @@ def get_tlset_module(tlchain,version):
     for k in name_list:
         try:
             mod=load_module.load_module(load_module.get_site_directories('toolchain'),k,'toolchain')
-            #print 'Found ToolChain:',k
             return mod
         except:
             pass

@@ -3,11 +3,11 @@ import time
 import SCons.Script 
 import core
 import common
-import vcs
 import part_logger
 import packaging
 import copy
 import dependson
+from target_type import target_type
 
 # these imports add stuff we will need to export to the parts file.
 import platform_info 
@@ -127,6 +127,9 @@ class Part_t(object):
         
         # use to help with ordering in a compatible way between classic and new formats
         self.__order_value=0
+        
+        # this is to help with issues with unit tests sub parts in classic format
+        self.__sdk_or_installed_called=False
         
 
     # see if we can remove the env arg latter
@@ -412,6 +415,11 @@ class Part_t(object):
         return self.__alias
     
     @property
+    def ShortAlias(self):
+        """Get the current alias."""
+        return self.__short_alias
+    
+    @property
     def alias(self):
         """for backwards compatibility."""
         return self.__alias
@@ -494,7 +502,16 @@ class Part_t(object):
         """Get the current parent Part."""
         if self.__vcs:
             return self.__vcs
-        return vcs.null()
+        import vcs.null
+        return vcs.null.null
+    
+    @property
+    def _sdk_or_installed_called(self):
+        return self.__sdk_or_installed_called
+        
+    @_sdk_or_installed_called.setter
+    def _sdk_or_installed_called(self,value):
+        self.__sdk_or_installed_called=value
     
     def __make_part_env(self):
         
@@ -657,9 +674,24 @@ class Part_t(object):
         '''
         
         # seems to be an issue for compatibility
-        # only do this in new format...
-##        for i in self.__target_files:
-##            self.__env.Alias(self.__alias,i)
+        
+        utest_call=False
+        targets=SCons.Script.BUILD_TARGETS
+        for t in targets:
+            tmp=target_type(t)
+            sep_len=len(self.__env.subst("$ALIAS_SEPARTATOR"))
+            if tmp.concept == self.__env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == self.__env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
+                utest_call=True
+                break
+        # if we are not building unit tests
+        # and this is a classic format
+        # and this part did not call any SdkXXX or InstallXXX
+        # then we don't want to define any build actions it may have
+        if utest_call==False and self._sdk_or_installed_called==False and self._is_classic_format:
+            pass
+        else:
+            for i in self.__target_files:
+              self.__env.Alias(self.__alias,i)
         # we also add them to known nodes at this time
         self.__part_nodes.update(self.__target_files)
         
@@ -756,42 +788,6 @@ class Part_t(object):
             # set file as read
             self.__is_read=True
             
-
-
-
-    #def UpdateOnDisk(self):
-    #    if self.__vcs is not None:
-    #        
-    #        if self.__vcs.FileExists(self.__env,self.__file):
-    #            #this file exists. so we check to see if the user wants the sources updated
-    #            if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
-    #                # Flags had been set for this object to update
-    #                ret=self.__vcs.Update(self.__env)
-    #                if ret:
-    #                    reporter.report_error("Failure detected during updating sources")
-    #        else:
-    #            if self.__env['UPDATE_ALL']==False and self.__vcs.NeedsUpdate(self.__env)==False:
-    #                # don't have the file and they did not ask to get it
-    #                # so we report a message and do a forced checkout
-    #                reporter.report_warning("Sources do not seem to exist, and no update flags given, such as UPDATE_ALL=True\n\
-    #     Automatically updating component.",show_stack=False)
-    #                
-    #            ret=self.__vcs.CheckOut(self.__env)
-    #            if ret:
-    #                reporter.report_error("Failure detected during checkout sources")
-    #                
-    #def VcsNeedsToUpdate(self):
-    #    if self.__vcs is not None:
-    #        if self.__vcs.FileExists(self.__env,self.__file):
-    #            #this file exists. so we check to see if the user wants the sources updated
-    #            if self.__env['UPDATE_ALL']==True or self.__vcs.NeedsUpdate(self.__env)==True:
-    #                return True
-    #        else:
-    #            return True
-    #    return False
-    #
-    #def VcsAllowParallelProcessing(self):
-    #    return self.__vcs.AllowParallelAction()
 
     def _hasTargetFiles(self):
         return self.__target_files != set([])
@@ -1097,8 +1093,8 @@ class Part_t(object):
             
         
     def _get_cache_data(self):#store(self):
-        print "getting data for",self.__alias
-        st=time.time()
+        reporter.verbose_msg(['parts_cache'],"Getting data for",self.__alias)
+        
         data={}
         file={}
         # basic info
@@ -1199,6 +1195,26 @@ class Part_t(object):
         data['root_depends']=self._parts_root_depends_list()
         # store all the root_parts we depend on
         data['full_root_depends']=self._full_parts_root_depends_list()
+        ########
+        ####### Below are node that we save!
+        ####### skip for compatible behavior of 0.9 if utest or run_utest:: is not being used
+        #######
+        # figure out if utest was called
+        utest_call=False
+        targets=SCons.Script.BUILD_TARGETS
+        for t in targets:
+            tmp=target_type(t)
+            sep_len=len(self.__env.subst("$ALIAS_SEPARTATOR"))
+            if tmp.concept == self.__env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == self.__env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
+                utest_call=True
+                break
+        # if we are not building unit tests
+        # and this is a classic format
+        # and this part did not call any SdkXXX or InstallXXX
+        # then we don't want to define any build actions it may have
+        if utest_call==False and self._sdk_or_installed_called==False and self._is_classic_format:
+            data['nodes']=[]
+            return data
         #store all known node that are mapped to this component as
         #a list of strings. we use the SCons DB to store the important data
         tmp=[]
@@ -1228,7 +1244,7 @@ class Part_t(object):
                 tmp.append(tmpd)
             
         data['nodes']=tmp
-        #print "target time",time.time()-tt, len(tmp)
+        
         
         if self._is_root:
             # this is build context
@@ -1262,8 +1278,6 @@ class Part_t(object):
                             })
                     
             data['config_context']=tmp
-        
-        #print "Finished getting data for",self.__alias, time.time()-st
         return data
 
 
