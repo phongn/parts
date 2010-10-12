@@ -137,8 +137,12 @@ def try_load_part_component(env,comp):
 
 
 ###############
-import env_overrides
-class namespace(dict,env_overrides.bindable):
+# this class allows us to add object varible that get a reference to the env
+# that holds it
+class bindable(object):
+    pass 
+    
+class namespace(dict,bindable):
     ''' helper class to allow making subst varaible in SCons to allow a clean
     form of $a.b
     '''

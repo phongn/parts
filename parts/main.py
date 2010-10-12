@@ -4,7 +4,8 @@
 ### This is the init code that make every start correctly.
 ###
 # import main code
-import env_overrides
+#import env_overrides
+import overrides
 import common 
 import parts
 import version

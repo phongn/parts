@@ -7,7 +7,6 @@ var defined to to tell what has been targeted as the build env.
 '''
 import common
 import SCons.Platform
-import env_overrides
 import os,sys
 import re
 import reporter
@@ -127,7 +126,7 @@ def ChipArchitecture():
         return MapArchitecture(platform.machine()) 
 
 
-class SystemPlatform(env_overrides.bindable):
+class SystemPlatform(common.bindable):
     def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
         
         if arch == ChipArchitecture():

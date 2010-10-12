@@ -18,7 +18,6 @@ import mappers
 import functors
 import tool_mapping
 import Variables
-import env_overrides
 import logger
 import reporter
 
@@ -331,7 +330,8 @@ def generate_config(prepend,append,replace):
         ## this is for fixing an issue with the scanners in which one item in a env
         ## does not have the $vars fully expanded, which causes an issue with in the
         ## dependency tree. This leads to a false rebuild of few files
-        env_overrides.Scanner_override()
+        import overrides
+        overrides.scanner.Scanner_override()
 
         # stuff to zap
         env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])

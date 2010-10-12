@@ -29,6 +29,7 @@
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
   </ItemGroup>
@@ -39,6 +40,7 @@
     <Folder Include="configurations\default" />
     <Folder Include="configurations\release" />
     <Folder Include="loggers" />
+    <Folder Include="overrides" />
     <Folder Include="tools\GnuCommon\" />
     <Folder Include="tools\IntelCommon" />
     <Folder Include="tools\MSCommon" />
@@ -95,6 +97,10 @@
     <None Include="mappers.py" />
     <None Include="metatag.py" />
     <None Include="node_helpers.py" />
+    <None Include="overrides\env_array.py" />
+    <None Include="overrides\env_clone.py" />
+    <None Include="overrides\os_file.py" />
+    <None Include="overrides\__init__.py" />
     <None Include="packaging.py" />
     <None Include="parts" />
     <None Include="parts.bat" />
@@ -195,6 +201,7 @@
     <None Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />

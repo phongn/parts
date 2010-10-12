@@ -526,8 +526,7 @@ def get_defining_config_files(name,tool,host,target):
 
 
 ## compatibility object
-import env_overrides
-class config_type_wrapper(str,env_overrides.bindable):
+class config_type_wrapper(str,common.bindable):
     def __eq__(self,rhs):
         reporter.report_warning("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test",env=self.env)
         return self.env.isConfigBasedOn(rhs)
