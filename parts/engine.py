@@ -642,6 +642,7 @@ class parts_addon(object):
         reporter.trace_msg("incremental_cache_option","incremental_cache =",SCons.Script.GetOption('incremental_cache'))
         reporter.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
         reporter.trace_msg("vcs_jobs_option","vcs_jobs =",SCons.Script.GetOption('vcs_jobs'))
+        reporter.trace_msg("update_option","update =",SCons.Script.GetOption('update'))
         
     def _setup_sdk(self):
         return
@@ -674,16 +675,6 @@ class parts_addon(object):
         reporter.verbose_msg("startup","Setting up show-progress feature")
         if SCons.Script.GetOption('show_progress'):
             SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=reporter.g_rpter.console,overwrite=True)
-##            if self.def_env['HOST_OS'] == 'win32':
-##                try:
-##                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('con:','w'),overwrite=True)
-##                except Exception,ec:
-##                    pass                
-##            else:
-##                try: 
-##                    SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=open('/dev/tty','w'),overwrite=True)
-##                except Exception,ec:
-##                    pass
 
     def add_preprocess_logic_queue(self,funcobj):
         self.__post_process_queue.append(funcobj)

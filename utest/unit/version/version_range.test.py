@@ -150,3 +150,12 @@ class TestVersionRange(unittest.TestCase):
         verlist.append('2.6beta1')
         self.assertEqual(range.bestVersion(verlist), '2.6beta1')
     
+    def test_version_range_0(self):
+        '''Test that that version of 0 is found in range of *'''
+        range = version_range('*')
+        ver = version('0.0.0')
+        self.assertTrue(ver in range)
+        ver = version('0.0')
+        self.assertTrue(ver in range)
+        ver = version('0')
+        self.assertTrue(ver in range)

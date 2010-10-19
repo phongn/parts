@@ -5,7 +5,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{8f62fc3b-b6cf-46be-a8da-7c9c423a9db5}</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>s</StartupFile>
+    <StartupFile>
+    </StartupFile>
     <SearchPath>C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\;C:\Users\jlkenny\code\parts</SearchPath>
     <WorkingDirectory>../</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
@@ -25,6 +26,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
@@ -82,7 +84,6 @@
     <None Include="datacache.py" />
     <None Include="dependson.py" />
     <None Include="engine.py" />
-    <None Include="env_overrides.py" />
     <None Include="exportitem.py" />
     <None Include="filters.py" />
     <None Include="functors.py" />
@@ -97,9 +98,16 @@
     <None Include="mappers.py" />
     <None Include="metatag.py" />
     <None Include="node_helpers.py" />
+    <None Include="overrides\builder.py" />
+    <None Include="overrides\build_hook.py" />
+    <None Include="overrides\build_wrapper.py" />
+    <None Include="overrides\default_env.py" />
+    <None Include="overrides\dup_node_builder_env.py" />
     <None Include="overrides\env_array.py" />
     <None Include="overrides\env_clone.py" />
+    <None Include="overrides\error_handling.py" />
     <None Include="overrides\os_file.py" />
+    <None Include="overrides\scanner.py" />
     <None Include="overrides\__init__.py" />
     <None Include="packaging.py" />
     <None Include="parts" />
@@ -201,6 +209,7 @@
     <None Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />

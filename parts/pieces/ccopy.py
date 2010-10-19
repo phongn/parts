@@ -15,7 +15,11 @@ if sys.platform == 'win32':
     def ccopy_hard_soft(dest,source):
         # we only deal with files in our cases
         reporter.verbose_msg("ccopy","ccopy_hard_soft dest=%s source=%s"%(dest,source))
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:
+            
             ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
             if ret==0:
                 reporter.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
@@ -32,6 +36,7 @@ if sys.platform == 'win32':
             except:
                 ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
+                    reporter.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
 
     def ccopy_soft_hard(dest,source):    
@@ -40,6 +45,9 @@ if sys.platform == 'win32':
         #get the relpath
         tmp=os.path.split(source)
         tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:
             ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
             if ret==0:
@@ -54,11 +62,15 @@ if sys.platform == 'win32':
             except:
                 ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
+                    reporter.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
                 
     def ccopy_hard(dest,source):
         # we only deal with files in our cases
         reporter.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:
             ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
             if ret==0:
@@ -67,6 +79,7 @@ if sys.platform == 'win32':
         except:
             ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
+                reporter.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
         
     def ccopy_soft(dest,source):
@@ -75,6 +88,9 @@ if sys.platform == 'win32':
         reporter.verbose_msg("ccopy","ccopy_soft dest=%s source=%s"%(dest,source))
         tmp=os.path.split(source)
         tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:
             ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
             if ret==0:
@@ -83,15 +99,20 @@ if sys.platform == 'win32':
         except:
             ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
+                reporter.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
         
     def ccopy_copy(dest,source):
         reporter.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
         ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
         if ret==0:
+            reporter.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
             raise ctypes.WinError()
 else:
     def ccopy_hard_soft(dest,source):
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:        
             os.link(source,dest)
         except:
@@ -102,7 +123,10 @@ else:
                 st = os.stat(source)
                 os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
-    def ccopy_soft_hard(dest,source):    
+    def ccopy_soft_hard(dest,source):   
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest) 
         try:        
             os.symlink(source,dest)
         except:
@@ -114,7 +138,10 @@ else:
                 os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
         
-    def ccopy_hard(dest,source):        
+    def ccopy_hard(dest,source):     
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)   
         try:
             os.link(source,dest)
         except:
@@ -123,6 +150,9 @@ else:
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
         
     def ccopy_soft(dest,source):
+        if os.path.exists(dest):
+            reporter.verbose_msg("ccopy",'File: "%s" exists on disk, deleting file so links can be created correctly')
+            os.remove(dest)
         try:
             os.symlink(source,dest)
         except:

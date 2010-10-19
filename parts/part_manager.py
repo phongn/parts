@@ -14,61 +14,6 @@ import os
 
 import SCons.Job
  
-
-#class vcs_task(object):
-#    ''' 
-#    This is a simple class that does nothing more than have the Part update
-#    itself on disk. This is used to for parallel checkouts/updates.
-#    '''
-#    def __init__(self,part):
-#        self.part = part
-#        self.__failed=False
-#        
-#    def prepare(self):
-#        pass
-#        
-#    def needs_execute(self):
-#        ''' this always need to execute'''
-#        return 1
-#    
-#    def execute(self):
-#        ''' this is what we call to do the checkout'''
-#        self.part.UpdateOnDisk()
-#        
-#    def exception_set(self,exception=None):
-#        self.__failed=True
-#        
-#    def failed(self):
-#        if self.__failed:
-#            reporter.report_error("Check out task failed")
-#        
-#    def executed(self):
-#        pass
-#
-#    def postprocess(self):
-#        pass
-#
-#
-#class vcs_taskmaster(object):
-#    def __init__(self):
-#        self.__i = 0
-#        self.__tasks = []
-#    def append(self,x) :
-#        if x is None:
-#            self.__tasks.append(None)
-#        else:
-#            self.__tasks.append(vcs_task(x))
-#    def next_task(self):
-#        t = self.__tasks[self.__i]
-#        if t is not None:
-#            self.__i += 1
-#        return t
-#    def stop(self):
-#        pass
-#    def cleanup(self):
-#        pass
-#    def _has_tasks(self):
-#        return self.__tasks != []
     
 class part_manager(object):
     
@@ -674,7 +619,7 @@ class part_manager(object):
                 # if we have a match in the local space it has to match, or fail
                 if pobj.Name == name:
                     this_ver=pobj.Version
-                    if this_ver in ver_range and this_ver > last_ver and target_platform==pobj._platform_match:
+                    if this_ver in ver_range and this_ver >= last_ver and target_platform==pobj._platform_match:
                         last_ver=this_ver
                         ret=pobj
                     else:
@@ -699,11 +644,10 @@ class part_manager(object):
             
             if pobj.Name == name:
                 # get the version info
-                this_ver=pobj.Version
-                if this_ver in ver_range and this_ver > last_ver and target_platform==pobj._platform_match:
+                this_ver=pobj.Version 
+                if this_ver in ver_range and this_ver >= last_ver and target_platform==pobj._platform_match:
                     last_ver=this_ver
                     ret=pobj
-                                
             
         return ret
 

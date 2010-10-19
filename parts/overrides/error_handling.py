@@ -3,6 +3,7 @@
 from SCons.Script import _SConscript 
 import SCons.Script
 import sys
+import os
 
 OrigSConscript_exception=_SConscript.SConscript_exception
 def PartSConscript_exception(file=None):

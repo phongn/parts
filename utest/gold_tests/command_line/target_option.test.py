@@ -7,37 +7,37 @@ test.copy_directory=TestTemplate('empty')
 # note the --tc=null means we can set the target without issue of the tools complain 
 # that the can't setup correctly
 t=test.AddTestRun("good")
-t.cmd="scons all --target-platform=win32-x86 --trace=target_platform_option --tc=null --hide-progress"
+t.cmd="scons all --target-platform=win32-x86 --trace=target_platform_option --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good1.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --target=win32-x86 --trace=target_platform_option --tc=null --hide-progress"
+t.cmd="scons all --target=win32-x86 --trace=target_platform_option --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good1.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --target-platform=posix --trace=target_platform_option_os --tc=null --hide-progress"
+t.cmd="scons all --target-platform=posix --trace=target_platform_option_os --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good2.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --target-platform=x86 --trace=target_platform_option_arch --tc=null --hide-progress"
+t.cmd="scons all --target-platform=x86 --trace=target_platform_option_arch --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good3.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --target-platform=hp-ux-x86 --trace=target_platform_option --tc=null --hide-progress"
+t.cmd="scons all --target-platform=hp-ux-x86 --trace=target_platform_option --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good4.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --target-platform=hp-ux --trace=target_platform_option_os --tc=null --hide-progress"
+t.cmd="scons all --target-platform=hp-ux --trace=target_platform_option_os --tc=null --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good5.gold'
 
 t=test.AddTestRun("good")
-t.cmd="scons all --tc=null --trace=target_platform_option --hide-progress"
+t.cmd="scons all --tc=null --trace=target_platform_option --console-stream=none"
 t.returncode=0
 t.streams.stdtrace='gold/target_good6.gold'
 

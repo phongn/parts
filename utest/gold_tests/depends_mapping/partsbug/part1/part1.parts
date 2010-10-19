@@ -1,0 +1,5 @@
+import os
+Import('*')
+
+env.PartName("part1")
+

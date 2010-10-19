@@ -23,7 +23,7 @@ class TestPattern(unittest.TestCase):
         self.assertEqual(filelist,[
                 os.path.normpath('pattern/aaa.xml'),
                 os.path.normpath('pattern/bbb.cpp'),
-                os.path.normpath'pattern/aaa/aaa.xml')
+                os.path.normpath('pattern/aaa/aaa.xml')
                 ])
 
     def test_pattern4(self):
@@ -31,7 +31,7 @@ class TestPattern(unittest.TestCase):
         self.assertEqual(filelist,[
                 os.path.normpath('pattern/aaa.xml'),
                 os.path.normpath('pattern/bbb.cpp'),
-                os.path.normpath'pattern/aaa/aaa.xml')
+                os.path.normpath('pattern/aaa/aaa.xml')
                 ])        
 
     def test_pattern5(self):

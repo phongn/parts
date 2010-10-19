@@ -120,10 +120,13 @@ def opt_update(option, opt, value, parser):
         parser.values.update=tmp
         return
     tmp2=tmp[0].lower()
+
     if tmp2 in opt_true_values:
         parser.values.update=True
     elif tmp2 in opt_false_values:
         parser.values.update=False
+    elif tmp2 in ['auto']:
+        parser.values.update='auto'
     else:
         parser.values.update=tmp
 
@@ -434,5 +437,6 @@ SCons.Script.AddOption("--vcs-policy",
             choices=['warning','error','update'],
             action='store',
             help='Policy in how Parts should react if the automatic vcs check find that it is out of date. The policy values can be warning, error, update')         
+            
 
 common.add_global_value('SetOptionDefault',SetOptionDefault)

@@ -636,6 +636,8 @@ class Engine(object):
             shutil.copytree(test.location,test_dir)
         elif type(test.copy_directory) is types.StringType and os.path.exists(test.copy_directory):
             shutil.copytree(test.copy_directory,test_dir)
+        elif type(test.copy_directory) is types.StringType and os.path.exists(os.path.join(test.location,test.copy_directory)):
+            shutil.copytree(os.path.join(test.location,test.copy_directory),test_dir)
         else:
             os.makedirs(test_dir)
         #copy the scontruct file

@@ -10,6 +10,16 @@ if not color.is_win32:
     import fcntl
     import termios
 
+import SCons.Script
+SCons.Script.AddOption("--console-stream",
+            dest='console-stream',
+            default='tty',
+            nargs=1,
+            type='choice',
+            choices=['none','tty','stdout','stderr'],
+            action='store',
+            help='Control how Parts maps the console stream. Values can be none, tty, con:, stdout, stderr') 
+
 class NullStream(object):
 
     def __init__(self):
@@ -36,12 +46,19 @@ class Console(object):
         
         self.clearline=False
         self.__lock=thread.allocate_lock() # used to sync output cases across streams
-        
-        try:        
-            if color.is_win32:
-                conio=open('con:','w')        
+        try:
+            map_console = SCons.Script.GetOption('console-stream')
+            if map_console in ['tty','con:']:    
+                if color.is_win32:
+                    conio=open('con:','w')        
+                else:
+                    conio=open('/dev/tty','w')
+            elif map_console in ['stdout']:
+                conio=sys.__stdout__
+            elif map_console in ['stderr']:
+                conio=sys.__stderr__
             else:
-                conio=open('/dev/tty','w')
+                conio=NullStream()
         except Exception,ec:
             conio=NullStream()        
         
