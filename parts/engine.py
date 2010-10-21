@@ -765,6 +765,8 @@ Use -H or --help-options for a list of scons options
     #state APIs
     @property
     def _cache_key(self):
+        if self.__cache_key is None:
+            self.generate_cache_key()
         return self.__cache_key
     
     @property
