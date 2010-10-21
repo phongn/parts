@@ -70,7 +70,7 @@ def sub_lst(env,lst,thread_id):
     doesn't like the returning of lists. This returns a list seperated by the binary value of 1
     which is not used as a normal printing character.'''
     ret=[]
-    g_complex_sub[thread_id]=g_complex_sub[thread_id]+1
+    g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
     for i in lst:
         v=env.subst(str(i)).split("\1")
         #ret.extend(v)
