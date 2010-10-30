@@ -104,8 +104,7 @@ class ColorTextStream(object):
             state=0
             code=0
             col=color.ConsoleColor(color.default_color.Foreground(),color.default_color.Background())
-            fg_int=0
-            bk_int=0
+            code_type=None
             fg_bold=None
             bk_bold=None
             for s in in_str:
@@ -142,13 +141,21 @@ class ColorTextStream(object):
                             fg_bold=None
                             bk_bold=None
                         code=0
+                    elif s == 'K' and code_type is None:
+                        tmp=(self.__console.Width - self.__console.Cursor.X)-1
+                        if tmp > 0:
+                            tmp_str+=" "*tmp
+                        state=0
+                        code=0
                     else:
                         try:            
                             code=code*10+int(s)
+                            code_type='color'
                         except ValueError:
-                            
                             code=0
                             state=0
+                            code_type=None
+                            
                     if s=='m':
                         if fg_bold == True:
                             tmp=col.Foreground()
@@ -165,6 +172,7 @@ class ColorTextStream(object):
                         self.SetColor(col)
                         state=0
                         code=0
+                        code_type=None
                 else:           
                     tmp_str+=s
             if tmp_str != '':

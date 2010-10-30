@@ -5,6 +5,7 @@ import datacache
 import node_helpers
 import platform_info
 import vcs
+import version
 from target_type import target_type
 
 
@@ -13,7 +14,34 @@ import time
 import os
 
 import SCons.Job
- 
+
+def pcmp(x,y):
+            
+    #if x.Alias == y.Alias: return 0
+    xcache=datacache.GetCache("part-"+x.Alias)
+    ycache=datacache.GetCache("part-"+y.Alias)
+            
+    if ycache:
+        # Y uses X
+        xiny = x.Alias in ycache['full_root_depends'] or y._uses_part(x)
+        ylen = len(ycache['full_root_depends'])
+    else:
+        xiny=y._uses_part(x)
+        ylen = len(y._uses)
+    if xcache:
+        # X uses Y
+        yinx = y.Alias in xcache['full_root_depends'] or x._uses_part(y)
+        xlen = len(xcache['full_root_depends'])
+    else:
+        yinx= x._uses_part(y)
+        xlen = len(x._uses)
+            
+    if xiny: return -1
+    elif yinx: return 1
+    # sort my length of some sort of dependance lenght
+    elif xlen > ylen: return 1
+    elif xlen < ylen: return -1
+    return cmp(x._order_value,y._order_value)
     
 class part_manager(object):
     
@@ -25,9 +53,180 @@ class part_manager(object):
         self.__cache_bad=not SCons.Script.GetOption("parts_cache") # used to help prevent wasting time on cases of incomplete cache data
         self.__part_count=0 # number of parts we have defined.. 
     
-    def _get_stored_root_alias(self,alias):
+    def _map_target(self):
         '''
-        Given the alias and based on stroed data what is the root part alias 
+        This function maps the string targets to a a Parts Target_type to allow for better processing
+        '''
+        targets=SCons.Script.BUILD_TARGETS
+        for t in targets:
+            tmp=target_type(t)
+            
+        # trying to translate based on everything being read in
+        for t in targets:
+            tmp=target_type(t)
+            # first see if this is ambiguous
+            if not tmp.isPartAlias:
+                # we are not sure
+                if self._alias_list.get(tmp.orginal_string) is not None:
+                    #we are sure this is a Parts value
+                    tmp.name=tmp.orginal_string
+                else:
+                    #we are sure this is a SCons value
+                    has_scons_value=True
+                    ret.append(tmp.orginal_string)
+            
+            #we are that this is a Part target format
+            # see what concept is defined
+            if tmp.concept:
+                concept=tmp.concept
+            else:
+                concept='build'
+            if tmp.all:
+                # add the concept:: alias as we define this
+                ret.append(concept)
+            elif tmp.alias:
+                # add the concept::alias alias as we define this
+                ret.append(concept+"::alias::"+tmp.alias)
+            elif tmp.name:
+                #This case can have multipul matches
+                # get a list of known alias that have this name
+                alias_lst=self._alias_list.get(name)
+                if alias_lst is None:
+                    #error we don't have a target called this to build
+                    print "unknown target defined!"
+                #filter out any of these that don't match the properties
+                for k,v in tmp.properties.items():
+                    for i in alias_lst[:]:
+                        pobj= self._from_alias(i)
+                        if k == 'version':
+                            if pobj.Version not in version.version_range(v+'.*'):
+                                alias_lst.remove(i)
+                        elif k in ['target','target-platform','target_platform']:
+                            if pobj.Env['TARGET_PLATFORM'] != v:
+                                alias_lst.remove(i)
+                        elif k in ['cfg','config','build-config','build_config']:
+                            if not pobj.Env.isConfigBasedOn(v):
+                                alias_lst.remove(i)
+                        elif k == mode:
+                            mv=v.split(',')
+                            for v in mv:
+                                if v not in pobj._mode:
+                                    alias_lst.remove(i)
+                                    break
+                        else:
+                            #look up in the parts environment
+                            try:
+                                if pobj.Env[k] != v:
+                                    alias_lst.remove(i)
+                            except KeyError:
+                                alias_lst.remove(i)
+                for i in alias_lst:
+                    ret.append(concept+"::alias::"+i)
+                                    
+                                    
+                    
+         # trying to translate based on the cache
+        for t in targets:
+            tmp=target_type(t)
+            # first see if this is ambiguous
+            if not tmp.isPartAlias:
+                # we are not sure
+                if self._alias_list.get(tmp.orginal_string) is not None:
+                    #we are sure this is a Parts value
+                    tmp.name=tmp.orginal_string
+                else:
+                    #we are sure this is a SCons value
+                    has_scons_value=True
+                    ret.append(tmp.orginal_string)
+            
+            #we are that this is a Part target format
+            # see what concept is defined
+            if tmp.concept:
+                concept=tmp.concept
+            else:
+                concept='build'
+            if tmp.all:
+                # add the concept:: alias as we define this
+                ret.append(concept)
+            elif tmp.alias:
+                # add the concept::alias alias as we define this
+                ret.append(concept+"::alias::"+tmp.alias)
+            elif tmp.name:
+                #This case can have multipule matches
+                # get a list of known alias that have this name
+                get_cached_alias_with_name
+    
+    def _get_stored_root_alias_from_target(self,tobj):
+        ''' 
+        try to get the get the root alias based on a target_type object
+        '''            
+        
+        # first see if this is ambiguous
+        if not tobj.isPartAlias:
+            # we are not sure
+            # first we try to see if the name can be matched
+            tmp=self._get_stored_root_alias_from_name(tobj.orginal_string)
+            if tmp:
+                #we are sure this is a Parts value
+                return tmp
+            # see if this is an alias value
+            tmp=self._get_stored_root_alias_from_alias(tobj.orginal_string)
+            if tmp:
+                #we are sure this is a Parts value
+                return tmp
+            else:
+                #we are sure this is a SCons value
+                return None
+               
+        if tobj.all:
+            # concept:: was defined.. load everything ( clean up to be smarter)
+            return []
+        elif tobj.alias:
+            # we have an alias.. find all root parts with this alias
+            if self._get_stored_root_alias_from_alias(tobj.alias) == []:
+                reporter.report_error("Unknown alias: %s"%(tobj.alias),show_stack=False)
+            return self._get_stored_root_alias_from_alias(tobj.alias)
+        elif tobj.name:
+            #this is a name, get all root parts with this name
+            if self._get_stored_root_alias_from_name(tobj.name) == []:
+                reporter.report_error("Unknown name: %s"%(tobj.name),show_stack=False)
+            return self._get_stored_root_alias_from_name(tobj.name)
+        
+        
+    def _get_stored_root_alias_from_name(self,name):
+        #load the global data
+        tmp=datacache.GetCache("global_data")
+        if tmp is None: return None
+        # get the known parts list
+        known_alias=tmp.get('known_parts')
+        if known_alias is None: return None
+        ret=[]
+        # for each known part we load it cache
+        # and see if it knows about the alias
+        # as we can have more than one match
+        for i in known_alias:
+            # load cache for part
+            tmp=datacache.GetCache("part-"+i)
+            
+            # check that there is cache data
+            if tmp is None:
+                # if this happens.. something is very wrong.
+                # we assume all data is bad
+                self.__cache_bad=True
+                return None
+            # see if alias is in the known set here
+            
+            elif tmp['name']==name:
+                # if it is we have a match
+                # store the root alias for this part
+                common.append_unique(ret,tmp.get('root_alias'))
+        else:
+            return ret
+        return None
+    
+    def _get_stored_root_alias_from_alias(self,target_str):
+        '''
+        Given the target_str and based on stored data what is the root part alias 
         for this part.
         '''
         #load the global data
@@ -51,9 +250,9 @@ class part_manager(object):
                 self.__cache_bad=True
                 return None
             # see if alias is in the known set here
-            elif alias in tmp['alias_set']:
+            elif target_str == tmp['alias']:
                 # if it is we have a match
-                #store the root alias for this part
+                # store the root alias for this part
                 common.append_unique(ret,tmp.get('root_alias'))
         else:
             return ret
@@ -119,7 +318,7 @@ class part_manager(object):
         # setup new object
         tmp._setup_()
         # add to set of known parts
-        self._add_part(tmp.Alias,tmp)   
+        self._add_part(tmp)   
         #read in the data
         #print " Processing",tmp.Alias
         tmp.ReadFile()
@@ -147,10 +346,146 @@ class part_manager(object):
                         )
                 tmp._setup_()
                 tmp._setup_from_cache_data(subcache)
-                self._add_part(tmp.Alias,tmp)
+                self._add_part(tmp)
                 self._load_part_from_cache(tmp)
                 tmp._map_alias()
                 
+    def _map_targets_to_root_parts(self):
+        ''' This function will try to map the targets to a set of known Parts.
+        If the cache is bad, or there is one target that we can't map we will
+        then load everything
+        '''
+        root_parts=[]
+        for t in SCons.Script.BUILD_TARGETS:
+            tmp=self._get_stored_root_alias_from_target(target_type(t))
+            
+            if tmp is None:
+                # we have a unknown target
+                # note we could test all parts files to see if they changed
+                # this would allow us to know if target could be cached safely
+                root_parts=None
+                break
+            else:            
+                #for each root alias we have we want to add the set of root parts
+                # this this part and any sub parts it might have
+                for t in tmp:
+                    common.extend_unique(root_parts,[t]+self._get_stored_full_root_depends(t))
+        if root_parts is None:
+            # map everything
+            return (self.parts.values(),True)
+        if root_parts == []:  
+            # map everything
+            return (self.parts.values(),False)
+        else:
+            return ([self.parts[i] for i in root_parts],False)
+    
+    def map_scons_target_list(self):
+        ''' here we try to map the Parts target values to values SCons can build'''
+        # trying to translate based on everything being read in
+        new_list=[] # the new target list
+        reporter.verbose_msg(['loading'],"Orginal BUILD_TARGETS: %s"%SCons.Script.BUILD_TARGETS)
+        for t in SCons.Script.BUILD_TARGETS:
+            tobj=target_type(t)
+            # first see if this is ambiguous
+            if not tobj.isPartAlias:
+                # we are not sure
+                # first we try to see if the name can be matched
+                ta=target_type("alias::"+t)
+                tn=target_type("name::"+t)
+                if self.__name_to_alias.get(tn.name):
+                    #we are sure this is a Parts value
+                    tobj=tn
+                # see if this is an alias value
+                elif self.parts.get(ta.alias):
+                    #we are sure this is a Parts value
+                    tobj=ta
+                else:
+                    #we are sure this is a SCons value
+                    new_list.append(t)
+            
+            
+            #we are that this is a Part target format
+            # see what concept is defined
+            if tobj.concept:
+                concept=tobj.concept
+            else:
+                concept='build'
+            if tobj.all:
+                # add the concept:: alias as we define this
+                new_list.append(concept+"::")
+            elif tobj.alias:
+                # add the concept::alias alias as we define this
+                new_list.append(concept+"::alias::"+tobj.alias)
+            elif tobj.name:
+                #This case can have multipul matches
+                # get a list of known alias that have this name
+                alias_lst=self.__name_to_alias.get(tobj.name)
+                if alias_lst is None:
+                    #error we don't have a target called this to build
+                    reporter.report_error("Unknown name: %s"%(tobj.name),show_stack=False)
+                #filter out any of these that don't match the properties
+                for k,v in tobj.properties.items():
+                    for i in alias_lst.copy():
+                        pobj= self._from_alias(i)
+                        print k,v
+                        if k == 'version':
+                            if pobj.Version not in version.version_range(v+'.*'):
+                                alias_lst.remove(i)
+                        elif k in ['target','target-platform','target_platform']:
+                            if pobj.Env['TARGET_PLATFORM'] != v:
+                                alias_lst.remove(i)
+                        elif k in ['cfg','config','build-config','build_config']:
+                            if not pobj.Env.isConfigBasedOn(v):
+                                alias_lst.remove(i)
+                        elif k == 'mode':
+                            mv=v.split(',')
+                            for v in mv:
+                                if v not in pobj._mode:
+                                    alias_lst.remove(i)
+                                    break
+                        else:
+                            #look up in the parts environment
+                            try:
+                                if pobj.Env[k] != v:
+                                    alias_lst.remove(i)
+                            except KeyError:
+                                alias_lst.remove(i)
+                if alias_lst==set():
+                    reporter.report_error('"%s" did not map to any defined Parts'%t)
+                for i in alias_lst:
+                    new_list.append(concept+"::alias::"+i)
+        SCons.Script.BUILD_TARGETS=new_list
+        reporter.verbose_msg(['loading'],"Updated BUILD_TARGETS: %s"%SCons.Script.BUILD_TARGETS)
+    
+    def _make_out_of_date_list(self,root_parts):
+        ''' this function takes a list of Parts and returns a list of what is considered out of date
+        
+        @param root_parts The lists of Parts objects to test
+        
+        returns a list of Parts Aliases for each parts that is out of date and a list of Parts to not even load from cache
+        '''
+        # if we are not building (ie reporting help or cleaning) and the cache is not good
+        # we don't want to do this check
+        out_of_date=[]
+        do_not_load=[]
+        if self.__cache_bad==False and common.g_engine._build_mode=='build':
+            uttt=time.time() # the start time of the checking
+            
+            # see if we should do any checks at all for making a lesser set
+            if SCons.Script.GetOption("incremental_cache"):
+                #select some type of fast incremental logic
+                if SCons.Script.GetOption("incremental_dependent_checks"):
+                    # Check that dependents are up-to-date as well
+                    out_of_date=self._setup_fast_incremental(root_parts)
+                else:
+                    # assume dependents are up to date.. may result in build issues
+                    out_of_date=self._setup_fast_incremental_no_update_check(root_parts)
+                    
+            # otherwise we see if anything is out of date so we might be able to exit early
+            elif SCons.Script.GetOption("early_exit"):
+                out_of_date=self._setup_out_of_date(root_parts)
+            reporter.verbose_msg("update_check_time","Total Time for update check: %s seconds"%(time.time()-uttt))
+        return out_of_date, do_not_load
     
     def ProcessParts(self):
         ''' 
@@ -162,153 +497,92 @@ class part_manager(object):
         # check to see that we even have targets to process
         if targets == []:
             return 
-        
-        # see if the --use-sdk option is set
-        #use_sdk=SCons.Script.GetOption('use_sdk')
-
-        #given that the context should be good
-        # try to map the target to a known Part
+        # try to map the target to a known Part, or load everything
         reporter.print_msg("Processing Targets to find known reduce set of Parts objects to define")
-        root_parts=[]
-        for t in targets:
-            tmp=self._get_stored_root_alias(t)
-            if tmp is None:
-                # we have a unknown target
-                # note we could test all parts files to see if they changed
-                # this would allow us to know if target could be cached safely
-                root_parts=[]
-                break
-            else:            
-                #for each root alias we have we want to add the set of root parts
-                # this this part and any sub parts it might have
-                for t in tmp:
-                    common.extend_unique(root_parts,[t]+self._get_stored_full_root_depends(t))
+        root_parts,skip_update_check=self._map_targets_to_root_parts()
         
-        print root_parts
-        # if we don't have any root parts.. read everything
-        if root_parts == []:
-            root_parts = self.parts.values()
-        else:
-            # we have root parts.. pull these objects in to the list to process
-            tmp=[]
-            for i in root_parts:
-                try:
-                    tmp.append(self.parts[i])
-                except KeyError:
-                    reporter.verbose_msg('part_manager',"%s was not found in set of Root Part defined, global cache out of date?"%(i))
-            root_parts=tmp
-            
-        def pcmp(x,y):
-            
-            #if x.Alias == y.Alias: return 0
-            xcache=datacache.GetCache("part-"+x.Alias)
-            ycache=datacache.GetCache("part-"+y.Alias)
-            
-            if ycache:
-                # Y uses X
-                xiny = x.Alias in ycache['full_root_depends'] or y._uses_part(x)
-                ylen = len(ycache['full_root_depends'])
-            else:
-                xiny=y._uses_part(x)
-                ylen = len(y._uses)
-            if xcache:
-                # X uses Y
-                yinx = y.Alias in xcache['full_root_depends'] or x._uses_part(y)
-                xlen = len(xcache['full_root_depends'])
-            else:
-                yinx= x._uses_part(y)
-                xlen = len(x._uses)
-            
-            if xiny: return -1
-            elif yinx: return 1
-            # sort my length of some sort of dependance lenght
-            elif xlen > ylen: return 1
-            elif xlen < ylen: return -1
-            return cmp(x._order_value,y._order_value)
-            
+        reporter.verbose_msg(['loading'],common.DelayVariable(lambda :"Root Parts to Load : %s" %([i.Alias for i in root_parts])))
             
         #is everything up to date on disk update file on disk?
+        # if not we need to update it
+        reporter.print_msg("Updating disk")
         self.UpdateOnDisk( root_parts )
         
         # update check.. here we will:
-        # 1) try to see if we can exit early cause everything is up-to-date
+        # 1) try order the parts a little based on known depends ordering
         # 2) try to figure out if everything is not up-to-date what can be loaded from the cache
-        # 3) try order the parts a little based on known depends ordering
+        # 3) try to see if we can exit early if everything is up-to-date
         
-        # for classic formats mainly... only works if we have datacache stored
-        # or if the part has a direct toplevel depends statement in the Part
-        # creation call. For new style Parts this might help, or is pointless 
-        
+        ##########################################
+        # we sort the set of parts we plan to load
+        reporter.print_msg("Sorting Targets")
         root_parts.sort(pcmp)
-        
-        
-        print [i.Alias for i in root_parts]
-##        for i in root_parts:
-##            print i.Alias
-##            print datacache.GetCache("part-"+i.Alias)['full_root_depends']
-##            print
+                
+        reporter.verbose_msg(['loading'],common.DelayVariable(lambda :"Sorted : {0}".format([i.Alias for i in root_parts]) ))
         
         out_date_list=[]
+        do_not_load=[]
+        building=common.g_engine._build_mode=='build'                
         
-        if self.__cache_bad==False and common.g_engine._build_mode=='build':
+        if skip_update_check==False:
             
-            uttt=time.time()
-            if SCons.Script.GetOption("incremental_cache"):
-                #select some type of fast incremtail logic
-                if SCons.Script.GetOption("incremental_dependent_checks"):
-                    out_date_list=self._setup_fast_incremental(root_parts)
-                else:
-                    out_date_list=self._setup_fast_incremental_no_update_check(root_parts)
-                    
-                    
-            elif SCons.Script.GetOption("update_check_exit"):
-                out_date_list=self._setup_out_of_date(root_parts)
-                
-            reporter.verbose_msg("update_check_time","Total Time for update check: %s seconds"%(time.time()-uttt))
-            if out_date_list == [] and self.__cache_bad==False and SCons.Script.GetOption("update_check_exit"):
+            ##########################################################
+            # here we try to figure out what is out of data if anything
+            out_date_list,do_not_load=self._make_out_of_date_list(root_parts)
+        
+            ##########################################################
+            # Here we check that state of what is out of date to see if we can exit early
+            if out_date_list == [] and self.__cache_bad==False and SCons.Script.GetOption("early_exit") and building:
                 reporter.print_msg("Everything seem to be up-to-date. Shutting down...")
                 common.g_engine.def_env.Exit(0)
-            
+        else:
+            reporter.print_msg("Skipping update checks because of unknown build targets.")
+        
+        # here we load all the Parts we think we should load
+        reporter.print_msg("Loading Part files...")
+        
+        total=len(root_parts)*1.0
+        cnt=1
+        cache=self.__cache_bad==False and skip_update_check==False
         
         read_start=time.time()
-        
         for p in root_parts:
-            
-            # we go through all defined root parts
-            if self.__cache_bad==False and p.Alias not in out_date_list and common.g_engine._build_mode=='build':
+            part_file_load_time=time.time()
+            # see if this shoudl be loaded from cache
+            if cache and building and p.Alias not in out_date_list and p.Alias not in do_not_load :
                 cache=datacache.GetCache("part-"+p.Alias)
-                reporter.print_msg("%s is up-to-date loading cache"%p.Alias)
+                msg="up-to-date! Loaded from cache: %s."%p.Alias
                 p._setup_from_cache_data(cache)
                 self._load_part_from_cache(p)
                 p._map_alias()
-
+            elif p.Alias in do_not_load:
+                msg="up-to-date! Skipped loading Parts: %s."%p.Alias
             else:
-                reporter.print_msg("%s is out-of-date loading part file"%p.Alias)
+                if skip_update_check:
+                    msg="Loaded from file: %s."%p.Alias
+                else:
+                    msg="out-of-date! Loaded from file: %s."%p.Alias
                 p.ReadFile()
+                # move this?? This maps any unknown Part() calls that should be rebound to a parts object
                 self._clean_unknown(p)
             
                 # figure out if this part is new style or old style
                 valid_sec=self.hasValidSection(p)
                 if not p._hasTargetFiles() and valid_sec:
-                    #print "new format",p.Name
-                    p._set_part_format('new')
                     # new format
+                    p._set_part_format('new')
                     has_valid_sections=True
                 elif p._hasTargetFiles() and valid_sec:
-                    # mixed
+                    # mixed.. not sure what to do yet with this...
                     #print "mixed",p.Name
                     pass
                 elif p._hasTargetFiles() and not valid_sec:
                     #old format
                     # if old format we have also processed the part
-                    #print "old",p.Name
                     p._set_part_format('classic')
-                    
                     p._map_alias()
                     p._setup_sdk()
                     p._map_targets()
-            
-                    
                 else:
                     # did not define anything to do?
                     # could be a root parts with subparts?
@@ -316,8 +590,10 @@ class part_manager(object):
                     p._map_alias()
                     p._setup_sdk()
                     #print "unknown",p.Name
-            
-                    
+            reporter.verbose_msg(['loading'],"{0:60}[{1:.2f} secs]".format(msg,(time.time()-part_file_load_time)))
+            reporter.print_console(" Loading %3.2f%% %s \033[K"%((cnt/total*100),msg))
+            cnt+=1
+        
         if has_valid_sections:
             # given that we have new sections to process
             #get targets
@@ -330,6 +606,8 @@ class part_manager(object):
                 for section_type in sections:
                     #process that section
                     self.ProcessSection(section_type,t)
+        
+        self.map_scons_target_list()
         
         
     def ProcessSection(self,sec_type,target):
@@ -387,13 +665,18 @@ class part_manager(object):
             if vcsobj.NeedsToUpdate():
                 # we check to see if the vcs object allow for the 
                 # parallel checkout policy.
-                
                 if vcsobj.AllowParallelAction():
                     p_list.append(vcsobj)
                 else:
                     s_list.append(vcsobj)
-            
-                
+        retcode=0    
+        def post_vcs_func(jobs,tm):
+            if jobs.were_interrupted():
+                retcode=3
+                reporter.report_error("Updating of disk was interrupted!",show_stack=False)
+            elif tm.Stopped:
+                retcode=4
+                reporter.report_error("Errors detected while updating disk!",show_stack=False)
                     
         #checkout anything in the queue
         try:
@@ -404,24 +687,26 @@ class part_manager(object):
                     vcs_j=SCons.Script.GetOption('num_jobs')
                 p_list.append(None)
                 jobs = SCons.Job.Jobs(vcs_j, p_list)
-                jobs.run()
+                jobs.run(postfunc = lambda : post_vcs_func(jobs,p_list))
             if s_list._has_tasks():
                 p_list.append(None)
                 jobs = SCons.Job.Jobs(1, s_list)
-                jobs.run()
+                jobs.run(postfunc = lambda : post_vcs_func(jobs,s_list))
+        except:
+            common.g_engine.def_env.Exit(retcode)
         finally:
             for p in part_set:
                 p.Vcs.PostProcess()
             datacache.SaveCache(key='vcs')
             
         
-    def _add_part(self,key,object):
-        if key is None:
+    def _add_part(self,object):
+        if object.Alias is None:
             self.__to_map_parts.append(object)
             return
         self.__part_count+=1
         object._set_order_value(self.__part_count)
-        self.parts[key]=object
+        self.parts[object.Alias]=object
         
     def _clean_unknown(self,known_pobj):
         for i in self.__to_map_parts:
@@ -440,7 +725,7 @@ class part_manager(object):
         ret=[]
         cnt=0;
         total=len(root_parts)*1.0+1
-        reporter.print_console("%3.2f%%"%(cnt/total*100))
+        reporter.print_console(" %3.2f%%"%(cnt/total*100))
         for p in root_parts:
             st=time.time()
             reporter.verbose_msg("update_check",'Checking if Part "%s" is up-to-date'%p.Alias)
@@ -451,8 +736,8 @@ class part_manager(object):
                 break
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
             cnt+=1
-            reporter.print_console("%3.2f%%"%(cnt/total*100))
-        reporter.print_console('100%%')
+            reporter.print_console(" %3.2f%%"%(cnt/total*100))
+        reporter.print_console(' 100%%')
         return ret
             
         
@@ -467,7 +752,7 @@ class part_manager(object):
         reporter.print_msg("Processing Targets to see what is up-to-date")
         cnt=0;
         total=len(root_parts)*1.0+1
-        reporter.print_console("%3.2f%%"%(cnt/total*100))
+        reporter.print_console(" %3.2f%%"%(cnt/total*100))
         uttt=time.time()
         for p in root_parts:
             st=time.time()
@@ -487,7 +772,7 @@ class part_manager(object):
                         out_date_list.append(p.Alias)
                         # since this part is out of data.. and it could have sub-parts that are out of date
                         # we have to force build the whole object, otherwise it might not become up-to-date
-                        SCons.Script.BUILD_TARGETS.append(p.Alias)
+                        #SCons.Script.BUILD_TARGETS.append(p.Alias)
                         reporter.verbose_msg("update_check",'Part "%s" is out of date because it depends on a Part "%s" that is out of date'%(p.Alias,x))
                         continue
             # we store failures as we assume that this is less than
@@ -496,11 +781,11 @@ class part_manager(object):
                 out_date_list.append(p.Alias)
                 # since this part is out of data.. and it could have sub-parts that are out of date
                 # we have to force build the whole object, otherwise it might not become up-to-date
-                SCons.Script.BUILD_TARGETS.append(p.Alias)
+                #SCons.Script.BUILD_TARGETS.append(p.Alias)
             cnt+=1
-            reporter.print_console("************************************************ %3.2f%%"%(cnt/total*100))
+            reporter.print_console(" %3.2f%% %s is %s                "%(cnt/total*100, p.Alias,p.Alias in out_date_list and "out of data" or "up to date!"))
             reporter.verbose_msg("update_check_time","Update check time for %s: %s seconds"%(p.Alias,time.time()-st))
-        reporter.print_console('100%%')
+        reporter.print_console(' 100%%')
         return out_date_list
         
     def _setup_fast_incremental_no_update_check(self,root_parts):
@@ -515,7 +800,7 @@ class part_manager(object):
         ret=[]
         targets=SCons.Script.BUILD_TARGETS
         for t in targets:
-            tmp=self._get_stored_root_alias(t)
+            tmp=self._get_stored_root_alias_from_target(target_type(t))
             if tmp is None:
                 # we have an issue as we can't map the target
                 # so just assume everything
@@ -557,7 +842,7 @@ class part_manager(object):
                 if i.Name==name and i.Version==version and i._kw.get('TARGET_PLATFORM',common.g_engine.def_env['TARGET_PLATFORM']) == target_platform:
                     return i
             return self._from_nvp(name,version,target_platform)
-        
+
         reporter.report_error(
                     "Only alias or name-version-target_platform combination can be used"
                     )
@@ -575,33 +860,47 @@ class part_manager(object):
         '''
         return self._from_alias(env.get('PART_ALIAS'))
     
-    def _name_from_refstr(self,refstr):
-        ''' returns the name of a part the ref string would point to
-        
-        @param refstr The string that refers to a part name, such as alias::foo
-        
-        This returns a Part name to a root part or None if nothing is found
+    #def _name_from_refstr(self,refstr):
+    #    ''' returns the name of a part the ref string would point to
+    #    
+    #    @param refstr The string that refers to a part name, such as alias::foo
+    #    
+    #    This returns a Part name to a root part or None if nothing is found
+    #    '''
+    #    # clean up more later...
+    #    if refstr.startswith('alias::'):
+    #        # we have an alias
+    #        tmp=self._from_alias(refstr[len('alias::'):])
+    #        if tmp:
+    #            return tmp.Name
+    #        else:
+    #            return None
+    #    else: 
+    #        if refstr.startswith('name::'):
+    #            refstr=refstr[len('name::'):]
+    #        #else assume name ( assuming it is root??)
+    #    
+    #        # see if we have a name match
+    #        alias_lst=self._alias_list(name)
+    #        if alias_lst == []:
+    #            return None
+    #        return refstr
+    
+    
+    def _has_name(self,name):
+        ''' return True if we have reason to believe this is a Part name that is known
+        We return True if We have a 100% match, in the known names. If this is empty
+        we guess based on what in the cache
         '''
-        # clean up more later...
-        if refstr.startswith('alias::'):
-            # we have an alias
-            tmp=self._from_alias(refstr[len('alias::'):])
-            if tmp:
-                return tmp.Name
-            else:
-                return None
-        else: 
-            if refstr.startswith('name::'):
-                refstr=refstr[len('name::'):]
-            #else assume name ( assuming it is root??)
+        if name in self._alias_list:
+            return True
+        # check the cache
+        if _get_stored_root_alias(name) is not None:
+            return True
+        # we can't say that we know we have a Part with this name
+        return False
         
-            # see if we have a name match
-            alias_lst=self._alias_list(name)
-            if alias_lst == []:
-                return None
-            return refstr
         
-            
         
     def _from_nvp(self,name,ver_range,target_platform,local_space=None):
         ret=None

@@ -80,7 +80,8 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
         if pobj is not None and 'SConfSourceBuilder' not in self.object['BUILDERS']:
             pobj._target_files.update(tmp)
         else:
-            print tmp[0], 'missing'
+            #print tmp[0], 'missing'
+            pass
         return tmp
     
 from SCons.Script.SConscript import SConsEnvironment

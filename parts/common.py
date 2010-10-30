@@ -141,6 +141,20 @@ def try_load_part_component(env,comp):
 # that holds it
 class bindable(object):
     pass 
+
+class DelayVariable(object):
+    ''' This class defines a varable that will not be evaluted until it is requested
+    This allow it to be assigned some logic and not execute it till requested, as needed
+    The class will reset the value in the SCons Environment with the delayed value
+    once it is evaluated
+    '''    
+    def __init__(self,func):
+        self.__func=func
+    def __eval__(self):
+        return self.__func()
+    def __str__(self):
+        return str(self.__eval__())
+    
     
 class namespace(dict,bindable):
     ''' helper class to allow making subst varaible in SCons to allow a clean
@@ -154,6 +168,9 @@ class namespace(dict,bindable):
         code, I need to subst stuff here before SCons can try to, else it will
         try to set this object to Null string, causing an unwanted error'''
         tmp=self[name]
+        if hasattr(tmp,'__eval__'):
+            tmp=tmp.__eval__()
+            self[name]=tmp
         if (is_string(tmp) or tmp is None) and self.__dict__.has_key('env'):
             return self.env.subst(tmp)
         return tmp
@@ -174,6 +191,7 @@ class namespace(dict,bindable):
         tmp=namespace(**self.copy())
         tmp._bind(env,key)
         return tmp
+    
     def _bind(self,env,key):
         self.__dict__['env']=env
         

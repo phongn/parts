@@ -34,6 +34,20 @@ class NullStream(object):
     def flush(self):
         pass
 
+class Cursor(object):
+    def __init__(self,x,y):
+        self.__x=x
+        self.__y=y
+    
+    @property
+    def X(self):
+        return self.__x
+    
+    @property
+    def Y(self):
+        return self.__y
+        
+
 class Console(object):
     ''' only support output operations at this time'''
     out_stream=1
@@ -165,6 +179,19 @@ class Console(object):
                 (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
                 return  bottom - top + 1
             return 40
+        
+        @property
+        def Cursor(self):
+            # move to common var prevent repeating the getting of common value
+            handle = ctypes.windll.kernel32.GetStdHandle(-12)        
+            string_buffer = ctypes.create_string_buffer(22)        
+            ret = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(handle, string_buffer)            
+            wattr=0
+            if ret:
+                (bufx, bufy, curx, cury, wattr,left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", string_buffer.raw)
+                return Cursor(curx,cury)
+            return Cursor(0,0)
+        
     else:
         @property
         def Width(self):

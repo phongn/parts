@@ -264,8 +264,8 @@ class base(object):
                 ret=removeall(self.CheckOutDir)
                 reporter.print_msg("Doing full checkout.")
                 ret=self.CheckOut()
-        if ret:
-            reporter.report_error("Failure detected during checkout sources")
+        return ret
+        
             
 
     def clean_step(self,out_dir):
@@ -336,7 +336,7 @@ class base(object):
     
     def PostProcess(self):
         ''' This function is called when the system is done with all the update checks and disk updates
-        This allows the object to update an data it needs on disk, or in the environment. This is always called.
+        This allows the object to update any data it needs on disk. This is always called.
         '''
         pass
         
@@ -354,32 +354,34 @@ class base(object):
             reporter.print_msg("cmd str=%s"%cmd_str)
         sys.stdout.flush ()
 
-        try:
-            cmd_output = ""
-            proc = subprocess.Popen (cmd_str, shell=True, stdout=subprocess.PIPE,
-                                     stderr=subprocess.STDOUT,
-                                     universal_newlines=True)
-            # while command runs get output                                
-            while (proc.poll () == None):
-                tmp = proc.stdout.readline ()
-                if echo:
-                    sys.stdout.write (tmp)
-                cmd_output += tmp
-            # when command is done get the rest of the output            
-            for last_output in proc.stdout.readlines ():
-                if echo:
-                    sys.stdout.write (last_output )
-                cmd_output += last_output 
-            if echo: # print out a new line
-                print 
-            # get return codes
-            ret = proc.returncode
-            if ret:
-                return None
-            else:
-                return cmd_output
-        except:
+        #try:
+        cmd_output = ""
+        proc = subprocess.Popen (cmd_str, shell=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT,
+                                    universal_newlines=True)
+        # while command runs get output                                
+        while (proc.poll () == None):
+            tmp = proc.stdout.readline ()
+            if echo:
+                sys.stdout.write (tmp)
+            cmd_output += tmp
+        # when command is done get the rest of the output            
+        for last_output in proc.stdout.readlines ():
+            if echo:
+                sys.stdout.write (last_output )
+            cmd_output += last_output 
+        if echo: # print out a new line
+            print 
+        # get return codes
+        ret = proc.returncode
+        if ret:
             return None
+        else:
+            return cmd_output
+        #except KeyError:
+        #    raise
+        #except:
+        #    return None
 
 
 # add configuartion varaible needed for part

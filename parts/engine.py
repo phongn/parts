@@ -268,7 +268,7 @@ class parts_addon(object):
         self.__post_process_queue=[]
         self.__cache_key=None
         self.__build_mode=None
-        self.__had_error=False
+        self.__had_error=None
         
         # start up the reporter which controls the streams and all output
         use_color=SCons.Script.GetOption('use_color')
@@ -359,35 +359,39 @@ class parts_addon(object):
         that we might want to do. such as processing the part files, 
         delayed mapping, etc
         '''
-        
-        targets=SCons.Script.BUILD_TARGETS
-        # check to see that we even have targets to process
-        if targets == []:
-            return 
-        
-        # generate the cache key
-        self.generate_cache_key()
-        
-         #set stack info for reporting issues
-        reporter.SetPartStackFrameInfo()
-        
-        # If the logger is not being used we want to get ride of the
-        # queue logger to save memory
-        if reporter.g_rpter.logger is logger.QueueLogger:
-            # this should reset QueueLogger
-            reporter.g_rpter.logger=logger.nil_logger
+        self.__had_error=False
+        try:
+            targets=SCons.Script.BUILD_TARGETS
+            # check to see that we even have targets to process
+            if targets == []:
+                return 
+            
+            # generate the cache key
+            self.generate_cache_key()
+            
+             #set stack info for reporting issues
+            reporter.SetPartStackFrameInfo()
+            
+            # If the logger is not being used we want to get ride of the
+            # queue logger to save memory
+            if reporter.g_rpter.logger is logger.QueueLogger:
+                # this should reset QueueLogger
+                reporter.g_rpter.logger=logger.nil_logger
+                        
+            #process the Parts if any exist
+            self.__part_manager.ProcessParts()
                     
-        #process the Parts if any exist
-        self.__part_manager.ProcessParts()
-                
-        # process Queue
-        self.parts_process_queue()        
+            # process Queue
+            self.parts_process_queue()        
 
-        #clear the datacache
-        datacache.ClearCache()
-        
-        #reset our statck info for error reporting.. (todo. double chack this again)
-        reporter.ResetPartStackFrameInfo()
+            #clear the datacache
+            datacache.ClearCache()
+            
+            #reset our statck info for error reporting.. (todo. double chack this again)
+            reporter.ResetPartStackFrameInfo()
+        except:
+            self.__had_error=True
+            raise
                 
         
     
@@ -779,6 +783,10 @@ Use -H or --help-options for a list of scons options
     
     @property
     def HadError(self):
+        if self.__had_error is None:
+            SCons.Script.Main.exit_status=2
+            return True
+            
         return self.__had_error
     
     @HadError.setter

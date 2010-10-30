@@ -14,7 +14,7 @@ def db_key(length):
     if __db_key is None:
         import hashlib
         md5=hashlib.md5()
-        md5.update("DB Cache Version 1.0 length %s"%length)
+        md5.update("DB Cache Version 1.0 length %s"%(length))
         __db_key=md5.hexdigest()
     return __db_key
      
@@ -40,7 +40,11 @@ def store_cache_data(datafile,data):
     if not os.path.exists(path):
         os.makedirs(path)
     output = open(datafile, 'wb')
-    cPickle.dump((db_key(len(data)),data), output)
+    try:
+        v=data.get('__version__',0)
+    except AttributeError:
+        v=0
+    cPickle.dump(((db_key(len(data)),v),data), output)
     output.close()
     
 
@@ -61,9 +65,14 @@ def GetCache(name,key=None):
     except KeyError:
         # if not already loaded we load it
         ret=load_cache_data(filename)
-        if ret is not None and ret[0] == db_key(len(ret[1])):
-            __cache[filename]=ret[1]
-            return ret[1]
+        if ret is not None:
+            try:
+                v=ret[1].get('__version__',0)
+            except AttributeError:
+                v=0
+            if ret[0] == (db_key(len(ret[1])),v):
+                __cache[filename]=ret[1]
+                return ret[1]
     # we don't have a cache for this combo
     
     return None

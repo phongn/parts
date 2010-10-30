@@ -1,6 +1,7 @@
 
 from .. import common
 from .. import datacache
+from .. import reporter
 from base import base
 
 import os
@@ -18,6 +19,11 @@ class svn(base):
         '''
         self.__revision = revision
         self._disk_data=None
+        self.__completed=None
+        if repository.endswith('/'):
+            repository=repository[:-1]
+        if server and server.endswith('/'):
+            server=server[:-1]
         super(svn, self).__init__(repository,server)
     
     @base.Server.getter
@@ -102,8 +108,11 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
+        reporter.verbose_msg(["vcs_update","vcs_svn"]," Doing existance check")
         if self.PartFileExists and os.path.exists(os.path.join(self.CheckOutDir,'.svn')):
             return None
+        reporter.verbose_msg(["vcs_update","vcs_svn"]," Existance check failed")
+        self.__completed=False
         return "%s needs to be updated on disk"%self._pobj.Alias
             
     def do_check_logic(self):
@@ -112,19 +121,35 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
+        reporter.verbose_msg(["vcs_update","vcs_svn"]," Using check vcs logic.")
         #test for existance
         tmp=self.do_exist_logic()
         if tmp:
+            self.__completed=False
             return tmp
         #get data cache and see if our paths match
         cache=datacache.GetCache(name=self._env['ALIAS'],key='vcs')
         if cache:
+            reporter.verbose_msg(["vcs_update","vcs_svn"]," Cached server: %s"%(cache['server']))
+            reporter.verbose_msg(["vcs_update","vcs_svn"]," Requested Server: %s"%(self.FullPath))
             if cache['server']!=self.FullPath:
+                reporter.verbose_msg(["vcs_update","vcs_svn"]," Cache version of server does not match.. verifing on disk..")
                 # hard check to verify it is really bad
                 data=self.get_svn_data()
                 if data:
                     if data['server'] != self.FullPath:
-                        return 'Server on disk is different than the one requested for Parts "%s"'%self._pobj.Alias
+                        reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk version does not match")
+                        self.__completed=False
+                        return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
+                    else:
+                        reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk version matches")
+                else:
+                    self.__completed=False
+                    reporter.verbose_msg(["vcs_update","vcs_svn"]," Could not query disk version for information!")
+                    return 'Disk copy seems bad... updating'
+        else:
+            reporter.verbose_msg(["vcs_update","vcs_svn"]," Data Cache does not exist.. doing force logic")
+            return self.do_force_logic()
         
         
             
@@ -133,14 +158,21 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
+        reporter.verbose_msg(["vcs_update","vcs_svn"]," Using force vcs logic.")
+        #test for existance
+        tmp=self.do_exist_logic()
+        if tmp:
+            self.__completed=False
+            reporter.verbose_msg(["vcs_update","vcs_svn"]," Existance checked failed")
+            return tmp
         data=self.get_svn_data()
         if data:
             if data['server'] != self.FullPath:
-                return 'Server on disk is different than the one requested for Parts "%s"'%self._pobj.Alias
+                self.__completed=False
+                reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk checked failed")
+                return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
             else:
                 return None
-        else:
-            return "%s needs to be updated on disk"%self._pobj.Alias
         
         
     
@@ -169,23 +201,30 @@ class svn(base):
         
         '''
         #Setup and store vcs data cache logic
-        tmp={
-        'type':'svn',
-        'server':self.FullPath,
-        'completed':result
-        }
-        
-        datacache.StoreData(name=self._env['ALIAS'],data=tmp,key='vcs')
+        self.__completed=result
+
         
         
     def PostProcess(self):
         ''' This function is called when the system is done updating the disk
-        This allows the object to update an data it needs on disk, or in the environment
+        This allows the object to update any data it needs on disk, or in the environment
         '''
-        self._env["VCS"].REVISION=self.get_svn_data()['revision']
-        self._env["VCS"].MODIFIED=self.get_svn_data()['modified']
-        self._env["VCS"].PARTIAL=self.get_svn_data()['partial']
-        self._env["VCS"].SWITCHED=self.get_svn_data()['switched']
+        if self.__completed is None:
+            self.__completed=True
+        
+        tmp={
+        '__version__':1.0,
+        'type':'svn',
+        'server':self.FullPath,
+        'completed':self.__completed
+        }
+         
+        datacache.StoreData(name=self._env['ALIAS'],data=tmp,key='vcs')
+        
+        self._env["VCS"].REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision'])
+        self._env["VCS"].MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified'])
+        self._env["VCS"].PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial'])
+        self._env["VCS"].SWITCHED=common.DelayVariable(lambda :self.get_svn_data()['switched'])
    
     def get_svn_data(self):
         # get current state
@@ -257,9 +296,9 @@ class svn(base):
                 tmp=data.split('\n')
                 for i in tmp:
                     if i.startswith('URL: '):
-                        server=i[5:]+'/'
+                        server=i[5:]
                     elif i.startswith('Repository Root: '):
-                        root=i[len('Repository Root: '):]+'/'
+                        root=i[len('Repository Root: '):]
                         
             self._disk_data={
                 'revision':rev_lst,

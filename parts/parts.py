@@ -15,16 +15,16 @@ import platform_info
 import version
 import node_helpers
 import functors
-import sdk
 import reporter
 from pattern import Pattern
 
 import pprint
 
+g_known_names={}
 
 class Part_t(object):
-    def __init__(self,alias,file,mode=[],vcs_t=None,default=False,
-            append={},prepend={},create_sdk=True,package_group=None,
+    def __init__(self,file,mode=[],vcs_t=None,default=False,
+            append={},prepend={},create_sdk=True,package_group=None,alias=None,name=None,
             **kw):
    
         ## stuff for creating an environment 
@@ -88,9 +88,9 @@ class Part_t(object):
         self.__alias=alias
         self.__short_alias=alias
         #The part name.. parent.name+.+short_name
-        self.__name=kw.get('name',None)
+        self.__name=name
         # the short name.. or exact value given to this part as the name
-        self.__short_name=None
+        self.__short_name=name
         # the parent part object
         self.__parent=None
         # the top level part object
@@ -151,19 +151,51 @@ class Part_t(object):
         
         
         #basic data
+        
+        
         ##we need to check if this is a sub Parts 
         # check for kw for parent_part key
         self.__parent=self.__kw.get('parent_part',None)         
+        global g_known_names
+        #We need to set to the alias value as this is the unique ID used to map data internally
         if self.__parent is None:
             # this is the parent so we apply the global Prefix add Postfix values
+            if self.__alias is None:
+                
+                # we don't have a user provided alias.. make it off the file name
+                tmp=self.__env.subst(self.__file)
+                tmp=os.path.splitext(os.path.split(tmp)[1])[0] # we only want the file name
+                # see if we have seen this file name before 
+                if tmp in g_known_names:
+                    tmp="%s%s"%(tmp,g_known_names[tmp]+1)
+                    g_known_names[tmp]+=1
+                else:
+                    tmp="%s"%(tmp)
+                    g_known_names[tmp]=0
+                self.__alias=tmp
+                self.__short_alias=tmp
             self.__alias=self.__env.subst('${ALIAS_PREFIX}%s${ALIAS_POSTFIX}'%self.__short_alias)
+            
             self.__root=self
             self.__version=version.version('0.0.0')
         else:            
             #we have a parent
+            #We need to set to the alias value as this is the unique ID used to map data internally
+            if self.__alias is None:
+                
+                # we don't have a user provided alias.. make it off the file name
+                tmp=self.__env.subst(self.__file)
+                tmp=os.path.split(tmp)[1] # we only want the file name
+                self.__alias=tmp
+                self.__short_alias=tmp
+            
             self.__alias=self.__parent.Alias+'.'+self.__short_alias
+            #self.__name=self.__parent.Name+'.'+self.__short_name
             self.__root=self.__parent.Root
-            self.__parent.__sub_parts[self.__short_alias]=self
+            self.__parent._add_sub_parts(self)
+            
+            
+            
         
         ## resolve the File name for the Part we will load latter
         self.__make_part_env()
@@ -275,7 +307,12 @@ class Part_t(object):
             # need to test that this works as expected
             return obj in self._uses
         return self.__root._uses_part(obj)
-            
+    
+    def _add_sub_parts(self,obj):
+        if self.__sub_parts.has_key(obj.Alias):
+            reporter.report_error("%s is already defined"%obj.Alias)
+        self.__sub_parts[obj.Alias]=obj
+                    
     @property
     def _uses(self):
         if self._is_root:
@@ -409,6 +446,7 @@ class Part_t(object):
         return self.__is_read
         
     # some properties ( public use)
+    
     @property
     def Alias(self):
         """Get the current alias."""
@@ -580,64 +618,68 @@ class Part_t(object):
     def _map_alias(self):
         ''' this function creates all the extra aliases we create'''
         
-        vfile=self.__env._MapUnknowns([],self.__file)
+        #vfile=self.__env._MapUnknowns([],self.__file)
         
         ##given part alias of "foo" name "FOO"
         #build alias .. ie build::alias::foo
-        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        #build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
         # this aliasmap below is modifed to make sure parts that call stuff like
         # make under the hood or any other action that prevents build directory
         # from being made, from stopping desired behavior
-        a=self.__env.Alias("_"+build_alias,vfile) # _build::foo
+        #a=self.__env.Alias("_"+build_alias,vfile) # _build::foo
         #build::foo->_build::alias::foo 
         #          ->Dir($SRC_DIR)
-        a2=self.__env.Alias(build_alias,[a,self.__env.Dir(self.__env.subst('$SRC_DIR'))])
+        #a2=self.__env.Alias(build_alias,[a,self.__env.Dir(self.__env.subst('$SRC_DIR'))])
         # forces all of the build directory to clean
-        self.__env.Clean(a,self.__env.subst('$BUILD_DIR'))
+        #self.__env.Clean(a,self.__env.subst('$BUILD_DIR'))
         # store values for latter.. rethink??
-        self._add_alias("_"+build_alias)
-        self._add_alias(build_alias)
+        #self._add_alias("_"+build_alias)
+        #self._add_alias(build_alias)
         # make and map tree in case of subparts
         # this is stuff like: given build::FOO.sub1.sub2
         # we make a map like:
         # build::FOO->build::FOO.sub1->build::FOO.sub1.sub2
-        common.make_alias_tree(self.__env,'${PART_BUILD_CONCEPT}',a2)
+        #common.make_alias_tree(self.__env,'${PART_BUILD_CONCEPT}',a2)
 
         #sdk alias stuff
         #sdk::alias::foo
-        sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        #sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
         #sdk::alias::foo->_build::foo
-        a=self.__env.Alias(sdk_alias,[a])
-        self._add_alias(sdk_alias)
+        #a=self.__env.Alias(sdk_alias,[a])
+        #self._add_alias(sdk_alias)
         # make and map tree in case of subparts
         # this is stuff like: given sdk:FOO.sub1.sub2
         # we make a map like:
         # sdk::foo->sdk::FOO.sub1->sdk::FOO.sub1.sub2->_build::alias::foo.sub1.sub2
-        common.make_alias_tree(self.__env,'${PART_SDK_CONCEPT}',a)
+        #common.make_alias_tree(self.__env,'${PART_SDK_CONCEPT}',a)
     
         #install alias stuff.. install::alias::foo
-        install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
-        a=self.__env.Alias(install_alias,[a])
-        self._add_alias(install_alias)
+        #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        #a=self.__env.Alias(install_alias,[a])
+        #self._add_alias(install_alias)
         # make and map tree in case of subparts
         # this is stuff like: given sdk:foo.sub1.sub2
         # we make a map like:
         # install::FOO->install::FOO.sub1->install::FOO.sub1.sub2->sdk::alias::foo.sub1.sub2
-        common.make_alias_tree(self.__env,'${PART_INSTALL_CONCEPT}',a)
+        #common.make_alias_tree(self.__env,'${PART_INSTALL_CONCEPT}',a)
     
         #main alias
         #foo->install::alias::foo
-        a=self.__env.Alias(self.__alias,[a])
-        self._add_alias(self.__alias)
+        #a=self.__env.Alias(self.__alias,[a])
+        #self._add_alias(self.__alias)
         #alias::foo->foo
-        a=self.__env.Alias('${PART_ALIAS_CONCEPT}'+self.__alias,a)
-        self._add_alias(self.__env.subst('${PART_ALIAS_CONCEPT}')+self.__alias)
+        #a=self.__env.Alias('${PART_ALIAS_CONCEPT}'+self.__alias,a)
+        #self._add_alias(self.__env.subst('${PART_ALIAS_CONCEPT}')+self.__alias)
         #alias::->alias::foo
-        self.__env.Alias('${PART_ALIAS_CONCEPT}',a)
+        #self.__env.Alias('${PART_ALIAS_CONCEPT}',a)
         #name::<partname>->alias::foo
-        pv_alias=common.make_alias_tree(self.__env,'${PART_NAME_CONCEPT}',a)
+        #pv_alias=common.make_alias_tree(self.__env,'${PART_NAME_CONCEPT}',a)
         #all->name::foo
-        self.__env.Alias('all',[pv_alias])
+        #self.__env.Alias('all',[pv_alias])
+        
+        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
+        self.__env.Alias("${PART_BUILD_CONCEPT}",self.__env.Alias(build_alias))
+        
         
         #add to queue the delayed mapping of high level Alias to other high level alias
         def_env=SCons.Script.DefaultEnvironment()
@@ -654,7 +696,8 @@ class Part_t(object):
             #set up the builder for the SDK file
             v=self.__env.__CreateSDKBuilder__([],self.__file)
             self.__sdk_file=v[0]
-            self.__env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
+            #self.__env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
+            self.__env.Alias('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
             
             if self.__parent!=None:
                 sdkname="%s_%s.sdk.parts"%(self.__name,self.Version)
@@ -691,7 +734,7 @@ class Part_t(object):
             pass
         else:
             for i in self.__target_files:
-              self.__env.Alias(self.__alias,i)
+              self.__env.Alias('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,i)
         # we also add them to known nodes at this time
         self.__part_nodes.update(self.__target_files)
         
@@ -736,6 +779,7 @@ class Part_t(object):
             except KeyError:
                 pass
             bdir=self.__env.Dir(self.__env.subst('$BUILD_DIR'))
+            
             sdir=self.__env.Dir(self.__src_path)
             if (common.g_engine._build_mode=='build') or (os.path.exists(self.__file.srcnode().abspath)==True):
                 if os.path.exists(self.__file.srcnode().abspath)==False:
@@ -1281,29 +1325,35 @@ class Part_t(object):
         return data
 
 
-def Part_factory(alias=None,parts_file=None,mode=[],vcs_type=None,default=False,
+def Part_factory(arg1=None,parts_file=None,mode=[],vcs_type=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,
-            **kw):
+            alias=None,name=None,*lst,**kw):
     ''' This  function acts a factory to help with Part creation.
     This way control over making a new Part or getting the existing Part 
     can be better controled
     '''
-
-    name=kw.get('name')
+    
+    # handle common case:part(alias,file)
+    if arg1 and parts_file is None:
+        parts_file=arg1
+    elif arg1 and parts_file and alias is None:
+        alias=arg1
+        
     Version=kw.get('version')
-
-    tmp=common.g_engine._part_manager._get_part(
-        alias=alias,
-        name=name,
-        version=Version,
-        target_platform=kw.get('TARGET_PLATFORM'))
+    tmp=None
+    if alias or (name and Version):
+        tmp=common.g_engine._part_manager._get_part(
+            alias=alias,
+            name=name,
+            version=Version,
+            target_platform=kw.get('TARGET_PLATFORM'))
         
     if tmp:
 
         if Version:
             del kw['version']
-        if name:
-            del kw['name'] 
+        #if name:
+        #    del kw['name'] 
         tmp._update(alias,name,Version,
             parts_file,mode,vcs_type,default,
             append,prepend,create_sdk,package_group,
@@ -1312,22 +1362,27 @@ def Part_factory(alias=None,parts_file=None,mode=[],vcs_type=None,default=False,
             tmp._setup_()
         return tmp
     
-    tmp=Part_t(alias=alias,file=parts_file,mode=mode,vcs_t=vcs_type,
+    tmp=Part_t(file=parts_file,mode=mode,vcs_t=vcs_type,
                     default=default,append=append,prepend=prepend,
                     create_sdk=create_sdk,package_group=package_group,
-                    **kw)
+                    name=name,alias=alias,**kw)
 
     if parts_file:
         tmp._setup_()
-    common.g_engine._part_manager._add_part(tmp.Alias,tmp)   
+    common.g_engine._part_manager._add_part(tmp)   
     
-    return tmp
+    return [tmp]
 
-def SubPart_factory(env,alias,parts_file,mode=[],vcs_type=None,default=False,
-            append={},prepend={},create_sdk=True,package_group=None,
+def SubPart_factory(env,arg1=None,parts_file=None,mode=[],vcs_type=None,default=False,
+            append={},prepend={},create_sdk=True,package_group=None,alias=None,name=None,
             **kw):
             
-            
+    # handle common case:part(alias,file)
+    if arg1 and parts_file is None:
+        parts_file=arg1
+    elif arg1 and parts_file and alias is None:
+        alias=arg1
+                
     return common.g_engine._part_manager._define_sub_part(
                         env,
                         alias,

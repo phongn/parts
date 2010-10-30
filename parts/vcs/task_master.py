@@ -10,6 +10,7 @@ class task_master(object):
     def __init__(self):
         self.__i = 0
         self.__tasks = []
+        self.__stopped=False
     
     def check_vcs_output(self,vcsobj):
         ''' 
@@ -29,7 +30,7 @@ class task_master(object):
             self.__tasks.append(None)
         else:
             if self.check_vcs_output(x):
-                self.__tasks.append(task.task(x))
+                self.__tasks.append(task.task(x,self))
             
     def next_task(self):
         t = self.__tasks[self.__i]
@@ -38,8 +39,12 @@ class task_master(object):
         return t
     
     def stop(self):
-        self.__i= len(self.__tasks)
-        pass
+        self.__stopped=True
+        self.__i= -1
+    
+    @property
+    def Stopped(self):
+        return self.__stopped
         
     def cleanup(self):
         pass

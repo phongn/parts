@@ -54,6 +54,11 @@ def SetOptionDefault(key,value):
     common.g_defaultoverides[key]=value
     SetOptionDefault._modified=True
 
+def opt_file(option, opt, value, parser,var,argstr):
+    if os.path.exists(value):
+        parser.values.__dict__[var]=os.path.abspath(value)
+    else:
+        raise OptionValueError("Error: %s %s was not found was not found on disk" % (argstr,value))
 
 def opt_target(option, opt, value, parser):
     
@@ -334,8 +339,8 @@ SCons.Script.AddOption("--disable-incremental-dependent-checks",
             action="store_false",
             help='Assume the dependents are up-to-date. Skipping update checks on dependents. May result in corrupt build!!!')
             
-SCons.Script.AddOption("--disable-update-check-exit",
-            dest="update_check_exit",
+SCons.Script.AddOption("--disable-early-exit",
+            dest="early_exit",
             default=True,
             action="store_false",
             help='Enable Parts to exit early if the update checks return True, forcing SCons longer (but possibily more correct) checks to happen')            
@@ -423,9 +428,11 @@ SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
 # move to end as work around to a bug in SCons            
 SCons.Script.AddOption("--cfg-file","--config-file",
             dest='cfg_file',
-            default='parts.cfg',
-            nargs=1, type='string',
-            action='store',
+            default=os.path.abspath('parts.cfg'),
+            nargs=1, 
+            callback=lambda option, opt, value, parser:opt_file(option, opt, value, parser,'cfg_file',"config file:"),
+            type='string',
+            action='callback',
             help='Configuration file used to store common settings')
             
 ## policy values            

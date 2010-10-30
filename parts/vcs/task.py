@@ -7,9 +7,10 @@ class task(object):
     Someday SCons will formalize this code, that day we will have something to subclass form.
     Till then this is very dependent on SCons.. the names of the function have to be called this
     '''
-    def __init__(self,vcs):
+    def __init__(self,vcs,taskmaster):
         self.__vcs = vcs
         self.__failed=False
+        self.__taskmaster=taskmaster
     
     @property
     def Vcs(self):
@@ -30,22 +31,27 @@ class task(object):
     def execute(self):
         ''' this is what we call to do the checkout'''
         try:
-            self.__vcs.UpdateOnDisk()
-        #except PartRuntimeError:
-            #pass
-        except:
-            
-            import traceback,StringIO
-            #ec_str=StringIO.StringIO()
-            traceback.print_exc()#file=ec_str)
-            raise
+            if self.__vcs.UpdateOnDisk():
+                self.failed()
+        except PartRuntimeError:
+            buildError = SCons.Errors.convert_to_BuildError(e)
+            buildError.node = self.__vcs.CheckoutDir
+            buildError.exc_info = sys.exc_info()
+            raise buildError
+        #except:
+        #    
+        #    import traceback,StringIO
+        #    #ec_str=StringIO.StringIO()
+        #    traceback.print_exc()#file=ec_str)
+        #    raise
         
     def exception_set(self,exception=None):
         self.__failed=True
         
     def failed(self):
-        if self.__failed:
-            reporter.report_error("Vcs task failed for Part %s"%self.__vcs._env.get('ALIAS'),show_stack=False)
+        #if self.__failed:
+        reporter.report_error("Vcs task failed for Part %s"%self.__vcs._env.get('ALIAS'),show_stack=False,exit=False)
+        self.__taskmaster.stop()
         
     def executed(self):
         ''' this gets called when everything execute() correctly'''

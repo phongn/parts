@@ -83,7 +83,7 @@ class part_spawner:
 
 
 
-class part_logger:
+class part_logger(object):
     def __init__(self,env,console):
         self.env=env
         def_env=SCons.Script.DefaultEnvironment()
@@ -192,7 +192,7 @@ class part_logger:
                 # we have some error or unknown code
                 pass
         
-class part_nil_logger:
+class part_nil_logger(object):
     ''' the point of this class is to define the base interface for all part logger
     items. The goal is the this object is to be a empty object that can be written to
     in case that no other item is provided, or if logging is turned off'''
@@ -206,9 +206,16 @@ class part_nil_logger:
         pass
     def Err(self,env,id,msg):
         pass
+    def TaskStart(self,msg):
+        pass
+    def TaskEnd(self,id,exit_code):
+        pass
+    def WriteOut(self,id,msg):
+       pass
+    def WriteErr(self,id,msg):
+       pass 
         
-        
-class parts_text_logger:
+class parts_text_logger(object):
     def __init__(self):
         self.m_file=None
         self.cache={}

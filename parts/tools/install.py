@@ -100,7 +100,7 @@ def installFunc(target, source, env):
            "Installing source %s into target %s: target and source lists must have same length."%(map(str, source), map(str, target))
 
     # get the logger for a given Part if it exists
-    output=env.get("PART_LOG_MAPPER",part_nil_logger)
+    output=env.get("PART_LOG_MAPPER",part_nil_logger())
     # tell it we are starting a task
     id=output.TaskStart(stringFunc(target,source,env)+"\n")
     

@@ -276,8 +276,6 @@ def generate_config(prepend,append,replace):
                                 )
         
         vars.Update(env)
-        
-        
         # since we don't have overides in the __init__call??
         env['HOST_PLATFORM']=platform_info._host_sys
         env['_BUILD_CONTEXT_FILES']=set()

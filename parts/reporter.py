@@ -13,8 +13,12 @@ import SCons.Script
 import SCons.Script.Main
 import SCons.Errors
 
+#if 'stacktrace' in SCons.Script.GetOption('debug'):
 class PartRuntimeError(SCons.Errors.StopError):
     pass
+#else:
+ #   class PartRuntimeError(SCons.Errors.UserError):
+  #      pass
     
 class streamer:
     def __init__(self,outfunc):
@@ -197,15 +201,20 @@ class reporter:
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
         
-    def part_message(self,msg):
+    def part_message(self,msg,show_prefix):
         if self.silent ==False:
-            s="Parts: "+msg
+            if show_prefix:
+                s="Parts: "+msg
+            else:
+                s=msg
             self.stdmsg(s,False)
 
-    def verbose_msg(self,catagory,msg):
+    def verbose_msg(self,catagory,msg_lst):
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.verbose:
+                msg=map(str,msg_lst[1:-1])
+                msg=msg_lst[0].join(msg)+msg_lst[-1]
                 s='Verbose: [%s] %s'%(tmp[0],msg)
                 self.stdverbose(s)
                 break
@@ -352,19 +361,17 @@ def report_warning(*lst,**kw):
     
 def print_msg(*lst,**kw):
     msg=map(str,lst)
-    g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\n'),kw.get('show_prefix',True))
 
 def _empty_msg(catagory,*lst,**kw):
     pass
 
 def _verbose_msg(catagory,*lst,**kw):
-
     catagory=common.make_list(catagory)
     catagory.append('all')
     if g_rpter.isSetup==False:
         g_rpter.verbose=SCons.Script.GetOption('verbose')
-    msg=map(str,lst)
-    g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
 
 verbose_msg=_verbose_msg
         
@@ -399,9 +406,11 @@ def user_print_msg(*lst,**kw):
     
 def user_verbose(catagory,*lst,**kw):
     catagory=common.make_list(catagory)
+    catagory.append('all')
     catagory.append('user')
-    msg=map(str,lst)
-    g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    if g_rpter.isSetup==False:
+        g_rpter.verbose=SCons.Script.GetOption('verbose')
+    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
     
 # env version
 def user_report_error_env(env,*lst,**kw):
