@@ -472,7 +472,7 @@ class Part_t(object):
     @property
     def ShortVersion(self):
         """Get the current short version."""
-        return self.__root.__version.short_version_string()
+        return self.__root.__version[0:2]
 
     @property
     def Name(self):

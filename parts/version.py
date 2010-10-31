@@ -315,69 +315,44 @@ class version(object):
         ret.end = version(self)
             
         return ret
-        
-    def short_version_string(self, num = 2, start = 0):
-        '''
-        Returns a shortened version of the version string starting at start and
-        containing num number of sub-version parts.
-        '''
-        if num < 1:
-            return ""
-        
-        ret = "%s" % str(self.parts[start])
-            
-        # go through each item in the list and append as necessary
-        for i in range(start + 1, start + num):
-            ret += "."
-            if i >= len(self.parts):
-                ret += "0"
-                continue
-            
-            v = self.parts[i]
-            if isinstance(v, tuple):
-                # we need to iterate through tuples
-                for sv in v:
-                    ret += str(sv)
-            else:
-                ret += "%s" % str(v)
-               
-        return ret
-        
-    def Major(self):
-        return self.short_version_string(1)
-        
-    def major(self):
-        '''
-        Compatibility function that effectively returns the first version
-        number.
-        '''
-        return int(self.short_version_string(1))
-        
-    def Minor(self):
-        return self.short_version_string(1, 1)
-        
-    def minor(self):
-        '''
-        Compatibility function that effectively returns the second version
-        number.
-        '''
-        return int(self.short_version_string(1, 1))
-        
-    def Revision(self):
-        return self.short_version_string(1, 2)
-        
-    def revision(self):
-        '''
-        Compatibility function that effectively returns the third version
-        number.
-        '''
-        return int(self.short_version_string(1, 2))
     
+    def __getitem__(self, key):
+        if isinstance(key,slice):
+            return ".".join(map(lambda x: isinstance(x, tuple) and "".join(map(str,x)) or str(x),self.parts[key]))
+        else:
+            tmp=self.parts[key]
+            return isinstance(tmp, tuple) and "".join(map(str,tmp))or str(tmp)
+        
+    def __len__(self):
+        ''' Returns the length, or number of "dot" number that are contained in this version'''
+        return len(self.parts)
+                
     def __str__(self):
         '''
         Prints the string version.  It basically returns the passed in string.
         '''
         return str(self.ver)
+
+    # compatiblity functions.. to remove in forms at least
+    def Major(self):
+        return self[0]
+        
+    def major(self):
+        return self[0]
+        
+    def Minor(self):
+        return self[1]
+        
+    def minor(self):
+        return self[1]
+        
+    def Revision(self):
+        return self[2]
+        
+    def revision(self):
+        return self[2]
+    
+        
 
 class version_range(object):
     '''
