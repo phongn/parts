@@ -45,7 +45,7 @@ class TestVersions(unittest.TestCase):
     def test_version_major(self):
         '''Test version.major() returns first number.'''
         ver = version('1.2.3.4')
-        self.assertTrue(ver.major() == 1)
+        self.assertTrue(ver.major() == '1')
         
     def test_version_Major(self):
         '''Test version.Major() returns first number as string.'''
@@ -55,7 +55,7 @@ class TestVersions(unittest.TestCase):
     def test_version_minor(self):
         '''Test version.minor() returns second number.'''
         ver = version('1.2.3.4')
-        self.assertTrue(ver.minor() == 2)
+        self.assertTrue(ver.minor() == '2')
         
     def test_version_Minor(self):
         '''Test version.Minor() returns second number as string.'''
@@ -65,7 +65,7 @@ class TestVersions(unittest.TestCase):
     def test_version_revision(self):
         '''Test version.revision() returns third number.'''
         ver = version('1.2.3.4')
-        self.assertTrue(ver.revision() == 3)
+        self.assertTrue(ver.revision() == '3')
         
     def test_version_Revision(self):
         '''Test version.Revision() returns third number as string.'''
@@ -73,9 +73,9 @@ class TestVersions(unittest.TestCase):
         self.assertTrue(ver.Revision() == '3')
         
     def test_version_short(self):
-        '''Test version.short_version_string() returns the first two numbers.'''
+        '''Test splice returns the first two numbers.'''
         ver = version('1.2.3.4.5.6.7.8.9')
-        self.assertTrue(ver.short_version_string() == '1.2')
+        self.assertTrue(ver[:2] == '1.2')
         
     def test_version_weights(self):
         '''Test weight adjustments.'''
