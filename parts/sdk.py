@@ -139,7 +139,7 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
     targets,source_dir=process_Sdk_Copy(env,dest_dir,sources,create_sdk,do_clean)
 
     if create_sdk==False and use_build_dir==True:
-        target_dir="${PARTSUB('"+define_part+"','$BUILD_DIR')}"
+        target_dir="${PARTSUB('"+pobj.Alias+"','$BUILD_DIR')}"
     elif create_sdk==False and use_build_dir==False:
         use_src_dir=True
     
