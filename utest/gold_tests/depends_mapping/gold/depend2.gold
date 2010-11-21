@@ -1,0 +1,3 @@
+Verbose: [gtest] ${PARTIDEXPORTS('part1','*','foo',True)} True
+Verbose: [gtest] ${PARTIDEXPORTS('part1','*','foo_list',True)} True
+Verbose: [gtest] ${PARTIDEXPORTS('part1','*','dict_test',True)} True

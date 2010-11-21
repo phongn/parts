@@ -27,10 +27,17 @@ def get_part_version(env):
 def get_part_short_version(env):
     return common.g_engine._part_manager._from_env(env).ShortVersion
 
-
-
+class _PartVersion(object):
+    def __init__(self,env):
+        self.env=env
+    def __call__(self,ver=None):
+        part_version(ver)
+        
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
+
+# add global for new format
+common.add_parts_object('PartVersion',_PartVersion)
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.PartVersion=part_version

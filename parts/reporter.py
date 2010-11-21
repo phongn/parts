@@ -198,6 +198,7 @@ class reporter:
         
         self.console.Error.write(s)
         self.logger.logerr(s)
+        1/0
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
         
@@ -384,6 +385,19 @@ def _trace_msg(catagory,*lst,**kw):
 
 trace_msg=_trace_msg
 
+#def policy_print(policy,*lst,**kw):
+#    if policy == Policy.ignore:
+#        return
+#    elif policy == Policy.message:
+#        print_msg(*lst,**msg)
+#    elif policy == Policy.verbose:
+#        _verbose_msg(*lst,**kw)
+#    elif policy == Policy.warning:
+#        report_warning(*lst,**msg)
+#    elif policy == Policy.error:
+#        report_error(*lst,**msg)
+
+
 def print_console(*lst,**kw):
     msg=map(str,lst)
     g_rpter.stdconsole(kw.get('sep',' ').join(msg)+kw.get('end','\r'))
@@ -429,9 +443,12 @@ def user_print_msg_env(env,*lst,**kw):
     
 def user_verbose_env(env,catagory,*lst,**kw):
     catagory=common.make_list(catagory)
+    catagory.append('all')
     catagory.append('user')
-    msg=map(str,lst)
-    g_rpter.verbose_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    if g_rpter.isSetup==False:
+        g_rpter.verbose=SCons.Script.GetOption('verbose')
+    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
+    
 
 
 ## stuff to help with reporting debug info

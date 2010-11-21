@@ -47,7 +47,7 @@ def removeall(path):
     '''
 
     if not os.path.isdir(path):
-        return
+        return False
     
     files=os.listdir(path)
 
@@ -58,15 +58,23 @@ def removeall(path):
             st = os.stat(fullpath)
             os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
             for i in range(1,10):
-                if rmgeneric(fullpath, f):
+                rst=rmgeneric(fullpath, f)
+                if rst:
                     break
                 time.sleep(1)
+            if rst ==False:
+                return False
         elif os.path.isdir(fullpath):
-            removeall(fullpath)
+            ret=removeall(fullpath)
+            if ret==False:
+                return False
             f=os.rmdir
             st = os.stat(fullpath)
             os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-            rmgeneric(fullpath, f)
+            ret=rmgeneric(fullpath, f)
+            if ret==False:
+                return False
+    return True
 
 cwd_dir=os.path.split(__file__)[0]
 test_root=os.path.join(cwd_dir,"_run_sandbox")
@@ -82,10 +90,15 @@ verbose_stream_file='stream.verbose.txt'
 trace_stream_file='stream.trace.txt'
 
 if os.path.exists(test_root):
-    removeall(test_root)
+    if removeall(test_root)==False:
+        print "Could not clean", test_root
+        exit(1)
 
 def TestTemplate(name):
-    return os.path.join(cwd_dir,'templates',name)    
+    return os.path.join(cwd_dir,'templates',name)
+
+def TestSample(name):
+    return os.path.join(cwd_dir,'../../samples',name)    
 
 class Test(object):
     ''' This Define a basic test. A basic test is a set of TestRun
@@ -102,41 +115,79 @@ class Test(object):
         self.copy_directory=False #true to copy contents of test directory else path of directory to copy
         self.run=[]
 
-    def AddTestRun(self,name='general'):
-        tmp=TestRun(self,"%s-%s"%(len(self.run),name))
+    def AddTestRun(self,name='general',displaystr=None):
+        tmp=TestRun(self,"%s-%s"%(len(self.run),name),displaystr)
         self.run.append(tmp)
         return tmp
 
     def AddCleanRun(self,target='all'):
-        tmp=TestRun(self,"%s-clean-run"%len(self.run))
-        tmp.cmd='scons -c %s'%target
+        tmp=TestRun(self,"%s_cleaning_target"%(len(self.run)),"%s Cleaning Target: %s"%(len(self.run),target))
+        tmp.cmd='scons -c %s --console-stream=none'%target
         tmp.returncode=0
         self.run.append(tmp)
         return tmp
     
     def AddUpdateCheckSCons(self,target='all'):
-        tmp=TestRun(self,"%s-up-to-date-scons-run"%len(self.run))
-        tmp.cmd='scons -Q %s --disable-parts-cache'%target
+        tmp=TestRun(self,
+            "{0}-up-to-date-scons-run-scons".format(len(self.run)),
+            "{0} SCons up to date check".format(len(self.run))
+            )
+        tmp.cmd='scons -q %s --disable-parts-cache --console-stream=none'%target
         tmp.returncode=0
         #add stream test
         self.run.append(tmp)
         return tmp
     
     def AddUpdateCheckParts(self,target='all'):
-        tmp=TestRun(self,"%s-up-to-date-parts-run"%len(self.run))
-        tmp.cmd='scons -Q %s'%target
+        tmp=TestRun(self,
+            "%s-up-to-date-parts-run-parts"%len(self.run),
+            "{0} Parts up to date check".format(len(self.run))
+        )
+        tmp.cmd='scons -q %s --console-stream=none'%target
         tmp.returncode=0
         #add stream test
         self.run.append(tmp)
         return tmp
         
-    def AddUOutOfDateCheck(self,target="all"):
-        tmp=TestRun(self,"%s-out-of-date-check-run"%len(self.run))
-        tmp.cmd='scons -Q %s'%target
+    def AddUpdateCheck(self,target='all'):
+        self.AddUpdateCheckSCons(target)
+        self.AddUpdateCheckParts(target)
+        
+    def AddOutOfDateCheckParts(self,target="all"):
+        tmp=TestRun(self,"%s-out-of-date-check-run-parts"%len(self.run),
+            "{0} Parts out to date check".format(len(self.run))
+        )
+        tmp.cmd='scons -q %s --console-stream=none'%target
         tmp.returncode=1
         #add stream test
         self.run.append(tmp)
         return tmp
+
+    def AddOutOfDateCheckSCons(self,target="all"):
+        tmp=TestRun(self,"%s-out-of-date-check-run-scons"%len(self.run),
+            "{0} SCons out to date check".format(len(self.run))
+        )
+        tmp.cmd='scons -q %s --disable-parts-cache --console-stream=none'%target
+        tmp.returncode=1
+        #add stream test
+        self.run.append(tmp)
+        return tmp
+
+    def AddBuildRun(self,target="all",options=''):
+        if options:
+            s="{0} Building target: {1} options: {2}".format(len(self.run),target,options)
+        else:            
+            s="{0} Building target: {1}".format(len(self.run),target)
+        tmp=TestRun(self,"%s_build_run"%len(self.run),s)
+        tmp.cmd='scons {0} {1} --console-stream=none'.format(target,options)
+        tmp.returncode=0
+        #add stream test
+        self.run.append(tmp)
+        return tmp    
+        
+    def AddOutOfDateCheck(self,target='all'):
+        self.AddOutOfDateCheckSCons(target)
+        self.AddOutOfDateCheckParts(target)
         
             
 
@@ -145,10 +196,11 @@ class TestRun(object):
     A test run allows us to test a certain command and see if certian actions happened as excepted
     Speceial cases of Test run may test it a test is up-to-date, or out-of -date
     '''
-    def __init__(self,test,name):
+    def __init__(self,test,name,displaystr=None):
         #required setup
-        self.name=name
-        self.test=test
+        self._displaystr=displaystr # what we display for this string
+        self.name=name # the test name
+        self.test=test # test object
         self.cmd="" # this is the command we want to run
         
         # possible stuff we can test
@@ -158,6 +210,12 @@ class TestRun(object):
         self.time=Time()
         self.streams=Stream(test,self)
         self.disk=Disk(test)
+
+    @property
+    def displaystr(self):
+        if self._displaystr:
+            return self._displaystr
+        return self.name
 
 class Time(object):
     ''' Allows us to test that something happened within a certain time.
@@ -385,7 +443,7 @@ class TestResult(object):
                 tmp['exists']= (_file.exists == True)
                 tmp['exists_actual']=True
             else:
-                tmp['exists']= (_file.exists == False)
+                tmp['exists']= (_file.exists==False)
                 tmp['exists_actual']=False
             # do we test size
             if _file.size:
@@ -474,7 +532,7 @@ class Engine(object):
                 if print_name:
                     print_name=False
                     print "Test %s had failures! Summary:"%(rst.test.name)
-                print "    Test run %s:"%(rst.testrun.name)
+                print "    Test run %s:"%(rst.testrun.displaystr)
                 ## report if there was any timing issues
                 # interval time
                 print "\tTime Interval:",
@@ -571,7 +629,6 @@ class Engine(object):
                 if rst.files:
                     for k,v in rst.files.items():
                         print "\tFile: %s"%k
-                        
                         if v['exists'] == False and v['exists_actual']== True:
                             print "\t\texists: Failed! Does not exits, but it should"
                         if v['exists'] == False and v['exists_actual']== False:
@@ -619,7 +676,7 @@ class Engine(object):
         
         ## load the test data. this mean exec the data
         #create the locals we want to pass
-        locals={'test':test,'TestTemplate':TestTemplate}
+        locals={'test':test,'TestTemplate':TestTemplate, 'TestSample':TestSample}
         #get full path
         tmp=os.path.join(test.location,test.name+".test.py")
         execfile(tmp,{},locals)
@@ -665,6 +722,7 @@ class Engine(object):
             #We want to copy the test run data to a temp run directory
         ret=[]
         # run each sequence, or each until we get an Error
+        print "Processing test {0}".format(test.name)
         for t in test.run:    
             ret.append(self.do_test_run(test,t))
         return ret
@@ -674,7 +732,7 @@ class Engine(object):
     def do_test_run(self,test,testrun):        
         testresult=TestResult(test,testrun)
         rcode=-1
-        print "Test %s run %s "%(test.name,testrun.name),
+        print " run %s "%(testrun.displaystr),
         try:
             rcode =self.spawn_command(test,testrun)
         ## get any time based tests that failed

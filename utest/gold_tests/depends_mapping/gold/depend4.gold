@@ -1,0 +1,3 @@
+Verbose: [gtest] ${PARTIDEXPORTS('part1','*','foo',True)} True
+Verbose: [gtest] None True
+Verbose: [gtest] None True

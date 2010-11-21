@@ -106,6 +106,7 @@ one to see what concept, part object, and section/concept we want to process
 '''
 class target_type(object):
     def __init__(self,target):
+        target=str(target)
         try:
             # this does not work...
             #self=_target_type_cache[target]

@@ -178,6 +178,8 @@ class part_id_mapper(mapper):
             )
                         
             if pobj is None:
+                if self.ignore:
+                    return ''
                 self.name_to_alias_failed(env)
             
             ret=getattr(pobj,self.part_prop,None)
@@ -286,8 +288,11 @@ class part_id_export_mapper(mapper):
                         # set the value in the exports to prevent recusive hitting of this again latter
                         # value might not exist in cases of programs or components that are on the top 
                         # of the tree.. so if we get a KeyError we can ignore it
-                        idx=pobj_org._exports[self.part_prop].index(str_val)
-                        pobj_org._exports[self.part_prop][idx:idx+1]=ret
+                        if common.is_list(pobj_org._exports[self.part_prop]):
+                            idx=pobj_org._exports[self.part_prop].index(str_val)
+                            pobj_org._exports[self.part_prop][idx:idx+1]=ret
+                        else:
+                            pobj_org._exports[self.part_prop]=ret
                     except KeyError:
                         pass
                     except ValueError:

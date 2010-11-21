@@ -131,6 +131,8 @@ class Part_t(object):
         # this is to help with issues with unit tests sub parts in classic format
         self.__sdk_or_installed_called=False
         
+        # this to force loading .. bypassing caching features
+        self.__force_load=kw.get('force_load',False)
 
     # see if we can remove the env arg latter
     def _setup_(self,_env=None):
@@ -337,6 +339,10 @@ class Part_t(object):
             return self.__cache['uses']
         else:
             return self.__root._uses
+
+    @property
+    def _force_load(self):
+        return self.__force_load
                     
     @property
     def _file(self):
@@ -759,17 +765,15 @@ class Part_t(object):
             ## setup what we want to export
             # global objects
             export_map=common.g_parts_objs
+            #global object that need to be mapped
+            for k,v in common.g_parts_objs_env.items():
+                export_map[k]=v(self.__env)
             # add the sections
             # we do this when we read as there might have been new sections dynamically added
             for s in common.g_sections:
                 self.__sections[s.name]=s.Type()(self.__env)
             export_map.update(self.__sections)
-            # These objects need to hard coded in as the need a reference to 
-            # the environment .. fix up latter?
-            AbsFile=node_helpers._AbsFile(self.__env)
-            AbsDir=node_helpers._AbsDir(self.__env)
-            export_map['AbsFile']=AbsFile
-            export_map['AbsDir']=AbsDir
+            
             # add the environment
             export_map['env']=self.__env
             self.__env._log_keys=True
@@ -1063,7 +1067,9 @@ class Part_t(object):
                 flst=[self.__alias]
                 self.__root._cache['root_depends_full']=[]
                 for d in dlst:         
-                    if d.part.Root.Alias != self.Alias:       
+                    if d.part is None:
+                        pass
+                    elif d.part.Root.Alias != self.Alias:       
                         tmp=d.part.Root._full_parts_root_depends_list()
                         common.extend_if_absent(flst,tmp)
                     
@@ -1160,7 +1166,7 @@ class Part_t(object):
         #the infomation on how this part should be matched via dependson
         data['platform_match']=str(self.__platform_match)
         #the packge group that this Parts is bound with
-        data['package_group']=self.__package_group
+        data['package_group']=str(self.__package_group)
         #the mode that was passed to create this part
         data['mode']=self.__mode
         
@@ -1215,8 +1221,8 @@ class Part_t(object):
                     if '$' in i:
                         self.__env.subst(i)
             else:
-                if '$' in i:
-                    self.__env.subst(i)
+                if '$' in v:
+                    self.__env.subst(v)
         data['exports']=self.__exports
         
         # this is for recreating a part from cache as these values are

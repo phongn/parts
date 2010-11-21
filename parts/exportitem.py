@@ -120,24 +120,43 @@ def ExportLINKFLAGS(env,values,create_sdk=True):
 def ExportLIBS(env,values,create_sdk=True):
     return ExportItem(env,'LIBS',values,create_sdk)
 
-def ExportItem(env,prop,values,create_sdk=True):
+def ExportItem(env,variable,values,create_sdk=True):#, public=False):
+    '''
+    
+    @param env The current environment
+    @param variable The variable name we want to export
+    @param values The values to map to the variable. Can be an picklable item, including self contained functions, and SCons node objects
+    @param create_sdk map this information in to the auto generated SDK parts file
+    ##@param public Maps variable 'foo' to env['foo'] if False, else maps data only to a private namespace object of the form env[<component name>]['foo']
+    
+    This function adds to the export table of a given part the variable and it values. If the variable exists in the environment already and is a list or is the values is 
+    a list type then the values will be made into a list, flatten and appended all unique items to the list. Otherwise the data will replace any existing data. If data does 
+    exist, there will be a verbose message that can be printed out.
+    '''
     reporter.SetPartStackFrameInfo(True)
     pobj=common.g_engine._part_manager._from_env(env)
     
+    if common.is_list(env.get(variable)) or common.is_list(values):
+        values=common.make_list(values)
+
+        if pobj._exports.has_key(variable)==False:
+            pobj._exports[variable]=[]
+        if common.is_list(pobj._exports[variable]) == False:
+            pobj._exports[variable]=[pobj._exports[variable]]
+        for v in values:
+            common.append_unique(pobj._exports[variable],str(v))
+    else:
+        if pobj._exports.has_key(variable):
+            reporter.verbose_msg(['export'],'Part "{0}" already as variable "{1}" in export table, overriding with new value'.format(pobj.Name,variable))
+        pobj._exports[variable]=str(values)
+            
+
     # set the create SDK value
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
-    
-    if pobj._exports.has_key(prop)==False:
-        pobj._exports[prop]=[]
-        
-    values=common.make_list(values)
-       
-    for v in values:
-        common.append_unique(pobj._exports[prop],str(v))
         
     if create_sdk:
-        pobj._create_sdk_data.append(('ExportItem',[prop,values,False]))
+        pobj._create_sdk_data.append(('ExportItem',[variable,values,False]))
         
     reporter.ResetPartStackFrameInfo()
 

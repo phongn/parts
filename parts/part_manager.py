@@ -390,8 +390,8 @@ class part_manager(object):
             if not tobj.isPartAlias:
                 # we are not sure
                 # first we try to see if the name can be matched
-                ta=target_type("alias::"+t)
-                tn=target_type("name::"+t)
+                ta=target_type("alias::"+str(t))
+                tn=target_type("name::"+str(t))
                 if self.__name_to_alias.get(tn.name):
                     #we are sure this is a Parts value
                     tobj=tn
@@ -549,7 +549,7 @@ class part_manager(object):
         for p in root_parts:
             part_file_load_time=time.time()
             # see if this shoudl be loaded from cache
-            if cache and building and p.Alias not in out_date_list and p.Alias not in do_not_load :
+            if cache and building and p.Alias not in out_date_list and p.Alias not in do_not_load and p._force_load==False :
                 cache=datacache.GetCache("part-"+p.Alias)
                 msg="up-to-date! Loaded from cache: %s."%p.Alias
                 p._setup_from_cache_data(cache)
@@ -558,8 +558,10 @@ class part_manager(object):
             elif p.Alias in do_not_load:
                 msg="up-to-date! Skipped loading Parts: %s."%p.Alias
             else:
-                if skip_update_check:
+                if skip_update_check and p._force_load==False:
                     msg="Loaded from file: %s."%p.Alias
+                elif skip_update_check and p._force_load==True:
+                    msg="Force loading from file: %s."%p.Alias
                 else:
                     msg="out-of-date! Loaded from file: %s."%p.Alias
                 p.ReadFile()

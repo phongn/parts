@@ -27,6 +27,7 @@ g_builders={}
 g_env_cache={}
 # global object to add to parts call
 g_parts_objs={}
+g_parts_objs_env={}
 
 
 #g_parts={} 
@@ -72,8 +73,12 @@ def add_section(section):
 def add_mapper(mapper):
     g_mappers[mapper.name]=mapper
 
-def add_parts_object(key,object):
-    g_parts_objs[key]=object
+def add_parts_object(key,object,map_env=False):
+    if map_env:
+        g_parts_objs_env[key]=object
+    else:
+        g_parts_objs[key]=object
+    
     # add code to for help generation
     
 def add_global_value(key,object):
@@ -344,13 +349,13 @@ def is_string(obj):
     return SCons.Util.is_String(obj)
 
 def is_bool(obj):
-    return obj is bool()
+    return isinstance(obj,bool)
 
 def is_int(obj):
-    return type(obj) is int()
+    return isinstance(obj,int)
 
 def is_float(obj):
-    return type(obj) is float()
+    return isinstance(obj,float)
 
 def is_catagory_file(env,cat,file):
     ''' this function is the master function for finding a if a file matches a type pattern.'''

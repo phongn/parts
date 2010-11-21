@@ -28,10 +28,17 @@ def get_part_name(env):
 def get_part_short_name(env):
     return common.g_engine._part_manager._from_env(env).ShortName
 
-
+class _PartName(object):
+    def __init__(self,env):
+        self.env=env
+    def __call__(self,name=None):
+        part_name(name)
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
+
+# add global for new format
+common.add_parts_object('PartName',_PartName)
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.PartName=part_name

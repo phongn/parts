@@ -89,15 +89,15 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     parent_obj=common.g_engine._part_manager._from_env(env)
     short_alias=env.subst('${UTEST_PREFIX}%s'%target)
     pobj=parts.Part_t(
-        env.subst('${UTEST_PREFIX}%s'%target),
-        parent_obj._file,
+        alias=env.subst('${UTEST_PREFIX}%s'%target),
+        file=parent_obj._file,
         create_sdk=False,
         parent_part=parent_obj,
         __is_read=True,
         **kw)
     pobj._setup_(env.Clone(**kw))
     
-    common.g_engine._part_manager._add_part(pobj.Alias,pobj)
+    common.g_engine._part_manager._add_part(pobj)
     # setup basic stuff we need for this part
     
     
@@ -195,7 +195,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     #build alias
     build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-    a=pobj.Env.Alias("_"+build_alias)     
+    a=pobj.Env.Alias(build_alias)     
     
     tmp=[]
     for i in ret:
@@ -208,7 +208,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
      #install alias stuff
     install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+pobj.Alias
-    a=env.Alias(install_alias,a+ret)
+    a=env.Alias(build_alias,ret)
     # setup basic aliases
     #pobj._map_alias()
 
@@ -228,10 +228,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     #add to queue the delayed mapping of any dependent stuff
     common.g_engine.add_preprocess_logic_queue(functors.map_parts_alias(pobj.Env))
     
-    base_alias=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
-    base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
+    base_alias=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
+    base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
+    base_alias3=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
+    base_alias4=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
     
     ## map just this test to build
     alias_out=common.make_alias_tree(pobj.Env,'${BUILD_UTEST_CONCEPT}',base_alias,base_alias2,base_alias3,base_alias4)
@@ -244,10 +244,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## map just this test to run    
     # map top level run alias... first one maps to build based 'base_alias'
-    base_alias=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',base_alias,pobj.Env.Action(cmd))
-    base_alias2=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}@${UNIT_TEST_TARGET}',base_alias3)
+    base_alias=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',base_alias,pobj.Env.Action(cmd))
+    base_alias2=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
+    base_alias3=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
+    base_alias4=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
     
     env.AlwaysBuild(base_alias)
     env.AlwaysBuild(base_alias2)
@@ -288,7 +288,7 @@ common.AddBuilder('__UTEST__',SCons.Script.Builder(
 common.AddVariable('BUILD_UTEST_CONCEPT','utest${ALIAS_SEPARTATOR}','Defines namespace for building a unit test')
 common.AddVariable('RUN_UTEST_CONCEPT','run_utest${ALIAS_SEPARTATOR}','Defines namespace for running a unit test')
 
-common.AddVariable('UTEST_PREFIX','utest@','prefix used by UnitTest to prefix alias name')
+common.AddVariable('UTEST_PREFIX','utest-','prefix used by UnitTest to prefix alias name')
 
 common.AddVariable('UTEST_ALL','$BUILD_UTEST_CONCEPT','Alias used to build all defined unit tests')
 common.AddVariable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all defined unit tests')
@@ -302,7 +302,7 @@ common.AddVariable('UNIT_TEST_ENV',
 			{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
 			'Default values add to default environment when running unit tests')
 common.AddVariable('UNIT_TEST_TARGET_NAME',
-			'${PART_PARENT_NAME}@${UNIT_TEST_TARGET}_${PART_VERSION}',
+			'${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
 			'Default value of a given unit test executable')
 common.AddVariable('UNIT_TEST_RUN_SCRIPT_COMMAND',
 			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}',

@@ -4,6 +4,4 @@ Test cases give reported as a bug.. used as make sure regression does not happen
 '''
 test.copy_directory='partsbug'
 
-t=test.AddTestRun()
-t.cmd="scons . --console-stream=none"
-t.returncode=0
+t=test.AddBuildRun('all','--verbose=gtest')

@@ -1,4 +1,36 @@
 
+
+class section_delegator(object):
+    ''' This class is the object the Parts object wil deal with. It is created in a lazy manner by the meta form instance of
+    the section_t class. This allow for reduce memory overhead for Parts that don't use the new format and also ensures that 
+    better scaling happen when we have cases of lots of Parts and lots of custom section are defined, as a Part is likely to use
+    only a few of the possible full set that could be defined.
+    '''
+    
+class section_t(object):
+    ''' This class is the primary template used to create all section instances in Parts. It provides
+    the basic wrapper code to handle the different cases the can be used in the declorator syntax.
+    Internally it will create a instance object with data needed by the Part object to handle what the
+    user defined for a given section. If no sections are defined, then the part_t object will not have any internal
+    section object defined in it. 
+    '''
+    def __init__(self,func=None,**kw):
+        '''
+        Defines the basic setup logic
+         @param func defines the function we are wrapping. If None then lst or kw will have meta values we will want to process
+         @param **kw a dictionary of name arguments to process
+         
+         add more doc info
+        '''
+        # these values are added by the section object when it make the finial meta class
+        #self._delegator_type this type we want to create
+        #self._proxy Instance of the delegator type, else None
+        #self._pobj instance of the Part object that we are defining ourselves on
+
+        # data for this instance
+        self._func=func
+        self._kw=kw
+
 def default_test_func(self,*lst,**kw):
 	for l in lst:
 		if callable(l):

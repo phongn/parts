@@ -58,13 +58,13 @@ def node_up_to_date(node):
     return True
 
 
-class _AbsFile:
+class _AbsFile(object):
     def __init__(self,env):
         self.env=env
     def __call__(self,path):
         return self.env.File(str(path),self.env['SRC_DIR']).srcnode().abspath
 
-class _AbsDir:
+class _AbsDir(object):
     def __init__(self,env):
         self.env=env
     def __call__(self,path):
@@ -155,6 +155,10 @@ common.AddBuilder('__make_link__',SCons.Builder.Builder(
 
 # import the meta object we will need to add our code to as methods
 from SCons.Script.SConscript import SConsEnvironment
+
+#add as global to part scope
+common.add_parts_object('AbsFile',_AbsFile,True)
+common.add_parts_object('AbsDir',_AbsDir,True)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.AbsFile=AbsFile

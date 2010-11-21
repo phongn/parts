@@ -107,5 +107,4 @@ bld_sec=section.section('build',build_func,['build'])
 bld_sec.AddPhase('config',optional=True)
 bld_sec.AddPhase('emit',optional=True)
 
-
 common.add_section(bld_sec)

@@ -28,20 +28,21 @@ class map_parts_alias:
         for d in dlst:
             #get unknown alias
             val=d.resolve_alias(self.env)
-            if val == "":
+            if val == "" or val is None:
+                reporter.report_warning('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(self.env.subst('$PART_NAME'),d.name),stackframe=d.stackframe)
                 continue
             denv=pobj.Env
-            flist.append(denv.subst('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
-            flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
+            flist.append(denv.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
+            #flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
         #the build alias
-        build_alias='_${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
+        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
         ## this one might help SCons scale better with larger -j values
         #the install alias
-        install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
+        #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
         # we map the build alias to the dependent SDK aliases
         self.env.Alias(build_alias,flist)
         # we map the install alias to the dependent INSTALL aliases
-        self.env.Alias(install_alias,flist2)
+        # self.env.Alias(install_alias,flist2)
 
 
 def full_parts_depends_list(env):

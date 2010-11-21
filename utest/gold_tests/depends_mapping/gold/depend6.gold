@@ -1,0 +1,1 @@
+Verbose: [gtest] ["${PARTIDEXPORTS('part1','*','CPPPATH',True)}"] True

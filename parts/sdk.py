@@ -77,7 +77,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
                 out.extend(env.CCopy(target=target_dir,source=s))
             #src.append(s)            
         else:
-            reporter.report_warning("Unknown type in process_Sdk_Copy() in sdk.py")
+            reporter.report_warning('Unknown type "{0}" in process_Sdk_Copy() in sdk.p'.format(type(s)))
         
     #define Alias if we have a part being defined
     if create_sdk==True:
@@ -335,7 +335,9 @@ def CreateSDK_SF(node, env, path):
     # otherwise this SDK file has little value
     for d in pobj.Depends:
         pdobj=d.part
-        if pdobj._sdk_file is None:
+        if pdobj is None:
+            pass
+        elif pdobj._sdk_file is None:
             ret.append(pdobj._file)
         else:
             ret.append(pdobj._sdk_file)
@@ -369,7 +371,7 @@ def CreateSDK_BF(target, source, env):
         # we want to get the version of the component we depend on
         # however the component might not have been defined in the build
         tmp=c.resolve_alias(env)
-        if tmp=='':
+        if tmp=='' or tmp is None:
             # we did not find anything
             # so we make the provided range
             exact_ver=str(c.version)
@@ -388,7 +390,7 @@ PartName("'''+name+'''")
 PartVersion("'''+ver_str+'''")
 '''
     if comp_lst !=[]:
-        data+="DependsOn(['''+','.join(comp_lst)+'''])"
+        data+='''DependsOn(['''+','.join(comp_lst)+"])"
     data+='''
 @build.config
 def config(env):

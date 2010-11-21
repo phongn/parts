@@ -57,6 +57,7 @@ class svn(base):
         
         #if the server is different we need to relocate
         update_path=self.FullPath
+        
         if self.get_svn_data()['root'] != self.Server:
             strval1 ='%s switch --relocate $SVN_FLAGS %s %s "%s"'%('svn',self.get_svn_data()['root'],self.Server,out_dir)
             strval2 ='%s switch $SVN_FLAGS %s%s "%s"'%('svn',update_path,self.Revision,out_dir)
@@ -73,7 +74,7 @@ class svn(base):
         ''' returns the action to do the checkout'''
         strval = '%s checkout $SVN_FLAGS %s%s "%s"'%('svn',self.FullPath,self.Revision,out_dir)
         cmd = '"%s" checkout $SVN_FLAGS %s%s "%s"'%(svn.svnpath,self.FullPath,self.Revision,out_dir)
-        return self._env.Action(cmd,strval)
+        return self._env.Action(cmd)
         
     def clean_step(self,out_dir):
         ''' since svn tends to checkout the .svn meta data area as readonly
