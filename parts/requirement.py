@@ -1,16 +1,15 @@
 
 import common
 import reporter
+import copy
+from policy import REQPolicy,ReportingPolicy
+
 
 _added_types={}
 
-class Policy(object):
-    ignore=0
-    warning=1
-    error=2
 
 class requirement(object):
-    def __init__(self, key, internal=False, public=None, policy=None, mapper=None,listtype=None):
+    def __init__(self, key, internal=False, public=None, policy=None, mapper=None,listtype=None,weight=0):
         ''' Sets up the requirment object
         
         @param value The value to import
@@ -22,14 +21,14 @@ class requirement(object):
         '''
         self._key=key
         self._internal=internal
-        
+        self._weight=weight
         if public is None:
             self._public=False
         else:
             self._public=public
             
         if policy is None:
-            self._policy=Policy.warning
+            self._policy=REQPolicy.warning
         else:
             self._policy=policy
         
@@ -43,7 +42,7 @@ class requirement(object):
                   if public is None:
                       self._public=False
                   if policy is None:
-                      self._policy=Policy.ignore
+                      self._policy=REQPolicy.ignore
             else:
                   self._listtype=False
         else:
@@ -54,8 +53,8 @@ class requirement(object):
         else:
             self._mapper='PARTIDEXPORTS'
     
-    def value_mapper(self,value):
-        return "${{{0}{1}}}".format(self._mapper,value)
+    def value_mapper(self,name,version,key):
+        return "${{{0}('{1}','{2}','{3}',{4})}}".format(self._mapper,name,version,key,self.policy)
     
     @property
     def is_list(self):
@@ -73,6 +72,10 @@ class requirement(object):
     def key(self):
         return self._key    
     
+    @property
+    def policy(self):
+        return self._policy
+    
     def __call__(self,internal=None, public=None, policy=None):
         if internal is not None:
             self._internal=internal
@@ -81,6 +84,12 @@ class requirement(object):
         if policy is not None:
             self._policy=policy
         return self
+    
+    #def __copy__(self):
+    #    return requirement(self._key, self._internal, self._public, self._policy, self._mapper, self._listtype,self._weight)
+    #
+    #def __deepcopy__(self):
+    #    return requirement(self._key, self._internal, self._public, self._policy, self._mapper, self._listtype,self._weight)
     
     def __or__(self,lhs):
         if common.is_int(lhs):
@@ -97,58 +106,88 @@ class requirement(object):
             return REQ([self])
         return REQ([self])|lhs
     
+    def __iter__(self):
+        return [self].__iter__()
+    
     def __str__(self):
-        return "requirement(key={0} internal={1} public={2} policy={3})".format(self.key,self._internal,self._public,self._policy)
+        return "requirement(key={0} internal={1} public={2} policy={3}, weight={4})".format(self.key,self._internal,self._public,self._policy,self._weight)
+    
     def __repr__(self):
-        return "requirement(key={0} internal={1} public={2} policy={3})".format(self.key,self._internal,self._public,self._policy)
+        return "requirement(key={0} internal={1} public={2} policy={3}, weight={4})".format(self.key,self._internal,self._public,self._policy,self._weight)
+    
     def __hash__(self):
         return hash(self.key)
     
     def __cmp__(self,rhs):
         return cmp(self.key,rhs.key)
+    
 
 class requirement_set(object):
-    def __init__(self,lst):    
+    def __init__(self,lst,weight=-1000):
+        '''Construct a new requirement set object
+         @param lst The set of value to add. The values can be a string to an existing defined requirement set, or a requriement object
+         @param weight The weight to give every object in this set.
+         
+         It is important to note that the lst object is copied. We have to make sure all objects we might change state on, are not shared.
+        '''
+        self._weight=weight
         self._values=[]
         for i in lst:
             if type(i) is type(''):
                 if i in _added_types:
-                    tmp=_added_types[i][0]
-                    self._values.extend(tmp._values)
-                    if _added_types[i][1] != Policy.ignore:
-                        reporter.report_warning("REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
+                    items=_added_types[i][0]
+                    for item in items._values:
+                        tmp=copy.copy(item)
+                        tmp._weight=weight
+                        self._values.extend(tmp)
+                    reporter.policy_print(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
                 else:
                     reporter.report_warning("{0} is not a registered REQ type. Skipping...".format(i))
             else:
-                self._values.append(i)
+                tmp=copy.copy(i)
+                tmp._weight=weight
+                self._values.append(tmp)
 
     
     def __call__(self,internal=None,public=None, policy=None):
-        if internal is not None:
-            self._internal=internal
-        if public is not None:
-            self._public=public
-        if policy is not None:
-            self._policy=policy            
+        for v in self._values:
+            v(internal, public, policy)
         return self
     
+    def __copy__(self):
+        return requirement_set(self._values,self._weight)
+    
+    def __deepcopy__(self,memo={}):
+        return requirement_set(self._values,self._weight)
+        
     def __or__(self,lhs):
         if common.is_int(lhs):
-            return REQ(self._values)
-        return REQ(self._values)|lhs
+            return REQ(self._values,self._weight)
+        return REQ(self._values,self._weight)|lhs
     
     def __ror__(self,rhs):
         if common.is_int(rhs):
-            return REQ(self._values)
-        return REQ(self._values)|rhs
+            return REQ(self._values,self._weight)
+        return REQ(self._values,self._weight)|rhs
     
     def __ior__(self,lhs):
         if common.is_int(lhs):
-            return REQ(self._values)
-        return REQ(self._values)|lhs
+            return REQ(self._values,self._weight)
+        return REQ(self._values,self._weight)|lhs
+
+    def __iter__(self):
+        return self._values.__iter__()
+    
+    def __str__(self):
+        return "RequirementSet({0})".format(self._values)
+    
+    def __repr__(self):
+        return "RequirementSet({0})".format(self._values)
+    
+
             
 
-def DefineRequirementSet(name,lst,policy=Policy.ignore):
+def DefineRequirementSet(name,lst,policy=ReportingPolicy.ignore,weight=-1000):
         tmplst=[]
         global _added_types
         for i in lst:
@@ -157,11 +196,10 @@ def DefineRequirementSet(name,lst,policy=Policy.ignore):
             elif type(i) is type(''):
                 try:
                     tmplst.extend(_added_types[i][0]._values)
-                    if _added_types[i][1] != Policy.ignore:
-                        reporter.report_warning("REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
+                    reporter.policy_print(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
                 except KeyError:
                     reporter.report_warning(i ,"not found when mapping requirments")
-        _added_types[name]=(requirement_set(tmplst),policy)
+        _added_types[name]=(requirement_set(tmplst,weight),policy)
                     
         
 class requirement_internal(requirement):
@@ -172,32 +210,15 @@ class requirement_internal(requirement):
             self._policy=policy
         return self 
 
-class requirement_set_internal(requirement_set):
-    def __call__(self,public=None, policy=None):
-        
-        for i in self.__values:
-            i(internal,public,policy)
-            
-        return self
+#class requirement_set_internal(requirement_set):
+#    def __call__(self,public=None, policy=None):
+#                
+#        for i in self.__values:
+#            i(internal,public,policy)
+#            
+#        return self
 
 
-
-# setup default value for common stuff... some of this should move to tools that define them
-DefineRequirementSet('EXISTS',[])
-DefineRequirementSet('CPPPATH',[requirement('CPPPATH',public=True,policy=Policy.ignore)])
-DefineRequirementSet('CPPDEFINES',[requirement('CPPDEFINES',public=True,policy=Policy.ignore)])
-DefineRequirementSet('CXXFLAGS',[requirement('CXXFLAGS',public=True,policy=Policy.ignore)])
-DefineRequirementSet('CFLAGS',[requirement('CFLAGS',public=True,policy=Policy.ignore)])
-DefineRequirementSet('CCFLAGS',[requirement('CCFLAGS',public=True,policy=Policy.ignore)])
-DefineRequirementSet('LINKFLAGS',[requirement('CCFLAGS',public=True,policy=Policy.ignore)])
-DefineRequirementSet('LIBPATH',[requirement('LIBPATH',public=True,policy=Policy.ignore)])
-
-DefineRequirementSet('HEADERS',['CPPPATH','CPPDEFINES'])
-DefineRequirementSet('LIBS',['LIBPATH',requirement('LIBS',public=True,policy=Policy.ignore,mapper='PARTLIB',listtype=True)])
-DefineRequirementSet('default',['LIBS','HEADERS'])
-DefineRequirementSet('DEFAULT',['default'])
-
-DefineRequirementSet('ALL_DEFAULT',['LIBS','HEADERS','CCFLAGS','CFLAGS','CXXFLAGS'],Policy.warning)
 
 
 class metaREQ(type):
@@ -209,14 +230,59 @@ class metaREQ(type):
             internal=True
         
         if name in _added_types:
-            if _added_types[name][1] != Policy.ignore:
+            if _added_types[name][1] != ReportingPolicy.ignore:
                 reporter.report_warning("REQ option {0} is deprecated and will be removed, please remove usage.".format(name))
-            return _added_types[name][0](internal=internal)
+            return copy.deepcopy(_added_types[name][0])(internal=internal)
         if internal:
             return requirement_internal(name,internal)
         return requirement(name,internal)
     
     
-class REQ(set):
+class REQ(object):
     __metaclass__ = metaREQ
+    Policy=REQPolicy
+    def __init__(self,lst=[],weight=None):
+        self.__data={}
+        for i in lst:
+            tmp=copy.copy(i)
+            if weight:
+                tmp._weight=weight
+            self.__data[tmp.key]=tmp
+        
+    def __or__(self,rhs):
+        tmp=set(self.__data.values())
+        for i in rhs:
+            try:
+                # this allow stuff at the end of to win
+                # and allow value in "sets" to have lesser weight
+                # than explict values
+                if self.__data[i.key]._weight <= i._weight:
+                    tmp.remove(i)
+                    tmp.add(i)
+                else:
+                    pass
+            except KeyError:
+                tmp.add(i)
+        return REQ(tmp)
+                
+    def __len__(self):
+        return len(self.__data)
+    
+    def __contains__(self,lhs):
+        try:
+            return lhs.key in self.__data
+        except AttributeError:
+            for i in lhs:
+                if i.key not in self.__data:
+                    return False
+                return True
+    
+    def __iter__(self):
+        return self.__data.itervalues()
+    
+    def __str__(self):
+        return "REQ({0})".format(self.__data.values())
+    
+    def __repr__(self):
+        return "REQ({0})".format(self.__data.values())
     

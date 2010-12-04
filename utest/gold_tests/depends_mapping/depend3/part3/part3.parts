@@ -7,10 +7,10 @@ env.DependsOn([
 			   Component('part2b',requires=REQ.foo(public=True)|REQ.foo_list(public=True))
                ])
 
-env.VerboseMessage(['gtest'],env['foo'],env['foo']=="[${PARTIDEXPORTS('part2a','*','foo',True)},${PARTIDEXPORTS('part2b','*','foo',True)}]")
-env.VerboseMessage(['gtest'],env['foo_list'],env['foo']=="[${PARTIDEXPORTS('part2a','*','foo_list',True)},${PARTIDEXPORTS('part2b','*','foo_list',True)}]")
+env.VerboseMessage(['gtest'],env['foo'],env['foo']=="[${PARTIDEXPORTS('part2a','*','foo',3)},${PARTIDEXPORTS('part2b','*','foo',3)}]")
+env.VerboseMessage(['gtest'],env['foo_list'],env['foo']=="[${PARTIDEXPORTS('part2a','*','foo_list',3)},${PARTIDEXPORTS('part2b','*','foo_list',3)}]")
 
-env.VerboseMessage(['gtest'],env['DEPENDS']['part2a']['foo'],env['DEPENDS']['part2a']['foo']=="${PARTIDEXPORTS('part2a','*','foo',True)}")
-env.VerboseMessage(['gtest'],env['DEPENDS']['part2b']['foo'],env['DEPENDS']['part2b']['foo']=="${PARTIDEXPORTS('part2b','*','foo',True)}")
-env.VerboseMessage(['gtest'],env['DEPENDS']['part2a']['foo_list'],env['DEPENDS']['part2a']['foo_list']=="${PARTIDEXPORTS('part2a','*','foo_list',True)}")
-env.VerboseMessage(['gtest'],env['DEPENDS']['part2b']['foo_list'],env['DEPENDS']['part2b']['foo_list']=="${PARTIDEXPORTS('part2b','*','foo_list',True)}")
+env.VerboseMessage(['gtest'],env['DEPENDS']['part2a']['foo'],env['DEPENDS']['part2a']['foo']=="${PARTIDEXPORTS('part2a','*','foo',3)}")
+env.VerboseMessage(['gtest'],env['DEPENDS']['part2b']['foo'],env['DEPENDS']['part2b']['foo']=="${PARTIDEXPORTS('part2b','*','foo',3)}")
+env.VerboseMessage(['gtest'],env['DEPENDS']['part2a']['foo_list'],env['DEPENDS']['part2a']['foo_list']=="${PARTIDEXPORTS('part2a','*','foo_list',3)}")
+env.VerboseMessage(['gtest'],env['DEPENDS']['part2b']['foo_list'],env['DEPENDS']['part2b']['foo_list']=="${PARTIDEXPORTS('part2b','*','foo_list',3)}")

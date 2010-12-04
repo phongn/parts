@@ -12,7 +12,7 @@ import SCons.Script
 # not ideal...
 import SCons.Script.Main
 import SCons.Errors
-
+import policy as Policy
 #if 'stacktrace' in SCons.Script.GetOption('debug'):
 class PartRuntimeError(SCons.Errors.StopError):
     pass
@@ -111,7 +111,7 @@ class reporter:
     def Setup(self,logger,silent,verbose,trace,use_color):
         
         self.silent=silent                
-        if use_color == False:
+        if use_color == False or use_color is None:
             self.console.ProcessColor=False
         else:
             self.console.ProcessColor=True
@@ -198,7 +198,6 @@ class reporter:
         
         self.console.Error.write(s)
         self.logger.logerr(s)
-        1/0
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
         
@@ -220,10 +219,12 @@ class reporter:
                 self.stdverbose(s)
                 break
 
-    def trace_msg(self,catagory,msg):
+    def trace_msg(self,catagory,msg_lst):
         tmp=common.make_list(catagory)
         for c in tmp:
             if c in self.trace:
+                msg=map(str,msg_lst[1:-1])
+                msg=msg_lst[0].join(msg)+msg_lst[-1]
                 s='Trace: [%s] %s'%(tmp[0],msg)
                 self.stdtrace(s)
             
@@ -380,22 +381,21 @@ def _trace_msg(catagory,*lst,**kw):
     catagory=common.make_list(catagory)
     if g_rpter.isSetup==False:
         g_rpter.trace=SCons.Script.GetOption('trace')
-    msg=map(str,lst)
-    g_rpter.trace_msg(catagory,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    g_rpter.trace_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
 
 trace_msg=_trace_msg
 
-#def policy_print(policy,*lst,**kw):
-#    if policy == Policy.ignore:
-#        return
-#    elif policy == Policy.message:
-#        print_msg(*lst,**msg)
-#    elif policy == Policy.verbose:
-#        _verbose_msg(*lst,**kw)
-#    elif policy == Policy.warning:
-#        report_warning(*lst,**msg)
-#    elif policy == Policy.error:
-#        report_error(*lst,**msg)
+def policy_print(policy,catagory,*lst,**kw):
+    if policy == Policy.ReportingPolicy.ignore:
+        return
+    elif policy == Policy.ReportingPolicy.message:
+        print_msg(*lst,**msg)
+    elif policy == Policy.ReportingPolicy.verbose:
+        _verbose_msg(catagory,*lst,**kw)
+    elif policy == Policy.ReportingPolicy.warning:
+        report_warning(*lst,**msg)
+    elif policy == Policy.ReportingPolicy.error:
+        report_error(*lst,**msg)
 
 
 def print_console(*lst,**kw):

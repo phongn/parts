@@ -35,6 +35,7 @@
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
   </ItemGroup>
@@ -137,6 +138,7 @@
     <None Include="pieces\zipfile.py" />
     <None Include="pieces\__init__.py" />
     <None Include="platform_info.py" />
+    <None Include="policy.py" />
     <None Include="poptions.py" />
     <None Include="reporter.py" />
     <None Include="requirement.py" />
@@ -215,6 +217,7 @@
     <None Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />

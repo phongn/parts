@@ -66,13 +66,14 @@ g_base_env= SCons.Script.Environment(tools=[])
 def get_basic_SCon_env(**kw):
     return g_base_env.Clone(**kw)
 
+#remove in api...
 def add_section(section):
     # add
     g_sections.add(section)
-    
+#remove in api...
 def add_mapper(mapper):
     g_mappers[mapper.name]=mapper
-
+#remove in api...
 def add_parts_object(key,object,map_env=False):
     if map_env:
         g_parts_objs_env[key]=object
@@ -80,7 +81,7 @@ def add_parts_object(key,object,map_env=False):
         g_parts_objs[key]=object
     
     # add code to for help generation
-    
+#remove in api...    
 def add_global_value(key,object):
     g_globals[key]=object
 
@@ -225,6 +226,7 @@ def process_tool_arg(lst):
     tmplst.reverse()
     return tmplst
 
+#remove
 def AddBuilder(name,builder):
     if g_builders.has_key(name)==False:
         g_builders[name]=builder

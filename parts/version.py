@@ -522,3 +522,11 @@ class version_range(object):
         '''
         return str(self.range)
         
+from SCons.Script.SConscript import SConsEnvironment
+import api
+    
+SConsEnvironment.Version = version
+SConsEnvironment.VersionRange = version_range
+
+api.add_global_parts_object('Version',version)
+api.add_global_sconstruct_object('Version',version)

@@ -65,7 +65,7 @@ class part_manager(object):
         for t in targets:
             tmp=target_type(t)
             # first see if this is ambiguous
-            if not tmp.isPartAlias:
+            if not tmp.isPartTarget:
                 # we are not sure
                 if self._alias_list.get(tmp.orginal_string) is not None:
                     #we are sure this is a Parts value
@@ -129,7 +129,7 @@ class part_manager(object):
         for t in targets:
             tmp=target_type(t)
             # first see if this is ambiguous
-            if not tmp.isPartAlias:
+            if not tmp.isPartTarget:
                 # we are not sure
                 if self._alias_list.get(tmp.orginal_string) is not None:
                     #we are sure this is a Parts value
@@ -162,20 +162,22 @@ class part_manager(object):
         '''            
         
         # first see if this is ambiguous
-        if not tobj.isPartAlias:
-            # we are not sure
+        if tobj.shouldResolve:
+            # we are not sure what this is. so try to reolve it based on 
+            # what we know
             # first we try to see if the name can be matched
             tmp=self._get_stored_root_alias_from_name(tobj.orginal_string)
+            
             if tmp:
-                #we are sure this is a Parts value
+                #we are sure this is a Parts value.. ie a part name
                 return tmp
             # see if this is an alias value
             tmp=self._get_stored_root_alias_from_alias(tobj.orginal_string)
             if tmp:
-                #we are sure this is a Parts value
+                #we are sure this is a Parts value.. ie a part alias
                 return tmp
             else:
-                #we are sure this is a SCons value
+                #we are sure this is a SCons value, some Alias() 
                 return None
                
         if tobj.all:
@@ -357,6 +359,7 @@ class part_manager(object):
         '''
         root_parts=[]
         for t in SCons.Script.BUILD_TARGETS:
+            
             tmp=self._get_stored_root_alias_from_target(target_type(t))
             
             if tmp is None:
@@ -370,13 +373,13 @@ class part_manager(object):
                 # this this part and any sub parts it might have
                 for t in tmp:
                     common.extend_unique(root_parts,[t]+self._get_stored_full_root_depends(t))
-        if root_parts is None:
+        if root_parts is None: # this is really unknown
             # map everything
             return (self.parts.values(),True)
-        if root_parts == []:  
+        if root_parts == []:  # some concept
             # map everything
             return (self.parts.values(),False)
-        else:
+        else: # have a reduce set of stuff
             return ([self.parts[i] for i in root_parts],False)
     
     def map_scons_target_list(self):
@@ -387,7 +390,7 @@ class part_manager(object):
         for t in SCons.Script.BUILD_TARGETS:
             tobj=target_type(t)
             # first see if this is ambiguous
-            if not tobj.isPartAlias:
+            if not tobj.isPartTarget:
                 # we are not sure
                 # first we try to see if the name can be matched
                 ta=target_type("alias::"+str(t))
@@ -558,10 +561,10 @@ class part_manager(object):
             elif p.Alias in do_not_load:
                 msg="up-to-date! Skipped loading Parts: %s."%p.Alias
             else:
-                if skip_update_check and p._force_load==False:
+                if skip_update_check:
                     msg="Loaded from file: %s."%p.Alias
-                elif skip_update_check and p._force_load==True:
-                    msg="Force loading from file: %s."%p.Alias
+                elif p._force_load==True and p.Alias not in out_date_list:
+                    msg="force_load is set! Loaded from file: %s."%p.Alias
                 else:
                     msg="out-of-date! Loaded from file: %s."%p.Alias
                 p.ReadFile()
@@ -628,7 +631,7 @@ class part_manager(object):
         process the target correctly
         '''
         # parse the target to get any possible concepts
-        if target.isPartAlias() == False:
+        if target.isPartTarget() == False:
             target.all=True
             if target.orginal_string not in ['all','.']:
                 reporter.report_warning('Target "%s" is unknown to Parts, it may be known to SCons. Force reading all data'%target.orginal_string)
@@ -776,7 +779,7 @@ class part_manager(object):
                         # we have to force build the whole object, otherwise it might not become up-to-date
                         #SCons.Script.BUILD_TARGETS.append(p.Alias)
                         reporter.verbose_msg("update_check",'Part "%s" is out of date because it depends on a Part "%s" that is out of date'%(p.Alias,x))
-                        continue
+                        break
             # we store failures as we assume that this is less than
             # one that would pass given common incremental build cases
             if self.is_whole_part_up_to_date(p.Alias)==False:

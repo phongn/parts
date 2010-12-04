@@ -7,16 +7,18 @@ import SCons.Script
 
 __cache={}
 __dirty_cache=[]
-__db_key=None
+__db_key={}
 
 def db_key(length):
     global __db_key
-    if __db_key is None:
+    try:
+        return __db_key[length]
+    except KeyError:
         import hashlib
         md5=hashlib.md5()
         md5.update("DB Cache Version 1.0 length %s"%(length))
-        __db_key=md5.hexdigest()
-    return __db_key
+        __db_key[length]=md5.hexdigest()
+    return __db_key[length]
      
 
 
@@ -74,7 +76,6 @@ def GetCache(name,key=None):
                 __cache[filename]=ret[1]
                 return ret[1]
     # we don't have a cache for this combo
-    
     return None
 
 def StoreData(name,data,key=None):

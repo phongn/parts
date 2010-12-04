@@ -6,12 +6,15 @@ def _parse_target(target):
     Parses the Target to help Parts figure out how to treat the Target
     
     The current logic is to handle cases such as:
+    \verbatim
         alias::<part_alias>
         <part name>
         name::<part name>
         name::<part name>@key:value
         name::<part name>@key:value@key2:val2 ...
         <concept>::<some form from above>
+    \endverbatim
+
         
     '''
     if target is None:
@@ -22,6 +25,9 @@ def _parse_target(target):
     t=target.split(seperator,1)   
     # this is a the case of "foo"
     if len(t) == 1:
+        # this might be more of a hack to deal with "all"
+        if t == 'all':
+            return {'concept':'build','all':True}
         # we have an part name, SCons alias or a path
         return {'_resolve':True}
     # this happens with "foo::"->['foo','']
@@ -124,18 +130,23 @@ class target_type(object):
             _target_type_cache[target]=self
             
     @property
-    def isPartAlias(self):
-        ''' This property tells if the string is a Parts alias
+    def isPartTarget(self):
+        ''' This property tells if the string is a Parts Alias().
         
-        If this is False we assume it some type of SCons alias
+        If this is False we assume it some type of SCons Alias()
         '''
-        if self.concept is not None or\
+        if self._resolve == False or\
+            self.concept is not None or\
             self.alias is not None or\
             self.name is not None or\
-            self.all != False:
+            self.all != False:                
             return True
         else:
             return False
+    
+    @property
+    def shouldResolve(self):
+        return self._resolve
     
     def root_alias(self):
         if self.alias:

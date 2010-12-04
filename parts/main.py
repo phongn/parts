@@ -15,6 +15,7 @@ import version_info
 import engine
 import poptions,installs
 import vcs
+import api.requirement
 
 
 import build_section

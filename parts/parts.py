@@ -7,6 +7,7 @@ import part_logger
 import packaging
 import copy
 import dependson
+import requirement
 from target_type import target_type
 
 # these imports add stuff we will need to export to the parts file.
@@ -622,9 +623,12 @@ class Part_t(object):
 
         
     def _map_alias(self):
-        ''' this function creates all the extra aliases we create'''
+        ''' This function maps two different of Core Aliases
+        One form is to map the given component to all components that it dependson
+        The second form is to add all sub-Parts of this component
+        '''
         
-        #vfile=self.__env._MapUnknowns([],self.__file)
+        vfile=self.__env._MapUnknowns([],self.__file)
         
         ##given part alias of "foo" name "FOO"
         #build alias .. ie build::alias::foo
@@ -683,8 +687,16 @@ class Part_t(object):
         #all->name::foo
         #self.__env.Alias('all',[pv_alias])
         
+        # This is the base Alias for a given Part
         build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
-        self.__env.Alias("${PART_BUILD_CONCEPT}",self.__env.Alias(build_alias))
+        # note that InstallXXX and SdkXXX map to this value
+        # new formats will make all targets to this value as well.
+        a=self.__env.Alias(build_alias,vfile)
+        self.__env.Alias("${PART_BUILD_CONCEPT}",a)
+        #if self._is_root:
+            #self.__env.Alias("${PART_BUILD_CONCEPT}",a)
+        #else:
+            #self.__env.Alias("${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}"+self.Parent.Alias,a)
         
         
         #add to queue the delayed mapping of high level Alias to other high level alias
@@ -933,21 +945,21 @@ class Part_t(object):
         cxxflags=[]
         
         # map stuff we dependon
-        if (comp_part.requires & dependson.REQ._CPPPATH_IMPORT):
+        if (comp_part.requires & requirement.REQ._CPPPATH_IMPORT):
             cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
-        if (comp_part.requires & dependson.REQ._LIBPATH_IMPORT):
+        if (comp_part.requires & requirement.REQ._LIBPATH_IMPORT):
             libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
-        if (comp_part.requires & dependson.REQ._LIBS_IMPORT):
+        if (comp_part.requires & requirement.REQ._LIBS_IMPORT):
             libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
-        if (comp_part.requires & dependson.REQ._LINKFLAGS_IMPORT):
+        if (comp_part.requires & requirement.REQ._LINKFLAGS_IMPORT):
             linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
-        if (comp_part.requires & dependson.REQ._CCFLAGS_IMPORT):
+        if (comp_part.requires & requirement.REQ._CCFLAGS_IMPORT):
             ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
-        if (comp_part.requires & dependson.REQ._CFLAGS_IMPORT):
+        if (comp_part.requires & requirement.REQ._CFLAGS_IMPORT):
             cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
-        if (comp_part.requires & dependson.REQ._CXXFLAGS_IMPORT):
+        if (comp_part.requires & requirement.REQ._CXXFLAGS_IMPORT):
             cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
-        if (comp_part.requires & dependson.REQ._CPPDEFINES_IMPORT):
+        if (comp_part.requires & requirement.REQ._CPPDEFINES_IMPORT):
             cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
 
         #common.append_if_absent( self.__dependson,comp_part)
@@ -968,42 +980,42 @@ class Part_t(object):
         cxxflags=[]
         
         # map what we need to export
-        if (comp_part.requires & dependson.REQ._CPPPATH_EXPORT):
+        if (comp_part.requires & requirement.REQ._CPPPATH_EXPORT):
             cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
             if 'CPPPATH' not in self.__exports:
                 self.__exports['CPPPATH']=[]
             self.__exports['CPPPATH']=common.extend_unique(self.__exports['CPPPATH'],cpppath)
-        if (comp_part.requires & dependson.REQ._LIBPATH_EXPORT):
+        if (comp_part.requires & requirement.REQ._LIBPATH_EXPORT):
             libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
             if 'LIBPATH' not in self.__exports:
                 self.__exports['LIBPATH']=[]
             self.__exports['LIBPATH']=common.extend_unique(self.__exports['LIBPATH'],libpath)
-        if (comp_part.requires & dependson.REQ._LIBS_EXPORT):
+        if (comp_part.requires & requirement.REQ._LIBS_EXPORT):
             libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
             if 'LIBS' not in self.__exports:
                 self.__exports['LIBS']=[]
             self.__exports['LIBS']=common.extend_unique(self.__exports['LIBS'],libs)
-        if (comp_part.requires & dependson.REQ._LINKFLAGS_EXPORT):
+        if (comp_part.requires & requirement.REQ._LINKFLAGS_EXPORT):
             linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
             if 'LINKFLAGS' not in self.__exports:
                 self.__exports['LINKFLAGS']=[]
             self.__exports['LINKFLAGS']=common.extend_unique(self.__exports['LINKFLAGS'],linkflags)
-        if (comp_part.requires & dependson.REQ._CCFLAGS_EXPORT):
+        if (comp_part.requires & requirement.REQ._CCFLAGS_EXPORT):
             ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
             if 'CCFLAGS' not in self.__exports:
                 self.__exports['CCFLAGS']=[]
             self.__exports['CCFLAGS']=common.extend_unique(self.__exports['CCFLAGS'],ccflags)
-        if (comp_part.requires & dependson.REQ._CFLAGS_EXPORT):
+        if (comp_part.requires & requirement.REQ._CFLAGS_EXPORT):
             cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
             if 'CFLAGS' not in self.__exports:
                 self.__exports['CFLAGS']=[]
             self.__exports['CFLAGS']=common.extend_unique(self.__exports['CFLAGS'],cflags)
-        if (comp_part.requires & dependson.REQ._CXXFLAGS_EXPORT):
+        if (comp_part.requires & requirement.REQ._CXXFLAGS_EXPORT):
             cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
             if 'CXXFLAGS' not in self.__exports:
                 self.__exports['CXXFLAGS']=[]
             self.__exports['CXXFLAGS']=common.extend_unique(self.__exports['CXXFLAGS'],cxxflags)
-        if (comp_part.requires & dependson.REQ._CPPDEFINES_EXPORT):
+        if (comp_part.requires & requirement.REQ._CPPDEFINES_EXPORT):
             cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
             if 'CPPDEFINES' not in self.__exports:
                 self.__exports['CPPDEFINES']=[]
@@ -1023,7 +1035,10 @@ class Part_t(object):
         if self.__full_dependson == []:
             dlst=self.__dependson
             flst=[]
-            for d in dlst:                
+            for d in dlst: 
+                if d.part is None:
+                    print "can't map",d.name,d.version
+                    continue               
                 flst.append(d.part.Alias)
                 tmp=d.part._full_parts_depends_list()
                 common.extend_unique(flst,tmp)
@@ -1043,6 +1058,9 @@ class Part_t(object):
             flst=[self.__root.Alias]
             self.__cache['root_depends']=[]
             for d in dlst:
+                if d.part is None:
+                    print "can't map",d.name,d.version
+                    continue    
                 tmp=d.part._parts_root_depends_list()
                 common.extend_if_absent(flst,tmp)
             
@@ -1278,7 +1296,7 @@ class Part_t(object):
                 # such as a "srcnode" version of a binary that would only exist
                 # in the variant directory.. we test for the last case 
                 # by testing for existance
-                if i.exists(): # should  test that this is not Value node
+                if i.exists(): # should test that this is not Value node
                     tmp.append(
                             {
                             'name':i.path,
@@ -1286,11 +1304,20 @@ class Part_t(object):
                             'timestamp':i.get_timestamp()
                             }
                         )
+                #else:
+                #    tmp.append(
+                #            {
+                #            'name':i.path,
+                #            'csig':0,
+                #            'timestamp':0
+                #            }
+                #        )
                     
             else:
                 ninfo=dbentry.ninfo
-                tmpd={'name':i.path}
-                tmpd.update(ninfo.__dict__)
+                tmpd=i.path
+                #tmpd={'name':i.path}
+                #tmpd.update(ninfo.__dict__)
                 tmp.append(tmpd)
             
         data['nodes']=tmp

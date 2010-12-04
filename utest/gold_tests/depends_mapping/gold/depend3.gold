@@ -1,6 +1,6 @@
-Verbose: [gtest] ["${PARTIDEXPORTS('part2a','*','foo',True)}", "${PARTIDEXPORTS('part2b','*','foo',True)}"] False
-Verbose: [gtest] ["${PARTIDEXPORTS('part2a','*','foo_list',True)}", "${PARTIDEXPORTS('part2b','*','foo_list',True)}"] False
-Verbose: [gtest] ${PARTIDEXPORTS('part2a','*','foo',True)} True
-Verbose: [gtest] ${PARTIDEXPORTS('part2b','*','foo',True)} True
-Verbose: [gtest] ${PARTIDEXPORTS('part2a','*','foo_list',True)} True
-Verbose: [gtest] ${PARTIDEXPORTS('part2b','*','foo_list',True)} True
+Verbose: [gtest] ["${PARTIDEXPORTS('part2a','*','foo',3)}", "${PARTIDEXPORTS('part2b','*','foo',3)}"] False
+Verbose: [gtest] ["${PARTIDEXPORTS('part2a','*','foo_list',3)}", "${PARTIDEXPORTS('part2b','*','foo_list',3)}"] False
+Verbose: [gtest] ${PARTIDEXPORTS('part2a','*','foo',3)} True
+Verbose: [gtest] ${PARTIDEXPORTS('part2b','*','foo',3)} True
+Verbose: [gtest] ${PARTIDEXPORTS('part2a','*','foo_list',3)} True
+Verbose: [gtest] ${PARTIDEXPORTS('part2b','*','foo_list',3)} True
