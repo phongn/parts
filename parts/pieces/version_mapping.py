@@ -13,8 +13,11 @@ def scanner_function(node, env, path):
     pobj=common.g_engine._part_manager._from_env(env)
     
     for d in pobj.Depends:
-        if d.part._file:           
-            ret.append(d.part._file)
+        if d.part:
+            if d.part._file:           
+                ret.append(d.part._file)
+        else:
+            reporter.report_warning('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(pobj.Name,d.name),stackframe=d.stackframe)
     return ret        
 
 

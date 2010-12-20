@@ -113,7 +113,9 @@ stripActions = [
 # Emitter to generate *.pdb File node
 def pdbEmitter(target, source, env):
     if env.get('PDB') and len(target)==1:
-        target.append(env.subst('$PDB'))
+        pdb = env.arg2nodes('$PDB', target=target, source=source)[0]
+        pdb.attributes.pdb_owner = target[0]
+        target.append(pdb)
     return target, source
 
 

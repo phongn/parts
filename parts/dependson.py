@@ -87,6 +87,7 @@ def depends_on_classic(env,depends):
             continue
         reporter.verbose_msg('dependson'," Component",comp.name,comp.version)
         import_map={}
+
         for r in comp.requires:
             ## import logic
             # always map to namespace
@@ -110,12 +111,14 @@ def depends_on_classic(env,depends):
             
             # if this is a list and is not private we map to global space via an append
             if r.is_public and r.is_list:
+                reporter.verbose_msg('dependson', "  Global list",r.key,r.value_mapper(comp.name,comp.version,r.key))
                 env.AppendUnique(
                     delete_existing=True,
                     **{r.key:[r.value_mapper(comp.name,comp.version,r.key)]}
                     )
                     
             elif r.is_public:
+                reporter.verbose_msg('dependson', "  Global value",r.key,r.value_mapper(comp.name,comp.version,r.key))
                 if env.has_key(r.key):
                     env[r.key]=[env[r.key],r.value_mapper(comp.name,comp.version,r.key)]
                 else:

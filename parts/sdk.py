@@ -281,10 +281,14 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
     out=[]
     for i in sources:
         if isinstance(i,SCons.Node.FS.File)or isinstance(i,SCons.Node.Node) or common.is_string(i):
-            if common.is_catagory_file(env,'SDK_LIB_PATTERN',i):
+            try:
+                the_file = i.attributes.pdb_owner
+            except AttributeError:
+                the_file = i
+            if common.is_catagory_file(env,'SDK_LIB_PATTERN',the_file):
                 out+=SdkLib(env,[i],sub_dir=sub_dir,auto_add_libs=auto_add_libs,
                             add_to_path=add_to_path,use_src_dir=use_src_dir,create_sdk=create_sdk)
-            elif common.is_catagory_file(env,'SDK_BIN_PATTERN',i):
+            elif common.is_catagory_file(env,'SDK_BIN_PATTERN',the_file):
                 out+=SdkBin(env,[i],sub_dir=sub_dir,create_sdk=create_sdk)
             else:
                 #print 'Miss',i

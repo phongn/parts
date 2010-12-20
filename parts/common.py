@@ -29,6 +29,7 @@ g_env_cache={}
 g_parts_objs={}
 g_parts_objs_env={}
 
+g_known_concepts=[]
 
 #g_parts={} 
 #g_name_alias={}
@@ -618,50 +619,51 @@ def make_alias_tree(env,concept,
     
     pobj=g_engine._part_manager._from_env(env)
         
-    name="%s%s_%s"%(concept,pobj.Name,pobj.Version)#env.subst(concept+'${PART_NAME}_${PART_VERSION}')
-    pobj._add_alias(name)
-    #print name,"->",name_version[0]
-    if action ==None:
-        n_ver_alias=env.Alias(name, name_version)
-    else:
-        n_ver_alias=env.Alias(name, name_version, action)
-    
-    name="%s%s_%s"%(concept,pobj.Name,pobj.ShortVersion)#env.subst(concept+'${PART_NAME}_${PART_SHORT_VERSION}')
-    pobj._add_alias(name)
-    #print name,"->",n_ver_alias[0]
-    if name_shortversion == None:
-        n_sver_alias=env.Alias(name, n_ver_alias)
-    else:
-        n_sver_alias=env.Alias(name, [n_ver_alias,name_shortversion])
-        
-    
-    name="%s%s_%s"%(concept,pobj.Name,pobj.Version.major())#env.subst(concept+'${PART_NAME}_')+str(env.PartVersion().major())
-    pobj._add_alias(name)
-    #print name,"->",n_sver_alias[0]
-    if name_majorversion == None:
-        n_mver_alias=env.Alias(name, n_sver_alias)
-    else:
-        n_mver_alias=env.Alias(name, [n_sver_alias,name_majorversion])
-    
-    name="%s%s"%(concept,pobj.Name)#env.subst(concept+'${PART_NAME}')
-    pobj._add_alias(name)
+    #name="%s%s_%s"%(concept,pobj.Name,pobj.Version)#env.subst(concept+'${PART_NAME}_${PART_VERSION}')
+    #pobj._add_alias(name)
+    ##print name,"->",name_version[0]
+    #if action ==None:
+    #    n_ver_alias=env.Alias(name, name_version)
+    #else:
+    #    n_ver_alias=env.Alias(name, name_version, action)
+    #
+    #name="%s%s_%s"%(concept,pobj.Name,pobj.ShortVersion)#env.subst(concept+'${PART_NAME}_${PART_SHORT_VERSION}')
+    #pobj._add_alias(name)
+    ##print name,"->",n_ver_alias[0]
+    #if name_shortversion == None:
+    #    n_sver_alias=env.Alias(name, n_ver_alias)
+    #else:
+    #    n_sver_alias=env.Alias(name, [n_ver_alias,name_shortversion])
+    #    
+    #
+    #name="%s%s_%s"%(concept,pobj.Name,pobj.Version.major())#env.subst(concept+'${PART_NAME}_')+str(env.PartVersion().major())
+    #pobj._add_alias(name)
+    ##print name,"->",n_sver_alias[0]
+    #if name_majorversion == None:
+    #    n_mver_alias=env.Alias(name, n_sver_alias)
+    #else:
+    #    n_mver_alias=env.Alias(name, [n_sver_alias,name_majorversion])
+    #
+    name="%salias::%s"%(concept,pobj.Alias)#env.subst(concept+'${PART_NAME}')
+    #pobj._add_alias(name)
     #print name,"->",n_mver_alias[0]
-    if name_only == None:
-        name_alias=env.Alias(name, n_mver_alias)
+    
+    if action ==None:
+        name_alias=env.Alias(name, name_version)
     else:
-        name_alias=env.Alias(name, [n_mver_alias,name_only])
+        name_alias=env.Alias(name, name_version, action)
         
     if always_build:
-        env.AlwaysBuild(n_ver_alias)
-        env.AlwaysBuild(n_sver_alias)
-        env.AlwaysBuild(n_mver_alias)
+        #env.AlwaysBuild(n_ver_alias)
+        #env.AlwaysBuild(n_sver_alias)
+        #env.AlwaysBuild(n_mver_alias)
         env.AlwaysBuild(name_alias)
     
     # clean up this statement once we clean up the Part vars
 
     if pobj.Parent is not None:
         parent_env=pobj.Parent.Env
-        return make_alias_tree(parent_env,concept,n_ver_alias,n_sver_alias,n_mver_alias,name_alias,always_build=always_build)
+        return make_alias_tree(parent_env,concept,name_alias,action=action,always_build=always_build)
     
     return name_alias
 

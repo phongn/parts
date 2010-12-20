@@ -304,6 +304,10 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
             else:
                 e=env.fs.Entry('.'+os.sep+src.name, dnode)
             tmp=copy_logic(target=e,source=src,**kw)
+            try:
+                tmp[0].attributes = src.attributes
+            except (AttributeError, IndexError):
+                pass
             n_targets.extend(tmp)
             
             

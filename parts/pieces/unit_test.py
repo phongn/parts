@@ -213,8 +213,6 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     #pobj._map_alias()
 
     
-## finish this below....    
-    
     ##make command args string
     cmdargs=" "+string.join(command_args,' ')
     
@@ -232,9 +230,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
     base_alias3=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
     base_alias4=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
-    
+    base_alias5=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_PARENT_ALIAS}',base_alias4)
     ## map just this test to build
-    alias_out=common.make_alias_tree(pobj.Env,'${BUILD_UTEST_CONCEPT}',base_alias,base_alias2,base_alias3,base_alias4)
+    alias_out=common.make_alias_tree(pobj.Env,'${BUILD_UTEST_CONCEPT}',core_alias)#,base_alias2,base_alias3,base_alias4)
+    
     test_all_outs=pobj.Env.Alias(pobj.Env['UTEST_ALL'], alias_out)
     pobj._add_alias(pobj.Env['UTEST_ALL'])
     
@@ -248,11 +247,13 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     base_alias2=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
     base_alias3=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
     base_alias4=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
+    base_alias5=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_PARENT_ALIAS}',base_alias4)
     
     env.AlwaysBuild(base_alias)
-    env.AlwaysBuild(base_alias2)
-    env.AlwaysBuild(base_alias3)
-    env.AlwaysBuild(base_alias4)    
+    #env.AlwaysBuild(base_alias2)
+    #env.AlwaysBuild(base_alias3)
+    #env.AlwaysBuild(base_alias4)    
+    env.AlwaysBuild(base_alias5)
     
     #run_alias_out=make_run_alias(env2,None,base_alias)
     run_alias_out=common.make_alias_tree(pobj.Env,'${RUN_UTEST_CONCEPT}',base_alias)

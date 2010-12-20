@@ -15,7 +15,7 @@ DefineRequirementSet('CPPDEFINES',[requirement('CPPDEFINES',public=True,policy=R
 DefineRequirementSet('CXXFLAGS',[requirement('CXXFLAGS',public=True,policy=REQ.Policy.ignore)])
 DefineRequirementSet('CFLAGS',[requirement('CFLAGS',public=True,policy=REQ.Policy.ignore)])
 DefineRequirementSet('CCFLAGS',[requirement('CCFLAGS',public=True,policy=REQ.Policy.ignore)])
-DefineRequirementSet('LINKFLAGS',[requirement('CCFLAGS',public=True,policy=REQ.Policy.ignore)])
+DefineRequirementSet('LINKFLAGS',[requirement('LINKFLAGS',public=True,policy=REQ.Policy.ignore)])
 DefineRequirementSet('LIBPATH',[requirement('LIBPATH',public=True,policy=REQ.Policy.ignore)])
 
 DefineRequirementSet('HEADERS',['CPPPATH','CPPDEFINES'],weight=-5000)

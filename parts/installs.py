@@ -239,11 +239,15 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
             else:
                 ret= [i]
         
-            if common.is_catagory_file(env, 'INSTALL_LIB_PATTERN', i):
+            try:
+                the_file = i.attributes.pdb_owner
+            except AttributeError:
+                the_file = i
+            if common.is_catagory_file(env, 'INSTALL_LIB_PATTERN', the_file):
                 top_dir = '$INSTALL_LIB'
                 category= 'LIB'
                 #SDK_dir = '$SDK_LIB'
-            elif common.is_catagory_file(env, 'INSTALL_BIN_PATTERN', i):
+            elif common.is_catagory_file(env, 'INSTALL_BIN_PATTERN', the_file):
                 top_dir = '$INSTALL_BIN'
                 category= 'BIN'
                 #SDK_dir = '$SDK_BIN'

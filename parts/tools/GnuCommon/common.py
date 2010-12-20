@@ -111,9 +111,10 @@ class GnuInfo(ToolInfo):
             for i in k:
                 if MatchVersionNumbers(version,i):
                     tool=self.found[i][1]
+                    version=i
                     break
             env[namespace].TOOL=tool
-            env[namespace].VERSION=i
+            env[namespace].VERSION=version
         return ret
     
     def query(self,env,namespace,root_path,use_script):
