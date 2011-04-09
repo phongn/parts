@@ -1,4 +1,4 @@
-from .. import reporter 
+from .. import api
                     
 class task(object):
     ''' 
@@ -50,7 +50,7 @@ class task(object):
         
     def failed(self):
         #if self.__failed:
-        reporter.report_error("Vcs task failed for Part %s"%self.__vcs._env.get('ALIAS'),show_stack=False,exit=False)
+        api.output.error_msg("Vcs task failed for Part %s"%self.__vcs._env.get('ALIAS'),show_stack=False,exit=False)
         self.__taskmaster.stop()
         
     def executed(self):

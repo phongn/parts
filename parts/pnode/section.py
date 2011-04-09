@@ -1,0 +1,581 @@
+from .. import glb
+from .. import common
+from .. import datacache
+from .. import api
+from .. import target_type
+import pnode
+import pnode_manager
+import section_info
+
+import SCons.Node
+
+import hashlib
+import itertools
+
+import pprint
+pp=pprint.PrettyPrinter()
+    
+
+class section(pnode.pnode):
+    """description of class"""
+    __slots__=[
+        '_ID',
+        '__name',
+        '__depends', # what we depend on directly (ie explictly), as list (order needed) of ComponentRef objects
+        '__full_depends', # what depend on directly and indirectly
+        
+        '__exports', # value we will export
+        '__export_as_depends', #set of values exported item to map as a depends node, when they are referenced in a dependson call
+        
+        #'__build_context_files', # File that contain code for the builder (or best guess)
+        '__target_nodes', # target node for this section
+        '__source_nodes', # Source node for this section
+        '__installed_files',# anything that gets installed for packaging.
+                
+        '__force_load', # this tell us that we have to load this data from disk, for this sections ( stuff like run_utest::, or cases with AlwaysBuild() calls)
+        
+        '__pobj', # reference to the part containing this section.
+        '__env', # the environment for the given section (cloned from Parts object)
+        '_cache'
+    ]
+    #
+
+    def __init__(self,pobj=None,ID=None):
+        
+            self._ID=ID
+        
+            self.__pobj=pobj
+            self.__env={}
+            
+            self.__depends=[]
+            self.__full_depends=[]
+        
+            self.__exports={}
+            self.__export_as_depends=set([]) 
+        
+            self.__source_nodes = set()
+            self.__target_nodes = set()
+            self.__installed_files=set()
+        
+            self.__force_load=False
+            self._cache={}
+            
+    def _setup_(self,pobj,*lst,**kw):
+        self.__pobj=pobj
+        self.__env=self.__pobj.Env.Clone()
+        self.__env['PART_SECTION']=self.Name
+        
+    @property
+    def Name(self):
+        raise NotImplementedError
+        
+    @property
+    def Exports(self): #mutable
+        return self.__exports
+    
+    @property
+    def ExportAsDepends(self):
+        return self.__export_as_depends
+    
+    @property
+    def Targets(self):
+        return self.__target_nodes
+ 
+    @property
+    def Sources(self):
+        return self.__source_nodes
+    
+    @property
+    def InstalledFiles(self):
+        return self.__installed_files
+    
+    @property    
+    def Depends(self):
+        return self.__depends
+    
+    @Depends.setter   
+    def Depends(self,val):
+        common.extend_if_absent(self.__depends,val)
+    
+    @property
+    def FullDepends(self):
+        return self.__full_depends
+    
+    @property
+    def Part(self):
+        return self.__pobj
+
+    @property
+    def Env(self):
+        return self.__env
+    
+    # some state stuff
+    @property
+    def ForceLoad(self): #readonly
+        return self.__force_load
+    
+    def _map_targets(self):
+        ''' 
+        Here we map all known target files that happen in this component 
+        to the alias value, to ensure that it is built in case there are actions
+        that are no mapped correctly to some action that is mapped to the alias
+        such as and sdk or install action
+        '''
+        
+        ## An issue for compatibility.. that I feel should change, but I was out ranked on this.
+        #utest_call=False
+        #targets=SCons.Script.BUILD_TARGETS
+        #for t in targets:
+        #    tmp=target_type.target_type(t)
+        #    sep_len=len(self.__env.subst("$ALIAS_SEPARTATOR"))
+        #    if tmp.concept == self.__env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == self.__env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
+        #        utest_call=True
+        #        break
+        ## if we are not building unit tests
+        ## and this is a classic format
+        ## and this part did not call any SdkXXX or InstallXXX
+        ## then we don't want to define any build actions it may have
+        #if utest_call==False and self._sdk_or_installed_called==False and self._is_classic_format:
+        #    alias_str=self.Env.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__pobj.Alias)
+        #    self.Env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and str(x).startswith(alias_str) ,self.Targets))
+        #else:
+        alias_str=self.Env.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__pobj.Alias)
+        self.Env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and str(x).startswith(alias_str) ,self.Targets))
+
+    def _gen_full_parts_depends(self):
+        '''a dictionary of everything we dependon (order is lost)
+        used to help figure out what to load latter as fast as possible.
+        '''
+        ret={}
+        for d in self.__depends:
+            if d.PartRef.hasUniqueMatch:
+                pobj=d.PartRef.UniqueMatch
+                sec=pobj.Section(d.SectionName)
+                sec._add_full_parts_depends(ret)
+        return ret
+                
+    def _add_full_parts_depends(self,data):
+        
+        try:
+        # check if self is added
+            if self.__name in data[self.Part.Alias]['sections']:
+                #if so return
+                return
+        except KeyError:
+            pass
+        
+        #else add self
+        try:
+            data[self.Part.Alias]['sections'].add([self.__name])
+        except KeyError:
+            data[self.Part.Alias]={
+                'sections':set([self.__name]),
+                'root_alias':self.Part.Root.Alias
+                }
+        #add dependents
+        for d in self.__depends:
+            if d.PartRef.hasUniqueMatch:
+                pobj=d.PartRef.UniqueMatch
+                sec=pobj.Section(d.SectionName)
+                sec._add_full_parts_depends(data)
+        
+    def esigs(self):
+        
+        try:
+            return self._cache['esigs']
+        except KeyError:
+            
+            # we expand the values here to reduce processing needs latter
+            # the the reason we would store this is to speed up build latter
+            # ideally this only needs to be expanded in cases of the classic format
+            # or cases in which the user added such value to be exported
+            export_csig={}
+            for k,v in self.__exports.copy().iteritems():
+                if common.is_list(v):
+                    for i in v[:]:
+                        if common.is_string(i) and '$' in i:
+                            self.__env.subst(i)
+                            
+                    new_vals=[]
+                    for i in self.__exports[k]:
+                        if common.is_string(i) and ('$' in i or i == ''):
+                            pass
+                        elif isinstance(i,SCons.Node.FS.Base):
+                            new_vals.append(i.path)
+                        else:
+                            new_vals.append(i)
+                    if new_vals:
+                        self.__exports[k]=new_vals
+                    else:
+                        del self.__exports[k]
+                else:
+                    if common.is_string(v) and '$' in v:
+                        tmp=self.__env.subst(v)
+                        if not tmp:
+                            del self.__exports[k]
+                            continue
+                    elif not v:
+                        del self.__exports[k]
+                try:
+                    
+                    md5=hashlib.md5()
+                    md5.update(common.get_content(self.__exports[k]))
+                    export_csig[k]=md5.hexdigest()  
+                except KeyError:
+                    pass
+                
+            self._cache['esigs']=export_csig
+        
+        return self._cache['esigs']
+
+    def LoadStoredInfo(self):
+        return glb.pnodes.GetStoredPNodeInfo(self)
+        #md5=hashlib.md5()
+        #md5.update(self.ID)
+        #stored_data=datacache.GetCache("pnode-{0}".format(md5.hexdigest()))
+        #return stored_data
+        
+    #def StoreStoredInfo(self):
+    #    info=self.GenerateStoredInfo()
+    #    md5=hashlib.md5()
+    #    md5.update(self.ID)
+    #    datacache.StoreData("pnode-{0}".format(md5.hexdigest()),info)
+
+    def GenerateStoredInfo(self):
+        info=section_info.section_info()
+               
+        info.part=self.Part
+        info.name=self.Name
+        info.force_load=self.__force_load
+        
+        info.esigs=self.esigs()
+        info.exports=self.__exports        
+        
+        ## data about what this depends on we want the direct depend here
+        ## as this will allow us to speed up incremential build latter
+        tmp=[]
+        # to get the dependance sig
+        for d in self.__depends:
+            tmp.append({
+                'PartRef':str(d.PartRef.Target),
+                'SectionName':d.SectionName,
+                'Part':d.Part,
+                'Requires':d.Requires,
+                'rsigs':d.rsigs(),
+                'rsig':d.rsig(),
+                'Section':d.Section,
+            })
+            
+        info.dependson=tmp
+        # these are items that are exported, and noted as a map_as_depends in ExportItem()
+        info.exported_requirements=self.ExportAsDepends
+        return info
+    
+    def LoadFromCache(self):
+        info = self.Stored
+        # get out owning part
+        self.__part=info.part
+        self.__env=self.__part.Env
+        self.__env['PART_SECTION']=self.Name
+        
+        # import the values we export
+        # We assume these are fully resolved so we don't need to get any data from anything this
+        # section would have depended on
+        self.__exports=info.exports 
+        # need to map these items as Aliases
+        self.__export_as_depends=info.exported_requirements 
+        for export in self.__export_as_depends:
+            self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),self.__exports[export])
+            
+            
+    
+    def TagDirectDependAsLoad(self,load_manager):
+        try:
+            return self._cache['TagDirectDependAsLoad']
+        except KeyError:
+            # get stored data
+            stored_data=self.Stored
+            
+            if stored_data is None:
+                self._cache['TagDirectDependAsLoad']=False
+                #return False to signal there was a cache issue
+                return False
+            # set our state
+            self.ReadState=glb.read_load
+                            
+            for dep in stored_data.dependson:
+                sec=dep['Section']
+                if not sec.TagDirectDependAsLoad(load_manager):
+                    self._cache['TagDirectDependAsLoad']=False
+                    return False
+            self._cache['TagDirectDependAsLoad']=True
+            # set our root parts
+            try:
+                if not stored_data.part.Stored.parent.Stored.sections[self.Name].TagDirectDependAsLoad(load_manager):
+                    self._cache['TagDirectDependAsLoad']=False
+                    return False
+            except AttributeError:
+                pass
+            return self._cache['TagDirectDependAsLoad']
+        
+    
+    def hasSectionChanged(self,load_manager,requirements=None):
+        '''Logic allows us to Tag only Parts that are out of date
+        as something to load, and ignore loading all other files.
+        This logic still requires a post process setup of mapping some values as
+        load from cache
+        '''
+        
+        req_cache_str='hasSectionChanged_w_{0}'.format(requirements)
+        try:
+            if not self._cache['hasSectionChanged']:
+                ret=self._cache[req_cache_str] 
+            else:
+                ret=True
+            return ret
+        except KeyError:
+            if self._cache.get('hasSectionChanged') is None:
+                # get stored data... 
+                stored_data=self.Stored
+                if stored_data is None:
+                    self._cache['hasSectionChanged']=False
+                    api.output.verbose_msg("section_changed_check","{0} out-of-date! Cached data is missing".format(self.ID))
+                    load_manager.hasStored=False
+                    return True
+                # check to see if this was set to a load state already
+                # if it was we want to register it with the manager
+                if self.ReadState == glb.read_load or stored_data.force_load:
+                    # this does not mean this is out of date.. just means 
+                    # it needs to load.
+                    load_manager.LoadSection(self)        
+                
+                # did the content file defining this section change?
+                if not stored_data.part.isFileUpToDate():
+                    self._cache['hasSectionChanged']=False
+                    if load_manager:
+                        # do a special load of this Part
+                        api.output.verbose_msg("section_changed_check","{0} Special Load! Part file changed".format(self.ID))
+						# remove/clean up....
+                        api.output.warning_msg("If build fails.. rerun with --ll=all")
+                        load_manager.LoadSection(self)
+                        pass
+            
+                changed=False
+                for dep in stored_data.dependson:
+                    sec=dep['Section']
+                    reqs=dep['Requires']
+                    rsigs=dep['rsigs']
+                    #See if the dependent thinks it is out of date
+                    # based on what we dependon from it
+                    sec_changed=sec.hasSectionChanged(load_manager,reqs)
+                    if sec_changed:
+                        api.output.verbose_msg("section_changed_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(self.ID,sec.ID))
+                        changed=True
+                    elif not changed: # only do this test if everything is unchanged still
+                    
+                        # We need to test to see if the dependent state has changed since we last looked at it
+                        # if so we need to load.  
+                        # Note that may view themselves up to date, and as such
+                        # would incorrectly make us think we may not need to load
+            
+                        # see if our view of the Part we dependon changed:
+                        # this is a test of the dependentsection content csig. 
+                        # This value will change if data the dependent csig 
+                        
+                        # we test each requirment signiture (rsig) we have and see if that data 
+                        # in export data signiture (esig) has changed from our last run
+                        
+                        for req in reqs:
+                            if sec.Stored.esigs.get(req.key,'0')!=rsigs.get(req.key,'0'):
+                                print sec.Stored.esigs.get(req.key,'0'),rsigs.get(req.key,'0')
+                                api.output.verbose_msg("section_changed_check",'{0} out-of-date! Dependent values "{1}" from "{2}" changed'.format(self.ID,req.key,sec.ID))
+                                changed=True
+                
+                #at this point if we see a change we don't need to check our files... 
+                # we know it needs to be read
+                if changed:
+                    #self.ReadState(glb.read_load)
+                    self._cache['hasSectionChanged']=True
+                    load_manager.LoadSection(self)
+                    return True                
+                
+                # we can say we are up-to-date at this point
+                self._cache['hasSectionChanged']=False
+        
+        if self._cache['hasSectionChanged'] == False:
+            # see what we are
+            stored_data=self.Stored
+            target_nodes=[]
+            if requirements:
+                # there are requirements we want to check for.. they might not exist
+                # as they could have used generic requirements that would map to a large set of options that we map to if they exist
+                for r in requirements:
+                    if r.key in stored_data.exported_requirements:
+                        target_nodes.append(glb.pnodes.GetNode('{0}::alias::{1}::{2}'.format(stored_data.name,stored_data.part.ID,r.key)))
+            else:
+                target_nodes=[glb.pnodes.GetNode('{0}::alias::{1}'.format(stored_data.name,stored_data.part.ID))]
+                
+            for tnode in target_nodes:
+                if tnode: # none node are not found as a export of this part.. so we ignore it
+                    if not tnode.pisUpToDate:
+                        # we are out of date
+                        #self.ReadState(glb.read_load)
+                        self._cache['hasSectionChanged']=True
+                        self._cache[req_cache_str]=True
+                        api.output.verbose_msg("section_changed_check",'{0} out-of-date! Section Target "{1}" is out of date'.format(self.ID,tnode))
+                        load_manager.LoadSection(self)
+                        break
+                #we are up-to-date given the requested requirements
+            else:
+                #self.ReadState(glb.read_ignore)
+                self._cache[req_cache_str]=False
+                #api.output.verbose_msg("section_changed_check",'{0} is UP TO DATE!'.format(self.ID))
+        else:
+            self._cache[req_cache_str]=True
+                
+        
+        return self._cache[req_cache_str]
+    
+    @property
+    def ReadState(self):
+        if self.__pobj is None:
+            return self.Stored.part.ReadState
+        return self.__pobj.ReadState
+    
+    @ReadState.setter
+    def ReadState(self,state):
+        self.Stored.part.UpdateReadState(state)
+    
+    #
+    #def Serialize(self):
+    #    # store what we export
+    #    data={}
+    #    
+    #    data['exports']=self.__exports
+    #    #
+    #    ## this is for recreating a part from cache as these values are
+    #    ## set by the user and don't exist by default
+    #    #data['env_exports']=self._user_env_diff
+    #    ## data about what this depends on we want the direct depend here
+    #    ## as this will allow us to speed up incremential build latter
+    #    tmp=[]
+    #    for d in self.__depends:
+    #        tmp.append({
+    #            'PartRef':str(d.PartRef.Target),
+    #            'Section':d.SectionName,
+    #            'requires':d.Requires.Serialize()               
+    #        })
+    #    data['dependson']=tmp
+    #    # data about what this depends on used to help with startup time
+    #    # this contains the full set of direct dependancies needed for 
+    #    # this section to be processed. It does not contain 
+    #    # any subparts that might be needed on the side to load correct.
+    #    data['full_depends']=self._gen_full_parts_depends()
+    #    
+    #    
+    #    
+    #    #store all known "group" Alias that are part of this section
+    #    tmp=set()
+    #    temp=[self.Env.subst('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{ALIAS}}::{0}'.format(l)) for l in self.ExportAsDepends]
+    #    for i in filter(lambda x: isinstance(x,SCons.Node.Alias.Alias),self.__target_nodes):
+    #        if i.name in temp:
+    #            tmp.add(i)
+    #    data['aliases']=tmp
+    #    
+    #    #store all known node that are mapped to this component as
+    #    #a list of strings. we use the SCons DB to store the important data
+    #    tmp=[]
+    #    for i in filter(lambda x: not isinstance(x,SCons.Node.Alias.Alias),self.__target_nodes):
+    #        i.disambiguate()
+    #        ## see if node time stamp matches
+    #        #dbentry=i.get_stored_info()
+    #        #
+    #        ##import pprint
+    #        ##pp = pprint.PrettyPrinter()
+    #        #
+    #        #
+    #        #if getattr(dbentry,'ninfo',None) is None:
+    #        #    # if here this was not built yet
+    #        #    tmpd=i.path # use path if we want to use SCons DB
+    #        #    #tmpd={'name':i.path}
+    #        #    tmp.append(tmpd)
+    #        #else:
+    #        #    ninfo=dbentry.ninfo
+    #        #    #print pp.pprint(dbentry.binfo.__dict__)
+    #        #    #tmpd=i.path # use path if we want to use SCons DB
+    #        #    tmpd={
+    #        #    'name':i.path
+    #        #    }
+    #        #    tmpd.update(ninfo.__dict__)
+    #        #    tmp.append(tmpd)
+    #        tmp.append(i.path)
+    #    data['targets']=tmp
+    #    tmp=[]
+    #    for i in filter(lambda x: not isinstance(x,SCons.Node.Alias.Alias),self.__source_nodes):
+    #        i.disambiguate()
+    #        # see if node time stamp matches
+    #        dbentry=i.get_stored_info()
+    #        if i.has_builder()==False or getattr(dbentry,'ninfo',None) is None:
+    #            # this should be some source node
+    #            # it might have been a target node as well, but since it has no builder
+    #            # it should be source only
+    #            
+    #            if isinstance(i,SCons.Node.FS.Base):
+    #                tmp.append(
+    #                        #{
+    #                        #'name':i.path,
+    #                        #'csig':i.get_csig(),
+    #                        #'timestamp':i.get_timestamp()
+    #                        #}
+    #                        i.path
+    #                    )
+    #            elif isinstance(i,SCons.Node.Python.Value):
+    #                tmp.append(
+    #                        i.value
+    #                        #{
+    #                        #'type':'Value',
+    #                        #'name':i.value,
+    #                        #'csig':i.get_csig(),
+    #                        #}
+    #                    )
+    #            
+    #        
+    #    data['sources']=tmp
+    #    return data
+    
+
+
+
+class build_section(section):
+    
+    def __init__(self,pobj=None,ID=None):
+        super(build_section, self).__init__(pobj,ID)
+        
+    @staticmethod
+    def _process_arg(pobj=None,**kw):
+        id = kw.get('ID')
+        setup=False
+        if pobj:
+            id="{1}::{0}".format(pobj.ID,'build')
+            setup=True
+        elif id is None:
+            raise ValueError , "Invalid arguments values when creating section type"
+        
+        return id,setup    
+        
+    @section.ID.getter
+    def ID(self):
+        if self._ID is None:
+            self._ID="{1}::{0}".format(self.Part.ID,self.Name)
+        return self._ID
+    
+    @section.Name.getter
+    def Name(self):
+        return "build"
+    
+
+
+
+pnode_manager.manager.RegisterNodeType(build_section)
+
+#glb.pnodes.AddFactory(build_section,lambda id:buildsectionfactory(ID=id))

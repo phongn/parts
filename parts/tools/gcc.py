@@ -3,7 +3,7 @@ import SCons.Util
 import SCons.Tool.cc
 import GnuCommon
 
-import parts.reporter as reporter
+import parts.api.output as output
 
 def generate(env):
     """Add Builders and construction variables for gcc to an Environment."""
@@ -30,7 +30,7 @@ def generate(env):
         env['CC']=env['CC']+' -m32'
     
  # fix this up so we can control its printing to screen better.
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))
         
     
 

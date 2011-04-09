@@ -1,5 +1,5 @@
 import common
-import reporter
+import api.output
 
 def MetaTag(nodes,ns='meta',**metakv):
     #make sure the nodes are in a list
@@ -10,7 +10,7 @@ def MetaTag(nodes,ns='meta',**metakv):
         if hasattr(n,ns) == False:
             #if not add it
             setattr(n,ns,common.namespace())
-        for k,v in metakv.items():
+        for k,v in metakv.iteritems():
             getattr(n,ns)[k]=v
             
 def MetaTagValue(node,key,ns='meta',default=None):
@@ -39,7 +39,7 @@ def hasMetaTag_method(env,node,key,ns='meta'):
     return hasMetaTag(node,key,ns)
 
 def Tag_wrapper(env,nodes,ns='meta',**metakv):
-    reporter.report_warning("Please use MetaTag instead")
+    api.output.warning_msg("Please use MetaTag instead")
     return MetaTag(nodes,ns,**metakv)
 
 
@@ -52,12 +52,12 @@ SConsEnvironment.Tag=Tag_wrapper # to work around existing tag usage
 SConsEnvironment.MetaTagValue=MetaTagValue_method
 SConsEnvironment.hasMetaTag=hasMetaTag_method
 
-common.add_parts_object('MetaTag',MetaTag)   
-common.add_parts_object('MetaTagValue',MetaTagValue)   
-common.add_parts_object('hasMetaTag',hasMetaTag)   
+api.register.add_global_parts_object('MetaTag',MetaTag)   
+api.register.add_global_parts_object('MetaTagValue',MetaTagValue)   
+api.register.add_global_parts_object('hasMetaTag',hasMetaTag)   
 
-common.add_global_value('MetaTag',MetaTag)   
-common.add_global_value('MetaTagValue',MetaTagValue)   
-common.add_global_value('hasMetaTag',hasMetaTag)   
+api.register.add_global_object('MetaTag',MetaTag)   
+api.register.add_global_object('MetaTagValue',MetaTagValue)   
+api.register.add_global_object('hasMetaTag',hasMetaTag)   
 
 

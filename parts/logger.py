@@ -1,6 +1,8 @@
-import common
-import os
+import api
 import console #for stream types
+
+import os
+
 
 class Logger(object):
     def __init__(self,dir="",file=""):
@@ -61,10 +63,10 @@ class nil_logger(Logger):
 
 
 
-common.AddVariable('LOGGER','NIL_LOGGER','')
+api.register.add_variable('LOGGER','NIL_LOGGER','')
 
-common.AddVariable('TEXT_LOGGER','text','')        
-common.AddVariable('LOG_ROOT_DIR','#logs','')
-common.AddVariable('LOG_DIR','${LOG_ROOT_DIR}','')
-common.AddVariable('LOG_FILE_NAME','all.log','')        
+api.register.add_variable('TEXT_LOGGER','text','')        
+api.register.add_variable('LOG_ROOT_DIR','#logs','')
+api.register.add_variable('LOG_DIR','${LOG_ROOT_DIR}','')
+api.register.add_variable('LOG_FILE_NAME','all.log','')        
         

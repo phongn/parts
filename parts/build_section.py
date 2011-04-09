@@ -1,7 +1,7 @@
 
 import section
 import common
-import reporter
+import api.output
 
 
 def resolve_dependents(manager,part):
@@ -81,10 +81,10 @@ def build_func(manager,target):
     
     for p in plst:
         if p is None:
-            reporter.report_error("Target \"%s\" was not found as a Part"%target.orginal_string)
+            api.output.error_msg("Target \"%s\" was not found as a Part"%target.orginal_string)
         #Call config phase to get dependance information
         elif p._has_section_defined('build') == False:
-            reporter.report_error("Part does not have section build defined")
+            api.output.error_msg("Part does not have section build defined")
         
         # this will be recurisve and resolve all dependent parts as well
         resolve_dependents(manager,p)
@@ -107,4 +107,4 @@ bld_sec=section.section('build',build_func,['build'])
 bld_sec.AddPhase('config',optional=True)
 bld_sec.AddPhase('emit',optional=True)
 
-common.add_section(bld_sec)
+api.register.add_section(bld_sec)

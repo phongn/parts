@@ -2,11 +2,15 @@
 import sys
 import os
 import imp
-import traceback,StringIO
+import traceback
+import StringIO
+
 import SCons.Errors
 import SCons.Script
+
+import glb
 import common
-import reporter
+import api.output
 
 
 g_site_dir_cache={}
@@ -14,7 +18,10 @@ def get_site_directories(subdir):
     try:
         return g_site_dir_cache[subdir]
     except KeyError:
-        host_os=SCons.Script.DefaultEnvironment()['PLATFORM'] # can't user HOST_OS because of bootstrap issue.
+        if glb._host_sys is None:
+            print "host_os bootstrap bug"
+            1/0
+        host_os=glb._host_sys#SCons.Script.DefaultEnvironment()['PLATFORM'] # can't user HOST_OS because of bootstrap issue.
         syspath=[]
         localpath=[]
         # local data
@@ -47,7 +54,7 @@ def get_site_directories(subdir):
             #homedir/.parts-site
             ]+localpath+syspath+[
             # parts install
-            os.path.join(common.g_parts_path,subdir)
+            os.path.join(glb.parts_path,subdir)
         ]
         
         g_site_dir_cache[subdir]=sitepaths
@@ -61,19 +68,19 @@ def load_module(path,name,type):
     
     modname='<'+type+'>'+name
     if not sys.modules.has_key(modname):
-        reporter.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
+        api.output.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
         file, path1, desc = imp.find_module(name,path)
         oldPath = sys.path[:]
         sys.path.extend(path)
         
         try:
             mod = imp.load_module(modname, file, path1, desc)
-            reporter.verbose_msg("load_module","Module was loaded from <%s>"%path1)
+            api.output.verbose_msg("load_module","Module was loaded from <%s>"%path1)
         except ImportError,e:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.verbose_msg("load_module","Failed to load module!")
-            reporter.verbose_msg(["load_module_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
+            api.output.verbose_msg("load_module","Failed to load module!")
+            api.output.verbose_msg(["load_module_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
             if file:
                 file.close()
             raise SCons.Errors.UserError, "No module named '%s'" % (name)

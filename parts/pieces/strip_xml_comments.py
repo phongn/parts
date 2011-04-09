@@ -3,8 +3,8 @@ import re
 import sys
 import SCons.Script
 
-import parts.common as common
-import parts.reporter as reporter
+import parts.api as api
+import parts.api.output as output
 
 xmlComment = re.compile(r'(.*)(<!--)(.*)(-->)(.*)')
 
@@ -82,18 +82,18 @@ def stripXmlComments(target, source, env):
 def stripXmlComments_emitter(target, source, env):
     output=[]
     if len(target) != 1:
-        reporter.report_error("Only one input is allowed")    
+        api.output.error_msg("Only one input is allowed")    
     try:
         dnodes = env.arg2nodes(target, env.fs.Dir)
     except TypeError:
-        reporter.report_error("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))    
+        api.output.error_msg("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))    
     for s in source:
         path,base=os.path.split(s.path)
         output.append(env.File(base,dnodes[0]))
     
     return (output, source)
 
-common.AddBuilder('__StripXMLComments__',SCons.Script.Builder(
+api.register.add_builder('__StripXMLComments__',SCons.Script.Builder(
         action=SCons.Script.Action(stripXmlComments),  
         emitter=stripXmlComments_emitter,
         target_factory=SCons.Node.FS.Entry

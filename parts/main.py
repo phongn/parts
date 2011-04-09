@@ -4,34 +4,44 @@
 ### This is the init code that make every start correctly.
 ###
 # import main code
+import sys
+import glb
+import reporter
+# start up reporter
+glb.rpter=reporter.reporter()
 
-import overrides
-import common 
+import overrides # init all Scons overides
+import engine # get engine
+
+# create the engine
+glb.engine=engine.parts_addon()
+
+# load rest of the code
 import pickle_helpers
-import parts
+import config
+import tool_mapping
+import pattern
 import version
 import filters
 import version_info
-import engine
 import poptions,installs
 import vcs
-import api.requirement
-
-
 import build_section
+import parts
 
-# create the engine
-common.g_engine=engine.parts_addon()
+
 
 ### import the pieces
 import pieces
 
-# start up logic ... runs during import of the code
-common.g_engine.Start() # sets up everything
+if not sys._getframe(2).f_code.co_filename.endswith(".py"):
+
+    # start up logic ... runs during import of the code
+    glb.engine.Start() # sets up everything
 
 
 # import extra funcion 
 ## this will be viewed as global function to the user in the Sconstruct file
-globals().update(common.g_globals)
+globals().update(glb.globals)
 
 

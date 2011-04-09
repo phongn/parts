@@ -1,7 +1,8 @@
 import SCons.Util
 import parts.platform_info as platform_info
 import parts.common as common
-import parts.reporter as reporter
+import parts.api as api
+import parts.api.output as output
 import copy
 import SCons.Errors
 
@@ -75,7 +76,7 @@ This allow the ability to retest
 
 '''
 
-class ToolSetting:
+class ToolSetting(object):
     def __init__(self,name):
         
         # used as the namespace for common values such as version and script
@@ -184,7 +185,7 @@ class ToolSetting:
         #test raw target
 
         def query_logic(_target):
-            for k,vl in self.tools[_target].items():
+            for k,vl in self.tools[_target].iteritems():
                 swap=False
                 for v in vl:
                     tmp=v.query(env,self.name,root_path,use_script)
@@ -192,7 +193,7 @@ class ToolSetting:
                     # if we find anything
                     if tmp is not None:
                         #go through all items and store needed information
-                        for ver,senv in tmp.items():
+                        for ver,senv in tmp.iteritems():
                             common.append_unique(self.found[key],ver)
                         # move found item with front
                         if swap:
@@ -258,7 +259,7 @@ class ToolSetting:
         use_script=env.get(self.script_tag,False)
 
         def exist_logic(_target):
-            for k,vl in self.tools[_target].items():
+            for k,vl in self.tools[_target].iteritems():
                 swap = False
                 for v in vl:
                     if version in v.version_set():
@@ -357,22 +358,22 @@ class ToolSetting:
         #Platform is given priority to architecture
         ret=None
         if self.tools.has_key(target):
-            for k,vl in self.tools[target].items():
+            for k,vl in self.tools[target].iteritems():
                 for v in vl:
                     if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t1):
-            for k,vl in self.tools[t1].items():
+            for k,vl in self.tools[t1].iteritems():
                 for v in vl:
                     if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t2):
-            for k,vl in self.tools[t2].items():
+            for k,vl in self.tools[t2].iteritems():
                 for v in vl:
                     if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v
         if self.tools.has_key(t3):
-            for k,vl in self.tools[t3].items():
+            for k,vl in self.tools[t3].iteritems():
                 for v in vl:
                     if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
                         return v                                                
@@ -390,7 +391,7 @@ class ToolSetting:
             self.tools[target]=tools       
             return
         
-        for key,val in tools.items():
+        for key,val in tools.iteritems():
                         
             # if we have this version already
             if items.has_key(key):
@@ -518,9 +519,9 @@ class ToolSetting:
         #print tmp
         shell_env,ns=tmp
         # Add data to env
-        for k, v in shell_env.items():
+        for k, v in shell_env.iteritems():
             env.PrependENVPath(k, v, delete_existing=1)
-        reporter.verbose_msg('ToolSettings',"env['ENV'] equal to\n",pprint.pformat(env['ENV']))
+        api.output.verbose_msg('ToolSettings',"env['ENV'] equal to\n",pprint.pformat(env['ENV']))
         ## setup any common state
         #setup version info
         env[self.name]=ns._rebind(env,self.name)
@@ -528,7 +529,7 @@ class ToolSetting:
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
-        reporter.verbose_msg('ToolSettings',"Tool",self.name,"configured to version:",version)
+        api.output.verbose_msg('ToolSettings',"Tool",self.name,"configured to version:",version)
  #       import pprint
  #       pp = pprint.PrettyPrinter(indent=4)
  #       pp.pprint(self.__dict__)

@@ -144,4 +144,18 @@ class TestRequirement(unittest.TestCase):
             if i.key=='CPPPATH':
                 self.assertEqual(i.is_internal,False)
             else:
-                self.assertEqual(i.is_internal,True)    
+                self.assertEqual(i.is_internal,True)
+
+    def test_state_store(self):
+        '''Test if the Serialize api works'''
+        tmp=REQ.CPPPATH|REQ.DEFAULT_INTERNAL
+        s=tmp.Serialize()
+        tmp1=REQ()
+        tmp1.Unserialize(s)
+
+        print
+        print str(tmp)
+        print str(tmp1)
+        self.assertEqual(str(tmp),str(tmp1))
+        
+                

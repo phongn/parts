@@ -1,11 +1,16 @@
-import os
-import re
-import SCons.Script
+import glb
 import pattern
 import common
-import reporter
+import api.output
+import errors
+
+import SCons.Script
+
+import os
+import re
+
  
-class EXPORT_TYPES:
+class EXPORT_TYPES(object):
     FILE=1
     PATH=2
     PATH_FILE=3
@@ -18,7 +23,7 @@ def export_path(env,target_dirs,source_dirs,pobj,prop,use_src=False,create_sdk=T
     # 2) is the build path for the file
     # 3) is the source pasth of the file
     ret=[]
-    tmp=pobj._exports[prop]
+    tmp=pobj.DefiningSection.Exports[prop]
     if use_src: # ie use Raw Source Directories
         for s in source_dirs:
             # setting up the libpaths
@@ -72,18 +77,18 @@ def export_file(env,targets,pobj,prop):
             file = file[:-3]
         elif _reg.match(file):
             # if this matches we want to not add this file
-            # ass doing this would upset the linker
+            # as doing this would upset the linker
             continue
-        elif file.endswith('.so-gz'):
-            file = file[:-6]
-
-        pobj._exports[prop]=[file]+pobj._exports[prop]
+        elif getattr(t.attributes,'pdb_owner',None):
+            continue
+        
+        pobj.DefiningSection.Exports[prop]=[file]+pobj.DefiningSection.Exports[prop]
         
     return ret
 
 def export_file_path(env,targets,pinfo,prop,use_src):
     ret=[]
-    prop_val=pobj._exports[prop]
+    prop_val=pobj.DefiningSection.Exports[prop]
     for t in targets:
         if common.is_string(t):
             t=env.File(t)
@@ -120,7 +125,14 @@ def ExportLINKFLAGS(env,values,create_sdk=True):
 def ExportLIBS(env,values,create_sdk=True):
     return ExportItem(env,'LIBS',values,create_sdk)
 
-def ExportItem(env,variable,values,create_sdk=True):#, public=False):
+#def _map_group(x,group):
+#    import metatag
+#    if isinstance(x,SCons.Node.Node):
+#        tmp=metatag.MetaTagValue(x,'dependgroup','parts',[])
+#        tmp.append(group)
+#        metatag.MetaTag(x,ns='parts',dependgroup=tmp)
+
+def ExportItem(env,variable,values,create_sdk=True,map_as_depenance=False):#, public=False):
     '''
     
     @param env The current environment
@@ -133,32 +145,43 @@ def ExportItem(env,variable,values,create_sdk=True):#, public=False):
     a list type then the values will be made into a list, flatten and appended all unique items to the list. Otherwise the data will replace any existing data. If data does 
     exist, there will be a verbose message that can be printed out.
     '''
-    reporter.SetPartStackFrameInfo(True)
-    pobj=common.g_engine._part_manager._from_env(env)
     
-    if common.is_list(env.get(variable)) or common.is_list(values):
+    errors.SetPartStackFrameInfo(True)
+    pobj=glb.engine._part_manager._from_env(env)
+    
+    # test to see if the variable or value should be a list.
+    # ie if the variable is a list in the Environment, we want this to be a list here
+    if common.is_list(values) or common.is_list(env.get(variable)):
+        
         values=common.make_list(values)
-
-        if pobj._exports.has_key(variable)==False:
-            pobj._exports[variable]=[]
-        if common.is_list(pobj._exports[variable]) == False:
-            pobj._exports[variable]=[pobj._exports[variable]]
-        for v in values:
-            common.append_unique(pobj._exports[variable],str(v))
+        #map(lambda x:  _map_group(x,variable),values)
+        if pobj.DefiningSection.Exports.has_key(variable)==False:
+            pobj.DefiningSection.Exports[variable]=[]
+        # this is not a list already.. make it one
+        if common.is_list(pobj.DefiningSection.Exports[variable]) == False:
+            pobj.DefiningSection.Exports[variable]=common.make_list(pobj.DefiningSection.Exports[variable])
+        
+        # add our values
+        #common.extend_unique(pobj.DefiningSection.Exports[variable],values)
+        pobj.DefiningSection.Exports[variable]+=values
+        
     else:
-        if pobj._exports.has_key(variable):
-            reporter.verbose_msg(['export'],'Part "{0}" already as variable "{1}" in export table, overriding with new value'.format(pobj.Name,variable))
-        pobj._exports[variable]=str(values)
-            
+        if pobj.DefiningSection.Exports.has_key(variable):
+            api.output.verbose_msg(['export'],'Part "{0}" already as variable "{1}" in export table, overriding with new value'.format(pobj.Name,variable))
+        pobj.DefiningSection.Exports[variable]=values
 
+    if map_as_depenance:
+        pobj.DefiningSection.ExportAsDepends.add(variable)
+        aa=env.Alias("{0}::alias::{1}::{2}".format(env['PART_SECTION'],env['ALIAS'],variable),values)
+        
     # set the create SDK value
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
         
     if create_sdk:
-        pobj._create_sdk_data.append(('ExportItem',[variable,values,False]))
+        pobj._create_sdk_data.append(('ExportItem',[variable,values,False,map_as_depenance]))
         
-    reporter.ResetPartStackFrameInfo()
+    errors.ResetPartStackFrameInfo()
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

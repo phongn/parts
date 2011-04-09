@@ -64,10 +64,10 @@ def smart_link(source, target, env, for_signature):
         return '$CXX'
     return '$CC'
 
-def shlib_emitter(target, source, env):
-    for tgt in target:
-        tgt.attributes.shared = 1
-    return (target, source)
+##def shlib_emitter(target, source, env):
+##    for tgt in target:
+##        tgt.attributes.shared = 1
+##    return (target, source)
 
 shlinkAction = SCons.Action.Action('$SHLINK -o $TARGET $SHLINKFLAGS $SOURCES $_LIBDIRFLAGS $_LIBFLAGS')
 linkAction = SCons.Action.Action('$LINK -o $TARGET $LINKFLAGS $SOURCES $_LIBDIRFLAGS $_LIBFLAGS')
@@ -79,44 +79,46 @@ linkAction = SCons.Action.Action('$LINK -o $TARGET $LINKFLAGS $SOURCES $_LIBDIRF
 # absent in env.
 class PdbAction(SCons.Action.CommandAction):
     def execute(self,target,source,env):
+        return 0
         if env.get('PDB'):
             return SCons.Action.CommandAction.execute(self,target,source,env)
         return 0
 
 class StripAction(SCons.Action.CommandAction):
     def execute(self,target,source,env):
-        if env.get('PDB') or not env.get('NO_STRIP'):
+        return 0
+        if env.get('PDB') or not env.get('NO_STRIP', True):
             return SCons.Action.CommandAction.execute(self,target,source,env)
         return 0
 
-# The following two functions are used to inform user
-# about what is going on here
-def pdbString(target, source, env):
-    if env.get('PDB'):
-        return "Creating PDB for %s" % target[0]
-    else:
-        return ""
-
-def stripString(target, source, env):
-    if env.get('PDB') or not env.get('NO_STRIP'):
-        return "Stripping %s" % target[0]
-    else:
-        return ""
-
-# Actions to be appended to Program and SharedLibrary builders
-stripActions = [
-    PdbAction("objcopy --only-keep-debug ${TARGETS[0]} ${TARGETS[1]}", strfunction = pdbString),
-    StripAction("objcopy --strip-unneeded ${TARGETS[0]}", strfunction = stripString),
-    PdbAction("objcopy --add-gnu-debuglink=${TARGETS[1]} ${TARGETS[0]}", strfunction = lambda x,y,z: "")
-]
-
-# Emitter to generate *.pdb File node
-def pdbEmitter(target, source, env):
-    if env.get('PDB') and len(target)==1:
-        pdb = env.arg2nodes('$PDB', target=target, source=source)[0]
-        pdb.attributes.pdb_owner = target[0]
-        target.append(pdb)
-    return target, source
+### The following two functions are used to inform user
+### about what is going on here
+##def pdbString(target, source, env):
+##    if env.get('PDB'):
+##        return "Creating PDB for %s" % target[0]
+##    else:
+##        return ""
+##
+##def stripString(target, source, env):
+##    if env.get('PDB') or not env.get('NO_STRIP', True):
+##        return "Stripping %s" % target[0]
+##    else:
+##        return ""
+##
+### Actions to be appended to Program and SharedLibrary builders
+##stripActions = [
+##    PdbAction("objcopy --only-keep-debug ${TARGETS[0]} ${TARGETS[1]}", strfunction = pdbString),
+##    StripAction("objcopy --strip-unneeded ${TARGETS[0]}", strfunction = stripString),
+##    PdbAction("objcopy --add-gnu-debuglink=${TARGETS[1]} ${TARGETS[0]}", strfunction = lambda x,y,z: "")
+##]
+##
+### Emitter to generate *.pdb File node
+##def pdbEmitter(target, source, env):
+##    if env.get('PDB') and len(target)==1:
+##        pdb = env.arg2nodes('$PDB', target=target, source=source)[0]
+##        pdb.attributes.FilterAs = target[0]
+##        target.append(pdb)
+##    return target, source
 
 
 def generate(env):
@@ -133,17 +135,17 @@ def generate(env):
     env['SHLINKCOM']   = shlinkAction
     # don't set up the emitter, cause AppendUnique will generate a list
     # starting with None :-(
-    env.Append(SHLIBEMITTER = [shlib_emitter])
+    #env.Append(SHLIBEMITTER = [shlib_emitter])
     env['SMARTLINK']   = smart_link
     env['LINK']        = "$SMARTLINK"
     env['LINKFLAGS']   = SCons.Util.CLVar('')
     env['LINKCOM']     = linkAction
 
-    if env.Detect('objcopy'):
-        env.Append(LINKCOM = stripActions)
-        env.Append(PROGEMITTER = [pdbEmitter])
-        env.Append(SHLINKCOM = stripActions)
-        env.Append(SHLIBEMITTER = [pdbEmitter])
+##    if env.Detect('objcopy'):
+##        env.Append(LINKCOM = stripActions)
+##        env.Append(PROGEMITTER = [pdbEmitter])
+##        env.Append(SHLINKCOM = stripActions)
+##        env.Append(SHLIBEMITTER = [pdbEmitter])
 
     env['LIBDIRPREFIX']='-L'
     env['LIBDIRSUFFIX']=''

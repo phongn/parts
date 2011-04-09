@@ -6,7 +6,7 @@ import GnuCommon
 # have to copy this file from Scons as I can't seem to get the import to get it from the standad SCons install
 cplusplus = __import__('c++', globals(), locals(), [])
 
-import parts.reporter as reporter
+import parts.api.output as output
 
 def generate(env):
     """Add Builders and construction variables for g++ to an Environment."""
@@ -40,7 +40,7 @@ def generate(env):
         env['CXX']=env['CXX']+' -m32' 
 
  # fix this up so we can control its printing to screen better.
-    #reporter.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))
 
 
 def exists(env):

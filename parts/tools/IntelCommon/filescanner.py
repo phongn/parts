@@ -6,7 +6,7 @@ import parts.tools.Common.Finders as Finders
 import common
 
 # for version 11.x
-class file_scanner11:
+class file_scanner11(object):
     def __init__(self,path,pattern,pattern2,arch,env):
         self.path=path
         self.pattern=pattern
@@ -70,7 +70,7 @@ class file_scanner11:
                 return tmp[i]
         return None
     
-class file_scanner9_10:
+class file_scanner9_10(object):
     def __init__(self,path,pattern,arch,env):
         self.path=path
         self.pattern=pattern

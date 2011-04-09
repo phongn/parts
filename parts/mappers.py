@@ -1,30 +1,36 @@
+import glb
+import part_ref
+import policy as Policy
+import common
+import version
+import api.output
+import errors
+import target_type
+
+import SCons.Script.Main
+import SCons.Script 
+
+import StringIO
+import traceback
 import thread
 import os
-import common
-import SCons.Script 
-import version
-import reporter
-import SCons.Script.Main
-import traceback
-import StringIO
-import policy as Policy
 
 g_complex_sub={}
 
 class mapper(object):
     def __init__(self):
-        self.stackframe=reporter.GetPartStackFrameInfo()
+        self.stackframe=errors.GetPartStackFrameInfo()
         
     def alias_missing(self,env):
         if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):                
             
-            reporter.report_warning(self.name,"Alias", self.part_alias,"was not defined",
+            api.output.warning_msg(self.name,"Alias", self.part_alias,"was not defined",
                 "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
                 (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
                 stackframe=self.stackframe
                 )
         else:
-            reporter.report_error(
+            api.output.error_msg(
                 self.name+" Alias",self.part_alias,"was not defined",
                 "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
                 (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
@@ -34,17 +40,18 @@ class mapper(object):
             #because the exceptionthrown will not get threw the try catch in subst()
             env.Exit(1)
             
-    def name_to_alias_failed(self,env,policy=Policy.ReportingPolicy.error):
+    # old function to remove when it is safe
+    def nvp_to_alias_failed(self,env,policy=Policy.ReportingPolicy.warning):
         found_data=''
-        name_to_alias=common.g_engine._part_manager._alias_list(self.name)
+        name_to_alias=glb.engine._part_manager._alias_list(self.name)
         for a in name_to_alias:
-            tmp=common.g_engine._part_manager._from_alias(a)
+            tmp=glb.engine._part_manager._from_alias(a)
             found_data+=" Alias=%s, version=%s, matching platforms=%s\n"%(tmp.Alias,tmp.Version,tmp._platform_match)
         if found_data=='':
             found_data=" Nothing was found"
         
-        reporter.policy_print(
-            policy
+        api.output.policy_msg(
+            Policy.ReportingPolicy.error,#policy,
             [self.name,'mappers'],
             self.name+": Part name <%s> did not define version that matches version range of <%s> for %s architechture\n Found:\n%s"%\
             (self.part_name,str(self.ver_range),env['TARGET_PLATFORM'].ARCH,found_data),
@@ -53,13 +60,31 @@ class mapper(object):
             stackframe=self.stackframe,
             exit=False
             )
-        #because the exceptionthrown will not get threw the try catch in subst()
+        #because the exception thrown will not get threw the try catch in subst()
+        env.Exit(1)
+        
+    def name_to_alias_failed(self,env,match,policy=Policy.ReportingPolicy.error):
+        
+        if match.hasMatch:
+            reason=match.AmbiguousMatchStr()
+        else:
+            reason=match.NoMatchStr()
+                
+            
+        api.output.policy_msg(
+            Policy.ReportingPolicy.error,
+            [self.name,'mappers'],
+            "Failed to map dependency for {0}\n  with Version: {1} config: {2} TARGET_PLATFORM: {3}\n {4}".format(env.PartName(),env.PartVersion(),env['CONFIG'],env['TARGET_PLATFORM'],reason),
+            stackframe=self.stackframe,
+            exit=False
+            )
+        #because the exception thrown will not get threw the try catch in subst()
         env.Exit(1)
         
     def unexpected_error(self,env):
         ec_str=StringIO.StringIO()
         traceback.print_exc(file=ec_str)
-        reporter.report_error(
+        api.output.error_msg(
             "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
             stackframe=self.stackframe,
             exit=False
@@ -75,12 +100,16 @@ def sub_lst(env,lst,thread_id):
     ret=[]
     g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
     spacer="."*(g_complex_sub[thread_id]-1)
-    reporter.trace_msg(['sub_lst','mapper'],spacer,"sub_lst getting value for",lst)
+    api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst getting value for",lst)
     for i in lst:
-        v=env.subst(str(i)).split("\1")
+        root=env.Dir("#")
+        if isinstance(i,SCons.Node.FS.Base) and i.is_under(root):
+                v=[root.rel_path(i)]
+        else:
+            v=env.subst(str(i)).split("\1")
         #ret.extend(v)
         ret=common.extend_unique(ret,v)
-    reporter.trace_msg(['sub_lst','mapper'],spacer,"sub_lst returning",ret)
+    api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst returning",ret)
     g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
     return ret#common.make_unique(ret)
 
@@ -107,23 +136,26 @@ class part_mapper(mapper):
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
             
-            reporter.trace_msg(['parts_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}",{3})}}"'.format(self.name,self.part_alias,self.part_prop,self.ignore))
+            api.output.trace_msg(['parts_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}",{3})}}"'.format(self.name,self.part_alias,self.part_prop,self.ignore))
                 
-            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
+            pobj=glb.engine._part_manager._from_alias(self.part_alias)
             if pobj is None:
-                reporter.trace_msg(['parts_mapper','mapper'],spacer,'Failed to find Part with Alias: {0}'.format(self.part_alias))
+                api.output.trace_msg(['parts_mapper','mapper'],spacer,'Failed to find Part with Alias: {0}'.format(self.part_alias))
                 self.alias_missing(env)
                 return ''
-            reporter.trace_msg(['parts_mapper','mapper'],spacer,'Found Part with Alias: {0}'.format(self.part_alias))
+            api.output.trace_msg(['parts_mapper','mapper'],spacer,'Found Part with Alias: {0}'.format(self.part_alias))
             ret=getattr(pobj,self.part_prop,None)
             if ret is None:
+                tmp=self.part_prop[0]+self.part_prop[1:].lower()
+                ret=getattr(pobj,tmp,None)
+            if ret is None:
                 if self.ignore==False:
-                    reporter.report_warning(self.name,"mapper: Property ",
+                    api.output.warning_msg(self.name,"mapper: Property ",
                         self.part_alias+'.'+self.part_prop," was not defined",
                         stackframe=self.stackframe
                         )
                 return ''
-            reporter.trace_msg(['parts_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
+            api.output.trace_msg(['parts_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
             penv=pobj.Env
             if common.is_list(ret):
                 if len(ret)>1:
@@ -131,36 +163,36 @@ class part_mapper(mapper):
                 
                 setattr(pobj,self.part_prop,ret)
                 if g_complex_sub[thread_id]==0:
-                    reporter.trace_msg(['parts_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                    reporter.trace_msg(['parts_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                    reporter.trace_msg(['parts_mapper','mapper'],spacer," Value to set: {0}".format(ret))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Value to set: {0}".format(ret))
                     idx=env[self.part_prop].index("${"+self.name+"('"+self.part_alias+"','"+self.part_prop+"')}")
                     if common.is_list(env[self.part_prop]):
                         if ret != []:
                             env[self.part_prop][idx:idx+1]=ret
                     else:
                         env[self.part_prop]=[ret]
-                    reporter.trace_msg(['parts_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
                     if ret == []:
-                        reporter.trace_msg(['parts_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
+                        api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                         return ""
                     else:
-                        reporter.trace_msg(['parts_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
+                        api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
                     tmp="\1".join(ret)
-                    reporter.trace_msg(['parts_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
-                reporter.trace_msg(['parts_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+                api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp
             
         except Exception,ec:
             
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -195,30 +227,30 @@ class part_id_mapper(mapper):
             except KeyError:
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
-            reporter.trace_msg(['partid_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.ignore))
+            api.output.trace_msg(['partid_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.ignore))
             #Find matching verion pinfo
-            pobj=common.g_engine._part_manager._from_nvp(
+            pobj=glb.engine._part_manager._from_nvp(
                 self.part_name,
                 self.ver_range,
                 env['TARGET_PLATFORM']
             )
                         
             if pobj is None:
-                reporter.trace_msg(['partid_mapper','mapper'],spacer,'Failed to find Part that matches name: {0} version:{1}'.format(self.part_name,self.ver_range))
+                api.output.trace_msg(['partid_mapper','mapper'],spacer,'Failed to find Part that matches name: {0} version:{1}'.format(self.part_name,self.ver_range))
                 if self.ignore:
                     return ''
-                self.name_to_alias_failed(env)
-            reporter.trace_msg(['partid_mapper','mapper'],spacer,' Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
+                self.nvp_to_alias_failed(env)
+            api.output.trace_msg(['partid_mapper','mapper'],spacer,' Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
             
             ret=getattr(pobj,self.part_prop,None)
             if ret is None:
                 if self.ignore==False:
-                    reporter.report_warning(self.name,"mapper: Property ",
+                    api.output.warning_msg(self.name,"mapper: Property ",
                         pobj.Alias+'.'+self.part_prop," was not defined",
                         stackframe=self.stackframe
                         )
                 return ''
-            reporter.trace_msg(['partid_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
+            api.output.trace_msg(['partid_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
             
             penv=pobj.Env
                 
@@ -227,9 +259,9 @@ class part_id_mapper(mapper):
                     ret=sub_lst(penv,ret,thread_id)
                 #setattr(pobj,self.part_prop,ret)
                 if g_complex_sub[thread_id]==0:
-                    reporter.trace_msg(['partid_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                    reporter.trace_msg(['partid_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                    reporter.trace_msg(['partid_mapper','mapper'],spacer," Value to set: {0}".format(ret))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Value to set: {0}".format(ret))
                     
                     if self.ignore == True:
                         idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"',True)}")
@@ -240,27 +272,27 @@ class part_id_mapper(mapper):
                             env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
                     else:
                         env[self.part_prop]=[ret]
-                    reporter.trace_msg(['partid_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
                     if ret == []:
-                        reporter.trace_msg(['partid_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
+                        api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                         return ""
                     else:
-                        reporter.trace_msg(['partid_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
+                        api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
                     tmp="\1".join(ret)
-                    reporter.trace_msg(['partid_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
-                reporter.trace_msg(['partid_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+                api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp
             
         except Exception,ec:
             
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -278,12 +310,13 @@ class part_id_export_mapper(mapper):
     issue with subst and lists causes the subst to fail.
     '''
     name='PARTIDEXPORTS'
-    def __init__(self,id,ver_range,part_prop,policy=Policy.REQPolicy.warning):
+    def __init__(self,name,section,part_prop,policy=Policy.REQPolicy.warning):
         mapper.__init__(self)
-        self.part_name = id
-        self.ver_range = version.version_range(ver_range)
+        self.part_name = name
+        #self.ver_range = version.version_range(ver_range)
         self.part_prop = part_prop
         self.policy=policy
+        self.section=section
 
     def __call__(self, target, source, env, for_signature):
         try:
@@ -293,86 +326,91 @@ class part_id_export_mapper(mapper):
             except KeyError:
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
-            reporter.trace_msg(['partexport_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.policy))
-            pobj_org=common.g_engine._part_manager._from_env(env)
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.section,self.part_prop,self.policy))
+            pobj_org=glb.engine._part_manager._from_env(env)
+            sec=pobj_org.DefiningSection
            #Find matching verion pinfo
-            pobj=common.g_engine._part_manager._from_nvp(
-                self.part_name,
-                self.ver_range,
-                env['TARGET_PLATFORM']
-            )
-                        
-            if pobj is None:
-                reporter.trace_msg(['partexport_mapper','mapper'],spacer,'Failed to find Part that matches name: {0} version:{1}'.format(self.part_name,self.ver_range))
-                self.name_to_alias_failed(env,policy=self.policy)
-            reporter.trace_msg(['partexport_mapper','mapper'],spacer,' Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
+            match=part_ref.part_ref(target_type.target_type(self.part_name),pobj_org.Uses)
+            if match.hasUniqueMatch:
+                pobj=match.UniqueMatch
+            else:
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
+                self.name_to_alias_failed(env,match,policy=self.policy)
+                
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,' Found matching part! name: {0} -> alias: {1}'.format(pobj.Name,pobj.Alias))
             
-            ret=pobj._exports.get(self.part_prop,[])
-            reporter.trace_msg(['partexport_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
+            ret=pobj.Section(self.section).Exports.get(self.part_prop,[])
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
             
-            penv=pobj.Env
+            psec=pobj.Section(self.section)
+            penv=psec.Env
                             
             if common.is_list(ret):
                 if len(ret)>1:
                     ret=sub_lst(penv,ret,thread_id)
-                pobj._exports[self.part_prop]=ret
+                #if ret:
+                    #pobj.DefiningSection.Exports[self.part_prop]=ret
                 if g_complex_sub[thread_id]==0:
                     
-                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.ver_range,self.part_prop,self.policy)
+                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.section,self.part_prop,self.policy)
                     
                     try:
                         # set the value in the exports to prevent recusive hitting of this again latter
                         # value might not exist in cases of programs or components that are on the top 
                         # of the tree.. so if we get a KeyError we can ignore it
-                        if common.is_list(pobj_org._exports[self.part_prop]):
-                            reporter.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in export table")
-                            reporter.trace_msg(['partexport_mapper','mapper'],spacer," Before Export value: {0}",pobj_org._exports[self.part_prop])
-                            idx=pobj_org._exports[self.part_prop].index(str_val)
-                            pobj_org._exports[self.part_prop][idx:idx+1]=ret
-                            reporter.trace_msg(['partexport_mapper','mapper'],spacer," After export value: {0}",pobj_org._exports[self.part_prop])
+                        if common.is_list(sec.Exports[self.part_prop]):
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in export table")
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before Export value: {0}",sec.Exports[self.part_prop])
+                            
+                            idx=sec.Exports[self.part_prop].index(str_val)
+                            if ret:
+                                sec.Exports[self.part_prop][0:idx+1]=common.extend_if_absent(sec.Exports[self.part_prop][0:idx],ret)
+                            else:
+                                sec.Exports[self.part_prop].remove(idx)
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," After export value: {0}",sec.Exports[self.part_prop])
                         else:
-                            pobj_org._exports[self.part_prop]=ret
+                            sec.Exports[self.part_prop]=ret
                     except KeyError:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
                     except ValueError:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
                         
                     try:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," Value to set: {0}".format(ret))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Value to set: {0}".format(ret))
                         idx=env[self.part_prop].index(str_val)
                         if common.is_list(env[self.part_prop]):
                             if ret != []:
                                 env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
                         else:
                             env[self.part_prop]=[ret]
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
                     except KeyError, e:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," KeyError",e)
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," KeyError",e)
                     except ValueError, e:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer," ValueError",e)
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," ValueError",e)
                     
                     if ret == []:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (1) value of {0}".format("None"))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (1) value of {0}".format("None"))
                         return ''
                     else:
-                        reporter.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
+                        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
-                    tmp="\1".join(ret)
-                    reporter.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    tmp="\1".join(map(lambda x: "{0}".format(x),ret))
+                    api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
-                reporter.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp
             
         except Exception,ec:
             
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -390,10 +428,10 @@ class part_lib_mapper(mapper):
     issue with subst and lists causes the subst to fail.
     '''
     name='PARTEXPORTLIB'
-    def __init__(self,id,ver_range,part_prop,policy=Policy.REQPolicy.warning):
+    def __init__(self,name,section,part_prop,policy=Policy.REQPolicy.warning):
         mapper.__init__(self)
-        self.part_name = id
-        self.ver_range = version.version_range(ver_range)
+        self.part_name = name
+        self.section= section
         self.part_prop = part_prop
         self.policy=policy
 
@@ -405,85 +443,89 @@ class part_lib_mapper(mapper):
             except KeyError:
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
-            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.policy))
-            pobj_org=common.g_engine._part_manager._from_env(env)
+            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.section,self.part_prop,self.policy))
+            pobj_org=glb.engine._part_manager._from_env(env)
+            sec=pobj_org.DefiningSection
            #Find matching verion pinfo
-            pobj=common.g_engine._part_manager._from_nvp(
-                self.part_name,
-                self.ver_range,
-                env['TARGET_PLATFORM']
-            )
-                        
-            if pobj is None:
-                reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,'Failed to find Part that matches name: {0} version:{1}'.format(self.part_name,self.ver_range))
-                self.name_to_alias_failed(env,policy=self.policy)
-            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,' Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
+            match=part_ref.part_ref(target_type.target_type(self.part_name),pobj_org.Uses)
+            if match.hasUniqueMatch:
+                pobj=match.UniqueMatch
+            else:
+                api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
+                self.name_to_alias_failed(env,match,policy=self.policy)
+                
+            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,' Found matching part! name: {0} -> alias: {1}'.format(pobj.Name,pobj.Alias))
             
-            ret=pobj._exports.get(self.part_prop,[])
-            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
+            ret=pobj.DefiningSection.Exports.get(self.part_prop,[])
+            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
             
-            penv=pobj.Env
+            psec=pobj.Section(self.section)
+            penv=psec.Env
                             
             if common.is_list(ret):
                 if len(ret)>1:
                     ret=sub_lst(penv,ret,thread_id)
-                pobj._exports[self.part_prop]=ret
+                #if ret:
+                    #pobj.DefiningSection.Exports[self.part_prop]=ret
                 if g_complex_sub[thread_id]==0:
                     
-                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.ver_range,self.part_prop,self.policy)
+                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.section,self.part_prop,self.policy)
                     
                     try:
                         # set the value in the exports to prevent recusive hitting of this again latter
                         # value might not exist in cases of programs or components that are on the top 
                         # of the tree.. so if we get a KeyError we can ignore it
-                        if common.is_list(pobj_org._exports[self.part_prop]):
-                            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in export table")
-                            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Before Export value: {0}",pobj_org._exports[self.part_prop])
-                            idx=pobj_org._exports[self.part_prop].index(str_val)
-                            pobj_org._exports[self.part_prop][idx:idx+1]=ret
-                            reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," After export value: {0}",pobj_org._exports[self.part_prop])
+                        if common.is_list(sec.Exports[self.part_prop]):
+                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in export table")
+                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Before Export value: {0}",sec.Exports[self.part_prop])
+                            idx=sec.Exports[self.part_prop].index(str_val)
+                            if ret:
+                                sec.Exports[self.part_prop][0:idx+1]=common.extend_unique(sec.Exports[self.part_prop][0:idx],ret)
+                            else:
+                                sec.Exports[self.part_prop].remove(idx)
+                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," After export value: {0}",sec.Exports[self.part_prop])
                         else:
-                            pobj_org._exports[self.part_prop]=ret
+                            sec.Exports[self.part_prop]=ret
                     except KeyError:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
                     except ValueError:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
                         
                     try:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," Value to set: {0}".format(ret))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Value to set: {0}".format(ret))
                         idx=env[self.part_prop].index(str_val)
                         if common.is_list(env[self.part_prop]):
                             if ret != []:
                                 env[self.part_prop][0:idx+1]=common.extend_unique(env[self.part_prop][0:idx],ret)
                         else:
                             env[self.part_prop]=[ret]
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
                     except KeyError, e:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," KeyError",e)
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," KeyError",e)
                     except ValueError, e:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer," ValueError",e)
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," ValueError",e)
                     
                     if ret == []:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                         return ""
                     else:
-                        reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
+                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
                     tmp="\1".join(ret)
-                    reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
-                reporter.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+                api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp            
         except Exception,ec:
             
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -503,26 +545,27 @@ class part_subst_mapper(mapper):
     values not fully filled in.
     '''
     name='PARTSUB'
-    def __init__(self,part_alias,substr):
+    def __init__(self,part_alias,substr,section='build'):
         mapper.__init__(self)
         self.part_alias = part_alias
         self.substr = substr
+        self.section=section
 
     def __call__(self, target, source, env, for_signature):
         try:
             def_env=SCons.Script.DefaultEnvironment()
             
-            pobj = common.g_engine._part_manager._from_alias(self.part_alias)
+            pobj = glb.engine._part_manager._from_alias(self.part_alias)
             if pobj is None:
                 self.alias_missing(env)
                 return None
-            penv=pobj.Env
+            penv=pobj.Section(self.section).Env
             ret = penv.subst(self.substr)
             
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -538,10 +581,10 @@ class part_name_mapper(mapper):
     def __init__(self,part_alias):
         mapper.__init__(self)
         self.part_alias = part_alias
-
+        
     def __call__(self, target, source, env, for_signature):
         try:
-            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
+            pobj=glb.engine._part_manager._from_alias(self.part_alias)
             try:
                 ret=pobj.Name
             except AttributeError: 
@@ -551,7 +594,7 @@ class part_name_mapper(mapper):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -572,7 +615,7 @@ class part_shortname_mapper(mapper):
 
     def __call__(self, target, source, env, for_signature):
         try:
-            pobj=common.g_engine._part_manager._from_alias(self.part_alias)
+            pobj=glb.engine._part_manager._from_alias(self.part_alias)
             
             if pobj is None:
                 self.alias_missing(env)
@@ -582,7 +625,7 @@ class part_shortname_mapper(mapper):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.report_error(
+            api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
@@ -621,14 +664,14 @@ class relpath_mapper(mapper):
         return common.relpath(t,f)+os.sep
     
 
-common.add_mapper(part_mapper)
-common.add_mapper(part_id_mapper)
-common.add_mapper(part_id_export_mapper)
-common.add_mapper(part_subst_mapper)
-common.add_mapper(part_name_mapper)
-common.add_mapper(part_shortname_mapper)
-common.add_mapper(abspath_mapper)
-common.add_mapper(relpath_mapper)
-common.add_mapper(part_lib_mapper)
+api.register.add_mapper(part_mapper)
+api.register.add_mapper(part_id_mapper)
+api.register.add_mapper(part_id_export_mapper)
+api.register.add_mapper(part_subst_mapper)
+api.register.add_mapper(part_name_mapper)
+api.register.add_mapper(part_shortname_mapper)
+api.register.add_mapper(abspath_mapper)
+api.register.add_mapper(relpath_mapper)
+api.register.add_mapper(part_lib_mapper)
 
-common.AddBoolVariable('MAPPER_BAD_ALIAS_AS_WARNING',True,'Controls if a missing alias is an error or a warning')
+api.register.add_bool_variable('MAPPER_BAD_ALIAS_AS_WARNING',True,'Controls if a missing alias is an error or a warning')

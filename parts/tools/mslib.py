@@ -39,7 +39,7 @@ import SCons.Tool.msvs
 import SCons.Tool.msvc
 import SCons.Util
 
-import parts.reporter as reporter
+import parts.api.output as output
 from MSCommon import msvc
 
 def generate(env):
@@ -54,7 +54,7 @@ def generate(env):
     env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
     env['LIBPREFIX']   = ''
     env['LIBSUFFIX']   = '.lib'
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslib',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslib',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env,'lib')

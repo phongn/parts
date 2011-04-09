@@ -4,10 +4,10 @@ import SCons.Util
 def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
     clone_env=self._orig_Clone(tools,toolpath,parse_flags,**kw)
     #rebind and bindable 
-    clone_env.bindable_vars=[]
-    if hasattr(self, 'bindable_vars'):
-        for i in self.bindable_vars:
-            clone_env.bindable_vars.append(i)
+    clone_env._bindable_vars=set([])
+    if hasattr(self, '_bindable_vars'):
+        for i in self._bindable_vars:
+            clone_env._bindable_vars.add(i)
             clone_env[i]=clone_env[i]._rebind(clone_env,i)
     return clone_env
 

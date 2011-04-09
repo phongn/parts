@@ -1,14 +1,14 @@
 import unittest
 import SCons.Script
-from parts.platform_info import *
-from parts.parts import *
+from parts.platform_info import SystemPlatform
 from parts.reporter import PartRuntimeError
+import parts.settings as settings
 
 
 class TestPlatform(unittest.TestCase):
 
     def setUp(self):
-        self.env=core.generate_config({},{},{}) 
+        self.env=settings.DefaultSettings().Environment() 
 
     def test_platform1(self):
         s1 = SystemPlatform('win32','x86_64')

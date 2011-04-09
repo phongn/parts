@@ -7,7 +7,7 @@ import SCons.Tool
 from .. import mappers
 import thread
 
-class PartPathDirsWrapper:
+class PartPathDirsWrapper(object):
     """This is a wrapper class to work around a "bug" with the scanner in that
     it tries to delay expand variables which might modify the Env. This
     allows use to expand the area in the env before it tries to create the tuple

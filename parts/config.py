@@ -8,7 +8,7 @@ import version
 import SCons.Script
 import configurations,version
 import os
-import reporter
+import api.output
 import load_module
 import traceback,StringIO
 
@@ -22,7 +22,7 @@ g_configuration={}
 def ConfigValues(**kw):
     return kw
 
-class configuration:
+class configuration(object):
     def __init__(self,default_ver_func,post_process_func=None):
         self.default_ver_func=default_ver_func
         self.post_process_func=post_process_func
@@ -116,7 +116,7 @@ class configuration:
         return (settings,settings_ex),ver_rng
         
 
-class _ConfigurationSet:
+class _ConfigurationSet(object):
     def __init__(self,name,dependsOn):
         self.name=name
         # add note if depends on is a list.. only support single base
@@ -270,7 +270,7 @@ def load_cfg(name):
     if name==None:
         return
     # load the configuration meta information
-    reporter.verbose_msg('configuration',"Loading configuration definition for <%s>"%name)
+    api.output.verbose_msg('configuration',"Loading configuration definition for <%s>"%name)
     configurations.configuration(name)
     # make sure any dependent config is loaded as well
     dep=g_configuration[name].Dependent()
@@ -391,7 +391,7 @@ def found_config_files(name,tool,host,target):
     name_list=make_name_list(tool,host,target)
     for k in name_list:
         try:
-            reporter.verbose_msg('configuration',"trying to load file <%s.py>"%k)
+            api.output.verbose_msg('configuration',"trying to load file <%s.py>"%k)
             mod=load_module.load_module(
                     load_module.get_site_directories(
                             os.path.join('configurations',name)
@@ -410,7 +410,7 @@ def found_config_files(name,tool,host,target):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
+            api.output.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
             
     return ret
     
@@ -427,7 +427,7 @@ def load_tool_config(env,name,tool,host,target):
         if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
             # if not load it
             load_tool_config(env,dep,tool,host,target)    
-    reporter.verbose_msg('configuration',"Loading configuration <%s> for tool <%s>"%(name,tool))
+    api.output.verbose_msg('configuration',"Loading configuration <%s> for tool <%s>"%(name,tool))
     ## Load our config data, and map the version value
     name_list=make_name_list(tool,host,target)
     found=True
@@ -435,7 +435,7 @@ def load_tool_config(env,name,tool,host,target):
     mod=None
     for k in name_list:
         try:
-            reporter.verbose_msg('configuration',"trying to load file <%s.py>"%k)
+            api.output.verbose_msg('configuration',"trying to load file <%s.py>"%k)
             mod=load_module.load_module(
                     load_module.get_site_directories(
                             os.path.join('configurations',name)
@@ -443,7 +443,7 @@ def load_tool_config(env,name,tool,host,target):
                     k,
                     'config'+name
                     )
-            reporter.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
+            api.output.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
             
             #g_config_context[tool]=mod.__file__
             if mod.__file__.endswith('.py'):
@@ -458,7 +458,7 @@ def load_tool_config(env,name,tool,host,target):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            reporter.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
+            api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
             
         
     else:
@@ -466,24 +466,24 @@ def load_tool_config(env,name,tool,host,target):
         #g_config_context[tool]=None
         files=set()
         if dep == None:
-            reporter.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
+            api.output.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
         found=False # nothing found
     
     ## Last we merge settings and store
     if dep != None:
         # Get base settings
-        reporter.verbose_msg('configuration','Getting dependent configuration settings',dep)
+        api.output.verbose_msg('configuration','Getting dependent configuration settings',dep)
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
         files.update(g_configuration[dep].defining_files(tool,host,target))
     
     if found==True:
         # merge setting
-        reporter.verbose_msg('configuration',"Merging configurtation settings")
+        api.output.verbose_msg('configuration',"Merging configurtation settings")
         settings,ver_rng=mod.config.merge(ver,base_settings)
-        reporter.verbose_msg('configuration',"Storing settings")
+        api.output.verbose_msg('configuration',"Storing settings")
         g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
     else:
-        reporter.verbose_msg('configuration',"Storing settings")
+        api.output.verbose_msg('configuration',"Storing settings")
         g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper,files)
 
 def get_config(env,name,tool,host,target):
@@ -511,8 +511,8 @@ def get_config(env,name,tool,host,target):
 
 def get_defining_config_files(name,tool,host,target):
     '''
-    This function just gets the file defining a conifguration
-    Which is needed for testing purposes
+    This function just gets the file defining a configuration
+    Which is needed for testing purposes configuratition context.
     '''
     # is "meta" config loaded
     if g_configuration.has_key(name)==False:
@@ -528,11 +528,11 @@ def get_defining_config_files(name,tool,host,target):
 ## compatibility object
 class config_type_wrapper(str,common.bindable):
     def __eq__(self,rhs):
-        reporter.report_warning("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test",env=self.env)
+        api.output.warning_msg("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for == test",env=self.env)
         return self.env.isConfigBasedOn(rhs)
 
     def __ne__(self,rhs):
-        reporter.report_warning("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for != test",env=self.env)
+        api.output.warning_msg("Please use isConfigBasedOn() to test if configuration is based on debug or release, next drop will match exact configuration for != test",env=self.env)
         return self.env.isConfigBasedOn(rhs)==False
        
     def _rebind(self,env,key):
@@ -558,13 +558,17 @@ def apply_config(env,name=None):
     #print "Configured Tool to get configuration from",tools
     host=env['HOST_PLATFORM']
     target=env['TARGET_PLATFORM']
+    
     if name==None:
         env['CONFIG']=env.subst('${CONFIG}')
         name=env['CONFIG']
+    else:
+        env['CONFIG']=name
+    
     env['CONFIG']=config_type_wrapper(name)
     env['CONFIG']._bind(env,'CONFIG')
         
-    reporter.verbose_msg('configuration'"Applying configuration <%s>"%name)
+    api.output.verbose_msg('configuration',"Applying configuration <%s>"%name)
     #print "tools that have been configured",tools
     for t in tools:
         tmp,files=get_config(env,name,t,host,target)
@@ -628,8 +632,8 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.isConfigBasedOn=isConfigBasedOn
 SConsEnvironment.Configuration=apply_config
         
-common.AddVariable(['CONFIG','config'],'${default_config}','The configuration to use')
-common.AddVariable('default_config','debug','The configuration to use by default')
+api.register.add_variable(['CONFIG','config'],'${default_config}','The configuration to use')
+api.register.add_variable('default_config','debug','The configuration to use by default')
 
-common.add_parts_object('ConfigValues',ConfigValues)
-common.add_global_value('ConfigValues',ConfigValues)
+api.register.add_global_parts_object('ConfigValues',ConfigValues)
+api.register.add_global_object('ConfigValues',ConfigValues)

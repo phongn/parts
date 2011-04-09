@@ -1,8 +1,8 @@
 
-import common
+import api
 import metatag
 
-class hasFileExtension():
+class hasFileExtension(object):
     def __init__(self,extlist):
         self.extlist=extlist
     
@@ -12,7 +12,7 @@ class hasFileExtension():
                 return True
         return False
     
-class HasPackageCatagory():
+class HasPackageCatagory(object):
     def __init__(self, catagory):
         self.catagory=catagory
         
@@ -20,5 +20,5 @@ class HasPackageCatagory():
         return metatag.MetaTagValue(node,'category','package')==self.catagory
 
 
-common.add_global_value('hasFileExtension',hasFileExtension)   
-common.add_global_value('HasPackageCatagory',HasPackageCatagory)   
+api.register.add_global_object('hasFileExtension',hasFileExtension)   
+api.register.add_global_object('HasPackageCatagory',HasPackageCatagory)   

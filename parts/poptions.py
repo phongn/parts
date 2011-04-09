@@ -1,7 +1,7 @@
-
+import glb
 import common
 import color
-import reporter
+import api.output
 import logger
 import load_module
 import platform_info
@@ -14,23 +14,23 @@ from optparse import OptionValueError
 
 # used to help scripts set defaults when there is no config script
 def SetOptionDefault(key,value):
-
+    import settings
     args = sys.argv[1:]
-    if common.g_engine._build_mode=='help':
+    if glb.engine._build_mode=='help':
         return
-    global def_args
+    
     #special logger logic
     if key=='LOGGER':
-        if type(reporter.g_rpter.logger) is not logger.QueueLogger:
-            #reporter.print_msg('Logger already set -- ignoring')
+        if type(glb.rpter.logger) is not logger.QueueLogger:
+            api.output.print_msg('Logger already set -- ignoring')
             pass
         else:
             ### clean up
-            def_env=SCons.Script.DefaultEnvironment()
-            directory=def_env.Dir(def_env['LOG_ROOT_DIR'])
-            tmp=def_env.subst(value)
+            env=settings.DefaultSettings().Environment()
+            directory=env.Dir(env['LOG_ROOT_DIR'])
+            tmp=env.subst(value)
             if tmp=='TEXT_LOGGER':
-                tmp=def_env.subst('$'+value)
+                tmp=env.subst('$'+value)
 
             if tmp in opt_true_values :
                 mod=load_module.load_module(
@@ -47,12 +47,15 @@ def SetOptionDefault(key,value):
                     'logger')  
                 log_obj=mod.__dict__.get(tmp,logger.nil_logger)
             #####
-            log_obj=log_obj(directory.abspath,def_env['LOG_FILE_NAME'])
-            reporter.g_rpter.reset_logger(log_obj)
+            log_obj=log_obj(directory.abspath,env['LOG_FILE_NAME'])
+            glb.rpter.reset_logger(log_obj)
             
-    reporter.print_msg('Setting default value of',key,'to',value)
-    common.g_defaultoverides[key]=value
-    SetOptionDefault._modified=True
+    api.output.print_msg('Setting default value of',key,'to',value)
+    try:
+        settings.DefaultSettings().vars[key].Default=value
+    except KeyError:
+        settings.DefaultSettings().vars[key]=value
+    
 
 def opt_file(option, opt, value, parser,var,argstr):
     if os.path.exists(value):
@@ -345,6 +348,15 @@ SCons.Script.AddOption("--disable-early-exit",
             action="store_false",
             help='Enable Parts to exit early if the update checks return True, forcing SCons longer (but possibily more correct) checks to happen')            
 
+SCons.Script.AddOption("--load-logic","--ll",
+            dest='load_logic',
+            default='case2',
+            nargs=1,
+            type='choice',
+            choices=['all','case1','case2','case3'],
+            action='store',
+            help='fill in')     
+
 
 ##SCons.Script.AddOption("--use-sdk",
 ##            dest='use_sdk',
@@ -424,6 +436,7 @@ SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             type='int',
             action='store',
             help='Level of concurrent VCS checkouts/updates that can happen at once. Defaults to -j value if not set') 
+           
 
 # move to end as work around to a bug in SCons            
 SCons.Script.AddOption("--cfg-file","--config-file",
@@ -445,5 +458,7 @@ SCons.Script.AddOption("--vcs-policy",
             action='store',
             help='Policy in how Parts should react if the automatic vcs check find that it is out of date. The policy values can be warning, error, update')         
             
+   
+            
 
-common.add_global_value('SetOptionDefault',SetOptionDefault)
+api.register.add_global_object('SetOptionDefault',SetOptionDefault)

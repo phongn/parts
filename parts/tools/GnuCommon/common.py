@@ -134,7 +134,7 @@ class GnuInfo(ToolInfo):
             return None
 
         ret={}
-        for v,p in found.items():
+        for v,p in found.iteritems():
             #print "testing",v,p[0],p[1]
             tmp=self.exists(env,namespace,v,p[0],use_script,p[1])
             if tmp is not None:

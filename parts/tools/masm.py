@@ -37,7 +37,7 @@ import SCons.Defaults
 import SCons.Tool
 import SCons.Util
 
-import parts.reporter as reporter
+import parts.api.output as output
 from MSCommon import msvc,is_win64
 
 ASSuffixes = ['.s', '.asm', '.ASM']
@@ -73,7 +73,7 @@ def generate(env):
     env['ASPPCOM']   = '$CC $ASPPFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c /Fo$TARGET $SOURCES'
     env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
     msvc.MergeShellEnv(env)
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('masm\ml',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('masm\ml',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     ret=False

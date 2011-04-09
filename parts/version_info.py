@@ -1,6 +1,6 @@
 from parts_version import _PARTS_VERSION
 
-import common
+import api
 
 def parts_version_text():
     return 'Parts extension for SCons, Version '+_PARTS_VERSION
@@ -27,14 +27,14 @@ def PartsExtensionVersion_env(env):
 
 
 # add to parts file as globals
-common.add_parts_object('PartVersionString',parts_version_text)
-common.add_parts_object('IsPartsExtensionVersionBeta',is_parts_version_beta)
-common.add_parts_object('PartsExtensionVersion',PartsExtensionVersion)
+api.register.add_global_parts_object('PartVersionString',parts_version_text)
+api.register.add_global_parts_object('IsPartsExtensionVersionBeta',is_parts_version_beta)
+api.register.add_global_parts_object('PartsExtensionVersion',PartsExtensionVersion)
 
 #add to Sconsctruct as globals
-common.add_global_value('PartVersionString',parts_version_text)
-common.add_global_value('IsPartsExtensionVersionBeta',is_parts_version_beta)
-common.add_global_value('PartsExtensionVersion',PartsExtensionVersion)
+api.register.add_global_object('PartVersionString',parts_version_text)
+api.register.add_global_object('IsPartsExtensionVersionBeta',is_parts_version_beta)
+api.register.add_global_object('PartsExtensionVersion',PartsExtensionVersion)
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

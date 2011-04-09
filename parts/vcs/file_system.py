@@ -1,6 +1,6 @@
 from base import base
 from .. import common
-from .. import reporter
+from .. import api
 import SCons.Defaults
 import os
 
@@ -16,14 +16,11 @@ class file_system(base):
         tmp=None
         if self._server is not None:
             tmp = self._server
-        try:
-            tmp=self._env['FILE_SYSTEM_SERVER']
-        except KeyError:    
-            try:
-                tmp=self._env['PREBUILT_SERVER']
-                reporter.report_warning("PREBUILT_SERVER is deprecated. Please use FILE_SYSTEM_SERVER instead",show_stack=False)
-            except:
-                pass
+        tmp=self._env['FILE_SYSTEM_SERVER']
+        if tmp=='':
+            tmp=self._env['PREBUILT_SERVER']
+            if tmp!='':    
+                api.output.warning_msg("PREBUILT_SERVER is deprecated. Please use FILE_SYSTEM_SERVER instead",show_stack=False)
         return tmp
     
     @base.FullPath.getter
@@ -92,8 +89,11 @@ class file_system(base):
         '''
         return self.do_exist_logic()
 
-common.AddVariable('VCS_FILESYSTEM_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
-common.AddVariable('VCS_PREBUILDS_DIR','${VCS_FILESYSTEM_DIR}','') #compatibility
+api.register.add_variable('VCS_FILESYSTEM_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
+api.register.add_variable('VCS_PREBUILDS_DIR','${VCS_FILESYSTEM_DIR}','') #compatibility
 
-common.add_global_value('VcsFileSystem',file_system)
-common.add_global_value('VcsPreBuilt',file_system) # compatiblity
+api.register.add_variable('FILE_SYSTEM_SERVER','','')
+api.register.add_variable('PREBUILT_SERVER','','') #compatibility
+
+api.register.add_global_object('VcsFileSystem',file_system)
+api.register.add_global_object('VcsPreBuilt',file_system) # compatiblity

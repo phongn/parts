@@ -3,7 +3,7 @@ import common
 import load_module
 import SCons.Tool
 import os
-import reporter
+import api.output
 
 def get_tlset_module(tlchain,version):
     # first try to load exact match.. then general match
@@ -47,7 +47,7 @@ def get_tools(env,tlset):
                     SCons.Tool.Tool(t[0],toolpath=load_module.get_site_directories('tools'))#env['toolpath'])
                     new_list.extend([(t[0],{})])
                 except:
-                    reporter.report_error("Failed to load Unknown ToolChain or Tool:",t[0],show_stack=False)
+                    api.output.error_msg("Failed to load Unknown ToolChain or Tool:",t[0],show_stack=False)
                     pass
         else:
             #This has been handled
@@ -103,4 +103,4 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.ToolChain=_ToolChain
 
 
-common.AddVariable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter) 
+api.register.add_variable('toolchain',['default'],'The tool chain to use by default',converter=tool_converter) 

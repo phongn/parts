@@ -1,13 +1,20 @@
-import os,stat
+
+import parts.glb as glb
 import parts.common as common
-import string
-import SCons.Script
+import parts.api as api
+import parts.errors as errors
 import parts.core as core
 import parts.node_helpers as node_helpers
 import parts.pattern as pattern
 import parts.functors as functors
 import parts.parts as parts
-import parts.reporter as reporter 
+import parts.api.output as output 
+
+import SCons.Script
+
+import os,stat
+import string
+
 
 #map unit testing stuff.. clean up depends.. 
 
@@ -75,7 +82,7 @@ from parts.target_type import target_type
 def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,**kw):
         
     #to help with user errors
-    reporter.SetPartStackFrameInfo()
+    errors.SetPartStackFrameInfo()
     targets=SCons.Script.BUILD_TARGETS
     for t in targets:
         tmp=target_type(t)
@@ -86,7 +93,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         return []
     
     ## make a new Part object
-    parent_obj=common.g_engine._part_manager._from_env(env)
+    parent_obj=glb.engine._part_manager._from_env(env)
     short_alias=env.subst('${UTEST_PREFIX}%s'%target)
     pobj=parts.Part_t(
         alias=env.subst('${UTEST_PREFIX}%s'%target),
@@ -97,7 +104,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         **kw)
     pobj._setup_(env.Clone(**kw))
     
-    common.g_engine._part_manager._add_part(pobj)
+    glb.engine._part_manager._add_part(pobj)
     # setup basic stuff we need for this part
     
     
@@ -145,7 +152,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
                 f=f[len(orig_src_dir)+1:]
             src_files.append(os.path.join(build_dir,f))
         else:
-            reporter.report_warning("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
+            api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
     
     ## flatten the sources
     data_src=pobj.Env.Flatten(data_src)
@@ -173,7 +180,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
                 s=s[len(orig_src_dir)+1:]
             out+=pobj.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
         else:
-            reporter.report_warning("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
+            api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
 
     
     ## the current path
@@ -224,7 +231,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     core_alias=pobj.Env.Alias(pobj.Alias,a+scripts_out+out)
     #add to queue the delayed mapping of any dependent stuff
-    common.g_engine.add_preprocess_logic_queue(functors.map_parts_alias(pobj.Env))
+    glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(pobj.Env))
     
     base_alias=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
     base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
@@ -265,7 +272,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     ## map the run case to build
     pobj.Env.AlwaysBuild(a)
 
-    reporter.ResetPartStackFrameInfo()
+    errors.ResetPartStackFrameInfo()
     return ret
     
 
@@ -277,7 +284,7 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object
 SConsEnvironment.UnitTest=unit_test
 
-common.AddBuilder('__UTEST__',SCons.Script.Builder(
+api.register.add_builder('__UTEST__',SCons.Script.Builder(
         action = SCons.Script.Action(unit_test_script_bf,unit_test_script_bf_str),
         emitter=unit_test_script_bfe,
         ))
@@ -286,28 +293,28 @@ common.AddBuilder('__UTEST__',SCons.Script.Builder(
 # add configuartion varaible
 #${BUILD_UTEST_CONCEPT}${ALIAS_SEPARTATOR}
 
-common.AddVariable('BUILD_UTEST_CONCEPT','utest${ALIAS_SEPARTATOR}','Defines namespace for building a unit test')
-common.AddVariable('RUN_UTEST_CONCEPT','run_utest${ALIAS_SEPARTATOR}','Defines namespace for running a unit test')
+api.register.add_variable('BUILD_UTEST_CONCEPT','utest${ALIAS_SEPARTATOR}','Defines namespace for building a unit test')
+api.register.add_variable('RUN_UTEST_CONCEPT','run_utest${ALIAS_SEPARTATOR}','Defines namespace for running a unit test')
 
-common.AddVariable('UTEST_PREFIX','utest-','prefix used by UnitTest to prefix alias name')
+api.register.add_variable('UTEST_PREFIX','utest-','prefix used by UnitTest to prefix alias name')
 
-common.AddVariable('UTEST_ALL','$BUILD_UTEST_CONCEPT','Alias used to build all defined unit tests')
-common.AddVariable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all defined unit tests')
+api.register.add_variable('UTEST_ALL','$BUILD_UTEST_CONCEPT','Alias used to build all defined unit tests')
+api.register.add_variable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all defined unit tests')
 
-common.AddVariable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
-common.AddVariable('UNIT_TEST_DIR',
+api.register.add_variable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
+api.register.add_variable('UNIT_TEST_DIR',
 			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
 			'Full directory used for a given unit test run'
 			)
-common.AddVariable('UNIT_TEST_ENV',
+api.register.add_variable('UNIT_TEST_ENV',
 			{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
 			'Default values add to default environment when running unit tests')
-common.AddVariable('UNIT_TEST_TARGET_NAME',
+api.register.add_variable('UNIT_TEST_TARGET_NAME',
 			'${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
 			'Default value of a given unit test executable')
-common.AddVariable('UNIT_TEST_RUN_SCRIPT_COMMAND',
+api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
 			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}',
 			'Command action used to run a unit test script in SCons')
-common.AddVariable('UNIT_TEST_RUN_COMMAND',
+api.register.add_variable('UNIT_TEST_RUN_COMMAND',
 		'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
 		'Command action used to run a unit test in SCons')

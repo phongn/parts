@@ -1,4 +1,4 @@
-import parts.common as common
+import parts.api as api
 import SCons.Script
 
 #################################################################
@@ -43,7 +43,7 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object  
 SConsEnvironment.PythonScript=PythonScript    
     
-common.AddBuilder('_PyScriptBuilder_',SCons.Script.Builder(
+api.register.add_builder('_PyScriptBuilder_',SCons.Script.Builder(
         action = SCons.Script.Action(py_bld,py_bld_str),
         emitter=py_blde
         ))

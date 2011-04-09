@@ -1,5 +1,5 @@
-
-import parts.common as common
+import parts.glb as glb
+import parts.api as api
 
 import SCons.Script
 
@@ -14,19 +14,19 @@ def part_name(env,id=None,parent_name=None):
     
     alias=env['PART_ALIAS']
     if alias != None:
-        part_obj=common.g_engine._part_manager._from_env(env)
+        part_obj=glb.engine._part_manager._from_env(env)
         if parent_name is not None:
             part_obj._set_name(id,parent_name)
         else:
-            part_obj._set_name(id)
+            part_obj.ShortName=id
         return part_obj.Name
     return None
 
 def get_part_name(env):
-    return common.g_engine._part_manager._from_env(env).Name
+    return glb.engine._part_manager._from_env(env).Name
 
 def get_part_short_name(env):
-    return common.g_engine._part_manager._from_env(env).ShortName
+    return glb.engine._part_manager._from_env(env).ShortName
 
 class _PartName(object):
     def __init__(self,env):
@@ -38,7 +38,7 @@ class _PartName(object):
 from SCons.Script.SConscript import SConsEnvironment
 
 # add global for new format
-common.add_parts_object('PartName',_PartName)
+api.register.add_global_parts_object('PartName',_PartName)
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.PartName=part_name

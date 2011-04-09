@@ -9,7 +9,7 @@ import common
 
 
 #this is a general scanner for all version till version 11.1
-class reg_scanner:
+class reg_scanner(object):
     def __init__(self,regkeys,pattern,arch,env,ver):
         self.pattern=pattern
         self.reg_keys=regkeys
@@ -98,7 +98,7 @@ class reg_scanner:
 
 
 #this is a general scanner for all version at version 11.1 (and beyond??)
-class reg_scanner2:
+class reg_scanner2(object):
     def __init__(self,regkeys,pattern,arch,env,ver):
         self.pattern=pattern
         self.reg_keys=regkeys

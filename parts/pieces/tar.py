@@ -1,6 +1,6 @@
 import os,tarfile
 import SCons.Script
-import parts.common as common
+import parts.api as api
 
 def tar(target, source, env, type):
         zf = tarfile.open(str(target[0]), type)
@@ -32,25 +32,20 @@ def tar(target, source, env, type):
 TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w') )
 GzAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|gz') )
 bz2Action = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|bz2') )
-##
-##common.AddBuilder('LibPackage',SCons.Builder.Builder(action = GzAction,
-##                                   source_factory = SCons.Node.FS.Entry,
-##                                   source_scanner = SCons.Defaults.DirScanner,
-##                                   suffix = '.so-gz'))#,multi = 1))
 
-common.AddBuilder('TarFile',SCons.Builder.Builder(action = TarAction,
+api.register.add_builder('TarFile',SCons.Builder.Builder(action = TarAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.tar'))#,multi = 1))
+                                   suffix = '.tar',multi = 1))
                                 
-common.AddBuilder('GzFile',SCons.Builder.Builder(action = GzAction,
+api.register.add_builder('GzFile',SCons.Builder.Builder(action = GzAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffx = '.tar.gz'))#,multi = 1))
+                                   suffx = '.tar.gz',multi = 1))
                                 
-common.AddBuilder('Bz2File',SCons.Builder.Builder(action = bz2Action,
+api.register.add_builder('Bz2File',SCons.Builder.Builder(action = bz2Action,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.bz2'))#,multi = 1))
+                                   suffix = '.bz2',multi = 1))
 
  

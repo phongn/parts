@@ -5,7 +5,7 @@ import stat
 import subprocess
 from .. import common
 from .. import datacache
-from .. import reporter
+from .. import api
 
 def rmgeneric(path, __func__):
 
@@ -89,7 +89,7 @@ class base(object):
     @property
     def PartFileName(self):
         '''returns the modifed path of the Parts file based on the check out directory'''
-        return self._env.Dir(self.CheckOutDir).File(self._pobj._file).abspath
+        return self._env.Dir(self.CheckOutDir).File(self._pobj.File).abspath
     @property 
     def PartFileExists(self):
         return os.path.exists(self.PartFileName)    
@@ -155,50 +155,52 @@ class base(object):
         '''Tell us if this Vcs object believe it need to be updated'''
         ret_val=False
         update=self._env.GetOption('update')
-        reporter.verbose_msg('vcs_update','Vcs update check for part: "%s"'%self._pobj.Alias)
+        api.output.verbose_msg('vcs_update','Vcs update check for part: "%s"'%self._pobj.Alias)
         # do custom check
         if self.do_update_check():
-                reporter.verbose_msg('vcs_update',' do_update_check (custom checks) requires updating')
+                api.output.verbose_msg('vcs_update',' do_update_check (custom checks) requires updating')
                 ret_val = True
         elif update == 'auto':
             # do smart logic stuff
             # get the vcs-logic value
             
             logic_type=self._env.GetOption('vcs_logic')
-            reporter.verbose_msg('vcs_update',' doing smart logic of "%s"'%logic_type)
+            api.output.verbose_msg('vcs_update',' doing smart logic of "%s"'%logic_type)
             if logic_type=='exists':
                 ret=self.do_exist_logic()
             elif logic_type=='check':
                 ret=self.do_check_logic()
             elif logic_type=='force':
                 ret=self.do_force_logic()
+            elif logic_type=='none':
+                ret=False
             
             if ret:
                 # get policy for how to handle a positive reponse
                 pol=self._env.GetOption('vcs_policy')
                 if pol == 'warning':
                     # report the warning
-                    reporter.report_warning(ret,show_stack=False)
+                    api.output.warning_msg(ret,show_stack=False)
                 elif pol == 'error':
                     # report the error
-                    reporter.report_warning(ret,show_stack=False)
+                    api.output.warning_msg(ret,show_stack=False)
                 elif pol =='update':
                     ret_val = True
-                    reporter.print_msg(ret)
+                    api.output.print_msg(ret)
                 else:
                     ret_val = False
             else:
                     ret_val = False
-            reporter.verbose_msg('vcs_update',' smart logic returns value of %s%s'%(ret_val , ret_val== True and ',update needed' or ''))
+            api.output.verbose_msg('vcs_update',' smart logic returns value of %s%s'%(ret_val , ret_val== True and ',update needed' or ''))
                 
         elif self._has_target_match(update) or update == True :
-            reporter.verbose_msg('vcs_update',' --update switch matched, update needed')
+            api.output.verbose_msg('vcs_update',' --update switch matched, update needed')
             ret_val = True
         
         # this check the backwards compatible way.. to be removed
         ## @todo remove this case in 0.10+1.0 version
         elif self._env.get('UPDATE_'+self._env['PART_ALIAS'].upper(),None) is not None or self._pobj.Env['UPDATE_ALL']==True:
-            reporter.verbose_msg('vcs_update',' Backward compatibility check requres updating')
+            api.output.verbose_msg('vcs_update',' Backward compatibility check requres updating')
             ret_val =True
                 
         # check to see that the last operation was complete
@@ -211,10 +213,10 @@ class base(object):
                 
             #see if it passed last time
             if cache.get('completed',True) != True:
-                reporter.verbose_msg('vcs_update',' Last action was recorded as failing to complete, update needed')
+                api.output.verbose_msg('vcs_update',' Last action was recorded as failing to complete, update needed')
                 ret_val= True
-        if ret_val: reporter.verbose_msg(['vcs_update'],' %s will \033[31mupdate!\033[0m'%(self._pobj.Alias))
-        else: reporter.verbose_msg(['vcs_update'],' %s will \033[32mnot update!\033[0m'%(self._pobj.Alias))
+        if ret_val: api.output.verbose_msg(['vcs_update'],' %s will \033[31mupdate!\033[0m'%(self._pobj.Alias))
+        else: api.output.verbose_msg(['vcs_update'],' %s will \033[32mnot update!\033[0m'%(self._pobj.Alias))
         return ret_val
     
     def do_update_check(self):
@@ -251,18 +253,18 @@ class base(object):
         if self.PartFileExists:
             ret=self.Update()
             if ret and self._env.GetOption('vcs_clean') == True:
-                reporter.print_msg("Update action failed, restoring clean state.") 
-                reporter.print_msg('Deleting directory: %s'%self.CheckOutDir) 
+                api.output.print_msg("Update action failed, restoring clean state.") 
+                api.output.print_msg('Deleting directory: %s'%self.CheckOutDir) 
                 ret=removeall(self.CheckOutDir)
-                reporter.print_msg("Doing full checkout.")
+                api.output.print_msg("Doing full checkout.")
                 ret=self.CheckOut()
         else:
             ret=self.CheckOut()
             if ret and self._env.GetOption('vcs_clean') == True:
-                reporter.print_msg("Checkout action failed, restoring clean state.") 
-                reporter.print_msg('Deleting directory: %s'%self.CheckOutDir) 
+                api.output.print_msg("Checkout action failed, restoring clean state.") 
+                api.output.print_msg('Deleting directory: %s'%self.CheckOutDir) 
                 ret=removeall(self.CheckOutDir)
-                reporter.print_msg("Doing full checkout.")
+                api.output.print_msg("Doing full checkout.")
                 ret=self.CheckOut()
         return ret
         
@@ -351,7 +353,7 @@ class base(object):
         '''
         
         if echo:
-            reporter.print_msg("cmd str=%s"%cmd_str)
+            api.output.print_msg("cmd str=%s"%cmd_str)
         sys.stdout.flush ()
 
         #try:
@@ -386,7 +388,7 @@ class base(object):
 
 # add configuartion varaible needed for part
 
-common.AddBoolVariable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
-common.AddVariable('CHECK_OUT_ROOT','#vcs','Root directory to place checked out data')
-common.AddVariable('CHECK_OUT_DIR','$VCS_DIR','Full path used for any given checked out item')
-common.AddVariable('VCS_DIR','$VCS.CHECKOUT_DIR','')
+api.register.add_bool_variable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
+api.register.add_variable('CHECK_OUT_ROOT','#vcs','Root directory to place checked out data')
+api.register.add_variable('CHECK_OUT_DIR','$VCS_DIR','Full path used for any given checked out item')
+api.register.add_variable('VCS_DIR','$VCS.CHECKOUT_DIR','')

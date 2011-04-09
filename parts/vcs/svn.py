@@ -1,7 +1,7 @@
 
 from .. import common
 from .. import datacache
-from .. import reporter
+from .. import api
 from base import base
 
 import os
@@ -74,7 +74,7 @@ class svn(base):
         ''' returns the action to do the checkout'''
         strval = '%s checkout $SVN_FLAGS %s%s "%s"'%('svn',self.FullPath,self.Revision,out_dir)
         cmd = '"%s" checkout $SVN_FLAGS %s%s "%s"'%(svn.svnpath,self.FullPath,self.Revision,out_dir)
-        return self._env.Action(cmd)
+        return self._env.Action(cmd,strval)
         
     def clean_step(self,out_dir):
         ''' since svn tends to checkout the .svn meta data area as readonly
@@ -109,10 +109,10 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
-        reporter.verbose_msg(["vcs_update","vcs_svn"]," Doing existance check")
+        api.output.verbose_msg(["vcs_update","vcs_svn"]," Doing existance check")
         if self.PartFileExists and os.path.exists(os.path.join(self.CheckOutDir,'.svn')):
             return None
-        reporter.verbose_msg(["vcs_update","vcs_svn"]," Existance check failed")
+        api.output.verbose_msg(["vcs_update","vcs_svn"]," Existance check failed")
         self.__completed=False
         return "%s needs to be updated on disk"%self._pobj.Alias
             
@@ -122,7 +122,7 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
-        reporter.verbose_msg(["vcs_update","vcs_svn"]," Using check vcs logic.")
+        api.output.verbose_msg(["vcs_update","vcs_svn"]," Using check vcs logic.")
         #test for existance
         tmp=self.do_exist_logic()
         if tmp:
@@ -131,25 +131,25 @@ class svn(base):
         #get data cache and see if our paths match
         cache=datacache.GetCache(name=self._env['ALIAS'],key='vcs')
         if cache:
-            reporter.verbose_msg(["vcs_update","vcs_svn"]," Cached server: %s"%(cache['server']))
-            reporter.verbose_msg(["vcs_update","vcs_svn"]," Requested Server: %s"%(self.FullPath))
+            api.output.verbose_msg(["vcs_update","vcs_svn"]," Cached server: %s"%(cache['server']))
+            api.output.verbose_msg(["vcs_update","vcs_svn"]," Requested Server: %s"%(self.FullPath))
             if cache['server']!=self.FullPath:
-                reporter.verbose_msg(["vcs_update","vcs_svn"]," Cache version of server does not match.. verifing on disk..")
+                api.output.verbose_msg(["vcs_update","vcs_svn"]," Cache version of server does not match.. verifing on disk..")
                 # hard check to verify it is really bad
                 data=self.get_svn_data()
                 if data:
                     if data['server'] != self.FullPath:
-                        reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk version does not match")
+                        api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk version does not match")
                         self.__completed=False
                         return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
                     else:
-                        reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk version matches")
+                        api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk version matches")
                 else:
                     self.__completed=False
-                    reporter.verbose_msg(["vcs_update","vcs_svn"]," Could not query disk version for information!")
+                    api.output.verbose_msg(["vcs_update","vcs_svn"]," Could not query disk version for information!")
                     return 'Disk copy seems bad... updating'
         else:
-            reporter.verbose_msg(["vcs_update","vcs_svn"]," Data Cache does not exist.. doing force logic")
+            api.output.verbose_msg(["vcs_update","vcs_svn"]," Data Cache does not exist.. doing force logic")
             return self.do_force_logic()
         
         
@@ -159,18 +159,18 @@ class svn(base):
         
         returns None if it passes, returns a string to possible print tell why it failed
         '''
-        reporter.verbose_msg(["vcs_update","vcs_svn"]," Using force vcs logic.")
+        api.output.verbose_msg(["vcs_update","vcs_svn"]," Using force vcs logic.")
         #test for existance
         tmp=self.do_exist_logic()
         if tmp:
             self.__completed=False
-            reporter.verbose_msg(["vcs_update","vcs_svn"]," Existance checked failed")
+            api.output.verbose_msg(["vcs_update","vcs_svn"]," Existance checked failed")
             return tmp
         data=self.get_svn_data()
         if data:
             if data['server'] != self.FullPath:
                 self.__completed=False
-                reporter.verbose_msg(["vcs_update","vcs_svn"]," Disk checked failed")
+                api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk checked failed")
                 return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
             else:
                 return None
@@ -313,11 +313,11 @@ class svn(base):
            
             
 # add configuartion varaible needed for part
-common.AddVariable('SVN_SERVER','','Value of SVN server to use')
-common.AddListVariable('SVN_FLAGS',['--non-interactive'],'Flags to use for the svn call')
-common.AddBoolVariable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
-#common.AddVariable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
-common.AddVariable('VCS_SVN_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
+api.register.add_variable('SVN_SERVER','','Value of SVN server to use')
+api.register.add_list_variable('SVN_FLAGS',['--non-interactive'],'Flags to use for the svn call')
+api.register.add_bool_variable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
+#api.register.add_variable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
+api.register.add_variable('VCS_SVN_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
 
 
-common.add_global_value('VcsSvn',svn)
+api.register.add_global_object('VcsSvn',svn)

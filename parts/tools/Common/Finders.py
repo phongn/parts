@@ -3,7 +3,7 @@ import os
 import SCons.Util
 
 
-class PathFinder:
+class PathFinder(object):
     ''' 
     Provides information 
     '''
@@ -22,7 +22,7 @@ class PathFinder:
                 pass
         return ret
 
-class EnvFinder:
+class EnvFinder(object):
     def __init__(self,keys,rel_path=None):
         self.keys=keys
         self.rel_path=rel_path
@@ -44,7 +44,7 @@ class EnvFinder:
             ret = os.path.normpath(os.path.join(ret,self.rel_path))
         return ret
 
-class RegFinder:
+class RegFinder(object):
     def __init__(self,keys,rel_path=None):
         self.keys=keys
         self.rel_path=rel_path
@@ -71,7 +71,7 @@ class RegFinder:
         return ret
                 
                 
-class ScriptFinder:
+class ScriptFinder(object):
     def __init__(self,name,args=None):
         self.name=name
         self.args=args

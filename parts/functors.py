@@ -1,9 +1,12 @@
+import glb
 import common
+import api.output
+
 import SCons.Script
-import reporter
+
 import thread
 
-class map_parts_alias:
+class map_parts_alias(object):
     '''
     This class maps the high level alias with other high level alias. This is a very important function 
     used to make sure that SCONS knows that subparts and part relations. Scons only sees these relations
@@ -20,29 +23,29 @@ class map_parts_alias:
         self.env=env
         #self.value=value
     def __call__(self):
-        
-        pobj=common.g_engine._part_manager._from_env(self.env)
-        dlst=pobj.Depends
-        flist=[]
-        flist2=[]
-        for d in dlst:
-            #get unknown alias
-            val=d.resolve_alias(self.env)
-            if val == "" or val is None:
-                reporter.report_warning('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(self.env.subst('$PART_NAME'),d.name),stackframe=d.stackframe)
-                continue
-            denv=pobj.Env
-            flist.append(denv.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
-            #flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
-        #the build alias
-        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        ## this one might help SCons scale better with larger -j values
-        #the install alias
-        #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        # we map the build alias to the dependent SDK aliases
-        self.env.Alias(build_alias,flist)
-        # we map the install alias to the dependent INSTALL aliases
-        # self.env.Alias(install_alias,flist2)
+        pass
+        #pobj=glb.engine._part_manager._from_env(self.env)
+        #dlst=pobj.Depends
+        #flist=[]
+        #flist2=[]
+        #for d in dlst:
+        #    #get unknown alias
+        #    val=d.resolve_alias(self.env)
+        #    if val == "" or val is None:
+        #        api.output.warning_msg('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(self.env.subst('$PART_NAME'),d.name),stackframe=d.stackframe)
+        #        continue
+        #    denv=pobj.Env
+        #    flist.append(denv.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
+        #    #flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
+        ##the build alias
+        #build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
+        ### this one might help SCons scale better with larger -j values
+        ##the install alias
+        ##install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
+        ## we map the build alias to the dependent SDK aliases
+        #self.env.Alias(build_alias,flist)
+        ## we map the install alias to the dependent INSTALL aliases
+        ## self.env.Alias(install_alias,flist2)
 
 
 def full_parts_depends_list(env):
@@ -50,7 +53,7 @@ def full_parts_depends_list(env):
     We will probally want to refactor some of this into state in def_env later
     '''
     
-    pobj=common.g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
     
     cache_tmp=pobj.FullDepends
     if cache_tmp is None:
@@ -62,7 +65,7 @@ def full_parts_depends_list(env):
                 continue
             flst.append(val)
             
-            tmp_env=common.g_engine._part_manager._from_alias(val).env
+            tmp_env=glb.engine._part_manager._from_alias(val).env
             tmp=full_parts_depends_list(tmp_env)
             flst.extend(tmp)
             pobj.set_full_depends(flst)
@@ -71,17 +74,15 @@ def full_parts_depends_list(env):
     return flst
 
 
-def gen_rpath_link(alias):
+def gen_rpath_link(sec):
     '''
     Add the Rlink path that woudl be added for the component depending on this 
     component, Not what this component would depend on
     '''
     import mappers
     
-    pobj=common.g_engine._part_manager._from_alias(alias)
-    
-    dlst=pobj.Depends
-    env=pobj.Env
+    dlst=sec.Depends
+    env=sec.Env
     rplst=[]
 
     # setup the current alias case 
@@ -95,42 +96,41 @@ def gen_rpath_link(alias):
         common.append_unique(rplst,rp)
                     
     # setup everything that we depend on that we may not have added yet
-    
     for d in dlst:
-        d_alias=d.resolve_alias(env)
-        if d_alias == '' or d_alias is None:
-            reporter.report_warning("Part name ["+d.name+"] is not defined for mapping RPATH data",
-                                        print_once=True,
-                                        )
-            continue
-        try:
-            rtmp=common.g_engine._part_manager._from_alias(d_alias)._cache['rlink']
-            # add saved data
+        if d.PartRef.hasUniqueMatch:
+            try:
+                # try to get a cached value
+                rtmp=d.Section._cache['rlink']
+            except KeyError:
+                # generate the values
+                rtmp=gen_rpath_link(d.Section)
+                
             for i in rtmp:
                 common.append_unique(rplst,i)
-        except KeyError:
-            rtmp=gen_rpath_link(d_alias)
-            for i in rtmp:
-                common.append_unique(rplst,i)
-    # data to cache for any component that depend on this component
-    pobj._cache['rlink']=rplst # add this case to the cache
+            sec._cache['rlink']=rplst
+            
+        elif d.PartRef.hasMatch ==False:
+            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.PartName,d.PartRef.NoMatchStr()),show_stack=False)
+        elif d.PartRef.hasAmbiguousMatch:
+            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.PartName,d.PartRef.NoMatchStr()),show_stack=False)
     return rplst
     
 
-class map_rpath_link_part:
+class map_rpath_link_part(object):
     ''' this class is used to map the rpath-link option to the LINKFLAGS on linux
     like systems by pulling information of the LIBPATH.
     '''
-    def __init__(self,env):
+    def __init__(self,env,sec):
         self.env=env
+        self.sec=sec
         
     def __call__(self):
         if self.env['AUTO_RPATH']==True:
-            rplst=gen_rpath_link(self.env['PART_ALIAS'])
+            rplst=gen_rpath_link(self.sec)
             self.env.AppendUnique(LINKFLAGS=rplst,delete_existing=True)
 
 
-class map_rpath_part:
+class map_rpath_part(object):
     '''This class adds to the RPATH value based on location of where there .SO
     are stored.. classically in a seperate INSTALL_LIB directory. This allow for correct
     running of the program after a build without special setup'''
@@ -138,34 +138,14 @@ class map_rpath_part:
         self.env=env
         self.add_self=add_self
     def __call__(self):
+        # do we want to auto generate RPATH information
         if self.env['AUTO_RPATH']==True:
-            import mappers
             rlst=self.env.get('RPATH',[])
-            
-            alias=self.env['ALIAS']
-            pobj=common.g_engine._part_manager._from_alias(alias)
-            dlst=pobj.Depends
-            if self.add_self==True:
-                temp=self.env.Component(pobj.Name,
-                self.env.subst(str(pobj.Version)))
-                dlst=[temp]+dlst 
-            
-            for i in dlst:
-                val=self.env.subst(i.alias_mapping_string())
-                if val == "":
-                    continue
-                plist=mappers.sub_lst(self.env,["${PARTS('"+val+"','LIBPATH',True)}"],thread.get_ident())
-                for p in plist:
-                    r=self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir('$INSTALL_LIB').path,self.env.Dir('$INSTALL_BIN').path)+'\'')
-                    #r=relpath(self.env.Dir(p).path,self.env.Dir('$OUT_BIN').path)
-                    if r not in rlst:
-                        rlst.append(r)
-                        
-            rlst=common.make_unique_str(rlst)
-            self.env.Replace(RPATH=rlst)
-            
+            # make a mapping between the bin and lib directories
+            rlst.append(self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir('$INSTALL_LIB').path,self.env.Dir('$INSTALL_BIN').path)+'\''))
+            self.env['RPATH']=rlst            
           
-class map_build_context:
+class map_build_context(object):
     ''' 
         This maps all build info related files we might need to help detect quickly
     if the build context has changed from the last run.
@@ -174,10 +154,40 @@ class map_build_context:
         self.pobj=pobj
         
     def __call__(self):
-        self.pobj._add_build_context_files(self.pobj.Env['_BUILD_CONTEXT_FILES'])
-        self.pobj._add_config_context_files(self.pobj.Env['_CONFIG_CONTEXT'])
         
+        self.pobj._build_context_files.update(self.pobj.Env['_BUILD_CONTEXT_FILES'])
+        self.pobj._config_context_files.update(self.pobj.Env['_CONFIG_CONTEXT'])
+        
+        
+class map_depends(object):
+    def __init__(self,env,partref,tsection,key,stack):
+        self.env=env
+        self.partref=partref
+        self.tsection=tsection
+        self.key=key
+        self.stack=stack
+        
+    def __call__(self):
+                
+        if self.partref.hasUniqueMatch:
+            pobj=self.partref.Matches[0]
+            sec=pobj.Section(self.tsection)
+        elif self.partref.hasMatch ==False:
+            api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.NoMatchStr()),stackframe=self.stack)
+        elif self.partref.hasAmbiguousMatch:
+            api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.AmbiguousMatchStr()),stackframe=self.stack)
+        
+        #if self.key in sec.ExportAsDepends:
+        sec.esigs()
+        if sec.Exports.get(self.key) and ("INSTALL" in self.key or "SDK" in self.key):
+            alias="{0}::alias::{1}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'])
+            alias1="{0}::alias::{1}::{2}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'],self.key)
+            alias2="{0}::alias::{1}::{2}".format(self.tsection,pobj.Alias,self.key)
+            self.env.Alias(alias,self.env.Alias(alias1))
+            self.env.Alias(alias1,self.env.Alias(alias2))
+        
+          
         
 # add configuartion varaible
-common.AddBoolVariable('AUTO_RPATH',True,'Controls if RPath values are automatically added to path')
+api.register.add_bool_variable('AUTO_RPATH',True,'Controls if RPath values are automatically added to path')
 

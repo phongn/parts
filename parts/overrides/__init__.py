@@ -1,5 +1,6 @@
 # this area defines code in Parts thart overides code in SCons because of feature enhancement or bug fixes
 
+import env_alias
 import os_file
 import build_hook
 import build_wrapper
@@ -10,4 +11,5 @@ import env_array
 import env_clone
 import error_handling
 import scanner
+import nodes
 

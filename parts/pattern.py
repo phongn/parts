@@ -5,8 +5,11 @@ internal here instead, and then possiblely removing pattern 100%
 '''
 
 ## patterns
-import SCons.Script
 import common
+import api
+
+import SCons.Script
+
 import os
 
 def pattern(env,sub_dir='' ,src_dir  = '', includes = ['*'], excludes = [],recursive=True):
@@ -148,4 +151,4 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object
 SConsEnvironment.Pattern=pattern
 
-common.add_parts_object('Pattern',Pattern)
+api.register.add_global_parts_object('Pattern',Pattern)

@@ -51,7 +51,7 @@ import SCons.Scanner.RC
 #from MSCommon import msvc_exists,setup_env,is_win64
 from MSCommon import msvc,validate_vars
 
-import parts.reporter as reporter
+import parts.api.output as output
 
 CSuffixes = ['.c', '.C']
 CXXSuffixes = ['.cc', '.cpp', '.cxx', '.c++', '.C++']
@@ -240,7 +240,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['BUILDERS']['PCH'] = pch_builder
     
     # fix this up so we can control its printing to screen better.
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env)#msvc_exists(env,'cl')

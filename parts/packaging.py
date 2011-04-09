@@ -1,7 +1,12 @@
+import glb
 import common
-import SCons.Script
-import reporter
 import metatag
+import api.output
+import settings
+
+import SCons.Script
+
+
 
 g_package_groups={}
 
@@ -30,37 +35,38 @@ def PackageGroup(name,parts=[]):
                 # test that this is a valid part name or alias
                 #if valid:
                     common.append_unique(tmp,p)
+                    api.output.verbose_msg('packaging','Adding to PackageGroup :"{0}" Part: "{1}"'.format(name,p))
             else:
                 raise RuntimeError("%s does not refer to a defined Part" % (p) )
             
         g_package_groups[name].extend(tmp)        
         #cache is out of date.. zap it to force rebuild
-        if common._INSTALLED_PACKAGING_GROUPS.has_key(name):
-            common._INSTALLED_PACKAGING_GROUPS={}
-            common._INSTALLED_NO_PACKAGING_GROUPS={}
+        if glb._INSTALLED_PACKAGING_GROUPS.has_key(name):
+            glb._INSTALLED_PACKAGING_GROUPS={}
+            glb._INSTALLED_NO_PACKAGING_GROUPS={}
             
     return g_package_groups[name]
 
 # global form
 def ReplacePackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
-    common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+    settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name]=common.make_list(func)
     return PackageGroup(name)
 
 def AppendPackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
     try:
-        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name].extend(common.make_list(func))
+        settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name].extend(common.make_list(func))
     except:
-        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+        settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name]=common.make_list(func)
     return PackageGroup(name)
         
 def PrependPackageGroupCriteria(name,func):
     name=SCons.Script.DefaultEnvironment().subst(name)
     try:
-        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+common.g_defaultoverides['MAP_PACKAGE_GROUP'][name]
+        settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name]=common.make_list(func)+settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name]
     except:
-        common.g_defaultoverides['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
+        settings.DefaultSettings().vars['PACKAGE_GROUP_FILTER'].Default[name]=common.make_list(func)
     return PackageGroup(name)
 
 
@@ -82,7 +88,7 @@ def AppendPackageGroupCriteriaEnv(env,name,func):
 def PrependPackageGroupCriteriaEnv(env,name,func):
     name=env.subst(name)
     try:
-        env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+env['MAP_PACKAGE_GROUP'][name]
+        env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)+env['PACKAGE_GROUP_FILTER'][name]
     except:
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
@@ -99,36 +105,39 @@ def GetPackageGroupFiles(name,no_pkg=False):
     '''
     # get Cache value
     try:
-        return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS[name] or common._INSTALLED_PACKAGING_GROUPS[name])
+        return (no_pkg and glb._INSTALLED_NO_PACKAGING_GROUPS[name] or glb._INSTALLED_PACKAGING_GROUPS[name])
     except KeyError:
         # no cache value.. re build list
+        api.output.verbose_msg('packaging','Sorting PackageGroup Parts into nodes')
         SortPackageGroups()  
         
             
     # return what we got, if not in rebuilt list return empty list
-    return (no_pkg and common._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or common._INSTALLED_PACKAGING_GROUPS.get(name,[]))
+    return (no_pkg and glb._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or glb._INSTALLED_PACKAGING_GROUPS.get(name,[]))
 
 def SortPackageGroups():
 
     grps=PackageGroups() # get the groups
     
     # reset the cache for this name
-    common._INSTALLED_PACKAGING_GROUPS={}
-    common._INSTALLED_NO_PACKAGING_GROUPS={}
+    glb._INSTALLED_PACKAGING_GROUPS={}
+    glb._INSTALLED_NO_PACKAGING_GROUPS={}
     for name in grps:
-        if common._INSTALLED_PACKAGING_GROUPS.has_key(name)==False:
-            common._INSTALLED_PACKAGING_GROUPS[name]=[]
-            common._INSTALLED_NO_PACKAGING_GROUPS[name]=[]
+        if glb._INSTALLED_PACKAGING_GROUPS.has_key(name)==False:
+            glb._INSTALLED_PACKAGING_GROUPS[name]=[]
+            glb._INSTALLED_NO_PACKAGING_GROUPS[name]=[]
         #get the component that are part of the group
         obj_lst=PackageGroup(name)    
+        api.output.verbose_msg('packaging','Sorting Group:',name)
         for obj in obj_lst:            
             if isinstance(obj,SCons.Node.FS.File):
                 files=[obj]
-                map_objs=common.g_engine.def_env.get('PACKAGE_GROUP_FILTER',[])
+                map_objs=glb.engine.def_env.get('PACKAGE_GROUP_FILTER',[])
             else: # assume this is a part
-                pobj=common.g_engine._part_manager._from_alias(obj)
+                pobj=glb.engine._part_manager._from_alias(obj)
                 map_objs=pobj.Env.get('PACKAGE_GROUP_FILTER',[])
-                files=pobj._installed_files
+                # this needs to be updated with we add teh new format ( and lots of different section types)
+                files=pobj.Section('build').InstalledFiles
                 
             for f in files:
                 _no_pkg=metatag.MetaTagValue(f,'no_package','package',False)
@@ -139,29 +148,29 @@ def SortPackageGroups():
                     metatag.MetaTag(f,'package',group=group_val)
                     #apply any mappings
                     
-                    for tmp in map_objs.items():
+                    for tmp in map_objs.iteritems():
                         key,tests=tmp
                         for t in tests:
                             if t(f):
                                 metatag.MetaTag(f,'package',group=key)
                                 #get new group value
-                                reporter.verbose_msg('packaging',"Remapping",f,"from package_group",group_val,'to',key)
+                                api.output.verbose_msg('packaging',"Remapping",f,"from package_group",group_val,'to',key)
                                 group_val=key
                                 break
-                    
-                
                 if _no_pkg==False:
                     try:
-                        common.append_unique(common._INSTALLED_PACKAGING_GROUPS[group_val],f)
+                        common.append_unique(glb._INSTALLED_PACKAGING_GROUPS[group_val],f)
                     except KeyError:
-                        common._INSTALLED_PACKAGING_GROUPS[group_val]=[f]
-                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[]
+                        glb._INSTALLED_PACKAGING_GROUPS[group_val]=[f]
+                        glb._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[]
+                    api.output.verbose_msg('packaging','Adding to PackageGroup={0}, no_package=False nodes={1}'.format(group_val,f.ID))
                 else:
                     try:
-                        common.append_unique(common._INSTALLED_NO_PACKAGING_GROUPS[group_val],f)
+                        common.append_unique(glb._INSTALLED_NO_PACKAGING_GROUPS[group_val],f)
                     except KeyError:
-                        common._INSTALLED_PACKAGING_GROUPS[group_val]=[]
-                        common._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[f]
+                        glb._INSTALLED_PACKAGING_GROUPS[group_val]=[]
+                        glb._INSTALLED_NO_PACKAGING_GROUPS[group_val]=[f]
+                    api.output.verbose_msg('packaging','Adding to PackageGroup={0}, no_package=True nodes={1}'.format(group_val,f.ID))
 
 def GetPackageGroupFiles_env(env,name,no_pkg=False):
     return GetPackageGroupFiles(name,no_pkg)
@@ -169,26 +178,26 @@ def GetPackageGroupFiles_env(env,name,no_pkg=False):
 # compatible for mistakes
 
 def ReplacePackageGroupCritera(name,func):
-    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return ReplacePackageGroupCriteria(name,func)
 
 def AppendPackageGroupCritera(name,func):
-    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return AppendPackageGroupCriteria(name,func)
         
 def PrependPackageGroupCritera(name,func):
-    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return PrependPackageGroupCriteria(name,func)
 
 
 def ReplacePackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('ReplacePackageGroupCritera is deprecated, use ReplacePackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.ReplacePackageGroupCriteria(name,func)
 def AppendPackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('AppendPackageGroupCritera is deprecated, use AppendPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.AppendPackageGroupCriteria(name,func)
 def PrependPackageGroupCriteriaEnv_old(env,name,func):
-    reporter.report_warning('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
+    api.output.warning_msg('PrependPackageGroupCritera is deprecated, use PrependPackageGroupCriteria',"(NOTE: there is an 'i' missing in the word Criteria in the old usage)")
     return env.PrependPackageGroupCriteria(name,func)
     
     
@@ -205,15 +214,17 @@ SConsEnvironment.ReplacePackageGroupCriteria=ReplacePackageGroupCriteriaEnv
 SConsEnvironment.AppendPackageGroupCriteria=AppendPackageGroupCriteriaEnv
 SConsEnvironment.PrependPackageGroupCriteria=PrependPackageGroupCriteriaEnv
     
-common.add_global_value('PackageGroups',PackageGroups)   
-common.add_global_value('PackageGroup',PackageGroup)   
-common.add_global_value('GetPackageGroupFiles',GetPackageGroupFiles)   
+api.register.add_variable('PACKAGE_GROUP_FILTER',{},"")
 
-common.add_global_value('ReplacePackageGroupCritera',ReplacePackageGroupCritera)   
-common.add_global_value('AppendPackageGroupCritera',AppendPackageGroupCritera)   
-common.add_global_value('PrependPackageGroupCritera',PrependPackageGroupCritera)
+api.register.add_global_object('PackageGroups',PackageGroups)   
+api.register.add_global_object('PackageGroup',PackageGroup)   
+api.register.add_global_object('GetPackageGroupFiles',GetPackageGroupFiles)   
 
-common.add_global_value('ReplacePackageGroupCriteria',ReplacePackageGroupCriteria)   
-common.add_global_value('AppendPackageGroupCriteria',AppendPackageGroupCriteria)   
-common.add_global_value('PrependPackageGroupCriteria',PrependPackageGroupCriteria)   
+api.register.add_global_object('ReplacePackageGroupCritera',ReplacePackageGroupCritera)   
+api.register.add_global_object('AppendPackageGroupCritera',AppendPackageGroupCritera)   
+api.register.add_global_object('PrependPackageGroupCritera',PrependPackageGroupCritera)
+
+api.register.add_global_object('ReplacePackageGroupCriteria',ReplacePackageGroupCriteria)   
+api.register.add_global_object('AppendPackageGroupCriteria',AppendPackageGroupCriteria)   
+api.register.add_global_object('PrependPackageGroupCriteria',PrependPackageGroupCriteria)   
 

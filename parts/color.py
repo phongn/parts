@@ -52,7 +52,7 @@ def color_to_str(color):
     return "Unknown Color"
 
         
-class ConsoleColor:
+class ConsoleColor(object):
     def __init__(self,fg_color=Default,bk_color=Default):
         
         
@@ -213,7 +213,7 @@ class ConsoleColor:
         return ret
     
     def __repr__(self):
-        return "<%s instance fg:%s bk:%s>"%(self.__class__,color_to_str(self.fg_color),color_to_str(self.bk_color))
+        return "<%s instance fg:%s bk:%s>"%(self.__class__.__name__,color_to_str(self.fg_color),color_to_str(self.bk_color))
 
 is_win32=sys.platform == 'win32'
 if is_win32:

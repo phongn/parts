@@ -2,7 +2,7 @@
 import zipfile
 import os
 import SCons.Script
-import parts.common as common
+import parts.api as api
 
 
 def zip(target, source, env):
@@ -30,7 +30,7 @@ def zip(target, source, env):
 
 ZipAction = SCons.Action.Action(zip)
 
-common.AddBuilder('ZipFile',SCons.Builder.Builder(action = ZipAction,
+api.register.add_builder('ZipFile',SCons.Builder.Builder(action = ZipAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
-                                   suffix = '.zip'))#,multi = 1))
+                                   suffix = '.zip',multi = 1))

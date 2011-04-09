@@ -1,13 +1,16 @@
-import os
-import SCons.Script
-#import SCons.Environment
-import SCons.Tool.install
+import glb
 import pattern
 import sdk
 import common
 import platform_info
 import exportitem
-import reporter
+import api.output
+import errors
+
+import os
+
+import SCons.Script
+import SCons.Tool.install
 
 ## need better configuration control
 # these function will hopfully be replaced later once a better solution shows it self
@@ -39,8 +42,7 @@ def get_args(cat,**kw):
 #############################
 
 def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='',no_pkg=False,**kw):
-  
-  
+    
     # list of file we installed (dest)
     installed_files=[]
     # list of all files we install (source, or where we installed from)
@@ -113,7 +115,7 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                     ret=s
                 out=env.Install(dest_dir, ret,tags=tags,**kw)
                 installed_files.extend(out)
-                env.Clean(env.Alias(install_alias), out)
+                #env.Clean(env.Alias(install_alias), out)
                 src_lst.append(env.Dir(ret[0]))
             elif isinstance(s,SCons.Node.FS.File):
                 if s not in sdk.g_sdked_files:
@@ -146,7 +148,7 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                 installed_files.extend(env.Install(dest_dir, ret,tags=tags,**kw))
                 src_lst.append(env.File(ret[0]))
             else:
-                reporter.report_warning("Unknown type in ProcessInstall() in installs.py")
+                api.output.warning_msg("Unknown type in ProcessInstall() in installs.py")
         
     
     else:
@@ -159,7 +161,7 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
             elif isinstance(s,SCons.Node.FS.Dir):
                 out=env.Install(dest_dir, s,tags=tags,**kw)
                 installed_files+=out
-                env.Clean(env.Alias(install_alias), out)
+                #env.Clean(env.Alias(install_alias), out)
                 src_lst.append(env.Dir(s))
             else:
                 installed_files+=env.Install(dest_dir, s,tags=tags,**kw)
@@ -178,7 +180,7 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     target      -- the place within the product package to hold source
     returns     -- the return value of the Install call, so that callers can
                    subsequently further MetaTag these files'''
-    reporter.SetPartStackFrameInfo(True)
+    errors.SetPartStackFrameInfo(True)
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
     if common.is_list(source)==False:
@@ -186,7 +188,7 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     source=SCons.Script.Flatten(source)
     
     
-    pobj=common.g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
     # this is for classic formats and compatible behavior with 0.9
     pobj._sdk_or_installed_called=True
  
@@ -195,18 +197,18 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     installed_files,src_files = ProcessInstall(env,target,source,sub_dir,install_alias,create_sdk,sdk_dir,no_pkg,**kw)
     
     # assign to install alias
-    env.Alias(install_alias,installed_files)
+    #env.Alias(install_alias,installed_files)
     # add installed file to Part object
-    pobj._installed_files.extend(installed_files)
+    pobj.DefiningSection.InstalledFiles.update(installed_files)
     
     #env.MetaTag(installed_files, PACKAGING_ALIAS = env['ALIAS'])
     env.MetaTag(installed_files, 'package',part_alias = env['ALIAS'])
     env.MetaTag(installed_files, 'package',part_name = env.subst('$PART_NAME'))
-    env.MetaTag(installed_files, 'package',part_name = env.subst('$PART_VERSION'))
+    env.MetaTag(installed_files, 'package',part_version = env.subst('$PART_VERSION'))
     
     if create_sdk:
         pobj._create_sdk_data.append(('InstallItem',[target, common._make_rel(src_files), sub_dir,"",no_pkg,False]))
-    reporter.ResetPartStackFrameInfo()
+    errors.ResetPartStackFrameInfo()
     return installed_files
 
 
@@ -223,7 +225,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     # Look at the Node and its builder and then based on the type of builder
     # we know what kind of thing it is. That's the future direction.
 
-    reporter.SetPartStackFrameInfo(True)
+    errors.SetPartStackFrameInfo(True)
     if common.is_list(src_files)==False:
         src_files=[src_files]
     src_files=SCons.Script.Flatten(src_files)
@@ -240,22 +242,25 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                 ret= [i]
         
             try:
-                the_file = i.attributes.pdb_owner
+                the_file = i.attributes.FilterAs
             except AttributeError:
                 the_file = i
             if common.is_catagory_file(env, 'INSTALL_LIB_PATTERN', the_file):
                 top_dir = '$INSTALL_LIB'
                 category= 'LIB'
+                expottype='INSTALLLIB'
                 #SDK_dir = '$SDK_LIB'
             elif common.is_catagory_file(env, 'INSTALL_BIN_PATTERN', the_file):
                 top_dir = '$INSTALL_BIN'
                 category= 'BIN'
+                expottype='INSTALLBIN'
                 #SDK_dir = '$SDK_BIN'
             else:
                 continue
             itmp=InstallItem(env, top_dir, ret,sub_dir,
                 no_pkg=no_pkg,create_sdk=create_sdk,**get_args(category,**kw))
             env.MetaTag(itmp, PACKAGING_TYPE = top_dir[1:])
+            env.ExportItem(expottype,itmp,create_sdk,True)
             installed_files+=itmp
         elif isinstance(i,pattern.Pattern):
             # we have a pattern item
@@ -267,7 +272,6 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                     new_sub_dir=sub_dir
                     
                 for d in i.files(td):
-                    
                     if d not in sdk.g_sdked_files:
                         ret= env.SdkTarget([d],sub_dir)
                     else:
@@ -277,12 +281,14 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                         itmp=InstallItem(env, top_dir,ret,new_sub_dir,
                             no_pkg=no_pkg,create_sdk=create_sdk,**get_args('LIB',**kw))                
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
+                        env.ExportItem('INSTALLLIB',itmp,create_sdk,True)
                         installed_files+=itmp
                     elif common.is_catagory_file(env,'INSTALL_BIN_PATTERN',d):
                         top_dir = '$INSTALL_BIN'
                         itmp=InstallItem(env, top_dir,ret,new_sub_dir,
                             no_pkg=no_pkg,create_sdk=create_sdk,**get_args('BIN',**kw))
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
+                        env.ExportItem('INSTALLBIN',itmp,create_sdk,True)
                         installed_files+=itmp
                     else:
                         pass
@@ -292,7 +298,8 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         else:
             #print 'Told to InstallTarget', i, '...what should I do?'
             continue
-    reporter.ResetPartStackFrameInfo()
+    errors.ResetPartStackFrameInfo()
+    #env.ExportItem('INSTALLTARGET',installed_files,create_sdk,True)
     return installed_files
 
 
@@ -302,6 +309,7 @@ def InstallAPI(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_API',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('API',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_API')
+    env.ExportItem('INSTALLAPI',installed_files,create_sdk,True)
     return installed_files
     
 def InstallLib(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -310,6 +318,7 @@ def InstallLib(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_LIB',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('LIB',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_LIB')
+    env.ExportItem('INSTALLLIB',installed_files,create_sdk,True)
     return installed_files
     
 def InstallBin(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -318,6 +327,7 @@ def InstallBin(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_BIN',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('BIN',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_BIN')
+    env.ExportItem('INSTALLBIN',installed_files,create_sdk,True)
     return installed_files
     
 def InstallConfig(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -326,6 +336,7 @@ def InstallConfig(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_CONFIG',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('CONFIG',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_CONFIG')
+    env.ExportItem('INSTALLCONFIG',installed_files,create_sdk,True)
     return installed_files
     
 
@@ -335,6 +346,7 @@ def InstallDoc(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_DOC',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('DOC',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DOC')
+    env.ExportItem('INSTALLDOC',installed_files,create_sdk,True)
     return installed_files
     
 
@@ -344,6 +356,7 @@ def InstallHelp(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_HELP',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('HELP',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_HELP')
+    env.ExportItem('INSTALLHELP',installed_files,create_sdk,True)
     return installed_files
 
 def InstallManPage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -352,6 +365,7 @@ def InstallManPage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw)
         sub_dir=sub_dir,sdk_dir='$SDK_MANPAGE',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('MANPAGE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_MANPAGE')
+    env.ExportItem('INSTALLMANPAGE',installed_files,create_sdk,True)
     return installed_files
     
 def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -360,6 +374,7 @@ def InstallMessage(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw)
         sub_dir=sub_dir,sdk_dir='$SDK_MESSAGE',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('MESSAGE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_MESSAGE')
+    env.ExportItem('INSTALLMESSAGE',installed_files,create_sdk,True)
     return installed_files
     
 def InstallResource(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -368,6 +383,7 @@ def InstallResource(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
         sub_dir=sub_dir,sdk_dir='$SDK_RESOURCE',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('RESOURCE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_RESOURCE')
+    env.ExportItem('INSTALLRESOURCE',installed_files,create_sdk,True)
     return installed_files
     
 
@@ -377,6 +393,7 @@ def InstallSample(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_SAMPLE',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('SAMPLE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_SAMPLE')
+    env.ExportItem('INSTALLSAMPLE',installed_files,create_sdk,True)
     return installed_files
     
     
@@ -386,6 +403,7 @@ def InstallData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_DATA',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('DATA',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_DATA')
+    env.ExportItem('INSTALLDATA',installed_files,create_sdk,True)
     return installed_files
 
 def InstallInclude(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -394,6 +412,7 @@ def InstallInclude(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw)
         sub_dir=sub_dir,sdk_dir='$SDK_INCLUDE',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('INCLUDE',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_INCLUDE')
+    env.ExportItem('INSTALLINCLUDE',installed_files,create_sdk,True)
     return installed_files    
 
 def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -402,7 +421,7 @@ def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
         sub_dir=sub_dir,sdk_dir='$SDK_TOP_LEVEL',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('TOP_LEVEL',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'TOP_LEVEL')
-
+    env.ExportItem('INSTALLTOPLEVEL',installed_files,create_sdk,True)
     return installed_files
 
 
@@ -412,6 +431,7 @@ def PkgNoInstall(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_NO_INSTALL',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('NO_INSTALL',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'NO_INSTALL')
+    env.ExportItem('INSTALLPKGNO',installed_files,create_sdk,True)
     return installed_files
 
 def InstallPython(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -420,6 +440,7 @@ def InstallPython(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_PYTHON',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('PYTHON',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_PYTHON')
+    env.ExportItem('INSTALLPYTHON',installed_files,create_sdk,True)
     return installed_files
 
 def InstallScript(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
@@ -428,6 +449,7 @@ def InstallScript(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         sub_dir=sub_dir,sdk_dir='$SDK_SCRIPT',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('SCRIPT',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'INSTALL_SCRIPT')
+    env.ExportItem('INSTALLSCRIPT',installed_files,create_sdk,True)
     return installed_files
 
 # This is what we want to be setup in parts
@@ -457,42 +479,44 @@ SConsEnvironment.InstallItem=InstallItem
 
 # add configuartion variable
 
-common.AddVariable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
+api.register.add_variable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
 
-common.AddVariable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_PLATFORM}','')
+api.register.add_variable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}','')
 
 #these are the replacements
-common.AddVariable('INSTALL_LIB','${INSTALL_ROOT}/lib','')
-common.AddVariable('INSTALL_BIN','${INSTALL_ROOT}/bin','')
+api.register.add_variable('INSTALL_LIB','${INSTALL_ROOT}/lib','')
+api.register.add_variable('INSTALL_BIN','${INSTALL_ROOT}/bin','')
 
-common.AddVariable('INSTALL_API','${INSTALL_ROOT}/API','')
-common.AddVariable('INSTALL_INCLUDE','${INSTALL_ROOT}/include','')
-common.AddVariable('INSTALL_CONFIG','${INSTALL_ROOT}/config','')
-common.AddVariable('INSTALL_DOC','${INSTALL_ROOT}/doc','')
-common.AddVariable('INSTALL_HELP','${INSTALL_ROOT}/help','')
-common.AddVariable('INSTALL_MANPAGE','${INSTALL_ROOT}/man','')
-common.AddVariable('INSTALL_MESSAGE','${INSTALL_ROOT}/message','')
-common.AddVariable('INSTALL_RESOURCE','${INSTALL_ROOT}/resource','')
-common.AddVariable('INSTALL_SAMPLE','${INSTALL_ROOT}/sample','')
-common.AddVariable('INSTALL_DATA','${INSTALL_ROOT}/data','')
-common.AddVariable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
-common.AddVariable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
-common.AddVariable('INSTALL_PYTHON','${INSTALL_ROOT}/python','')
-common.AddVariable('INSTALL_SCRIPT','${INSTALL_ROOT}/scripts','')
+api.register.add_variable('INSTALL_API','${INSTALL_ROOT}/API','')
+api.register.add_variable('INSTALL_INCLUDE','${INSTALL_ROOT}/include','')
+api.register.add_variable('INSTALL_CONFIG','${INSTALL_ROOT}/config','')
+api.register.add_variable('INSTALL_DOC','${INSTALL_ROOT}/doc','')
+api.register.add_variable('INSTALL_HELP','${INSTALL_ROOT}/help','')
+api.register.add_variable('INSTALL_MANPAGE','${INSTALL_ROOT}/man','')
+api.register.add_variable('INSTALL_MESSAGE','${INSTALL_ROOT}/message','')
+api.register.add_variable('INSTALL_RESOURCE','${INSTALL_ROOT}/resource','')
+api.register.add_variable('INSTALL_SAMPLE','${INSTALL_ROOT}/sample','')
+api.register.add_variable('INSTALL_DATA','${INSTALL_ROOT}/data','')
+api.register.add_variable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
+api.register.add_variable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
+api.register.add_variable('INSTALL_PYTHON','${INSTALL_ROOT}/python','')
+api.register.add_variable('INSTALL_SCRIPT','${INSTALL_ROOT}/scripts','')
+
+
 
 #file patterns
-common.AddListVariable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dlsym','*.dylib'],'')
-common.AddListVariable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
-#common.AddListVariable('AUTO_TAG_INSTALL',[('*.pdb',{'no_package':True})],'')
-common.AddBoolVariable('AUTO_TAG_ON_INSTALL',True,'')
+api.register.add_list_variable('INSTALL_LIB_PATTERN',['*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dlsym','*.dylib'],'')
+api.register.add_list_variable('INSTALL_API_LIB_PATTERN',['*.lib','*.a'],'')
+#api.register.add_list_variable('AUTO_TAG_INSTALL',[('*.pdb',{'no_package':True})],'')
+api.register.add_bool_variable('AUTO_TAG_ON_INSTALL',True,'')
 
-if 'win32' == SCons.Script.DefaultEnvironment()['PLATFORM']:
-    common.AddListVariable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
+if 'win32' == glb._host_sys:
+    api.register.add_list_variable('INSTALL_BIN_PATTERN',['*.dll','*.DLL','*.exe','*.EXE','*.com','*.COM','*.pdb','*.PDB'],'')
 else:
-    common.AddListVariable('INSTALL_BIN_PATTERN',['*'],'')
+    api.register.add_list_variable('INSTALL_BIN_PATTERN',['*'],'')
 
 
 
-common.add_global_value('SetDefaultInstallArguments',SetDefaultInstallArguments)
+api.register.add_global_object('SetDefaultInstallArguments',SetDefaultInstallArguments)
 
 # vim: set et ts=4 sw=4 ai ft=python :

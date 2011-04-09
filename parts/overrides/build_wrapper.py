@@ -10,7 +10,9 @@
 # deal with that latter 
 
 import SCons.Environment
-from .. import common
+from .. import glb
+from .. import errors
+
 import os
 
 key_list=[]
@@ -21,9 +23,8 @@ Orig_BuildWrapper=SCons.Environment.BuilderWrapper
 class Parts_BuilderWrapper(Orig_BuildWrapper):
 
     def __call__(self, target=None, source=SCons.Environment._null, *args, **kw):
-        
         # self.object should be the env value
-        pobj=common.g_engine._part_manager._from_env(self.object)   
+        pobj=glb.engine._part_manager._from_env(self.object)   
         
         # clean up source value to make it a list as the builder would expect it
         # this help me latter in dealing with the values myself
@@ -66,22 +67,27 @@ class Parts_BuilderWrapper(Orig_BuildWrapper):
             if key in key_list:
                 tmp= value_list[key_list.index(key)]
                 found=True
+                kw['_found_duplication']=True
         
-        if not found:
-            tmp=Orig_BuildWrapper.__call__(self,target, source, *args, **kw)
+        #if not found:
+        try:
+            tmp=Orig_BuildWrapper.__call__(self, target, source, *args, **kw)
+        except errors.AllowedDuplication:
+            pass
                     
         #take care of resolved target information.
+        # for when we get a positive allow duplicate
         if dup:
             key_list.append(key)
             value_list.append(tmp)
             
         #don't add it to the Parts target list if this has no part or
         #if the actions here are part of a AutoConfigure set of calls
-        if pobj is not None and 'SConfSourceBuilder' not in self.object['BUILDERS']:
-            pobj._target_files.update(tmp)
-        else:
+        #if pobj is not None and 'SConfSourceBuilder' not in self.object['BUILDERS']:
+            #pobj._target_files.update(tmp)
+        #else:
             #print tmp[0], 'missing'
-            pass
+            #pass
         return tmp
     
 from SCons.Script.SConscript import SConsEnvironment

@@ -1,6 +1,6 @@
-
-import parts.common as common
-import parts.reporter as reporter
+import parts.glb as glb
+import parts.api as api
+import parts.api.output as output
 import parts.version as version
 import SCons.Script
 
@@ -12,20 +12,20 @@ def part_version(env,ver=None):
     if ver == None:
         return get_part_version(env)
 
-    part_obj=common.g_engine._part_manager._from_env(env)       
+    part_obj=glb.engine._part_manager._from_env(env)       
     ret=version.version(ver)
     if part_obj.Version != '0.0.0' and ret != part_obj.Version:
-        reporter.report_warning("Version already set to %s, ignoring new value of %s"%(part_obj.Root.Version,ret))
+        api.output.warning_msg("Version already set to %s, ignoring new value of %s"%(part_obj.Root.Version,ret))
         return part_obj.Version 
-    part_obj._set_version(ret)
+    part_obj.Version=ret
             
     return ret
     
 def get_part_version(env):
-    return common.g_engine._part_manager._from_env(env).Version
+    return glb.engine._part_manager._from_env(env).Version
 
 def get_part_short_version(env):
-    return common.g_engine._part_manager._from_env(env).ShortVersion
+    return glb.engine._part_manager._from_env(env).ShortVersion
 
 class _PartVersion(object):
     def __init__(self,env):
@@ -37,7 +37,7 @@ class _PartVersion(object):
 from SCons.Script.SConscript import SConsEnvironment
 
 # add global for new format
-common.add_parts_object('PartVersion',_PartVersion)
+api.register.add_global_parts_object('PartVersion',_PartVersion)
 
 # adding logic to Scons Enviroment object  
 SConsEnvironment.PartVersion=part_version

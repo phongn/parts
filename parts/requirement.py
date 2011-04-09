@@ -1,6 +1,6 @@
 
 import common
-import reporter
+import api
 import copy
 from policy import REQPolicy,ReportingPolicy
 
@@ -53,8 +53,8 @@ class requirement(object):
         else:
             self._mapper='PARTIDEXPORTS'
     
-    def value_mapper(self,name,version,key):
-        return "${{{0}('{1}','{2}','{3}',{4})}}".format(self._mapper,name,version,key,self.policy)
+    def value_mapper(self,name,section):
+        return "${{{0}('{1}','{2}','{3}',{4})}}".format(self._mapper,name,section,self.key,self.policy)
     
     @property
     def is_list(self):
@@ -121,6 +121,16 @@ class requirement(object):
     def __cmp__(self,rhs):
         return cmp(self.key,rhs.key)
     
+    def Serialize(self):
+        return {'key':self._key, 
+                'internal':self._internal, 
+                'public':self._public, 
+                'policy':self._policy, 
+                'mapper':self._mapper,
+                'listtype':self._listtype,
+                'weight':self._weight}
+
+    
 
 class requirement_set(object):
     def __init__(self,lst,weight=-1000):
@@ -140,9 +150,9 @@ class requirement_set(object):
                         tmp=copy.copy(item)
                         tmp._weight=weight
                         self._values.extend(tmp)
-                    reporter.policy_print(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
+                    api.output.policy_msg(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
                 else:
-                    reporter.report_warning("{0} is not a registered REQ type. Skipping...".format(i))
+                    api.output.warning_msg("{0} is not a registered REQ type. Skipping...".format(i))
             else:
                 tmp=copy.copy(i)
                 tmp._weight=weight
@@ -196,9 +206,9 @@ def DefineRequirementSet(name,lst,policy=ReportingPolicy.ignore,weight=-1000):
             elif type(i) is type(''):
                 try:
                     tmplst.extend(_added_types[i][0]._values)
-                    reporter.policy_print(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
+                    api.output.policy_msg(_added_types[i][1],'REQ',"REQ option {0} is deprecated and will be removed, please remove usage.".format(i))
                 except KeyError:
-                    reporter.report_warning(i ,"not found when mapping requirments")
+                    api.output.warning_msg(i ,"not found when mapping requirments")
         _added_types[name]=(requirement_set(tmplst,weight),policy)
                     
         
@@ -228,10 +238,9 @@ class metaREQ(type):
         if name.lower().endswith('_internal'):
             name=name[:-len('_internal')]
             internal=True
-        
         if name in _added_types:
             if _added_types[name][1] != ReportingPolicy.ignore:
-                reporter.report_warning("REQ option {0} is deprecated and will be removed, please remove usage.".format(name))
+                api.output.warning_msg("REQ option {0} is deprecated and will be removed, please remove usage.".format(name))
             return copy.deepcopy(_added_types[name][0])(internal=internal)
         if internal:
             return requirement_internal(name,internal)
@@ -278,11 +287,34 @@ class REQ(object):
                 return True
     
     def __iter__(self):
-        return self.__data.itervalues()
+        tmp=self.__data.values()
+        tmp.sort()
+        return iter(tmp)
     
     def __str__(self):
-        return "REQ({0})".format(self.__data.values())
+        tmp=self.__data.values()
+        tmp.sort()
+        return "REQ({0})".format(tmp)
     
     def __repr__(self):
-        return "REQ({0})".format(self.__data.values())
+        tmp=self.__data.values()
+        tmp.sort()
+        return "REQ({0})".format(tmp)
+    
+    def Serialize(self):
+        data=[]
+        t=self.__data.values()
+        t.sort() # the sort is more for testing
+        for i in t:
+            data.append(i.Serialize())
+        return data
+    
+    def Unserialize(self,data):
+        
+        for i in data:
+            t=requirement(**i)
+            self.__data[t.key]=t 
+        return self
+            
+
     

@@ -8,7 +8,8 @@
     <StartupFile>
     </StartupFile>
     <SearchPath>C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\;C:\Users\jlkenny\code\parts</SearchPath>
-    <WorkingDirectory>../</WorkingDirectory>
+    <WorkingDirectory>
+    </WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
@@ -36,8 +37,17 @@
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
+    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
+    <SearchPath Include="C:\Users\jlkenny\code\parts\" />
+    <SearchPath Include="C:\Users\jlkenny\code\parts\" />
+    <SearchPath Include="C:\Users\jlkenny\code\parts\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api" />
@@ -46,6 +56,8 @@
     <Folder Include="configurations\default" />
     <Folder Include="configurations\release" />
     <Folder Include="loggers" />
+    <Folder Include="events" />
+    <Folder Include="pnode" />
     <Folder Include="overrides" />
     <Folder Include="tools\GnuCommon\" />
     <Folder Include="tools\IntelCommon" />
@@ -60,6 +72,8 @@
   <ItemGroup>
     <None Include="ansi_stream.py" />
     <None Include="api\platforms.py" />
+    <None Include="api\output.py" />
+    <None Include="api\register.py" />
     <None Include="api\requirement.py" />
     <None Include="api\__init__.py" />
     <None Include="build_section.py" />
@@ -87,11 +101,15 @@
     <None Include="console.py" />
     <None Include="core.py" />
     <None Include="datacache.py" />
+    <None Include="dependent_ref.py" />
     <None Include="dependson.py" />
     <None Include="engine.py" />
+    <None Include="errors.py" />
+    <None Include="events\__init__.py" />
     <None Include="exportitem.py" />
     <None Include="filters.py" />
     <None Include="functors.py" />
+    <None Include="glb.py" />
     <None Include="installs.py" />
     <None Include="load_module.py" />
     <None Include="logger.py" />
@@ -108,9 +126,11 @@
     <None Include="overrides\build_wrapper.py" />
     <None Include="overrides\default_env.py" />
     <None Include="overrides\dup_node_builder_env.py" />
+    <None Include="overrides\env_alias.py" />
     <None Include="overrides\env_array.py" />
     <None Include="overrides\env_clone.py" />
     <None Include="overrides\error_handling.py" />
+    <None Include="overrides\nodes.py" />
     <None Include="overrides\os_file.py" />
     <None Include="overrides\scanner.py" />
     <None Include="overrides\__init__.py" />
@@ -121,6 +141,7 @@
     <None Include="parts_version.py" />
     <None Include="part_logger.py" />
     <None Include="part_manager.py" />
+    <None Include="part_ref.py" />
     <None Include="pattern.py" />
     <None Include="pickle_helpers.py" />
     <None Include="pieces\add_xml_header.py" />
@@ -138,12 +159,22 @@
     <None Include="pieces\zipfile.py" />
     <None Include="pieces\__init__.py" />
     <None Include="platform_info.py" />
+    <None Include="pnode\part.py" />
+    <None Include="pnode\pnode.py" />
+    <None Include="pnode\pnode_manager.py" />
+    <None Include="pnode\scons_node_info.py" />
+    <None Include="pnode\section.py" />
+    <None Include="pnode\stored_info.py" />
+    <None Include="pnode\part_info.py" />
+    <None Include="pnode\section_info.py" />
+    <None Include="pnode\__init__.py" />
     <None Include="policy.py" />
     <None Include="poptions.py" />
     <None Include="reporter.py" />
     <None Include="requirement.py" />
     <None Include="sdk.py" />
     <None Include="section.py" />
+    <None Include="settings.py" />
     <None Include="target_type.py" />
     <None Include="toolchain\cl.py" />
     <None Include="toolchain\default.py" />
@@ -202,7 +233,14 @@
     <None Include="tools\wdk.py" />
     <None Include="tools\__init__.py" />
     <None Include="tool_mapping.py" />
+    <None Include="Variables\BoolVariable.py" />
+    <None Include="Variables\EnumVariable.py" />
+    <None Include="Variables\IntVariable.py" />
     <None Include="Variables\ListVariable.py" />
+    <None Include="Variables\PackageVariable.py" />
+    <None Include="Variables\PathVariable.py" />
+    <None Include="Variables\variable.py" />
+    <None Include="Variables\variables.py" />
     <None Include="Variables\__init__.py" />
     <None Include="vcs\base.py" />
     <None Include="vcs\file_system.py" />
@@ -227,6 +265,11 @@
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts_tigris\trunk\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
+    <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
   </ItemGroup>
 </Project>

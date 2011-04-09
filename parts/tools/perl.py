@@ -1,6 +1,6 @@
 
 import GnuCommon.perl
-import parts.reporter as reporter
+import parts.api.output as output
 
 def generate(env):
     """Add Builders and construction variables for gcc to an Environment."""
@@ -8,7 +8,7 @@ def generate(env):
     
     # set up shell env for running compiler
     GnuCommon.perl.perl.MergeShellEnv(env)
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('perl',env['PERL']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('perl',env['PERL']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return GnuCommon.perl.perl.Exists(env)

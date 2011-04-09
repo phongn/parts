@@ -4,7 +4,7 @@ from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFind
 from parts.platform_info import SystemPlatform
 import os
 
-class MapLib():
+class MapLib(object):
     def __call__(self, target, source, env, for_signature):
         return env.isConfigBasedOn('debug') and 'debug' or 'retail'
         

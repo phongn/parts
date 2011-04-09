@@ -102,7 +102,7 @@ def merge_script_vars(env,script,args=None,vars=None):
     vars are var we want to retrieve, if None it will retieve everything found
     '''
     shell_env=get_script_env(env,script,args,vars)
-    for k, v in shell_env.items():
+    for k, v in shell_env.iteritems():
         env.PrependENVPath(k, v, delete_existing=1)
 
 # This is what we want to be setup in parts

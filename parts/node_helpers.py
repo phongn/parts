@@ -3,9 +3,13 @@ this file provides the AbsFile wrappers. I have not moved this to pieces area
 yet as i need a way to safely add the global object to parts export statement
 '''
 
-import SCons.Script
+import glb
 import common
-import reporter
+import api.output
+import metatag
+
+import SCons.Script
+
 import os
 
 
@@ -26,35 +30,60 @@ def node_up_to_date(node):
         ninfo=dbentry.ninfo
         
     elif common.is_string(node):
-        node=common.g_engine.def_env.Entry(node)
+        node=glb.engine.def_env.Entry(node)
         node.disambiguate()
+        tmp=metatag.MetaTagValue(node,'uptodate','parts',None)
+        if tmp is True:
+            return True
+        elif tmp is None:
+            pass
+        else:
+            api.output.verbose_msg("update_check",tmp)
+            return False
         dbentry=node.get_stored_info()
         ninfo=dbentry.ninfo
         
     else:
+        node=glb.engine.def_env.Entry(node['name'])
+        node.disambiguate()
+        tmp=metatag.MetaTagValue(node,'uptodate','parts',None)
+        if tmp is True:
+            return True
+        elif tmp is None:
+            pass
+        else:
+            api.output.verbose_msg("update_check",tmp)
+            return False
+        
         ninfo=ninfotmp()
         ninfo.timestamp=node.get('timestamp')
         ninfo.csig=node.get('csig')
-        node=common.g_engine.def_env.Entry(node['name'])
-        node.disambiguate()
+        
         
     # see if node time stamp matches
     tmp=getattr(ninfo,'timestamp',None)
     if tmp is None:
-        reporter.verbose_msg("update_check","'%s' does not exist in the SCons DB"%(node))
+        s="'%s' does not exist in the SCons DB"%(node)
+        metatag.MetaTag(node,ns='parts',uptodate=s)
+        api.output.verbose_msg("update_check",s)
         return False
     if node.exists() == False:
-        reporter.verbose_msg("update_check","'%s' does not exist"%(node))
+        s="'%s' does not exist"%(node)
+        metatag.MetaTag(node,ns='parts',uptodate=s)
+        api.output.verbose_msg("update_check",s)
         return False
     if node.get_timestamp() != tmp:
         # timestamp did not match.. try md5
-        reporter.verbose_msg("update_check","TimeStamp diff in '%s'"%(node))
+        api.output.verbose_msg("update_check","TimeStamp diff in '%s'"%(node))
         if node.get_csig() != getattr(ninfo,'csig',0):
             # md5 failure
             #print ninfo.__dict__,node.get_csig()
-            reporter.verbose_msg("update_check","%s is out of date because of differences"%(node))
+            s="%s is out of date because of differences"%(node)
+            metatag.MetaTag(node,ns='parts',uptodate=s)
+            api.output.verbose_msg("update_check",s)
             return False
-    #reporter.verbose_msg("update_check","%s seems to be unmodified"%(node))
+    #api.output.verbose_msg("update_check","%s seems to be unmodified"%(node))
+    metatag.MetaTag(node,ns='parts',uptodate=True)
     return True
 
 
@@ -146,7 +175,7 @@ def make_link_bf(target, source, env):
     return None
 
 
-common.AddBuilder('__make_link__',SCons.Builder.Builder(
+api.register.add_builder('__make_link__',SCons.Builder.Builder(
         action         = SCons.Action.Action(make_link_bf),
         target_factory = SCons.Node.FS.File,
         source_factory = SCons.Node.FS.Entry,
@@ -157,8 +186,8 @@ common.AddBuilder('__make_link__',SCons.Builder.Builder(
 from SCons.Script.SConscript import SConsEnvironment
 
 #add as global to part scope
-common.add_parts_object('AbsFile',_AbsFile,True)
-common.add_parts_object('AbsDir',_AbsDir,True)
+api.register.add_global_parts_object('AbsFile',_AbsFile,True)
+api.register.add_global_parts_object('AbsDir',_AbsDir,True)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.AbsFile=AbsFile

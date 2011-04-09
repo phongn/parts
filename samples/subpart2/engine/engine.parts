@@ -6,7 +6,7 @@ env.PartName('engine')
 env.Part('common','common/common.parts')
 env.Part('core','core/core.parts')
 env.Part('optional','optional/optional.parts')
-
+env['PDB']='${PART_NAME}_${PART_SHORT_VERSION}.pdb'
 # by depending on engine you automatically depend on engine.core
 env.DependsOn([Component('engine.core',env.PartVersion())])
 

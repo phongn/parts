@@ -1,4 +1,5 @@
-import parts.common as common
+import parts.glb as glb
+import parts.api as api
 import SCons.Script
 import os
 
@@ -10,14 +11,14 @@ import os
 def scanner_function(node, env, path):
 
     ret=[]
-    pobj=common.g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
     
     for d in pobj.Depends:
         if d.part:
             if d.part._file:           
                 ret.append(d.part._file)
         else:
-            reporter.report_warning('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(pobj.Name,d.name),stackframe=d.stackframe)
+            api.output.warning_msg('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(pobj.Name,d.name),stackframe=d.stackframe)
     return ret        
 
 
@@ -26,7 +27,7 @@ def mapping_bf_str(target = None, source = None, env = None):
     
 def mapping_bfe(target, source, env):
     # get target file
-    pobj=common.g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
     tf= "%s_%s"%(pobj.Alias,pobj.Version)
     # make new name
     tout=[os.path.join('$BUILD_DIR_ROOT',tf+'.version.mapping')]
@@ -36,7 +37,7 @@ def mapping_bfe(target, source, env):
 
 def mapping_bf(target, source, env):
     f = open(str(target[0]), 'wb')
-    pobj=common.g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
     
     f.write('PARTS: Mapping of dependents for part Alias: %s Name: %s Version: %s\n'%(pobj.Alias,pobj.Name,pobj.Version))
     
@@ -50,8 +51,8 @@ def mapping_bf(target, source, env):
     print "PARTS: Writing -- Done"
     
 
-common.AddBuilder('_MapUnknowns',SCons.Script.Builder(
+api.register.add_builder('_MapUnknowns',SCons.Script.Builder(
         action = SCons.Script.Action(mapping_bf,mapping_bf_str),
         emitter=mapping_bfe,
-        target_scanner=SCons.Script.DefaultEnvironment().Scanner(scanner_function)
+        target_scanner=SCons.Scanner.Base(scanner_function)
         ))

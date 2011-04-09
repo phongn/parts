@@ -1,7 +1,7 @@
 
 
 class section_delegator(object):
-    ''' This class is the object the Parts object wil deal with. It is created in a lazy manner by the meta form instance of
+    ''' This class is the object the Parts object will deal with. It is created in a lazy manner by the meta form instance of
     the section_t class. This allow for reduce memory overhead for Parts that don't use the new format and also ensures that 
     better scaling happen when we have cases of lots of Parts and lots of custom section are defined, as a Part is likely to use
     only a few of the possible full set that could be defined.
@@ -40,7 +40,7 @@ def default_test_func(self,*lst,**kw):
 			#error.. must be a callable type
 			pass
 			
-	for k,v in kw.items():
+	for k,v in kw.iteritems():
 		try:
 			if not (self.env[k]==v):
 				return False

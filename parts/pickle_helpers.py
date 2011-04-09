@@ -1,42 +1,151 @@
+import glb
+import pnode.pnode
+import requirement
 
+import SCons.Script
 import SCons.Node.FS
+
+import os
 import cPickle
 import copy_reg
 import types
+import base64
+import cStringIO
+    
+def node_to_str(node):
+    if isinstance(node,SCons.Node.FS.File):
+        t=node.path
+        return t.replace(os.sep, '/')
+        
+    elif isinstance(node,SCons.Node.FS.Dir):
+        t=node.path
+        return t.replace(os.sep, '/')
+
+    elif isinstance(node,SCons.Node.FS.Entry):        
+        t=node.path
+        return t.replace(os.sep, '/')
+        
+    elif SCons.Util.is_String(node):        
+        t=node
+        return t.replace(os.sep, '/')
+        
+    elif isinstance(node,SCons.Node.Python.Value):
+        return node.value
+    elif isinstance(node,SCons.Node.Alias.Alias):
+        return node.name
+    else:
+        print "unknown type",node,type(node)
+    return None
+    
+def node_typestr(node):
+    if isinstance(node,SCons.Node.FS.File):
+        return 'File'
+    elif isinstance(node,SCons.Node.FS.Dir):
+        return 'Dir'
+    elif isinstance(node,SCons.Node.FS.Entry):        
+        return 'Entry'
+    elif isinstance(node,SCons.Node.Python.Value):
+        return 'Value'
+    elif isinstance(node,SCons.Node.Alias.Alias):
+        return 'Alias'
+    return None
+
+
+def node_type(s):
+    if s=='File':
+        return SCons.Node.FS.File
+    elif s=='Dir':
+        return SCons.Node.FS.Dir
+    elif s=='Entry':
+        return SCons.Node.FS.Entry
+    elif s=='Value':
+        return SCons.Node.Python.Value
+    elif s=='Alias':
+        return SCons.Node.Alias.Alias
+    return None
+
+
+
+def unpickle_node(node):
+    ''' recreate a node object.. hopefully mapped to an existing object in SCons FS manager'''
+    ntype,value=node.split("::",1)
+    #env=SCons.Script.DefaultEnvironment()
+    tmp=glb.pnodes.GetNode(value)
+    if tmp:
+        return tmp
+    else:
+        return glb.pnodes.Create(node_type(ntype),value)
+    
+    
+    raise cPickle.UnpicklingError,'Unknown Node Type {0} {1}'.format(ntype,value)
+
 
 def pickle_node(node):
     '''pickles a node object into a form we can use to have SCons remake the node again'''
-    if isinstance(node,SCons.Node.FS.File):
-        ntype='File'
-        value=node.abspath
-    elif isinstance(node,SCons.Node.FS.Dir):
-        ntype='Dir'
-        value=node.abspath
-    elif isinstance(node,SCons.Node.FS.Entry):        
-        ntype='Entry'
-        value=node.abspath
-    elif isinstance(node,SCons.Node.Python.Value):
-        ntype='Value'
-        value=str(node)
-    else:
-        return None
+
+    ntype=node_typestr(node)
+    value=node_to_str(node)
+    if ntype is None:
+        raise cPickle.PicklingError, 'Unknown Node Type {0}'.format(type(node))
     #Parts#NODE:    
-    return "{0}:{1}".format(ntype,value)
+    return "{0}::{1}".format(ntype,value)
+        
+
+def unpickle_pnode(nodeid):
+    ''' recreate a pnode object..'''
+    return glb.pnodes.GetPNode(nodeid)
+
+def pickle_pnode(node):
+    '''pickles a node object into a form we can use to have SCons remake the node again'''
+    return "{0}".format(node.ID)
+
+def unpickle_req(data):
+    ''' recreate a pnode object..'''
+    tmp=requirement.REQ()
+    tmp = base64.b64decode(data)
+    buffin=cStringIO.StringIO(tmp)
+    upkl=cPickle.Unpickler(buffin)
+    upkl.persistent_load =persistent_unpickle
+    info=upkl.load()   
+    tmp=requirement.REQ()
+    return tmp.Unserialize(info)
+
+def pickle_req(req):
+    '''pickles a node object into a form we can use to have SCons remake the node again'''
+    data=req.Serialize()
+    buffout=cStringIO.StringIO()
+    pkl=cPickle.Pickler(buffout)
+    pkl.persistent_id=persistent_pickle
+    pkl.dump(data)
+    tmp= buffout.getvalue()
+    return base64.b64encode(tmp)
+
+
+def persistent_pickle(obj):
+    import pnode.section
     
-def unpickle_node(node):
-    ''' recreate a node object.. hopefully mapped to an existing object in SCons FS manager'''
-    ntype,value=node.split(":")
+    if isinstance(obj,SCons.Node.Node):
+        return "node::{0}".format(pickle_node(obj))
+    elif isinstance(obj,pnode.pnode.pnode):
+        return "pnode::{0}".format(pickle_pnode(obj))
+    elif isinstance(obj,requirement.REQ):
+        return "REQ::{0}".format(pickle_req(obj))
+    return None
     
-    if ntype=='File':
-        return SCons.Node.FS.File(value)
-    elif ntype=='Dir':
-        return SCons.Node.FS.Dir(value)
-    elif ntype=='Entry':        
-        return SCons.Node.FS.Entry(value)
-    elif ntype=='Value':
-        return SCons.Node.Python.Value(value)
+
+def persistent_unpickle(perid):
+    ntype,value=perid.split("::",1)
+    if ntype == 'node':
+        return unpickle_node(value)
+    elif ntype == 'pnode':
+        return unpickle_pnode(value)
+    elif ntype == 'REQ':
+        return unpickle_req(value)
     else:
-        raise cPickle.UnpicklingError, 'Unknown Node Type {0}'.format(value)
+        raise cPickle.UnpicklingError, 'Unknown custom pickle Type {0}'.format(ntype)
+
+
+## function pickle helpers
 
 def pickle_function(func):
     buffout=cStringIO.StringIO()
@@ -63,7 +172,6 @@ def persistent_id(obj):
     elif isinstance(obj,types.FunctionType ):
             tmp= pickle_function(obj)
             return 'Parts@FunctionType@'+tmp
-    
     return None
                     
 def persistent_load(persid):

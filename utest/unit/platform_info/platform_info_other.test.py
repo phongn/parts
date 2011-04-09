@@ -1,13 +1,14 @@
 import unittest
 import SCons.Script
-from parts.platform_info import *
-from parts.parts import *
+from parts.platform_info import SystemPlatform,target_convert
+from parts.reporter import PartRuntimeError
+import parts.settings as settings
 
 
 class TestPlatformFunctions(unittest.TestCase):
 
     def setUp(self):
-        self.env=core.generate_config({},{},{}) 
+        self.env=settings.DefaultSettings().Environment() 
 # A few tests below are commented out since they give Platform Specific outputs
     def test_platform_functions1(self):
 #        s1 = ChipArchitecture()

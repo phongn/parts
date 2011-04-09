@@ -1,11 +1,13 @@
+import glb
 import common
-import console
+import console 
+import api.output
+
 import SCons.Script
 import subprocess,sys,string,os
-import thread,threading 
-import reporter
+import thread,threading
 
-class pipeRedirector:
+class pipeRedirector(object):
     def _readerthread(self):
         l = ' '
         while l != '':
@@ -28,7 +30,7 @@ class pipeRedirector:
         self.thread = None
         self.writer = None
 
-class part_spawner:
+class part_spawner(object):
     def __init__(self,env):
         self.env=env   
 
@@ -87,7 +89,7 @@ class part_logger(object):
     def __init__(self,env,console):
         self.env=env
         def_env=SCons.Script.DefaultEnvironment()
-        self.reporter=reporter.g_rpter
+        self.reporter=glb.rpter
         tmp=SCons.Script.GetOption('num_jobs') > 1
         if tmp:
             self.block_text=2 # partail blocking of text
@@ -284,9 +286,9 @@ class parts_text_logger(object):
             self.m_file.write(s)
         
         
-common.AddVariable('PART_SPAWNER',part_spawner,'')        
-common.AddVariable('PART_LOGGER','PART_NIL_LOGGER','')
-common.AddVariable('PART_NIL_LOGGER',part_nil_logger,'')
-common.AddVariable('PART_TEXT_LOGGER',parts_text_logger,'')
-common.AddVariable('LOG_PART_DIR','${LOG_DIR}','')
-common.AddVariable('LOG_PART_FILE_NAME','${PART_NAME}_${PART_VERSION}.log','')
+api.register.add_variable('PART_SPAWNER',part_spawner,'')        
+api.register.add_variable('PART_LOGGER','PART_NIL_LOGGER','')
+api.register.add_variable('PART_NIL_LOGGER',part_nil_logger,'')
+api.register.add_variable('PART_TEXT_LOGGER',parts_text_logger,'')
+api.register.add_variable('LOG_PART_DIR','${LOG_DIR}','')
+api.register.add_variable('LOG_PART_FILE_NAME','${PART_NAME}_${PART_VERSION}.log','')

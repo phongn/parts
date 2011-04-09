@@ -49,8 +49,8 @@ from SCons.Util import make_path_relative
 # We keep track of *all* installed files.
 import SCons.Tool.install #import _INSTALLED_FILES
 import SCons.Tool.install #import _UNIQUE_INSTALLED_FILES 
-from parts.common import _INSTALLED_PACKAGING_GROUPS
-from parts.common import _INSTALLED_NO_PACKAGING_GROUPS
+from parts.glb import _INSTALLED_PACKAGING_GROUPS
+from parts.glb import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
 import parts.node_helpers as node_helpers
 from parts.part_logger import part_nil_logger
@@ -165,7 +165,7 @@ def add_targets_to_INSTALLED_FILES(target, source, env):
     
     return (target, source)
 
-class DESTDIR_factory:
+class DESTDIR_factory(object):
     """ a node factory, where all files will be relative to the dir supplied
     in the constructor.
     """

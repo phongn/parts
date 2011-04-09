@@ -10,7 +10,7 @@ import parts.pieces.merge_script as merge_script
        
    
     
-class ToolInfo:
+class ToolInfo(object):
     def __init__(self,version,install_scanner,script,subst_vars,shell_vars,test_file):
         # version of the tools this object refers to
         self.version=version
@@ -112,7 +112,7 @@ class ToolInfo:
                 
             else: # script is False
                 # subst data
-                for k, v in self.shell_vars.items():
+                for k, v in self.shell_vars.iteritems():
                     ret[k]=os.path.normpath(env.subst(v))
                     
         self.shell_cache[str(version)+str(install_root)+str(script)]=ret
@@ -135,7 +135,7 @@ class ToolInfo:
             return None
 
         ret={}
-        for v,p in found.items():
+        for v,p in found.iteritems():
             tmp=self.exists(env,namespace,v,p,use_script)
             if tmp is not None:
                 ret[v]=tmp

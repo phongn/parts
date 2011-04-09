@@ -1,18 +1,23 @@
 import sys
-import linecache
-import common
-import console
 import re
 import os
-import logger
-import traceback
-import inspect,copy
-import string
+
+
 import SCons.Script
 # not ideal...
 import SCons.Script.Main
 import SCons.Errors
 import policy as Policy
+
+import glb
+import api.register
+import api.output
+
+import logger
+import common
+import console
+import errors
+
 #if 'stacktrace' in SCons.Script.GetOption('debug'):
 class PartRuntimeError(SCons.Errors.StopError):
     pass
@@ -20,7 +25,7 @@ class PartRuntimeError(SCons.Errors.StopError):
  #   class PartRuntimeError(SCons.Errors.UserError):
   #      pass
     
-class streamer:
+class streamer(object):
     def __init__(self,outfunc):
         self.outfunc=outfunc
     def write(self,str):
@@ -88,10 +93,9 @@ def is_message(str):
     return False
 
     
-class reporter:
+class reporter(object):
     def __init__(self):
-        global trace_msg
-        global verbose_msg
+        
         # so we can process any text that is being outputted by some other means
         self.trace=[]
 
@@ -120,20 +124,20 @@ class reporter:
             self.console.Error.Color=use_color['stderr']
             self.console.Warning.Color=use_color['stdwrn']
             self.console.Message.Color=use_color['stdmsg']
-            self.console.Trace.Color=use_color['stdverbose']
-            self.console.Verbose.Color=use_color['stdtrace']
+            self.console.Trace.Color=use_color['stdtrace']
+            self.console.Verbose.Color=use_color['stdverbose']
         
         self.trace=trace
         if self.trace==[]:
-            trace_msg=_empty_msg
-        else:
-            trace_msg=_trace_msg
+            api.output.trace_msg=_empty_msg
+        #else:
+            #api.output.trace_msg=api.output._trace_msg
             
         self.verbose=verbose
-        if verbose==[]:
-            verbose_msg=_empty_msg
-        else:
-            verbose_msg=_verbose_msg
+        if self.verbose==[]:
+            api.output.verbose_msg=_empty_msg
+        #else:
+            #api.output.verbose_msg=api.output._verbose_msg
             
         self.logger=logger
         self.__is_setup=True
@@ -175,7 +179,7 @@ class reporter:
             if stackframe is not None:
                 filename, lineno, routine, content=stackframe
             else:
-                filename, lineno, routine, content = GetPartStackFrameInfo()
+                filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
         
         if print_once ==True:
@@ -193,7 +197,7 @@ class reporter:
             if stackframe is not None:
                 filename, lineno, routine, content=stackframe
             else:
-                filename, lineno, routine, content = GetPartStackFrameInfo()
+                filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
         
         self.console.Error.write(s)
@@ -237,7 +241,7 @@ class reporter:
             if stackframe is not None:
                 filename, lineno, routine, content=stackframe
             else:
-                filename, lineno, routine, content = GetPartStackFrameInfo()
+                filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
         
         if print_once ==True:
@@ -258,7 +262,7 @@ class reporter:
             if stackframe is not None:
                 filename, lineno, routine, content=stackframe
             else:
-                filename, lineno, routine, content = GetPartStackFrameInfo()
+                filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
         
         self.console.Error.write(s)
@@ -334,7 +338,7 @@ class reporter:
 
     def stdtrace(self,msg,remap=True):
         '''Unlike stdout and stderr, stdtrace doesn't really exist.. '''
-        self.console.Warning.write(msg)
+        self.console.Trace.write(msg)
         self.logger.logtrace(msg)
 
     def stdverbose(self,msg,remap=True):
@@ -347,196 +351,74 @@ class reporter:
         self.console.write(msg)
         
 
-g_rpter=reporter()
-
-# no need to redirect data.. assume it is correct.
-def report_error(*lst,**kw):
-    common.g_engine.HadError=True
-    msg=map(str,lst)
-    msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.part_error(msg,kw.get('stackframe',None),kw.get('show_stack',True),kw.get('exit',True))
-
-def report_warning(*lst,**kw):
-    msg=map(str,lst)
-    msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.part_warning(msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',True))
-    
-def print_msg(*lst,**kw):
-    msg=map(str,lst)
-    g_rpter.part_message(kw.get('sep',' ').join(msg)+kw.get('end','\n'),kw.get('show_prefix',True))
 
 def _empty_msg(catagory,*lst,**kw):
     pass
 
-def _verbose_msg(catagory,*lst,**kw):
-    catagory=common.make_list(catagory)
-    catagory.append('all')
-    if g_rpter.isSetup==False:
-        g_rpter.verbose=SCons.Script.GetOption('verbose')
-    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
 
-verbose_msg=_verbose_msg
-        
-def _trace_msg(catagory,*lst,**kw):
-    catagory=common.make_list(catagory)
-    if g_rpter.isSetup==False:
-        g_rpter.trace=SCons.Script.GetOption('trace')
-    g_rpter.trace_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
-
-trace_msg=_trace_msg
-
-def policy_print(policy,catagory,*lst,**kw):
-    if policy == Policy.ReportingPolicy.ignore:
-        return
-    elif policy == Policy.ReportingPolicy.message:
-        print_msg(*lst,**msg)
-    elif policy == Policy.ReportingPolicy.verbose:
-        _verbose_msg(catagory,*lst,**kw)
-    elif policy == Policy.ReportingPolicy.warning:
-        report_warning(*lst,**msg)
-    elif policy == Policy.ReportingPolicy.error:
-        report_error(*lst,**msg)
-
-
-def print_console(*lst,**kw):
-    msg=map(str,lst)
-    g_rpter.stdconsole(kw.get('sep',' ').join(msg)+kw.get('end','\r'))
 
 ## user level functions
 # global version (for Sconstruct file)
 def user_report_error(*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.user_error(SCons.Script.DefaultEnvironment(),msg,kw.get('stackframe',None),kw.get('show_stack',False))
+    glb.rpter.user_error(SCons.Script.DefaultEnvironment(),msg,kw.get('stackframe',None),kw.get('show_stack',False))
 
 def user_report_warning(*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.user_warning(SCons.Script.DefaultEnvironment(),msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
+    glb.rpter.user_warning(SCons.Script.DefaultEnvironment(),msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
     
 def user_print_msg(*lst,**kw):
     msg=map(str,lst)
-    g_rpter.user_message(SCons.Script.DefaultEnvironment(),kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    glb.rpter.user_message(SCons.Script.DefaultEnvironment(),kw.get('sep',' ').join(msg)+kw.get('end','\n'))
     
 def user_verbose(catagory,*lst,**kw):
     catagory=common.make_list(catagory)
     catagory.append('all')
     catagory.append('user')
-    if g_rpter.isSetup==False:
-        g_rpter.verbose=SCons.Script.GetOption('verbose')
-    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
+    if glb.rpter.isSetup==False:
+        glb.rpter.verbose=SCons.Script.GetOption('verbose')
+        if glb.rpter.verbose is None: glb.rpter.verbose=[]
+    glb.rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
     
 # env version
 def user_report_error_env(env,*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.user_error(env,msg,kw.get('stackframe',None),kw.get('show_stack',True))
+    glb.rpter.user_error(env,msg,kw.get('stackframe',None),kw.get('show_stack',True))
 
 def user_report_warning_env(env,*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
-    g_rpter.user_warning(env,msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
+    glb.rpter.user_warning(env,msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
     
 def user_print_msg_env(env,*lst,**kw):
     msg=map(str,lst)
-    g_rpter.user_message(env,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
+    glb.rpter.user_message(env,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
     
 def user_verbose_env(env,catagory,*lst,**kw):
     catagory=common.make_list(catagory)
     catagory.append('all')
     catagory.append('user')
-    if g_rpter.isSetup==False:
-        g_rpter.verbose=SCons.Script.GetOption('verbose')
-    g_rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
+    if glb.rpter.isSetup==False:
+        glb.rpter.verbose=SCons.Script.GetOption('verbose')
+        if glb.rpter.verbose is None: glb.rpter.verbose=[]
+    glb.rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
     
 
 
-## stuff to help with reporting debug info
-def ResetPartStackFrameInfo():
-    if len(common.g_part_frame) > 0:
-        common.g_part_frame.pop(0)
-
-def list_endwith(str, lst):
-        str=str.lower()
-        for l in lst:
-            l=l.lower()
-            if str.endswith(l):
-                return True
-        return False
-
-def SetPartStackFrameInfo(use_existing=False):
-    # putting tuple of (filename, line, routine, content) into common.g_part_frame
-    if use_existing==True:
-        if len(common.g_part_frame) > 0:
-            common.g_part_frame.insert(0,common.g_part_frame[0])
-            return 
-
-    # We avoid using of inspect.* functions here because
-    # the functions are redundant in this case and add
-    # additional overhead.
-            
-    # The following returns a frame of SetPartStackFrameInfo caller
-    # we will use its values as default return data
-    frame = sys._getframe(1)
-    part_frame = frame
-    try:
-        checked = False
-        while part_frame:
-            if not checked:
-                # determining best parts source to return
-                if not part_frame.f_code.co_filename.endswith('parts'+os.sep+'reporter.py'):
-                    frame = part_frame
-                    checked = True
-            if list_endwith(part_frame.f_code.co_filename, [".parts", ".part", "sconstruct"]):
-                break
-            part_frame = part_frame.f_back
-        else:
-            part_frame = frame
-
-        assert(not part_frame is None)
-        lineno = part_frame.f_lineno
-        line = linecache.getline(part_frame.f_code.co_filename, lineno)
-        common.g_part_frame.insert(0, (part_frame.f_code.co_filename,lineno,part_frame.f_code.co_name,line))
-
-    finally:
-        # We delete frame and part_frame here to avoid leaking refernce to frame
-        # such leaks "can cause your program to create reference cycles. Once a 
-        # reference cycle has been created, the lifespan of all objects which
-        # can be accessed from the objects which form the cycle can become much
-        # longer even if Python's optional cycle detector is enabled. If such
-        # cycles must be created, it is important to ensure they are explicitly
-        # broken to avoid the delayed destruction of objects and increased
-        # memory consumption which occurs."
-
-        del frame
-        del part_frame
-    
-
-# some functions to get the current stack frame of interest for reporting purposes
-def GetPartStackFrameInfo():
-    
-    if common.g_part_frame == []:
-        SetPartStackFrameInfo()
-        ret = common.g_part_frame[0]
-        ResetPartStackFrameInfo()
-    else:
-        ret = common.g_part_frame[0]
-    
-    if ret is []:
-        return ("unknown","unknown","unknown","unknown")
-    #print "->",ret
-    return ret
         
     
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
-common.AddBoolVariable('STREAM_WARNING_AS_ERROR',False, 'Controls is warning based messages are treated as errors')
+api.register.add_bool_variable('STREAM_WARNING_AS_ERROR',False, 'Controls is warning based messages are treated as errors')
 
-common.add_global_value('PrintError',user_report_error)
-common.add_global_value('PrintWarning',user_report_warning)
-common.add_global_value('PrintMessage',user_print_msg)
-common.add_global_value('VerboseMessage',user_verbose)
+api.register.add_global_object('PrintError',user_report_error)
+api.register.add_global_object('PrintWarning',user_report_warning)
+api.register.add_global_object('PrintMessage',user_print_msg)
+api.register.add_global_object('VerboseMessage',user_verbose)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.PrintError=user_report_error_env

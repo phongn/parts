@@ -1,8 +1,8 @@
 
-import string
-import SCons.Util
+import variable
+import SCons.Errors
 
-
+#define converter
 def _converter(str_val, raw_val, allowedElems=[], mapdict={}):
     """
     """
@@ -13,7 +13,7 @@ def _converter(str_val, raw_val, allowedElems=[], mapdict={}):
     else:
         val = filter(None, str_val.split(','))
     
-    # map values
+    # map values # can't hide this in the class easly because of the map arg
     val = map(lambda v, m=mapdict: m.get(v, v), val)
     
     # test for allowed value is allowed values has a value
@@ -32,19 +32,30 @@ def _converter(str_val, raw_val, allowedElems=[], mapdict={}):
                     
     return val
 
+class ListVariable2(variable.Variable):
+    def __init__(self, name, help, default=[], names=[], map={}, value=None, help_group=None):
+        '''
+        '''
+        
+        names_str = 'allowed names: %s' % " ".join(names)
+        help = '\n    '.join(
+            (help, '(comma-separated list of names)', names_str)
+            )
 
-def ListVariable2(key, help, default=[], names=[], map={}):
-    """
-    """
-    names_str = 'allowed names: %s' % string.join(names, ' ')
-    #if SCons.Util.is_List(default):
-    #    default = string.join(default, ',')
-    help = string.join(
-        (help, '(comma-separated list of names)', names_str),
-        '\n    ')
-    return (key, help, default,
-            None, #_validator,
-            lambda str_val, raw_val, elems=names, m=map: _converter(str_val, raw_val, elems, m))
+        converter=lambda str_val, raw_val, elems=names, m=map: _converter(str_val, raw_val, elems, m)
+        
+        super(ListVariable2, self).__init__(
+                name,
+                help=help,
+                default=default,
+                validator=None, 
+                converter=converter,
+                value=value,
+                help_group=help_group
+                )
+
+
+
 
 
 # Local Variables:

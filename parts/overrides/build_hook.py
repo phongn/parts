@@ -4,14 +4,14 @@
 # That would be nice to have in SCons.
 
 import SCons.Script.Main
-from .. import common
+from .. import glb
 
 scons_build_targets = SCons.Script.Main._build_targets
 
 def _build_targets(fs, options, targets, target_top):
     
         # call engine
-    if common.g_engine.Process(fs, options, targets, target_top) == False:
+    if glb.engine.Process(fs, options, targets, target_top) == False:
         ret= None
     else:
         # call Scons function is there is nothing wrong 

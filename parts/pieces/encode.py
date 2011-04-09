@@ -5,6 +5,7 @@
 
 import codecs
 import parts.common as common
+import parts.api as api
 import SCons.Action
 
 def _encode_bd(target, source, env):
@@ -47,6 +48,6 @@ SConsEnvironment.EncodeFile=_EncodeFile
 
 
 encodeAction = SCons.Action.Action(_encode_bd,_encode_sf)
-common.AddBuilder('__EncodeFile',SCons.Builder.Builder(action = encodeAction,
+api.register.add_builder('__EncodeFile',SCons.Builder.Builder(action = encodeAction,
                     source_factory = SCons.Node.FS.File,
                     target_factory = SCons.Node.FS.File))

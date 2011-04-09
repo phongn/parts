@@ -4,7 +4,7 @@ import SCons.Util
 import SCons.Warnings
 import os
 
-import parts.reporter as reporter
+import parts.api.output as output
 
 
 def generate(env):
@@ -51,7 +51,7 @@ def generate(env):
     IntelCommon.Intelc.MergeShellEnv(env)
     
     # fix this up so we can control its printing to screen better.
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return IntelCommon.Intelc.Exists(env)

@@ -1,8 +1,12 @@
+import glb
+import common
+import api.output
+import pickle_helpers
+
 import cPickle
 import os
 import fnmatch
-import reporter
-import common
+
 import SCons.Script
 
 __cache={}
@@ -23,17 +27,28 @@ def db_key(length):
 
 
 def load_cache_data(datafile):
+    #return None
+    #if os.path.exists(datafile):
+    #        output = open(datafile, 'rb')
+    #        p= cPickle.Unpickler(output)
+    #        p.persistent_load =pickle_helpers.persistent_unpickle
+    #        tmp=p.load()
+    #        (tmp,stored_data)=tmp
+    #        output.close()
+    #        return (tmp,stored_data)
     try:
         if os.path.exists(datafile):
             output = open(datafile, 'rb')
-            tmp=cPickle.load(output)
+            p= cPickle.Unpickler(output)
+            p.persistent_load =pickle_helpers.persistent_unpickle
+            tmp=p.load()
             (tmp,stored_data)=tmp
             output.close()
             return (tmp,stored_data)
     except IOError,ec:
         pass
     except Exception,ec:
-        reporter.report_warning("Failed to load datacache file %s, will rebuild file."%datafile)
+        api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile)
     return None
 
 def store_cache_data(datafile,data):
@@ -46,7 +61,12 @@ def store_cache_data(datafile,data):
         v=data.get('__version__',0)
     except AttributeError:
         v=0
-    cPickle.dump(((db_key(len(data)),v),data), output)
+    p= cPickle.Pickler(output)
+    p.persistent_id=pickle_helpers.persistent_pickle
+    try:
+        p.dump(((db_key(len(data)),v),data))
+    except TypeError:
+        p.dump(((db_key(1),v),data))
     output.close()
     
 
@@ -72,9 +92,14 @@ def GetCache(name,key=None):
                 v=ret[1].get('__version__',0)
             except AttributeError:
                 v=0
-            if ret[0] == (db_key(len(ret[1])),v):
-                __cache[filename]=ret[1]
-                return ret[1]
+            try:
+                if ret[0] == (db_key(len(ret[1])),v):
+                    __cache[filename]=ret[1]
+                    return ret[1]
+            except TypeError:
+                if ret[0] == (db_key(1),v):
+                    __cache[filename]=ret[1]
+                    return ret[1]
     # we don't have a cache for this combo
     return None
 
@@ -178,6 +203,6 @@ def ClearCache(name=None,key=None,save=False):
     
         
 def _get_default_key():
-    return common.g_engine._cache_key
+    return glb.engine._cache_key
     
     

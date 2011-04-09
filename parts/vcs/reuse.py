@@ -1,6 +1,7 @@
+from .. import glb
 from .. import common
-from .. import parts
-from .. import reporter
+from ..pnode import part
+from .. import api
 from base import base
     
 class reuse_part_vcs(base):
@@ -61,14 +62,16 @@ class reuse_part_vcs(base):
         '''
         #when we setup this object we want
         # get the real vcs object so we can proxy it
-        if  isinstance(self._partref,parts.Part_t):
+        if  isinstance(self._partref,part.part):
             self._vcs=self._partref.Vcs
         elif common.is_string(self._partref):
             # assume this is a part alias
-            self._vcs=common.g_engine._part_manager._from_alias(self._partref).Vcs
+            self._partref=glb.engine._part_manager._from_alias(self._partref)
+            self._vcs=self._partref.Vcs
         else:
-            reporter.report_error('VcsReuse was unable to map the vcs object to part "%s"'%(self._partref))
+            api.output.error_msg('VcsReuse was unable to map the vcs object to part "%s"'%(self._partref))
         self._env['VCS']=self._vcs._env['VCS'].clone()
+        self._env['CHECK_OUT_DIR']=self._partref.Env.subst('$CHECK_OUT_DIR')
         
     def NeedsToUpdate(self):
         '''Forward the vcs need to update value
@@ -152,7 +155,7 @@ class reuse_part_vcs(base):
     
     
     
-common.add_global_value('VcsReuse',reuse_part_vcs)
-common.add_global_value('VcsUsePriorPart',reuse_part_vcs)
+api.register.add_global_object('VcsReuse',reuse_part_vcs)
+api.register.add_global_object('VcsUsePriorPart',reuse_part_vcs)
     
     

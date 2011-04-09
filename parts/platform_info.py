@@ -5,14 +5,55 @@ User should not need these much, but it can be useful. With cross plaform suppor
 added some day this will not be needed external, but instead user will use env 
 var defined to to tell what has been targeted as the build env.
 '''
-import common
+
 import SCons.Platform
 import os,sys
 import re
-import reporter
-import api
 
-  
+import glb
+import api.output
+import api.register
+import common
+
+def UpdatePlatformRegEx():
+    
+    arch_str = ''
+    os_str = ''
+    for arch in glb.valid_arch:
+        if arch_str == '':
+            arch_str = arch_str + arch
+        else:
+            arch_str = arch_str + '|' + arch
+            
+    for os in glb.valid_os:
+        if os_str == '':
+            os_str = os_str + os
+        else:
+            os_str = os_str + '|' + os
+   
+    glb.valid_platform_re = re.compile('(?P<os>' + os_str + ')?(?P<sep1>-)?(?P<arch>' + arch_str + ')?$',re.IGNORECASE)
+
+    
+def UpdateValidArchList():
+    for k,v in glb.arch_map.iteritems():
+        if k not in glb.valid_arch:
+            glb.valid_arch.append(k)
+    glb.valid_arch.sort(lambda a,b: cmp(len(b),len(a)))
+    UpdatePlatformRegEx()
+
+def UpdateValidOSList():
+    for k,v in glb.os_map.iteritems():
+        if k not in glb.valid_os:
+            glb.valid_os.append(k)
+    glb.valid_os.sort(lambda a,b: cmp(len(b),len(a)))
+    UpdatePlatformRegEx()
+
+if glb.valid_arch is None or glb.valid_os is None:
+    glb.valid_arch=[]
+    glb.valid_os=[]
+    UpdateValidArchList()
+    UpdateValidOSList()
+
 def MapArchitecture(val):
     ''' 
     Maps the value of lowlevel architures to high level one that
@@ -25,7 +66,7 @@ def MapArchitecture(val):
 
         # to add other system here    
     '''
-    return common.g_arch_map.get(val,None)                
+    return glb.arch_map.get(val,None)                
 
 def MapOS(val):
     ''' 
@@ -40,7 +81,7 @@ def MapOS(val):
     
         # to add other system here    
     '''
-    return common.g_os_map.get(val,None)
+    return glb.os_map.get(val,None)
   
 def GetValidArchList(self): #remove?
     return common.valid_arch
@@ -49,7 +90,7 @@ def GetValidOSList(self): #remove?
     return common.valid_os
     
 def ValidatePlatform(platform_str):    
-    tmp=common.g_valid_platform_re.match(platform_str)
+    tmp=glb.valid_platform_re.match(platform_str)
     if tmp is not None:            
         dict = tmp.groupdict()
         if (not dict.get('os') and not dict.get('arch')) or (dict.get('sep1') == '-' and (not dict.get('os') or not dict.get('arch'))):
@@ -137,7 +178,7 @@ class SystemPlatform(common.bindable):
         #if not lst:
             #lst = ValidatePlatform(os)
         if not lst:
-            reporter.report_error( " " + platform_str + " is not a valid target_system value\n")            
+            api.output.error_msg( " " + platform_str + " is not a valid target_system value\n")            
         
         if lst[0] is not None:
             os=lst[0]
@@ -219,18 +260,18 @@ class SystemPlatform(common.bindable):
             raise KeyError('SystemPlatform has no member '+key.upper())
         self.__class__.__dict__[key.upper()].fset(self,val)
             
-
-_host_sys=SystemPlatform()
+if glb._host_platform is None:
+    glb._host_sys=SystemPlatform()
     
 def HostSystem():
-    return _host_sys
+    return glb._host_sys
 
 def target_convert(str_val, raw_val=None,base=None,error=True):
-    host_sys= base is None and _host_sys or base
+    host_sys= base is None and glb._host_sys or base
     lst = ValidatePlatform(str_val)    
     if not lst:
         if error:
-            reporter.report_error( " " + str_val + " is not a valid target_system value\n")        
+            api.output.error_msg( " " + str_val + " is not a valid target_system value\n")        
         return None
     else:
         p=lst[0]
@@ -243,20 +284,20 @@ def target_convert(str_val, raw_val=None,base=None,error=True):
     return ret
 
 # add configuartion varaible
-common.AddVariable('OSBITNESS',str(OSBit()),'to be removed??')
+#api.register.add_variable('OSBITNESS',str(OSBit()),'to be removed??')
 
-common.AddVariable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform(_host_sys.OS,_host_sys.ARCH), 
+api.register.add_variable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform(glb._host_sys.OS,glb._host_sys.ARCH), 
         'Value of what to type of system to target build for, used to control cross builds',
         converter=target_convert)
 
-common.add_parts_object('ChipArchitecture',ChipArchitecture)
-common.add_parts_object('OSBit',OSBit)
-#common.add_parts_object('Host_Platform',HostSystem)
+api.register.add_global_parts_object('ChipArchitecture',ChipArchitecture)
+api.register.add_global_parts_object('OSBit',OSBit)
+#api.register.add_global_parts_object('Host_Platform',HostSystem)
 
-common.add_global_value('ChipArchitecture',ChipArchitecture)
-common.add_global_value('OSBit',OSBit)
-common.add_global_value('HostPlatform',HostSystem)
-common.add_global_value('SystemPlatform',SystemPlatform)
-#common.add_global_value('ValidatePlatform',ValidatePlatform)
+api.register.add_global_object('ChipArchitecture',ChipArchitecture)
+api.register.add_global_object('OSBit',OSBit)
+api.register.add_global_object('HostPlatform',HostSystem)
+api.register.add_global_object('SystemPlatform',SystemPlatform)
+#api.register.add_global_object('ValidatePlatform',ValidatePlatform)
 
 

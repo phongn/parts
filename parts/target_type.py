@@ -1,5 +1,6 @@
+import glb
 import common
-import reporter
+import api.output
 
 def _parse_target(target):
     '''
@@ -12,6 +13,7 @@ def _parse_target(target):
         name::<part name>
         name::<part name>@key:value
         name::<part name>@key:value@key2:val2 ...
+        name::<part name>@key:vala,valb,valc@key2:val2 ...
         <concept>::<some form from above>
     \endverbatim
 
@@ -21,7 +23,7 @@ def _parse_target(target):
         return {}
     elif target == 'all':
         return {'all':True}
-    seperator=common.g_engine.def_env.subst("$ALIAS_SEPARTATOR")
+    seperator=glb.engine.def_env.subst("$ALIAS_SEPARTATOR")
     t=target.split(seperator,1)   
     # this is a the case of "foo"
     if len(t) == 1:
@@ -39,7 +41,7 @@ def _parse_target(target):
             return {'concept':t[0],'all':True}
     # this is the case of foo::xxx
     else:
-        # Pasre the value (xxx part)
+        # Parse the value (xxx part)
         tmp=t[1].split(seperator)
         if len(tmp) == 1:
             # here we have the case of <concept>::<value>
@@ -72,9 +74,15 @@ def _parse_target(target):
                 
                 try:
                     k,v=p.split(":")
-                    properties[k]=v
+                    vtmp=v.split(',')
+                    if vtmp[-1]!='':
+                        vtmp=vtmp[:-1]
+                    if len(vtmp) > 1:
+                        properties[k]=vtmp
+                    else:
+                        properties[k]=v
                 except ValueError:
-                    reporter.report_error('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))    
+                    api.output.error_msg('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))    
                 
                 
                 
@@ -89,7 +97,7 @@ def _parse_target(target):
                 # bad value given that we are going to treat
                 # <concept>::name or <concept>::alias as the same as <concept>::
                 # this is soemthing else which we don't understand at the moment
-                reporter.report_error('target value "%s" is bad'%(target))
+                api.output.error_msg('target value "%s" is bad'%(target))
                 
         elif tmp[1]!='':
             # this is our concept
@@ -101,7 +109,7 @@ def _parse_target(target):
             return tmp
         else:
             #error to many :: breaks
-            reporter.report_error('target value "%s" as to make seperators "%s"'%(target,seperator))
+            api.output.error_msg('target value "%s" as to make seperators "%s"'%(target,seperator))
             
 _target_type_cache={}
 
@@ -114,10 +122,8 @@ class target_type(object):
     def __init__(self,target):
         target=str(target)
         try:
-            # this does not work...
-            #self=_target_type_cache[target]
             # this does
-            self.__dict__=_target_type_cache[target].__dict__
+            self.__dict__=_target_type_cache[target].__dict__.copy()
         except KeyError:            
             self.concept=None
             self.alias=None
@@ -127,7 +133,7 @@ class target_type(object):
             self._resolve=False # if true we need to resolve the value to see if this is a part based target or SCons based one
             self.orginal_string=target
             self.__dict__.update(_parse_target(target))
-            _target_type_cache[target]=self
+            #_target_type_cache[target]=self
             
     @property
     def isPartTarget(self):
@@ -158,4 +164,23 @@ class target_type(object):
             return self.name.split('.',1)[0]
         return None
 
-
+    def __str__(self):
+        '''
+        Return a string form of target with any changed values. 
+        Use orginal_string value to get the orginal value used to Intially create this object 
+        '''
+        s=''
+        if self.concept:
+            s+=self.concept+"::"
+        if self.alias:
+            s+="alias::"+self.alias
+            return s
+        if self.name:
+            s+="name::"+self.name
+            for k,v in self.properties.iteritems():
+                s+="@"+k+":"
+                if common.is_list(v):
+                    s+=",".join(map(str,v))
+                else:
+                    s+=str(v)
+        return s

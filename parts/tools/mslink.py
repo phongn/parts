@@ -42,7 +42,7 @@ import SCons.Platform.win32
 import SCons.Tool
 import SCons.Util
 
-import parts.reporter as reporter
+import parts.api.output as output
 import parts.common as common
 from MSCommon import msvc, validate_vars
 
@@ -115,16 +115,18 @@ def _dllEmitter(target, source, env, paramtp):
                             '%sPREFIX' % paramtp, '%sSUFFIX' % paramtp,
                             "WINDOWSDEFPREFIX", "WINDOWSDEFSUFFIX"))
 
-    tmp = env.get('MSVS_VERSION', '6.0')
-    if tmp is None:
-        tmp = 6.0
-    version_num = float(tmp)
-    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
-        # MSVC 8 automatically generates .manifest files that must be installed
-        extratargets.append(
-            env.ReplaceIxes(dll,
-                            '%sPREFIX' % paramtp, '%sSUFFIX' % paramtp,
-                            "WINDOWSSHLIBMANIFESTPREFIX", "WINDOWSSHLIBMANIFESTSUFFIX"))
+    #tmp = env.get('MSVC_VERSION', '6.0')
+    #if tmp is None:
+    #    tmp = 6.0
+    #version_num = float(tmp)
+    #if version_num >= 8.0 and version_num < 10 and env.get('WINDOWS_INSERT_MANIFEST', 1):
+    #    # MSVC 8 and 9 automatically generates .manifest files that must be installed
+    #    tmp=env.ReplaceIxes(dll,
+    #                        '%sPREFIX' % paramtp, '%sSUFFIX' % paramtp,
+    #                        "WINDOWSSHLIBMANIFESTPREFIX", "WINDOWSSHLIBMANIFESTSUFFIX")
+    #    tmp=env.File(tmp)
+    #    tmp.attributes.FilterAs=target[0]
+    #    extratargets.append(tmp)
 
     if env.has_key('PDB') and env['PDB']:
         pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
@@ -166,17 +168,19 @@ def prog_emitter(target, source, env):
     if not exe:
         raise SCons.Errors.UserError, "An executable should have exactly one target with the suffix: %s" % env.subst("$PROGSUFFIX")
 
-    tmp = env.get('MSVS_VERSION', '6.0')
-    if tmp is None:
-        tmp = 6.0
-    version_num = float(tmp)
-    if version_num >= 8.0 and env.get('WINDOWS_INSERT_MANIFEST', 1):
-        # MSVC 8 automatically generates .manifest files that have to be installed
-        extratargets.append(
-            env.ReplaceIxes(exe,
-                            "PROGPREFIX", "PROGSUFFIX",
-                            "WINDOWSPROGMANIFESTPREFIX", "WINDOWSPROGMANIFESTSUFFIX"))
-
+    #tmp = env.get('MSVC_VERSION', '6.0')
+    #if tmp is None:
+    #    tmp = 6.0
+    #version_num = float(tmp)
+    #if version_num >= 8.0 and version_num < 10 and env.get('WINDOWS_INSERT_MANIFEST', 1):
+    #    # MSVC 8 and 9 automatically generates .manifest files that must be installed
+    #    tmp=env.ReplaceIxes(exe,
+    #                        "PROGPREFIX", "PROGSUFFIX",
+    #                        "WINDOWSPROGMANIFESTPREFIX", "WINDOWSPROGMANIFESTSUFFIX")
+    #    tmp=env.File(tmp)
+    #    tmp.attributes.FilterAs=target[0]
+    #    extratargets.append(tmp)                            
+    #                        
     if env.has_key('PDB') and env['PDB']:
         pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
         extratargets.append(pdb)
@@ -385,7 +389,7 @@ def generate(env):
     env['LDMODULEEMITTER'] = [ldmodEmitter]
     env['LDMODULECOM'] = compositeLdmodAction
     
-    #reporter.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslink',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
+    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('mslink',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return msvc.Exists(env, 'link')

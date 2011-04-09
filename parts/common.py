@@ -7,8 +7,9 @@ import string
 import os
 import imp
 import sys
+import types
 
-import Variables
+import glb
 
 # import Scons stuff
 import SCons.Script 
@@ -17,131 +18,33 @@ import SCons.Tool
 import SCons.Util
 
 
-g_build_context_files=set()
-
-g_engine=None
-g_part_frame=[]
-
-g_builders={}
-#g_args={}
-g_env_cache={}
-# global object to add to parts call
-g_parts_objs={}
-g_parts_objs_env={}
-
-g_known_concepts=[]
-
-#g_parts={} 
-#g_name_alias={}
-# state object of what is being processed.
-g_part_being_processed=[]
-
-def_vars=[]
-## adding stuff here as the Varible are falling apart on handing objects
-g_defaultoverides={'PACKAGE_GROUP_FILTER':{}}
-
-# set of the part we know we want to build
-g_buildable_part=set()
-# set of alias we are targeting to be build as source
-g_target_alias=set()
-#set of parts we want to build as an SDK, given that it exists in the sdk directory
-g_build_as_sdk=set()
-#depends data we stored
-g_depends_data={}
-# custom data mappers
-g_mappers={}
-# these are the global functions we define to the SConstruct
-g_globals={}
-# these are all teh sections that have been defined
-g_sections=set()
-
-# path to where Parts is installed
-g_parts_path=os.path.abspath(os.path.split(__file__)[0])
-
-# for packaging support 
-_INSTALLED_PACKAGING_GROUPS={}
-_INSTALLED_NO_PACKAGING_GROUPS={}
-
-
-g_base_env= SCons.Script.Environment(tools=[])
-def get_basic_SCon_env(**kw):
-    return g_base_env.Clone(**kw)
-
-#remove in api...
-def add_section(section):
-    # add
-    g_sections.add(section)
-#remove in api...
-def add_mapper(mapper):
-    g_mappers[mapper.name]=mapper
-#remove in api...
-def add_parts_object(key,object,map_env=False):
-    if map_env:
-        g_parts_objs_env[key]=object
-    else:
-        g_parts_objs[key]=object
     
-    # add code to for help generation
-#remove in api...    
-def add_global_value(key,object):
-    g_globals[key]=object
-
-def AddVariable(key,default,help,validator=None,converter=None):
-    '''Generic varible addition'''
-    #def_args[key]=default
-    def_vars.append((key,help,default,validator,converter))
-
-def AddBoolVariable(key,default,help):
-    '''Generic varible addition'''
-    def_vars.append(SCons.Script.BoolVariable(key,help,default))    
-
-def AddEnumVariable(key,default,help,allowed_values,map={},ignorecase=1):
-    '''Generic varible addition'''
-    def_vars.append(SCons.Script.EnumVariable(key,help,default,allowed_values,map,ignorecase))
-
-def AddListVariable(key,default,help,allowed_values=[],map={}):
-    '''Generic varible addition'''
-    def_vars.append(Variables.ListVariable2(key,help,default,allowed_values,map))    
-
-##########################################################
-
-
-def is_processing_part(part_obj):
-    # we this part is processed that we don't need to worry about it
-    if part_obj.IsProcessed():
-        return False
-    # check to see if the "root" part is being processed
-    # as if this is the case we don't want to process it again
-    if part_obj.root.alias in g_part_being_processed:
-        return True
-    return False
-    
-def try_load_part_component(env,comp):
-    curr_define_part=get_part(env)
-    name_list=comp.name.split('.')[0]
-    root_name=name_list[0]
-    ver_range=comp.version
-    
-    # try to see if we can resolve the component 
-    
-    # Check DB for match
-    
-    # If that failed try manual laoding of Parts till we get a hit
-    # or detact deadlock
-    
-    # first we try to find something that looks likes it
-    
-    # check to see if we are laoding a sub part
-    
-    # here we try to find the best match root part
-    
-        
-    
-    # then we just start load stuff till we get a hit
-    
-    # if that fails return None to have calling code
-    # add a mapper to resolve latter or error out
-
+#def try_load_part_component(env,comp):
+#    curr_define_part=get_part(env)
+#    name_list=comp.name.split('.')[0]
+#    root_name=name_list[0]
+#    ver_range=comp.version
+#    
+#    # try to see if we can resolve the component 
+#    
+#    # Check DB for match
+#    
+#    # If that failed try manual laoding of Parts till we get a hit
+#    # or detact deadlock
+#    
+#    # first we try to find something that looks likes it
+#    
+#    # check to see if we are laoding a sub part
+#    
+#    # here we try to find the best match root part
+#    
+#        
+#    
+#    # then we just start load stuff till we get a hit
+#    
+#    # if that fails return None to have calling code
+#    # add a mapper to resolve latter or error out
+#
 
 ###############
 # this class allows us to add object varible that get a reference to the env
@@ -227,13 +130,34 @@ def process_tool_arg(lst):
     tmplst.reverse()
     return tmplst
 
-#remove
-def AddBuilder(name,builder):
-    if g_builders.has_key(name)==False:
-        g_builders[name]=builder
+def get_content(obj):
+    ret=None
+    # Is this a function?
+    if isinstance(obj,types.LambdaType) or \
+        isinstance(obj,types.MethodType  ) or \
+        isinstance(obj,types.FunctionType ) or\
+        isinstance(obj,types.InstanceType ) or \
+        isinstance(obj,types.ClassType  ) or \
+        isinstance(obj,types.FunctionType ) or\
+        isinstance(obj,types.CodeType):
+        return SCons.Action._object_contents(obj)
+    
+    elif isinstance(obj,types.DictionaryType):
+        ret='{'
+        for k,v in obj.iteritems():
+            ret+="%s:%s,"%(k,get_content(v))
+        ret+='}'
+    elif isinstance(obj,types.TupleType) or\
+        isinstance(obj,types.GeneratorType ) or\
+        isinstance(obj,types.ListType):
+        ret='['
+        for i in obj:
+            ret+="%s,"%get_content(i)
+        ret+=']'
     else:
-        pass
-        
+        ret=str(obj)
+            
+    return ret        
 
 def matches(value, includes, excludes=None):
     '''Function help with tell if a value (as a string) matched on of the include
@@ -400,7 +324,7 @@ def tag_node_ownership(env,node):
         #print "Tagged",alias, node.srcnode()
         env.MetaTag(node.srcnode(),'parts',owners=[alias]+tmp)
     
-    for k,e in node.entries.items():
+    for k,e in node.entries.iteritems():
         if isinstance(e,SCons.Node.FS.Dir) and k != '.' and k!='..':
             tag_node_ownership(env,e)
 
@@ -468,53 +392,53 @@ def parseVersionNumber(versionNumber):
 
     return fieldValues[0], fieldValues[1], fieldValues[2]
 
-#---------------------------------------------------------------------
-# CompareVersionNumbers
+##---------------------------------------------------------------------
+## CompareVersionNumbers
+##
+## Compares two discrete version numbers and returns (error_msg, result) 
+## where error_msg is an emptry string if there is no error.  
+## result contains the result of the comparison
+## as follows:
+##
+##	result = 0:	versionNumber1 = versionNumber2
+##	result < 0:	versionNumber1 < versionNumber2
+##	result > 0: versionNumber1 > versionNumber2
+##
+## Arguments must be in the discrete version string format, e.g. '8.1.2'.
+## Argument of None is considered to be less than '0.0.0'
+##
+## Returns (error_message, result) where error_message is '' if no error.
+##---------------------------------------------------------------------
+#def CompareVersionNumbers(verStr1, verStr2):
+#    if verStr1 == None and verStr2 == None:
+#        return 0
 #
-# Compares two discrete version numbers and returns (error_msg, result) 
-# where error_msg is an emptry string if there is no error.  
-# result contains the result of the comparison
-# as follows:
+#    if verStr1 == None and verStr2 != None:
+#        return -1
 #
-#	result = 0:	versionNumber1 = versionNumber2
-#	result < 0:	versionNumber1 < versionNumber2
-#	result > 0: versionNumber1 > versionNumber2
+#    if verStr1 != None and verStr2 == None:
+#        return 1
 #
-# Arguments must be in the discrete version string format, e.g. '8.1.2'.
-# Argument of None is considered to be less than '0.0.0'
+#    major1, minor1, rev1 = parseVersionNumber(verStr1)
 #
-# Returns (error_message, result) where error_message is '' if no error.
-#---------------------------------------------------------------------
-def CompareVersionNumbers(verStr1, verStr2):
-    if verStr1 == None and verStr2 == None:
-        return 0
-
-    if verStr1 == None and verStr2 != None:
-        return -1
-
-    if verStr1 != None and verStr2 == None:
-        return 1
-
-    major1, minor1, rev1 = parseVersionNumber(verStr1)
-
-    major2, minor2, rev2 = parseVersionNumber(verStr2)
-
-    if major1 < major2 and not (major1 == -1 or major2 == -1):
-        return -1
-    if major1 > major2 and not (major1 == -1 or major2 == -1):
-        return 1
-
-    if minor1 < minor2 and not (minor1 == -1 or minor2 == -1):
-        return -1
-    if minor1 > minor2 and not (minor1 == -1 or minor2 == -1):
-        return 1
-
-    if rev1 < rev2 and not (rev1 == -1 or rev2 == -1):
-        return -1
-    if rev1 > rev2 and not (rev1 == -1 or rev2 == -1):
-        return 1
-
-    return 0
+#    major2, minor2, rev2 = parseVersionNumber(verStr2)
+#
+#    if major1 < major2 and not (major1 == -1 or major2 == -1):
+#        return -1
+#    if major1 > major2 and not (major1 == -1 or major2 == -1):
+#        return 1
+#
+#    if minor1 < minor2 and not (minor1 == -1 or minor2 == -1):
+#        return -1
+#    if minor1 > minor2 and not (minor1 == -1 or minor2 == -1):
+#        return 1
+#
+#    if rev1 < rev2 and not (rev1 == -1 or rev2 == -1):
+#        return -1
+#    if rev1 > rev2 and not (rev1 == -1 or rev2 == -1):
+#        return 1
+#
+#    return 0
 
 def get_version_from_list(v, vlist):
     for vi in vlist:
@@ -524,7 +448,7 @@ def get_version_from_list(v, vlist):
 
     
 ## help objects
-class _make_rel:
+class _make_rel(object):
     def __init__(self,lst):
         self.lst=lst
     
@@ -553,7 +477,7 @@ class _make_rel:
 
 
 
-class _make_reld:
+class _make_reld(object):
     def __init__(self,lst):
         self.lst=lst
     
@@ -566,14 +490,14 @@ class _make_reld:
                 ret.append(relpath(env.Dir(i).srcnode().abspath,path))
         return str(ret)
 
-class named_parms:
+class named_parms(object):
     def __init__(self,_kw):
         self.kw=_kw
     
     def string_it(self,env,path):
         ret=""
         i=len(self.kw)
-        for k,v in self.kw.items():
+        for k,v in self.kw.iteritems():
             i=i-1
             ret+=str(k)+"="+gen_arg(env,path,v)
             if i>0:
@@ -617,7 +541,7 @@ def make_alias_tree(env,concept,
     action=None,
     always_build=False):
     
-    pobj=g_engine._part_manager._from_env(env)
+    pobj=glb.engine._part_manager._from_env(env)
         
     #name="%s%s_%s"%(concept,pobj.Name,pobj.Version)#env.subst(concept+'${PART_NAME}_${PART_VERSION}')
     #pobj._add_alias(name)
@@ -666,95 +590,4 @@ def make_alias_tree(env,concept,
         return make_alias_tree(parent_env,concept,name_alias,action=action,always_build=always_build)
     
     return name_alias
-
-
-############################## Platform Maps ################################
-import re
-g_arch_map = {
-'ia32':'x86',
-'x86':'x86',
-'i386':'x86',
-'i486':'x86',
-'i586':'x86',
-'i686':'x86',
-'x64':'x86_64',
-'AMD64':'x86_64',
-'amd64':'x86_64',
-'em64t':'x86_64',
-'EM64T':'x86_64',
-'x86_64':'x86_64',
-'IA64':'ia64',
-'ia64':'ia64',
-'any':'any'
-}
-
-g_os_map = {
-'win32':'win32',
-'win64':'win32',
-'xp':'win32',
-'vista':'win32',
-'win7':'win32',
-'windows':'win32',
-'posix':'posix',
-'linux':'posix',
-'fedora':'posix',
-'rhel':'posix',
-'ubuntu':'posix',
-'hp-ux':'hp-ux',
-'os2':'os2',
-'cygwin':'cygwin',
-'suse':'posix',
-'sles':'posix',
-'sunos':'sunos',
-'solaris':'sunos',
-'darwin':'darwin',
-'mac':'darwin',
-'macos':'darwin',
-'any':'any'
-}
-
-g_valid_arch = []
-g_valid_os =[]
-g_valid_platform_re = re.compile("a")
-
-def UpdatePlatformRegEx():
-    global g_valid_platform_re
-    arch_str = ''
-    os_str = ''
-    for arch in g_valid_arch:
-        if arch_str == '':
-            arch_str = arch_str + arch
-        else:
-            arch_str = arch_str + '|' + arch
-            
-    for os in g_valid_os:
-        if os_str == '':
-            os_str = os_str + os
-        else:
-            os_str = os_str + '|' + os
-   
-    g_valid_platform_re = re.compile('(?P<os>' + os_str + ')?(?P<sep1>-)?(?P<arch>' + arch_str + ')?$',re.IGNORECASE)
-
-    
-def UpdateValidArchList():
-    for k,v in g_arch_map.items():
-        if k not in g_valid_arch:
-            g_valid_arch.append(k)
-    g_valid_arch.sort(lambda a,b: cmp(len(b),len(a)))
-    UpdatePlatformRegEx()
-
-def UpdateValidOSList():
-    for k,v in g_os_map.items():
-        if k not in g_valid_os:
-            g_valid_os.append(k)
-    g_valid_os.sort(lambda a,b: cmp(len(b),len(a)))
-    UpdatePlatformRegEx()
-
-UpdateValidArchList()
-UpdateValidOSList()
-
-
-
-
-
 
