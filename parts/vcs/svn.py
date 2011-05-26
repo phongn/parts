@@ -182,7 +182,8 @@ class svn(base):
         Update the with information about the current VCS object
         '''
         if svn.svnpath is None:
-            svn.svnpath=self._env.WhereIs('svn')
+            #svn.svnpath=self._env.WhereIs('svn')
+            svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
             if svn.svnpath is None:
                 svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
                 
@@ -236,8 +237,9 @@ class svn(base):
             switched=None
             partial=None
             rev_lst=[]
-                        
-            svnver=self._env.WhereIs('svnversion')
+            
+            svnver=self._env.WhereIs('svnversion',os.environ['PATH'])                        
+            #svnver=self._env.WhereIs('svnversion')
             if svnver is None:
                 svnver=self._env.WhereIs('svnversion',os.environ['PATH'])
             

@@ -2,6 +2,7 @@ import glb
 import common
 import api.output
 import pickle_helpers
+import errors
 
 import cPickle
 import os
@@ -12,6 +13,7 @@ import SCons.Script
 __cache={}
 __dirty_cache=[]
 __db_key={}
+__bad_cache=False
 
 def db_key(length):
     global __db_key
@@ -48,7 +50,10 @@ def load_cache_data(datafile):
     except IOError,ec:
         pass
     except Exception,ec:
-        api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile)
+        api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile,print_once=True)
+        global __bad_cache
+        __bad_cache=True
+        raise errors.LoadStoredError
     return None
 
 def store_cache_data(datafile,data):
@@ -75,7 +80,7 @@ def GetCache(name,key=None):
     get data from data cache.. if in memory use that, else load it.
     '''
     global __cache
-    if SCons.Script.GetOption("parts_cache") == False:
+    if SCons.Script.GetOption("parts_cache") == False or __bad_cache==True:
         return None
     #if key is None get default key
     if key is None:

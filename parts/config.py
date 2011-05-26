@@ -5,12 +5,16 @@ some helpfunction to help dump data, or get the correct configuration data
 
 import common
 import version
-import SCons.Script
-import configurations,version
-import os
+import configurations
 import api.output
 import load_module
+
+import SCons.Script
+
+import os
 import traceback,StringIO
+import pprint
+import copy
 
 def null_ver_mapper(env):
     return '0.0.0'
@@ -91,7 +95,7 @@ class configuration(object):
         tmp= mysetting['filter']        
         if tmp != {}:
             for k,v in tmp.iteritems():
-                data=settings[k]
+                data=settings.get(k,{})
                 for i in v:
                     for dk,dv in data.iteritems():
                         if i in dv:
@@ -123,8 +127,8 @@ class _ConfigurationSet(object):
         self.depends=dependsOn
         self.map={}
         self.defining_file=None
-        
 
+    
     def has_tool(self,tool):
         # if the key exists it has been loaded.. however the tool
         # may have a value of None
@@ -161,7 +165,6 @@ class _ConfigurationSet(object):
         return self.defining_file        
     
     def add_config_setting(self,tool,ver_rng,host,target,settings,ver_mapper,files):
-        
         if tool in self.map:
             if host in self.map[tool]:
                 if target in self.map[tool][host]:
@@ -205,6 +208,7 @@ class _ConfigurationSet(object):
                                 }
                             }
         
+        
     def get_config_setting(self,env,tool,ver,host,target):
         
         # first see if we have matching tool
@@ -242,7 +246,7 @@ class _ConfigurationSet(object):
         else:
             return None
         
-        return ver_config
+        return copy.deepcopy(ver_config)
     
     def resolve_version(self,tool,host,target,env):
         # this should be called because we check that such as config existed first
@@ -472,8 +476,9 @@ def load_tool_config(env,name,tool,host,target):
     ## Last we merge settings and store
     if dep != None:
         # Get base settings
-        api.output.verbose_msg('configuration','Getting dependent configuration settings',dep)
+        api.output.verbose_msg(['configuration','configuration_setup'],'Getting dependent configuration settings',dep)
         base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
+        api.output.verbose_msg('configuration_setup','Got Settings of:',base_settings)
         files.update(g_configuration[dep].defining_files(tool,host,target))
     
     if found==True:

@@ -83,11 +83,6 @@ def MapOS(val):
     '''
     return glb.os_map.get(val,None)
   
-def GetValidArchList(self): #remove?
-    return common.valid_arch
-    
-def GetValidOSList(self): #remove?
-    return common.valid_os
     
 def ValidatePlatform(platform_str):    
     tmp=glb.valid_platform_re.match(platform_str)

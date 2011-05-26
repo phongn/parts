@@ -44,6 +44,11 @@ def node_up_to_date(node):
         ninfo=dbentry.ninfo
         
     else:
+        
+        ninfo=ninfotmp()
+        ninfo.timestamp=node['timestamp']
+        ninfo.csig=node['csig']
+        
         node=glb.engine.def_env.Entry(node['name'])
         node.disambiguate()
         tmp=metatag.MetaTagValue(node,'uptodate','parts',None)
@@ -55,9 +60,7 @@ def node_up_to_date(node):
             api.output.verbose_msg("update_check",tmp)
             return False
         
-        ninfo=ninfotmp()
-        ninfo.timestamp=node.get('timestamp')
-        ninfo.csig=node.get('csig')
+        
         
         
     # see if node time stamp matches
@@ -109,8 +112,37 @@ def AbsDir(env,path):
     common.tag_node_ownership(env,tmp)
     return tmp.srcnode().abspath
     
+def MakeNodeSymLink(env,target,source,use_abspath=False):
+    if use_abspath:
+        linkto=source.abspath
+    else:
+        linkto=common.relpath(target.abspath,source.abspath)
+    env.Depends(target,source)
+    env.MetaTag(target,SymLink=linkto)
+    return target
     
-def SymLinkEnv(env,name,linkto):#,*args,**kw):
+def copy_symlink(target, source, env):
+    t=target[0]
+    symlink=env.MetaTagValue(t,'SymLink')
+    #api.output.print_msg("Creating SymLink",t.get_path(),"pointing to",symlink)
+    if env['HOST_OS']=='win32':
+        #fill me in
+        pass
+    else:
+        if os.path.lexists(t.get_path()):
+            try:
+                val=os.readlink(t.get_path())
+                if val!=symlink:
+                    os.unlink(t.get_path())
+                    os.symlink(symlink,t.get_path())
+            except:
+                os.unlink(t.get_path())
+                os.symlink(symlink,t.get_path())
+        else:
+            os.symlink(symlink,t.get_path())
+    return None
+
+def SymLinkEnv(env,name,linkto):
     #tmp=env.File(name,*args,**kw)
     #env.MetaTag(tmp,SymLink=linkto)
     #return tmp

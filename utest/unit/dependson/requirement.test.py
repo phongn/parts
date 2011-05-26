@@ -116,8 +116,6 @@ class TestRequirement(unittest.TestCase):
         for i in tmp:
             if i.key=='CPPPATH':
                 self.assertEqual(i.is_internal,True)
-            else:
-                self.assertEqual(i.is_internal,False)
     
     def test_requirement_value_setting_internal2(self):
         '''Test setting value outside set get value applied correctly internal2'''
@@ -125,8 +123,20 @@ class TestRequirement(unittest.TestCase):
         for i in tmp:
             if i.key=='CPPPATH':
                 self.assertEqual(i.is_internal,True)
-            else:
-                self.assertEqual(i.is_internal,False)
+                
+    def test_requirement_value_setting_internal3(self):
+        '''Test setting value outside set get value applied correctly internal1'''
+        tmp=REQ.DEFAULT|REQ.CPPPATH(internal=True)
+        for i in tmp:
+            if i.key=='CPPPATH':
+                self.assertEqual(i.is_internal,True)
+    
+    def test_requirement_value_setting_internal4(self):
+        '''Test setting value outside set get value applied correctly internal2'''
+        tmp=REQ.CPPPATH(internal=True)|REQ.DEFAULT
+        for i in tmp:
+            if i.key=='CPPPATH':
+                self.assertEqual(i.is_internal,True)
 
     def test_requirement_value_setting_external1(self):
         '''Test setting value outside set get value applied correctly external1'''
@@ -140,6 +150,24 @@ class TestRequirement(unittest.TestCase):
     def test_requirement_value_setting_external2(self):
         '''Test setting value outside set get value applied correctly external2'''
         tmp=REQ.CPPPATH|REQ.DEFAULT_INTERNAL
+        for i in tmp:
+            if i.key=='CPPPATH':
+                self.assertEqual(i.is_internal,False)
+            else:
+                self.assertEqual(i.is_internal,True)
+                
+    def test_requirement_value_setting_external3(self):
+        '''Test setting value outside set get value applied correctly external1'''
+        tmp=REQ.DEFAULT(internal=True)|REQ.CPPPATH
+        for i in tmp:
+            if i.key=='CPPPATH':
+                self.assertEqual(i.is_internal,False)
+            else:
+                self.assertEqual(i.is_internal,True)
+    
+    def test_requirement_value_setting_external4(self):
+        '''Test setting value outside set get value applied correctly external2'''
+        tmp=REQ.CPPPATH|REQ.DEFAULT(internal=True)
         for i in tmp:
             if i.key=='CPPPATH':
                 self.assertEqual(i.is_internal,False)

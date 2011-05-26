@@ -1,4 +1,5 @@
 
+import glb
 import api.output
 import errors   
 import requirement
@@ -47,6 +48,17 @@ class dependent_ref(object):
                 api.output.error_msg(self.AmbiguousMatchStr)
         return self.__part
     
+    @property
+    def StoredMatchingSections(self):
+        
+        self.__stored_matches=[]
+        matches=self.__part_ref.StoredMatches
+        # try to turn matches in to sections
+        for m in matches:
+            self.__stored_matches.append(m.Stored.sections[self.__sectionname])
+        return self.__stored_matches
+    
+    # clean up the below functions... so we only have one case 
     @property
     def Section(self):
         try:

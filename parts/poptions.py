@@ -90,15 +90,12 @@ def opt_bool(option, opt, value, parser,var,negate=False):
     else:
         TrueValue=True
     if value is None:
-        print 1,TrueValue,option
         parser.values.__dict__[var]=TrueValue
         return
     tmp=value.lower()
     if tmp in opt_true_values:
-        print 2
         parser.values.__dict__[var]= TrueValue
     elif tmp in opt_false_values:
-        print 3
         parser.values.__dict__[var]= not TrueValue
     else:
         raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' % 
@@ -350,7 +347,7 @@ SCons.Script.AddOption("--disable-early-exit",
 
 SCons.Script.AddOption("--load-logic","--ll",
             dest='load_logic',
-            default='case2',
+            default='all',
             nargs=1,
             type='choice',
             choices=['all','case1','case2','case3'],

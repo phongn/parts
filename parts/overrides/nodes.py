@@ -1,4 +1,5 @@
 from .. import glb
+from .. import errors
 from .. import common
 from .. import api
 from .. import datacache
@@ -20,6 +21,12 @@ Entry=SCons.Node.FS.Entry
 FSBase=SCons.Node.FS.Base
 Value=SCons.Node.Python.Value
 Alias=SCons.Node.Alias.Alias
+
+    
+class wrapper(object):
+    def __init__(self,binfo,ninfo=None):
+        self.binfo=binfo
+        self.ninfo=ninfo
 
 #
 #def env_set(self,env,safe=False):
@@ -105,36 +112,53 @@ Node.make_ninfo_from_dict=lambda self,dict:fake_ninfo(dict.get('timestamp',0),di
 
 #SCons.Node.Node.is_same_since=_node_up_to_date
 
+
 # as it turns out this testing before Scons maps a Environment to a node is broken
 # to fix it we will map the Node Class default function ourself
 # other wise it go through a Environment proxy, which can be a NULL class that does nothing
 # not we only do this for the File as all other values at the moment
-
-File.changed_since_last_build = File.changed_timestamp_match
-
+File.changed_since_last_build = File.changed_timestamp_then_content
 
 
+
+
+total=0
 
 def _part_isUpToDate(self):
     ''' 
     '''
-
+    global total
+    total+=1
     try:
-        return self._memo['_part_isUpToDate'] 
+        tmp=self._memo['_part_isUpToDate']
+        return tmp
     except KeyError:
+        #print total,"->", self.ID
         def check_nodes(data):
             nodelist=[]
             ret=False
             # get the set of node object from str value
             for j,k in data:
                 if common.is_string(k):
+                    # this is a string.. we want to make it a SCons Node
+                    # look it up in our DB
                     i=glb.pnodes.GetNode(k) 
                     #i=j.str_to_node(k)
+                    # not found... possible the path was stored with bad "/" values
                     if i is None: 
+                        # try again
                         i=glb.pnodes.GetNode(make_path_ID(k))
                         if i is None: 
-                            api.output.verbose_msg("node_update_check",'{0} out-of-date! {1} is not known'.format(self.ID,k))
-                            return False
+                            #This might be a source node, with some builder that
+                            # that output in a "wrong" place.
+                            # see if it exists
+                            if os.path.exists(k):
+                                #it exists.. make a entry node
+                                i=glb.pnodes.Create(Entry,k)
+                            else:
+                                api.output.verbose_msg("update_check",'{0} out-of-date! {1} is not known'.format(self.ID,k))
+                                return False
+                            
                     i.disambiguate()
                     
                     if isinstance(i,SCons.Node.FS.Base):
@@ -150,15 +174,21 @@ def _part_isUpToDate(self):
                             storedpinfo=i.Stored
                             if storedpinfo:
                                 n=storedpinfo.SrcNode(i)
-                                #if i==n: print i,n
-                                #n.disambiguate()
+                                #api.output.verbose_msg("update_check",'getting src node for {0}\n {1} '.format(i.ID,n.ID))
                                 n._memo['get_stored_info']=i._memo['get_stored_info']
                                 i.clear()
-                                #del i._memo['get_stored_info']
                                 i=n
                 else:
                     i=k     
+                    #try:
                     j=k.get_stored_info().ninfo
+                    #except AttributeError:
+                        #if isinstance(k,Alias):
+                         #binfo=glb.pnodes.GetAliasStoredInfo(k.ID)
+                            #if binfo:
+                               # tmp._memo['get_stored_info']=wrapper(binfo)
+                        
+                        
                 nodelist.append((i,j))
             #########
             # sort list
@@ -169,12 +199,16 @@ def _part_isUpToDate(self):
             for i in nodelist:
                 # test to see if it thinks it is out of date
                 if not i[0].pisUpToDate:
-                    api.output.verbose_msg("node_update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date'.format(self.ID,i[0]))
+                    api.output.verbose_msg("update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date'.format(self.ID,i[0]))
                     return False
                 
                 # we test if this is out of date from the local point of view
                 if isinstance(i[0],FSBase):
-                    if i[0].changed_since_last_build(self,i[1]):#_node_up_to_date(i[0],i[1]):
+                    if not i[0].exists():
+                        api.output.verbose_msg("update_check",'{0} out-of-date! "{1}" does not exist'.format(self.ID,i[0]))
+                        return False
+                    elif i[0].changed_since_last_build(self,i[1]):#_node_up_to_date(i[0],i[1]):
+                        #print i[0].get_ninfo().__dict__,i[1].__dict__#,i[0].get_csig()
                         api.output.verbose_msg("node_update_check",'{0} out-of-date! "{1}" is different since this node was last built'.format(self.ID,i[0]))
                         return False
                 
@@ -194,27 +228,27 @@ def _part_isUpToDate(self):
             self._memo['_part_isUpToDate'] = False
             return self._memo['_part_isUpToDate'] 
         
-        # this might be a source node .. in this case we only care if the target that depends on it things it has changed
-        # so if this is None, it is a source node.. and we pretend it is up to date
-        if hasattr(self.get_stored_info(),'csig'):
-            # check any side effect nodes
-            if self.Stored:
-                side_effects=self.Stored.side_effects
-                for node in side_effects:
-                    if not node.pisUpToDate:
-                        api.output.verbose_msg("node_update_check",'{0} out-of-date! Side effect target {1} is out of date'.format(self.ID,node.ID))
-                        self._memo['_part_isUpToDate'] = False
-                        return self._memo['_part_isUpToDate'] 
-        
-            # are we out of date
-            if isinstance(self,Alias)==False and isinstance(self,Value)==False :
-                ninfo=self.get_stored_info().ninfo
-                #del self._memo['get_stored_info']
-                if self.changed_since_last_build(self,ninfo):#_node_up_to_date(self,ninfo):
-                    api.output.verbose_msg("node_update_check",'{0} out-of-date! out of date with itself'.format(self.ID))
+        # check any side effect nodes
+        if self.Stored:
+            side_effects=self.Stored.side_effects
+            for node in side_effects:
+                if not node.pisUpToDate:
+                    api.output.verbose_msg("update_check",'{0} out-of-date! Side effect target {1} is out of date'.format(self.ID,node.ID))
                     self._memo['_part_isUpToDate'] = False
                     return self._memo['_part_isUpToDate'] 
-        
+                    
+                #if self.changed_since_last_build(self,ninfo):#_node_up_to_date(self,ninfo):
+                    #api.output.verbose_msg("node_update_check",'{0} out-of-date! out of date with itself'.format(self.ID))
+                    #self._memo['_part_isUpToDate'] = False
+                    #return self._memo['_part_isUpToDate'] 
+
+        # are we out of date
+        #if isinstance(self,FSBase):
+        #    if not self.exists():
+        #        api.output.verbose_msg("update_check",'{0} out-of-date! Does not exist!'.format(self.ID))
+        #        self._memo['_part_isUpToDate'] = False
+        #        return self._memo['_part_isUpToDate'] 
+            
         #api.output.verbose_msg("node_update_check",'{0} is up to date!'.format(self.ID))
         self._memo['_part_isUpToDate'] = True
         return self._memo['_part_isUpToDate'] 
@@ -269,7 +303,9 @@ def part_stat(self):
         return self._memo['stat']
     except KeyError: 
         try:
-            if metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False):
+            # for some reason I have not figured out yet.. this blows the stack when we are doing a "clean" run. 
+            # The Stored data can get stuck in a bad loop that keeps trying to load itself, for certain nodes.
+            if glb.engine._build_mode=='build' and (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
                 result = os.lstat(self.abspath)
             else:
                 result = os.stat(self.abspath)
@@ -333,6 +369,10 @@ def _my_init(self,name):
     # may not be the best way.. but works for the moment
     glb.pnodes.AddAlias(self)
     glb.pnodes.AddNodeToKnown(self)
+    
+    binfo=glb.pnodes.GetAliasStoredInfo(self.ID)
+    if binfo:
+        self._memo['get_stored_info']=wrapper(binfo)
 
 SCons.Node.Alias.Alias.orig_init=SCons.Node.Alias.Alias.__init__
 SCons.Node.Alias.Alias.__init__=_my_init
@@ -349,10 +389,15 @@ def get_stored_info_alias(self):
 SCons.Node.Alias.Alias.get_stored_info=get_stored_info_alias
 
 def Stored(self):
+    
     try:
         return self.__stored
     except AttributeError:
-        self.__stored=self.LoadStoredInfo()
+        try:
+            self.__stored=self.LoadStoredInfo()
+        except errors.LoadStoredError:
+                self.__stored=None
+    
     return self.__stored
     
 SCons.Node.Node.Stored=property(Stored)
@@ -398,18 +443,14 @@ def Scons_node_factory(func,ID=None,*lst,**kw):
         return func(*lst,**kw)
     
 def Scons_alias_node_factory(func,ID=None,*lst,**kw):
-    
-    class wrapper(object):
-        def __init__(self,binfo,ninfo=None):
-            self.binfo=binfo
-            self.ninfo=ninfo
+
     if ID:
         tmp=func(ID)[0]
     else:
         tmp=func(*lst,**kw)[0]
-    binfo=glb.pnodes.GetAliasStoredInfo(tmp.ID)
-    if binfo:
-        tmp._memo['get_stored_info']=wrapper(binfo)
+    #binfo=glb.pnodes.GetAliasStoredInfo(tmp.ID)
+    #if binfo:
+        #tmp._memo['get_stored_info']=wrapper(binfo)
     
     return tmp
 

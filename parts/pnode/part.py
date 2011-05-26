@@ -24,7 +24,7 @@ from .. import dependson
 from .. import node_helpers
 
 #from pattern import Pattern
-
+import sys
 import copy
 import pprint
 import os
@@ -579,6 +579,10 @@ class part(pnode.pnode):
             return tmp
         except:
             return self.__classic_section
+    
+    # hack till we get new format stuff working...
+    def _AddSection(self,name,obj):
+        self.__sections[name]=obj
         
     def SectionName(self):
         return None
@@ -692,12 +696,18 @@ class part(pnode.pnode):
         ## add information on how to map this Parts
         ## allow us to make a part platform independent in some way
         self.__platform_match=copy.copy(self.__env['TARGET_PLATFORM'])
-        if self.__kw.get('platform_independent ',self.__kw.get('platform_indepenent',False)):
+        if self.__kw.get('platform_independent',self.__kw.get('platform_indepenent',False)):
             self.__platform_match=platform_info.SystemPlatform('any','any')
-        if self.__kw.get('os_independent ',self.__kw.get('os_indepenent',False)):
+            if self.__kw.get('platform_indepenent'):
+                api.output.warning_msg('use of "platform_indepenent" is depreciated. Please use "platform_independent" instead.')
+        if self.__kw.get('os_independent',self.__kw.get('os_indepenent',False)):
             self.__platform_match.OS='any'
-        if self.__kw.get('architecture_independent ',self.__kw.get('architecture_indepenent',False)):
+            if self.__kw.get('os_indepenent'):
+                api.output.warning_msg('use of "os_indepenent" is depreciated. Please use "os_independent" instead.')
+        if self.__kw.get('architecture_independent',self.__kw.get('architecture_indepenent',False)):
             self.__platform_match.ARCH='any'
+            if self.__kw.get('architecture_indepenent'):
+                api.output.warning_msg('use of "architecture_indepenent" is depreciated. Please use "architecture_independent" instead.')
         
         self.__classic_section=glb.pnodes.Create(section.build_section,self)
         
@@ -811,29 +821,32 @@ class part(pnode.pnode):
         One form is to map the given component to all components that it dependson
         The second form is to add all sub-Parts of this component
         '''
-        
+        pass
         #vfile=self.__env._MapUnknowns([],self.__file)
         
-       
-        
         # This is the base Alias for a given Part
-        build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias
-        # note that InstallXXX and SdkXXX map to this value
-        # new formats will make all targets to this value as well.
-        a=self.__env.Alias(build_alias)#,vfile)
-        self.__env.Alias("${PART_BUILD_CONCEPT}",a)
-        #if self.isRoot:
-            #self.__env.Alias("${PART_BUILD_CONCEPT}",a)
+        #build_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}'.format(self.__alias)
+        #build_alias_r='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.__alias)
+        ## note that InstallXXX and SdkXXX map to this value
+        ## new formats will make all targets to this value as well.
+        ## build::alias::foo
+        #a=self.__env.Alias(build_alias)
+        ## build::alias::foo -> build::alias::foo::
+        #a1=self.__env.Alias(build_alias_r,a)
+        ## map build::alias::foo.sub1:: -> build::alias::foo::
+        #if not self.isRoot:
+        #    # build::alias::foo.sub:: -> build::alias::foo::
+        #    self.__env.Alias('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.Parent.Alias),a1)
         #else:
-            #self.__env.Alias("${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}"+self.Parent.Alias,a)
-        
-        
-        #add to queue the delayed mapping of high level Alias to other high level alias
-        def_env=SCons.Script.DefaultEnvironment()
-        glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
-        # add call back for latter full mapping of build context
-        glb.engine.add_preprocess_logic_queue(functors.map_build_context(self))
-
+        #    # build::alias::foo -> build::alias::foo:: -> build::
+        #    self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
+        #    
+        ##add to queue the delayed mapping of high level Alias to other high level alias
+        #def_env=SCons.Script.DefaultEnvironment()
+        #glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
+        ## add call back for latter full mapping of build context
+        #glb.engine.add_preprocess_logic_queue(functors.map_build_context(self))
+        #
     def _setup_sdk(self):
         return
         create_sdk=True
@@ -920,6 +933,9 @@ class part(pnode.pnode):
             bdir=env.Dir(env.subst('$BUILD_DIR'))
             st=time.time()
             sdir=env.Dir(self.__src_path)
+            bk_path=sys.path[:]
+            sys.path.append(sdir.abspath)
+            
             if (glb.engine._build_mode=='build') or (os.path.exists(self.__file.srcnode().abspath)==True):
                 if os.path.exists(self.__file.srcnode().abspath)==False:
                     api.output.error_msg('Parts file '+self.__file.srcnode().abspath+" was not found.")
@@ -971,6 +987,8 @@ class part(pnode.pnode):
             # set file as read
             self.__is_read=True
             
+            sys.path=bk_path
+            
     ## sections based API's
     def _has_section_defined(self,name):
         ''' 
@@ -989,6 +1007,7 @@ class part(pnode.pnode):
         2) return true or false if any sections are good
         Error reporting! If we have bad sections we throw an expections
         '''
+        return False
         # reduce
         for name,obj in self.__sections.iteritems():
             # see if the section was even called
@@ -1045,43 +1064,50 @@ class part(pnode.pnode):
             self.__env.fs.chdir(tmp,True)
             self.__cache["%s%scalled"%(section,phase)]=True
 
-    def isFileUpToDate(self):
+    def hasFileChanged(self):
+        '''
+        Has the file changed in some way. 
+        
+        The is considered changed if it was modified or the parent was modify.
+        '''
         try:
-            
-            return self.__cache['isFileUpToDate']
+            return self.__cache['hasFileChanged']
         except KeyError:
-            
             data=self.Stored
             # check that stored data is exits
             if data is None:
-                self.__cache['isFileUpToDate']=False
+                self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.read_load)
-                return False
+                return True
             # Get File Node
-            tmp=glb.pnodes.GetNode(data.file['name'])
+            tmp=glb.pnodes.GetNode(data.file['name'],SCons.Node.FS.File)
             if tmp is None:
-                self.__cache['isFileUpToDate']=False
+                self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.read_load)
-                return False
+                return True
             # does this node look different
             if tmp.changed_since_last_build(tmp,tmp.make_ninfo_from_dict(data.file)):
-                self.__cache['isFileUpToDate']=False
+                self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.read_load)
-                return False
+                return True
             # does the parent look different
             try:
                 if not data.parent.isFileUpToDate():
-                    self.__cache['isFileUpToDate']=False
+                    self.__cache['hasFileChanged']=True
                     self.UpdateReadState(glb.read_load)
-                    return False
+                    return True
             except AttributeError:
                 pass
-            self.__cache['isFileUpToDate']=True
-            return True
+            self.__cache['hasFileChanged']=False
+            return False
     
     def UpdateReadState(self,state):
         if self.__read_state < state:
             self.__read_state = state
+            # reset isRead state to allow for cache -> file loading promotions
+            # clean up once we clean up sections a bit more to get unit tests working...
+            self.__is_read=False 
+            self.__sections={}
             
     @property
     def ReadState(self):
@@ -1146,6 +1172,7 @@ class part(pnode.pnode):
         info.parents=tmp
         tmp={'build':self.__classic_section}
         tmp.update(self.__sections)
+        
         info.sections=tmp
         
         tmp={}
@@ -1181,7 +1208,7 @@ class part(pnode.pnode):
             # see if node time stamp matches            
             tmp.append(
                     {
-                    'name':i.ID,
+                    'name':i.abspath,
                     'csig':i.get_csig(),
                     'timestamp':i.get_timestamp()
                     }
@@ -1197,7 +1224,7 @@ class part(pnode.pnode):
                 i=self.__env.File(f)
                 # see if node time stamp matches            
                 tmp[k].append({
-                        'name':i.ID,
+                        'name':i.abspath,
                         'csig':i.get_csig(),
                         'timestamp':i.get_timestamp()
                         })
@@ -1332,10 +1359,9 @@ class part(pnode.pnode):
         # how to deal with this???
         ## need to double check logic for this when full new formats section are working
         self.__sections=info.sections
-         
-        self.__file=info.file # should be handled by _setup_
-        self.__src_path=info.src_path # should be handled by _setup_
-        self.__sdk_file=info.sdk_file # should be handled by _setup_
+        #self.__file=info.file # should be handled by _setup_
+        #self.__src_path=info.src_path # should be handled by _setup_
+        #self.__sdk_file=info.sdk_file # should be handled by _setup_
         
         #info.build_context
         #info.config_context

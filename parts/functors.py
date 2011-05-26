@@ -76,7 +76,7 @@ def full_parts_depends_list(env):
 
 def gen_rpath_link(sec):
     '''
-    Add the Rlink path that woudl be added for the component depending on this 
+    Add the Rlink path that would be added for the component depending on this 
     component, Not what this component would depend on
     '''
     import mappers
@@ -100,14 +100,14 @@ def gen_rpath_link(sec):
         if d.PartRef.hasUniqueMatch:
             try:
                 # try to get a cached value
-                rtmp=d.Section._cache['rlink']
+                rtmp=d.Section.Exports['rlink']
             except KeyError:
                 # generate the values
                 rtmp=gen_rpath_link(d.Section)
                 
             for i in rtmp:
                 common.append_unique(rplst,i)
-            sec._cache['rlink']=rplst
+            sec.Exports['rlink']=rplst
             
         elif d.PartRef.hasMatch ==False:
             api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.PartName,d.PartRef.NoMatchStr()),show_stack=False)
@@ -168,24 +168,24 @@ class map_depends(object):
         self.stack=stack
         
     def __call__(self):
-                
+               
         if self.partref.hasUniqueMatch:
-            pobj=self.partref.Matches[0]
-            sec=pobj.Section(self.tsection)
+            dep_pobj=self.partref.Matches[0]
+            dep_sec=dep_pobj.Section(self.tsection)
         elif self.partref.hasMatch ==False:
             api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.NoMatchStr()),stackframe=self.stack)
         elif self.partref.hasAmbiguousMatch:
             api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.AmbiguousMatchStr()),stackframe=self.stack)
         
-        #if self.key in sec.ExportAsDepends:
-        sec.esigs()
-        if sec.Exports.get(self.key) and ("INSTALL" in self.key or "SDK" in self.key):
+        dep_sec.esigs()
+        if ("INSTALL" in self.key or "SDK" in self.key):# and dep_sec.Exports.get(self.key):
             alias="{0}::alias::{1}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'])
             alias1="{0}::alias::{1}::{2}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'],self.key)
-            alias2="{0}::alias::{1}::{2}".format(self.tsection,pobj.Alias,self.key)
+            alias2="{0}::alias::{1}::{2}".format(self.tsection,dep_pobj.Alias,self.key)
+            #print "mapping",alias, "->",alias1
+            #print "mapping",alias1, "->",alias2
             self.env.Alias(alias,self.env.Alias(alias1))
             self.env.Alias(alias1,self.env.Alias(alias2))
-        
           
         
 # add configuartion varaible

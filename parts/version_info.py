@@ -9,7 +9,7 @@ def parts_version_text_env(env):
     return parts_version_text()
 
 def is_parts_version_beta():
-    if _PARTS_VERSION[-4:].lower()=='beta':
+    if 'beta' in _PARTS_VERSION.lower():
         return True
     return False
 
@@ -18,8 +18,6 @@ def is_parts_version_beta_env(env):
 
 def PartsExtensionVersion():
     import version
-    if is_parts_version_beta():
-        return version.version(_PARTS_VERSION[:-5])
     return version.version(_PARTS_VERSION)
 
 def PartsExtensionVersion_env(env):

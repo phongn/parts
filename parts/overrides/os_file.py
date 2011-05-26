@@ -26,6 +26,7 @@ if sys.platform=='win32':
     GENERIC_READ =-0x80000000
     GENERIC_WRITE=0x40000000
 
+    CREATE_NEW=1
     CREATE_ALWAYS=2
     OPEN_EXISTING=3
     OPEN_ALWAYS=4
@@ -49,9 +50,9 @@ if sys.platform=='win32':
 
     def get_win32_creation_disposition(mode):
         ret=0
-        if mode.find('w')!=-1 or mode.find('+')!=-1:
+        if mode.find('w')!=-1:# or mode.find('+')!=-1:
             ret=CREATE_ALWAYS
-        elif mode.find('r')!=-1:
+        elif mode.find('r')!=-1 or mode.find('+')!=-1:
             ret=OPEN_EXISTING
         else:
             ret=OPEN_ALWAYS
@@ -86,7 +87,8 @@ if sys.platform=='win32':
             tmp=msvcrt.open_osfhandle(fd,os.O_TEXT) 
         # map the C handle to a python handle
         f=os.fdopen(tmp,mode,bufsize)
-        
+        if mode.find('a')!=-1:
+            f.seek(0,os.SEEK_END)
         return f
        
     # replace the built in values with the new values 

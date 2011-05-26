@@ -21,8 +21,14 @@ class manager(object):
         self.__known_nodes={}   # ID:SCons.Node.Node
         self.__factories={} # type:function(id)
         self.__aliases={} # ID:Alais node
-        
         #glb.engine.CacheDataEvent+=self.Store
+        
+    def TotalNode(self):
+        return len(self.__known_nodes)
+    
+    def TotalPnode(self):
+        return len(self.__known_pnodes)
+        
     def clear_node_states(self):
         for node in self.__known_nodes.itervalues():
             node.clear_memoized_values()
@@ -45,20 +51,22 @@ class manager(object):
             return data['known_pnodes'].has_key(ID)
         return False
             
-    def GetNode(self,ID):
+    def GetNode(self,ID,create=None):
         if self.isKnownNode(ID):
             return self.__known_nodes[ID]
         elif self.isKnownNodeStored(ID):
             return self.LoadNodeStored(ID)
-        data=self._get_cache()
-        
+        elif create:
+            return self.Create(create,ID)
         return None
     
-    def GetPNode(self,ID):
+    def GetPNode(self,ID,create=None):
         if self.isKnownPNode(ID):
             return self.__known_pnodes[ID]
         elif self.isKnownPNodeStored(ID):
             return self.LoadPNodeStored(ID)
+        elif create:
+            return self.Create(create,ID)
         return None
     
     def LoadNodeStored(self,ID):
@@ -205,6 +213,7 @@ class manager(object):
         for k,node in self.__aliases.iteritems():
             if node.isVisited or store_all:
                 binfo = node.get_binfo()
+                # translate the node objects to a string value
                 for a in ['bsources', 'bdepends', 'bimplicit']:
                     try:
                         val = getattr(binfo, a)
@@ -242,24 +251,24 @@ class manager(object):
         for k,node in self.__known_pnodes.copy().iteritems():
             if (node.ReadState==glb.read_load) or store_all:
                 sd=node.GenerateStoredInfo()
-                import section
-                import difflib
-                import StringIO
-                tmpstr=StringIO.StringIO()
-                tmpstr2=StringIO.StringIO()
-                if node.Stored and isinstance(node,section.section):
-                  if node.Stored.exports!=sd.exports:
-                    import pprint                    
-                    print "node info is different",node
-                    pprint.pprint(node.Stored.exports,tmpstr)
-                    print "stored:"
-                    print tmpstr.getvalue()
-                    pprint.pprint(sd.exports,tmpstr2)
-                    print "new   :"
-                    print tmpstr2.getvalue()
+                #import section
+                #import difflib
+                #import StringIO
+                #tmpstr=StringIO.StringIO()
+                #tmpstr2=StringIO.StringIO()
+                #if node.Stored and isinstance(node,section.section):
+                  #if node.Stored.exports!=sd.exports:
+                    #import pprint                    
+                    #print "node info is different",node
+                    #pprint.pprint(node.Stored.exports,tmpstr)
+                    #print "stored:"
+                    #print tmpstr.getvalue()
+                    #pprint.pprint(sd.exports,tmpstr2)
+                    #print "new   :"
+                    #print tmpstr2.getvalue()
                         
-                    for dd in difflib.unified_diff(tmpstr.getvalue().split(),tmpstr2.getvalue().split()):
-                        print dd
+                    #for dd in difflib.unified_diff(tmpstr.getvalue().split(),tmpstr2.getvalue().split()):
+                    #    print dd
                     
                 store_value(node,sd,valuestostore)
                 

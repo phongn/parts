@@ -3,6 +3,7 @@ from .. import common
 from .. import datacache
 from .. import api
 from .. import target_type
+from .. import functors
 import pnode
 import pnode_manager
 import section_info
@@ -15,7 +16,7 @@ import itertools
 import pprint
 pp=pprint.PrettyPrinter()
     
-
+gcnt=0
 class section(pnode.pnode):
     """description of class"""
     __slots__=[
@@ -60,9 +61,12 @@ class section(pnode.pnode):
             self.__force_load=False
             self._cache={}
             
-    def _setup_(self,pobj,*lst,**kw):
+    def _setup_(self,pobj,env=None,*lst,**kw):
         self.__pobj=pobj
-        self.__env=self.__pobj.Env.Clone()
+        if env:
+            self.__env=env
+        else:
+            self.__env=self.__pobj.Env.Clone()
         self.__env['PART_SECTION']=self.Name
         
     @property
@@ -139,8 +143,29 @@ class section(pnode.pnode):
         #    alias_str=self.Env.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__pobj.Alias)
         #    self.Env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and str(x).startswith(alias_str) ,self.Targets))
         #else:
-        alias_str=self.Env.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__pobj.Alias)
-        self.Env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and str(x).startswith(alias_str) ,self.Targets))
+        # This is the base Alias for a given Part
+        alias_str=self.Env.subst('{0}::${{PART_ALIAS_CONCEPT}}{1}'.format(self.Name,self.__pobj.Alias))
+        alias_str_r=self.Env.subst('{0}::${{PART_ALIAS_CONCEPT}}{1}::'.format(self.Name,self.__pobj.Alias))
+        
+        # note that InstallXXX and SdkXXX map to this value
+        # new formats will make all targets to this value as well.
+        # build::alias::foo
+        a=self.__env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and x.ID.startswith(alias_str) ,self.Targets))
+                
+        # build::alias::foo -> build::alias::foo::
+        a1=self.__env.Alias(alias_str_r,a)
+        # map build::alias::foo.sub1:: -> build::alias::foo::
+        if not self.Part.isRoot:
+            # build::alias::foo.sub:: -> build::alias::foo::
+            self.__env.Alias('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.Part.Parent.Alias),a1)
+        #else:
+        # build::alias::foo -> build::alias::foo:: -> build::
+        self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
+        #add to queue the delayed mapping of high level Alias to other high level alias
+        def_env=SCons.Script.DefaultEnvironment()
+        glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
+        # add call back for latter full mapping of build context
+        glb.engine.add_preprocess_logic_queue(functors.map_build_context(self.Part))
 
     def _gen_full_parts_depends(self):
         '''a dictionary of everything we dependon (order is lost)
@@ -287,7 +312,13 @@ class section(pnode.pnode):
         for export in self.__export_as_depends:
             self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),self.__exports[export])
             
-            
+    def hasPartFileChanged(self):
+        '''Has the Part File defining this section changed in some way
+        
+        This can include if the Parent Parts file changed, as this could change 
+        what the children Part files would define.
+        '''
+        return self.Stored.part.hasFileChanged()
     
     def TagDirectDependAsLoad(self,load_manager):
         try:
@@ -311,130 +342,17 @@ class section(pnode.pnode):
             self._cache['TagDirectDependAsLoad']=True
             # set our root parts
             try:
-                if not stored_data.part.Stored.parent.Stored.sections[self.Name].TagDirectDependAsLoad(load_manager):
+                try:
+                    tmp=stored_data.part.Stored.parent.Stored.sections[self.Name]
+                except KeyError:
+                    tmp=stored_data.part.Stored.parent.Stored.sections['build']
+                if not tmp.TagDirectDependAsLoad(load_manager):
                     self._cache['TagDirectDependAsLoad']=False
                     return False
             except AttributeError:
                 pass
             return self._cache['TagDirectDependAsLoad']
         
-    
-    def hasSectionChanged(self,load_manager,requirements=None):
-        '''Logic allows us to Tag only Parts that are out of date
-        as something to load, and ignore loading all other files.
-        This logic still requires a post process setup of mapping some values as
-        load from cache
-        '''
-        
-        req_cache_str='hasSectionChanged_w_{0}'.format(requirements)
-        try:
-            if not self._cache['hasSectionChanged']:
-                ret=self._cache[req_cache_str] 
-            else:
-                ret=True
-            return ret
-        except KeyError:
-            if self._cache.get('hasSectionChanged') is None:
-                # get stored data... 
-                stored_data=self.Stored
-                if stored_data is None:
-                    self._cache['hasSectionChanged']=False
-                    api.output.verbose_msg("section_changed_check","{0} out-of-date! Cached data is missing".format(self.ID))
-                    load_manager.hasStored=False
-                    return True
-                # check to see if this was set to a load state already
-                # if it was we want to register it with the manager
-                if self.ReadState == glb.read_load or stored_data.force_load:
-                    # this does not mean this is out of date.. just means 
-                    # it needs to load.
-                    load_manager.LoadSection(self)        
-                
-                # did the content file defining this section change?
-                if not stored_data.part.isFileUpToDate():
-                    self._cache['hasSectionChanged']=False
-                    if load_manager:
-                        # do a special load of this Part
-                        api.output.verbose_msg("section_changed_check","{0} Special Load! Part file changed".format(self.ID))
-						# remove/clean up....
-                        api.output.warning_msg("If build fails.. rerun with --ll=all")
-                        load_manager.LoadSection(self)
-                        pass
-            
-                changed=False
-                for dep in stored_data.dependson:
-                    sec=dep['Section']
-                    reqs=dep['Requires']
-                    rsigs=dep['rsigs']
-                    #See if the dependent thinks it is out of date
-                    # based on what we dependon from it
-                    sec_changed=sec.hasSectionChanged(load_manager,reqs)
-                    if sec_changed:
-                        api.output.verbose_msg("section_changed_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(self.ID,sec.ID))
-                        changed=True
-                    elif not changed: # only do this test if everything is unchanged still
-                    
-                        # We need to test to see if the dependent state has changed since we last looked at it
-                        # if so we need to load.  
-                        # Note that may view themselves up to date, and as such
-                        # would incorrectly make us think we may not need to load
-            
-                        # see if our view of the Part we dependon changed:
-                        # this is a test of the dependentsection content csig. 
-                        # This value will change if data the dependent csig 
-                        
-                        # we test each requirment signiture (rsig) we have and see if that data 
-                        # in export data signiture (esig) has changed from our last run
-                        
-                        for req in reqs:
-                            if sec.Stored.esigs.get(req.key,'0')!=rsigs.get(req.key,'0'):
-                                print sec.Stored.esigs.get(req.key,'0'),rsigs.get(req.key,'0')
-                                api.output.verbose_msg("section_changed_check",'{0} out-of-date! Dependent values "{1}" from "{2}" changed'.format(self.ID,req.key,sec.ID))
-                                changed=True
-                
-                #at this point if we see a change we don't need to check our files... 
-                # we know it needs to be read
-                if changed:
-                    #self.ReadState(glb.read_load)
-                    self._cache['hasSectionChanged']=True
-                    load_manager.LoadSection(self)
-                    return True                
-                
-                # we can say we are up-to-date at this point
-                self._cache['hasSectionChanged']=False
-        
-        if self._cache['hasSectionChanged'] == False:
-            # see what we are
-            stored_data=self.Stored
-            target_nodes=[]
-            if requirements:
-                # there are requirements we want to check for.. they might not exist
-                # as they could have used generic requirements that would map to a large set of options that we map to if they exist
-                for r in requirements:
-                    if r.key in stored_data.exported_requirements:
-                        target_nodes.append(glb.pnodes.GetNode('{0}::alias::{1}::{2}'.format(stored_data.name,stored_data.part.ID,r.key)))
-            else:
-                target_nodes=[glb.pnodes.GetNode('{0}::alias::{1}'.format(stored_data.name,stored_data.part.ID))]
-                
-            for tnode in target_nodes:
-                if tnode: # none node are not found as a export of this part.. so we ignore it
-                    if not tnode.pisUpToDate:
-                        # we are out of date
-                        #self.ReadState(glb.read_load)
-                        self._cache['hasSectionChanged']=True
-                        self._cache[req_cache_str]=True
-                        api.output.verbose_msg("section_changed_check",'{0} out-of-date! Section Target "{1}" is out of date'.format(self.ID,tnode))
-                        load_manager.LoadSection(self)
-                        break
-                #we are up-to-date given the requested requirements
-            else:
-                #self.ReadState(glb.read_ignore)
-                self._cache[req_cache_str]=False
-                #api.output.verbose_msg("section_changed_check",'{0} is UP TO DATE!'.format(self.ID))
-        else:
-            self._cache[req_cache_str]=True
-                
-        
-        return self._cache[req_cache_str]
     
     @property
     def ReadState(self):
@@ -574,8 +492,36 @@ class build_section(section):
         return "build"
     
 
+class utest_section(section):
+    
+    def __init__(self,pobj=None,ID=None,env=None):
+        super(utest_section, self).__init__(pobj,ID)
+        
+    @staticmethod
+    def _process_arg(pobj=None,**kw):
+        id = kw.get('ID')
+        setup=False
+        if pobj:
+            id="{1}::{0}".format(pobj.ID,'utest')
+            setup=True
+        elif id is None:
+            raise ValueError , "Invalid arguments values when creating section type"
+        
+        return id,setup    
+        
+    @section.ID.getter
+    def ID(self):
+        if self._ID is None:
+            self._ID="{1}::{0}".format(self.Part.ID,self.Name)
+        return self._ID
+    
+    @section.Name.getter
+    def Name(self):
+        return "utest"
+
 
 
 pnode_manager.manager.RegisterNodeType(build_section)
+pnode_manager.manager.RegisterNodeType(utest_section)
 
 #glb.pnodes.AddFactory(build_section,lambda id:buildsectionfactory(ID=id))

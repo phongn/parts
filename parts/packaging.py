@@ -105,7 +105,7 @@ def GetPackageGroupFiles(name,no_pkg=False):
     '''
     # get Cache value
     try:
-        return (no_pkg and glb._INSTALLED_NO_PACKAGING_GROUPS[name] or glb._INSTALLED_PACKAGING_GROUPS[name])
+        return glb._INSTALLED_NO_PACKAGING_GROUPS[name] if no_pkg else glb._INSTALLED_PACKAGING_GROUPS[name]
     except KeyError:
         # no cache value.. re build list
         api.output.verbose_msg('packaging','Sorting PackageGroup Parts into nodes')
@@ -113,7 +113,7 @@ def GetPackageGroupFiles(name,no_pkg=False):
         
             
     # return what we got, if not in rebuilt list return empty list
-    return (no_pkg and glb._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) or glb._INSTALLED_PACKAGING_GROUPS.get(name,[]))
+    return glb._INSTALLED_NO_PACKAGING_GROUPS.get(name,[]) if no_pkg else glb._INSTALLED_PACKAGING_GROUPS.get(name,[])
 
 def SortPackageGroups():
 

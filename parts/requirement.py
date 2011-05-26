@@ -213,7 +213,7 @@ def DefineRequirementSet(name,lst,policy=ReportingPolicy.ignore,weight=-1000):
                     
         
 class requirement_internal(requirement):
-    def __call__(self,public=None, policy=None):
+    def __call__(self,internal=None, public=None, policy=None):
         if public:
             self._public=public
         if policy:

@@ -10,8 +10,7 @@ xmlComment = re.compile(r'(.*)(<!--)(.*)(-->)(.*)')
 
 commentStart = re.compile(r'(<!--)');
 commentEnd = re.compile(r'(-->)');
-#keepCommentIfString='<!--PUBLIC';
-keepCommentIfString='<!--ZXCVBNM'; # FIXME : find a better way to make keepCommentString Optional
+keepCommentIfString='<!--@NOSTRIP';
 commentStartString = '<!--';
 
 def scanFile(env,infile, outfile):

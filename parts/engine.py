@@ -369,7 +369,7 @@ class parts_addon(object):
             #set stack info for reporting issues
             #errors.SetPartStackFrameInfo()
             
-            # If the logger is not being used we want to get ride of the
+            # If the logger is not being used we want to remove the
             # queue logger to save memory
             if glb.rpter.logger is logger.QueueLogger:
                 # this should reset QueueLogger
@@ -399,10 +399,19 @@ class parts_addon(object):
         # process any data we have to post process
         if self.__post_process_queue!=[]:
             api.output.print_msg("Processing post logic queue")
+            total=len(self.__post_process_queue)*1.0
+            cnt=0
+            msg='{0}/{1}'.format(cnt,total)
+            api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
             for i in self.__post_process_queue:
                 i()
+                cnt+=1
+                msg='{0}/{1} '.format(cnt,total)
+                api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
+            msg='{0}/{1}'.format(cnt,total)
+            api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
             self.__post_process_queue=[]
-            api.output.print_msg("Done -- Processing post logic queue")
+            api.output.print_msg("Processing post logic queue finished!")
         
         #for p in self.__part_manager.parts.values():
             #p.Env.subst(p.Env['ENV']['INCLUDE'])
@@ -502,10 +511,10 @@ class parts_addon(object):
         api.output.print_msg("Storing Data Cache")
         st=time.time()
         self.CacheDataEvent(goodexit)
-        api.output.verbose_msg(['cache save'],"Fill time=",time.time()-st)
+        api.output.verbose_msg(['cache_save'],"Fill time=",time.time()-st)
         st=time.time()
         datacache.SaveCache()
-        api.output.verbose_msg(['cache save'],"Save time=",time.time()-st)
+        api.output.verbose_msg(['cache_save'],"Save time=",time.time()-st)
         api.output.print_msg("Done -- Storing Data Cache")
         
     def _store_global_data(self,goodexit):
@@ -898,8 +907,7 @@ Use -H or --help-options for a list of scons options
         targets=SCons.Script.BUILD_TARGETS
         for t in targets:
             tmp=target_type.target_type(t)
-            if tmp.concept:
-                md5.update(tmp.concept)
+            md5.update(tmp.Section)
         
         self.__cache_key=md5.hexdigest()
         

@@ -28,18 +28,17 @@ def normalize_env(shellenv, keys):
 
 def get_output(script, args = None, shellenv = None):
     """Parse the output of given bat file, with given args."""
-    if args:
-        #print("Calling '%s %s'" % (script, args))
-        popen = subprocess.Popen('"%s" %s & set' % (script, args),
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 env=shellenv)
+    if sys.platform == 'win32':
+        cmdLine = '"%s" %s & set' % (script, (args if args else ''))
+        shell = False
+    elif sys.platform.startswith('linux'):
+        cmdLine = 'source "%s" %s ; set' % (script, (args if args else ''))
+        shell = True
     else:
-        #print("Calling '%s'" % script)
-        popen = subprocess.Popen('"%s" & set' % script,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 env=shellenv)
+        raise Exception("Unsuported OS type: " + sys.platform)
+
+    #print("Calling '%s %s'" % (script, args))
+    popen = subprocess.Popen(cmdLine, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=shellenv)
 
     # Use the .stdout and .stderr attributes directly because the
     # .communicate() method uses the threading module on Windows
@@ -56,7 +55,7 @@ def get_output(script, args = None, shellenv = None):
 def parse_output(output, keep = None):
 
     ret={} #this is the data we will return
-    
+
     ## parse everything
     reg=re.compile('(\\w*)=(.*)', re.I)
     for line in output.splitlines():
@@ -79,7 +78,7 @@ def parse_output(output, keep = None):
 
 
 def get_script_env(env,script,args=None,vars=None):
-    ''' 
+    '''
     this function returns a dictionary of all the data we want to merge
     or process in some other way.
     '''
@@ -89,7 +88,7 @@ def get_script_env(env,script,args=None,vars=None):
         nenv = normalize_env(env['ENV'], [])
     output = get_output(script,args,nenv)
     vars = parse_output(output, vars)
-    
+
     return vars
 
 
@@ -108,6 +107,6 @@ def merge_script_vars(env,script,args=None,vars=None):
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
-# adding logic to Scons Enviroment object  
+# adding logic to Scons Enviroment object
 SConsEnvironment.MergeScriptVaribles=merge_script_vars
 SConsEnvironment.GetScriptVarible=get_script_env

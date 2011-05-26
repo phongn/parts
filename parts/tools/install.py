@@ -239,11 +239,7 @@ def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
             tgt.extend(tmp)
             #tgt.extend(BaseInstallBuilder(env, target, src, **kw))
             #tgt.extend(apply(BaseInstallBuilder, (env, target, src), kw))
-            if str(tmp[0]).endswith('.so-gz'):
-                n=env.fs.File(str(tmp[0])[:-3])
-                out=env.Command(n,tmp,SCons.Action.Action(untar,untar_print))
-                install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+env.get('ALIAS','')
-                env.Alias(install_alias,out)
+            
     return tgt
 
 def InstallAsBuilderWrapper(env, target=None, source=None, **kw):

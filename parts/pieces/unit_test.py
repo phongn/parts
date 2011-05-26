@@ -9,6 +9,7 @@ import parts.pattern as pattern
 import parts.functors as functors
 import parts.parts as parts
 import parts.api.output as output 
+import parts.pnode as pnode
 
 import SCons.Script
 
@@ -87,51 +88,46 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     for t in targets:
         tmp=target_type(t)
         sep_len=len(env.subst("$ALIAS_SEPARTATOR"))
-        if tmp.concept == env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
+        if tmp.Section == 'utest':
             break
     else:
         return []
     
+    
     ## make a new Part object
     parent_obj=glb.engine._part_manager._from_env(env)
-    short_alias=env.subst('${UTEST_PREFIX}%s'%target)
-    pobj=parts.Part_t(
-        alias=env.subst('${UTEST_PREFIX}%s'%target),
-        file=parent_obj._file,
-        create_sdk=False,
-        parent_part=parent_obj,
-        __is_read=True,
-        **kw)
-    pobj._setup_(env.Clone(**kw))
+    sec= parent_obj.Section("utest")
+    if sec.Name!='utest':
+        short_alias=env.subst('${UTEST_PREFIX}%s'%target)
+        sec=glb.pnodes.Create(pnode.section.utest_section,parent_obj,env=env.Clone(**kw))
+        parent_obj._AddSection("utest",sec)
+        #sec._setup_(parent_obj,env=env.Clone(**kw))
     
-    glb.engine._part_manager._add_part(pobj)
-    # setup basic stuff we need for this part
+    curr_sec=parent_obj.DefiningSection
+    parent_obj.DefiningSection=sec
+        
     
     
     # tweak Environment
-    pobj.Env['UNIT_TEST_TARGET']=target
-    if src_dir != '.':
-        pobj._source_path(node_helpers.AbsDir(env,src_dir))
-        
+    sec.Env['UNIT_TEST_TARGET']=target
     
-    # set the name
-    pobj.Env.PartName(short_alias)
-    
-    ## setup the varible with paths
+     ## setup the varible with paths
     curr_path=node_helpers.AbsDir(env,'.')
     orig_src_dir=common.relpath(node_helpers.AbsDir(env,src_dir),curr_path)
     if src_dir!='.':
         src_dir=common.relpath(env.Dir(os.path.join(curr_path,src_dir)).srcnode().abspath,env.Dir('.').abspath)
+    else:
+        src_dir=curr_path
 
-    build_dir_leaf=pobj.Env['UNIT_TEST_TARGET']
+    build_dir_leaf=sec.Env['UNIT_TEST_TARGET']
     #build_dir=os.path.join(env.subst('$BUILD_DIR'),build_dir_leaf)
-    build_dir=pobj.Env.subst('$BUILD_DIR')
+    build_dir=sec.Env.subst('$BUILD_DIR')
     
     ## map autodepends stuff
-    pobj.Env.DependsOn([pobj.Env.Component(env.PartName(),env.PartVersion())])
+    sec.Env.DependsOn([sec.Env.Component(env.PartName(),env.PartVersion(),section='build')])
     
     ## flatten the sources
-    source=pobj.Env.Flatten(source)
+    source=sec.Env.Flatten(source)
     
     ## process the sources
     src_files=[]
@@ -155,7 +151,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
             api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
     
     ## flatten the sources
-    data_src=pobj.Env.Flatten(data_src)
+    data_src=sec.Env.Flatten(data_src)
     
     ## process any data files
     out=[]
@@ -163,59 +159,58 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     for s in data_src:
         if isinstance(s,pattern.Pattern):
             t,sr=s.target_source(dest_dir)
-            out+=pobj.Env.CCopyAs(target=t,source=sr)
+            out+=sec.Env.CCopyAs(target=t,source=sr)
             #print "Pattern type"
         elif isinstance(s,SCons.Node.FS.Dir):
             #get all file in the directory
             #... add code...
-            out+=pobj.Env.CCopy(target=dest_dir,source=s)
+            out+=sec.Env.CCopy(target=dest_dir,source=s)
             #print "Dir type"
         elif isinstance(s,SCons.Node.FS.File):
-            out+=pobj.Env.CCopy(target=dest_dir,source=s)
+            out+=sec.Env.CCopy(target=dest_dir,source=s)
             #print "File type"
         elif isinstance(s,SCons.Node.Node):
-            out+=pobj.Env.CCopy(target=dest_dir,source=s)
+            out+=sec.Env.CCopy(target=dest_dir,source=s)
         elif common.is_string(s):
             if s[:len(orig_src_dir)]==orig_src_dir:
                 s=s[len(orig_src_dir)+1:]
-            out+=pobj.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
+            out+=sec.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
         else:
             api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
 
-    
     ## the current path
-    pobj.Env.Append(CPPPATH= [src_dir]) 
+    sec.Env.Append(CPPPATH= [src_dir]) 
         
     ## change the build dir
-    pobj.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
+    sec.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
     
     ## the option to build with PDB or not
     # might not to do this any more... as teh PDB will work correctly on non windows systems
-    if make_pdb==True and pobj.Env['TARGET_PLATFORM'] == 'win32': 
-        pobj.Env['PDB']=build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME']+'.pdb'
+    if make_pdb==True: 
+        sec.Env['PDB']=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME']+'.pdb'
     else:
-        pobj.Env['PDB']=None
-    
+        sec.Env['PDB']=None
+        
     ## the unit test we want to build
-    ret = pobj.Env.Program(target=build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME'],source=src_files)
-    common.tag_node_ownership(pobj.Env,pobj.Env.Dir(build_dir))
+    ret = sec.Env.Program(target=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'],source=src_files)
+    #common.tag_node_ownership(pobj.Env,pobj.Env.Dir(build_dir))
     
     #build alias
     build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-    a=pobj.Env.Alias(build_alias)     
+    a=sec.Env.Alias(build_alias)     
     
     tmp=[]
     for i in ret:
         if isinstance(i,SCons.Node.FS.File)or isinstance(i,SCons.Node.Node) or common.is_string(i):
-            if common.is_catagory_file(pobj.Env,'INSTALL_LIB_PATTERN',i):
-                tmp+=pobj.Env.CCopy(target='$INSTALL_LIB',source=i)
+            if common.is_catagory_file(sec.Env,'INSTALL_LIB_PATTERN',i):
+                tmp+=sec.Env.CCopy(target='$INSTALL_LIB',source=i)
             else:#if common.is_catagory_file(env,'SDK_BIN_PATTERN',i):
-                tmp+=pobj.Env.CCopy(target='$INSTALL_BIN',source=i)
+                tmp+=sec.Env.CCopy(target='$INSTALL_BIN',source=i)
     ret = tmp
     
      #install alias stuff
-    install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+pobj.Alias
-    a=env.Alias(build_alias,ret)
+    #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+sec.Alias
+    #a=env.Alias(build_alias,ret)
     # setup basic aliases
     #pobj._map_alias()
 
@@ -225,57 +220,39 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    scripts_out=pobj.Env.__UTEST__(build_dir+"/"+pobj.Env['UNIT_TEST_TARGET_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
+    scripts_out=sec.Env.__UTEST__(build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
     
-    ## here we map a bunch of aliases
-    
-    core_alias=pobj.Env.Alias(pobj.Alias,a+scripts_out+out)
-    #add to queue the delayed mapping of any dependent stuff
-    glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(pobj.Env))
-    
-    base_alias=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',core_alias)
-    base_alias2=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
-    base_alias5=pobj.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_PARENT_ALIAS}',base_alias4)
-    ## map just this test to build
-    alias_out=common.make_alias_tree(pobj.Env,'${BUILD_UTEST_CONCEPT}',core_alias)#,base_alias2,base_alias3,base_alias4)
-    
-    test_all_outs=pobj.Env.Alias(pobj.Env['UTEST_ALL'], alias_out)
-    pobj._add_alias(pobj.Env['UTEST_ALL'])
-    
-
+    ### here we map a bunch of aliases
+    core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out)
     ## the command action to Run this stuff
     cmd='$UNIT_TEST_RUN_SCRIPT_COMMAND'
-    
-    ## map just this test to run    
     # map top level run alias... first one maps to build based 'base_alias'
-    base_alias=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',base_alias,pobj.Env.Action(cmd))
-    base_alias2=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_SHORT_VERSION}',base_alias)
-    base_alias3=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}'+str(env.PartVersion().major()),base_alias2)
-    base_alias4=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_PARENT_NAME}-${UNIT_TEST_TARGET}',base_alias3)
-    base_alias5=pobj.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_PARENT_ALIAS}',base_alias4)
+    core_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',core_alias,sec.Env.Action(cmd))
+    sec.Env.AlwaysBuild(core_run_alias)
+    #add to queue the delayed mapping of any dependent stuff
+    glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(sec.Env))
     
-    env.AlwaysBuild(base_alias)
-    #env.AlwaysBuild(base_alias2)
-    #env.AlwaysBuild(base_alias3)
-    #env.AlwaysBuild(base_alias4)    
-    env.AlwaysBuild(base_alias5)
+    base_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_alias)
+    base_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_run_alias)
     
-    #run_alias_out=make_run_alias(env2,None,base_alias)
-    run_alias_out=common.make_alias_tree(pobj.Env,'${RUN_UTEST_CONCEPT}',base_alias)
     
-    ## map it to all tests to run
-    a=pobj.Env.Alias(pobj.Env['RUN_UTEST_ALL'], run_alias_out)
-    pobj._add_alias(pobj.Env['RUN_UTEST_ALL'])
+    recurse_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_alias)
+    recurse_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_run_alias)
     
-    ## map the run case to build
-    pobj.Env.AlwaysBuild(a)
-
+    
+    talias=common.map_alias_to_root(sec.Part,'utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
+    talias_run=common.map_alias_to_root(sec.Part,'run_utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
+    
+    
+    #Top level
+    sec.Env.Alias('${BUILD_UTEST_CONCEPT}',talias)
+    sec.Env.Alias('${RUN_UTEST_CONCEPT}',talias_run)
+    
+    parent_obj.DefiningSection=curr_sec
     errors.ResetPartStackFrameInfo()
     return ret
-    
-
+       
+  
 
 
 # This is what we want to be setup in parts
@@ -303,14 +280,14 @@ api.register.add_variable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to ru
 
 api.register.add_variable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
 api.register.add_variable('UNIT_TEST_DIR',
-			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_PARENT_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
+			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
 			'Full directory used for a given unit test run'
 			)
 api.register.add_variable('UNIT_TEST_ENV',
 			{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
 			'Default values add to default environment when running unit tests')
 api.register.add_variable('UNIT_TEST_TARGET_NAME',
-			'${PART_PARENT_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
+			'${PART_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
 			'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
 			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}',

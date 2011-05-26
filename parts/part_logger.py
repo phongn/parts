@@ -228,12 +228,14 @@ class parts_text_logger(object):
         #The lock is needed here to prevent more than one thread creating this file
         # at the same time
         self.m_lock.acquire()
-        if self.m_file == None:
+        if self.m_file is None:
             dr=env.Dir(env.subst("$LOG_PART_DIR")).abspath
             fn=env.subst("$LOG_PART_FILE_NAME")
             if os.path.exists(dr) == False:
                 os.makedirs(dr)
+            self.fname=os.path.join(dr,fn)
             self.m_file=open(os.path.join(dr,fn),"w") 
+            self.m_file.close() # part of quick "to many file handle" fix
         self.m_lock.release()
         
     def Start(self,env,id,cmd):
@@ -259,7 +261,11 @@ class parts_text_logger(object):
                 pass
         s+="Output end   ----------------------------------------------------------------\n"
         s+="return code = "+str(exit_code)+"\n"
+        self.m_lock.acquire()# part of quick "to many file handle" fix
+        self.m_file=open(self.fname,"a+") # part of quick "to many file handle" fix
         self.m_file.write(s)
+        self.m_file.close() # part of quick "to many file handle" fix
+        self.m_lock.release()# part of quick "to many file handle" fix
         del self.cache[id]
                 
     def Out(self,env,id,msg):
@@ -283,7 +289,12 @@ class parts_text_logger(object):
                     # we have some error or unknown code
                     pass
             s+="] (return code = 1)\n"
+            
+            self.m_lock.acquire()# part of quick "to many file handle" fix
+            self.m_file=open(self.fname,"a+") # part of quick "to many file handle" fix
             self.m_file.write(s)
+            self.m_file.close() # part of quick "to many file handle" fix
+            self.m_lock.release()# part of quick "to many file handle" fix
         
         
 api.register.add_variable('PART_SPAWNER',part_spawner,'')        

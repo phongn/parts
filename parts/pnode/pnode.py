@@ -1,6 +1,6 @@
 
 from .. import glb
-
+from .. import errors
 
 class pnode(object):
     """description of class"""  
@@ -13,7 +13,10 @@ class pnode(object):
         try:
             return self.__stored
         except AttributeError:
-            self.__stored=self.LoadStoredInfo()
+            try:
+                self.__stored=self.LoadStoredInfo()
+            except errors.LoadStoredError:
+                self.__stored=None
         return self.__stored
     
     

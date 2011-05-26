@@ -163,8 +163,8 @@ class version(object):
         if m.group(2):
             # second will be a possible special string
             part = VersionPart(m.group(2))
-            if self.weights.has_key(m.group(2)):
-                part.weight = self.weights[m.group(2)]
+            if self.weights.has_key(m.group(2).lower()):
+                part.weight = self.weights[m.group(2).lower()]
                 
             ret.append(part)
             

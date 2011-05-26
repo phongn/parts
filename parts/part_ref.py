@@ -2,9 +2,9 @@ import glb
 import common
 import version
 
-class part_ref(object):
-    """description of class"""
 
+class stored_part_ref(object):
+    """description of class"""
     def __init__(self,target,local_space=None):
         self.__local_space=local_space
         self.__target=target
@@ -21,6 +21,40 @@ class part_ref(object):
                 self.__local_space
             )
         return self.__matches
+        
+
+class part_ref(object):
+    """description of class"""
+
+    def __init__(self,target,local_space=None):
+        self.__local_space=local_space
+        self.__target=target
+        self.__matches=None
+        
+    @property
+    def Matches(self):
+        #returns all matches we have for this referance
+        if self.__matches:
+            return self.__matches
+        
+        self.__matches=list(glb.engine._part_manager._from_target(
+                self.__target,
+                self.__local_space
+            ))
+        return self.__matches
+    
+    @property
+    def StoredMatches(self):
+        
+        try:
+            return self.__stored_matches
+        except AttributeError:
+            self.__stored_matches=glb.engine._part_manager._from_target(
+                    self.__target,
+                    self.__local_space,
+                    use_stored_info=True
+                )
+        return self.__stored_matches
     
     def __call__(self):
         return self.Matches
@@ -48,7 +82,7 @@ class part_ref(object):
     def TargetStr(self):
         ret=''
         properties=''
-        for k,v in self.Target.properties.iteritems():
+        for k,v in self.Target.Properties.iteritems():
             if k == 'version':
                 if common.is_string(v):
                     v=version.version_range(v+'.*')
@@ -67,16 +101,16 @@ class part_ref(object):
             properties+=stmp
         if properties != '':
             properties= properties[:-1]
-        if self.Target.name is not None and self.Target.concept is not None:
-            ts='with Alias of {0} and Section {1}'.format(self.Target.name,self.Target.concept)
-        elif self.Target.name is not None:
-            ts='with Name of {0}'.format(self.Target.name)
-        elif self.Target.alias is not None and self.Target.concept is not None:
-            ts='with Alias of {0} and Section {1}'.format(self.Target.alias,self.Target.concept)
-        elif self.Target.alias is not None :
-            ts='with Alias of {0}'.format(self.Target.alias)
-        elif self.Target.concept is not None:
-            ts='with concept {0}'.format(self.Target.concept)
+        if self.Target.Name is not None and self.Target.Concept is not None:
+            ts='with Alias of {0} and Section {1}'.format(self.Target.Name,self.Target.Concept)
+        elif self.Target.Name is not None:
+            ts='with Name of {0}'.format(self.Target.Name)
+        elif self.Target.Alias is not None and self.Target.Concept is not None:
+            ts='with Alias of {0} and Section {1}'.format(self.Target.Alias,self.Target.Concept)
+        elif self.Target.Alias is not None :
+            ts='with Alias of {0}'.format(self.Target.Alias)
+        elif self.Target.Concept is not None:
+            ts='with concept {0}'.format(self.Target.Concept)
         else:
             ts='Bad Target'
                 
@@ -90,7 +124,7 @@ class part_ref(object):
         for pobj in self.Matches:
             matches+=" Part Alias: {0}\n   Name: {1}\n".format(pobj.Alias,pobj.Name)
             stmp=''
-            for k,v in self.Target.properties.iteritems():
+            for k,v in self.Target.Properties.iteritems():
                 if k == 'version':
                     if common.is_string(v):
                         v=version.version_range(v+'.*')

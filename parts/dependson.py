@@ -15,7 +15,7 @@ from requirement import REQ
 import SCons.Script 
 
     
-def Component(env,name,version_range=None,requires=REQ.DEFAULT):
+def Component(env,name,version_range=None,requires=REQ.DEFAULT,section="build"):
     
     # fix up the name string 
     if name.startswith("name::") == False:
@@ -36,17 +36,17 @@ def Component(env,name,version_range=None,requires=REQ.DEFAULT):
         version_range=version.version_range(version_range)
     # set the version value    
     if version_range:
-        t.properties['version']=version_range
-    elif t.properties.has_key('version') == False:
-        t.properties['version']='*'
+        t.Properties['version']=version_range
+    elif t.Properties.has_key('version') == False:
+        t.Properties['version']='*'
     # set the target version value
-    if t.properties.has_key('target') == False: #['target','target-platform','target_platform']
-        t.properties['platform_match']=env['TARGET_PLATFORM']
+    if t.Properties.has_key('target') == False: #['target','target-platform','target_platform']
+        t.Properties['platform_match']=env['TARGET_PLATFORM']
     ##section data
     #if section is None:
     #    section=pobj.DefiningSection
             
-    return dependent_ref.dependent_ref(part_ref.part_ref(t,localspace),'build',requires)
+    return dependent_ref.dependent_ref(part_ref.part_ref(t,localspace),section,requires)
 
 class ComponentEnv(object):
     def __init__(self,env):
@@ -65,6 +65,13 @@ def depends_on_classic(env,depends):
     pobj=glb.engine._part_manager._from_env(env)
     if pobj is None:
         return
+    
+    # check to see if we need to some funky preloads as we map the dependancy values
+    # this is needed to help case of Parts files changes that might have added
+    # new dependancy values. We let the loader deal with the issues.
+    # the dependancy mapping logic for the classic case stays unchanged
+    glb.engine._part_manager.Loader.process_depends(depends)
+    
     api.output.verbose_msg('dependson', "Mapping data to Part",pobj.Name)
     # depends that get passed on
     if common.is_list(depends) ==False:
@@ -72,18 +79,18 @@ def depends_on_classic(env,depends):
     
     for comp in depends:
         # quick error check
-        if pobj.Name==comp.PartRef.Target.name:
+        if pobj.Name==comp.PartRef.Target.Name and pobj.DefiningSection.Name==comp.SectionName:
             api.output.warning_msg("Part depends on with itself")
             api.output.print_msg("Skipping the definition of dependence to SCons")            
             continue
-        api.output.verbose_msg('dependson'," Component",comp.PartRef.Target.name)
+        api.output.verbose_msg('dependson'," Component",comp.PartRef.Target.Name)
         import_map={}
         
         for r in comp.Requires:
             ## import logic
             # always map to namespace
             ## split the name so we can make an sub spaces            
-            tmp=comp.PartRef.Target.name.split('.')
+            tmp=comp.PartRef.Target.Name.split('.')
             # get the space in the environment
             try:
                 tmpspace=env['DEPENDS']
