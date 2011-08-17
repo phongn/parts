@@ -1,0 +1,18 @@
+import os
+import sys
+sys.path = [os.path.realpath(os.path.normpath('../..'))] + sys.path
+os.environ['APPDATA'] = os.path.realpath(os.path.normpath('../../'))
+
+from parts import *
+
+LocalSetup()
+SetOptionDefault('LOGGER', '$TEXT_LOGGER')
+
+Part(
+    alias = 'hello_wdk',
+    parts_file = 'hello.parts',
+    toolchain = 'wdk'
+)
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

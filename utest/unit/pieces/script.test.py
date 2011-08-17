@@ -9,10 +9,13 @@ import SCons.Script
 import sys
 is_win32=False
 is_linux=False
+is_darwin=False
 if sys.platform == 'win32':
     is_win32=True
 elif sys.platform.startswith('linux'):
     is_linux=True
+elif sys.platform == 'darwin':
+    is_darwin=True
 
 #### tests for Finder objects
 
@@ -49,7 +52,7 @@ class TestMergeScript(unittest.TestCase):
             expectedOutput.append(r'LIBPATH=C:\Windows\someplace;')
             for expectedOutputItem in expectedOutput:
                 self.assertNotEqual(output.find(expectedOutputItem), -1)
-    elif is_linux:
+    elif is_linux or is_darwin:
         def test_get_output(self):
             output = get_output(os.path.join('testdata', 'testvars.sh'), args = 'dummy_arg1 dummy_arg2', shellenv = self.env['ENV'])
             #print 'output=' + str(output)
@@ -130,7 +133,7 @@ key8 == var8
             self.assertEqual( cenv['ENV'].get('LIB', None), r'C:\Windows\someplace;C:\Program Files (x86)\joe\myinclude\LIB;C:\foo\lib')
             self.assertEqual( cenv['ENV'].get('LIBPATH', None), r'C:\Windows\someplace')
 
-    elif is_linux:
+    elif is_linux or is_darwin:
         def test_get_script_env(self):
             r = get_script_env(self.env,'testdata/testvars.sh',vars=['INCLUDE'])
             self.assertEqual(len(r),1)

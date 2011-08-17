@@ -150,6 +150,7 @@
     <None Include="pieces\ccopy.py" />
     <None Include="pieces\doxygen.py" />
     <None Include="pieces\encode.py" />
+    <None Include="pieces\extract.py" />
     <None Include="pieces\merge_script.py" />
     <None Include="pieces\part_name.py" />
     <None Include="pieces\part_version.py" />
@@ -205,6 +206,7 @@
     <None Include="tools\GnuCommon\gxx.py" />
     <None Include="tools\GnuCommon\perl.py" />
     <None Include="tools\GnuCommon\__init__.py" />
+    <None Include="tools\gnulink.py" />
     <None Include="tools\install.py" />
     <None Include="tools\intelc.py" />
     <None Include="tools\IntelCommon\common.py" />
@@ -215,7 +217,6 @@
     <None Include="tools\IntelCommon\intelc_win32_91.py" />
     <None Include="tools\IntelCommon\regscanner.py" />
     <None Include="tools\IntelCommon\__init__.py" />
-    <None Include="tools\link.py" />
     <None Include="tools\masm.py" />
     <None Include="tools\midl.py" />
     <None Include="tools\MSCommon\common.py" />

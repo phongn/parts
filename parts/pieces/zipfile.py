@@ -6,26 +6,28 @@ import parts.api as api
 
 
 def zip(target, source, env):
-        zf = zipfile.ZipFile(str(target[0]), 'w',zipfile.ZIP_DEFLATED)
-        for s in source:
-            tmp=s.path
-            root_dir=env.get('src_dir',None)
-            if root_dir is not None:
-                root_dir=env.Dir(env.subst(root_dir)).path
-                t=tmp[len(root_dir):]
+    zf = zipfile.ZipFile(str(target[0]), 'w',zipfile.ZIP_DEFLATED)
+    bd=env.Dir(env.subst('$BUILD_DIR')).abspath
+    sd=env.Dir(env.subst('$SRC_DIR')).abspath
+    root_dir=env.get('src_dir',None)    
+    if root_dir:
+        root_dir=env.Dir('$SRC_DIR').Dir(env.subst(root_dir)).abspath
+    for s in source:
+        tmp=s.abspath
+        if root_dir:
+            t=tmp[len(root_dir):]
+            zf.write(tmp,t)
+        else:
+                
+            if tmp.startswith(bd):
+                t=tmp[len(bd):]
+                zf.write(tmp,t)
+            elif tmp.startswith(sd):
+                t=tmp[len(sd):]
                 zf.write(tmp,t)
             else:
-                bd=env.Dir(env.subst('$BUILD_DIR')).path
-                sd=env.Dir(env.subst('$SRC_DIR')).path
-                if tmp.startswith(bd):
-                    t=tmp[len(bd):]
-                    zf.write(tmp,t)
-                elif tmp.startswith(sd):
-                    t=tmp[len(sd):]
-                    zf.write(tmp,t)
-                else:
-                    zf.write(tmp)
-        zf.close()
+                zf.write(tmp)
+    zf.close()
 
 
 ZipAction = SCons.Action.Action(zip)

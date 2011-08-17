@@ -31,7 +31,7 @@ def get_output(script, args = None, shellenv = None):
     if sys.platform == 'win32':
         cmdLine = '"%s" %s & set' % (script, (args if args else ''))
         shell = False
-    elif sys.platform.startswith('linux'):
+    elif sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
         cmdLine = 'source "%s" %s ; set' % (script, (args if args else ''))
         shell = True
     else:

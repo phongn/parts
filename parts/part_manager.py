@@ -275,6 +275,84 @@ class direct_depends_loader(base): #task_master type
                 self.pmgr.LoadPart(pobj)
         return False        
 
+
+class no_depends_loader(base): #task_master type
+    '''
+    This loads all target Parts files, and assume all dependants are up to date, loading them from cache
+    '''
+    def __init__(self,targets,pmanager):
+        # set of sections to build 
+        #.. assume nodes are filtered out if ther did not expand to a section
+        self.sections=targets 
+        self.pmgr=pmanager
+        
+        
+        
+    @property
+    def hasStored(self):
+        return self.pmgr.hasStored
+    
+    @hasStored.setter
+    def hasStored(self,value):
+        if value==False:
+            raise errors.LoadStoredError
+             
+    def next_task(self):
+        t = self.__tasks[self.__i]
+        if t is not None:
+            self.__i += 1
+        return t
+    
+    def stop(self):
+        self.__stopped=True
+        self.__i= -1
+    
+    @property
+    def Stopped(self):
+        return self.__stopped
+        
+    def cleanup(self):
+        pass
+        
+    def _has_tasks(self):
+        return self.__tasks != []
+        
+    def DefineTasksList(self):
+        
+        pass
+            
+    
+    def __call__(self): 
+        
+        sec_to_load=[]
+        # loop for each section
+        for sec in self.sections:
+            # get the stored info
+            stored_data=sec.Stored
+            if stored_data is None:
+                #return False to signal there was a cache issue
+                self.hasStored=False
+                
+            # set read state for this section            
+            sec.ReadState=glb.read_load
+            
+            #for each of the dependents we need to set the depends as cache load                       
+            for dep in stored_data.dependson:
+                dsec=dep['Section']
+                dsec.ReadState=glb.read_cache
+                self.pmgr.LoadSection(dsec)
+                if dsec not in sec_to_load:                
+                    sec_to_load.append(dsec)
+
+            if sec not in sec_to_load:                
+                sec_to_load.append(sec)
+            
+            
+        for sec in sec_to_load:
+            self.pmgr.LoadSection(sec)
+            
+        return False       
+
 class section_changed_loader(base): #task_master type
     '''
     figures our what we need load. basic logic is to test the dependents first
@@ -1257,7 +1335,8 @@ class part_manager(object):
                     loader=section_changed_loader(sections_to_process,self)
                 
                 elif policy=='case3':
-                    pass # fill in
+                    # load only the sections assume everything is up to date
+                    loader=no_depends_loader(sections_to_process,self)
                     
                 elif policy =='all':
                     # load everything
@@ -1486,7 +1565,6 @@ class part_manager(object):
         name=target.Name
         tmp=set()
         full_set=set()
-              
         if local_space:
             for pobj in local_space:
                 # if we have a match in the local space it has to match, or fail
@@ -1573,7 +1651,11 @@ class part_manager(object):
         
         for k,v in tobj.Properties.iteritems():
             for pobj in part_lst.copy():
-                if k == 'version':
+                if pobj.Stored is None:
+                    #We have no stored info. skip test 
+                    #(ie load it as it might be needed)
+                    pass
+                elif k == 'version':
                     if common.is_string(v):
                         v=version.version_range(v+'.*')
                     if pobj.Stored.version not in v:
@@ -1604,40 +1686,56 @@ class part_manager(object):
     
     def reduce_list_from_target(self,tobj,part_lst):
         
+        api.output.verbose_msg("reduce_target_mapping","Reducing list of parts based on target {0}".format(tobj))
         for k,v in tobj.Properties.iteritems():    
             for pobj in part_lst.copy():
+                api.output.verbose_msg("reduce_target_mapping"," Testing Part {0}".format(pobj.ID))
                 if k == 'version':
+                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Version))
                     if common.is_string(v):
                         v=version.version_range(v+'.*')
                     if pobj.Version not in v:
+                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['target','target-platform','target_platform']:
+                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Env['TARGET_PLATFORM']))
                     if pobj.Env['TARGET_PLATFORM'] != v:
+                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['platform_match']:
+                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}".format(k,v,pobj.PlatformMatch,type(v),type(pobj.PlatformMatch)))
                     if pobj.PlatformMatch != v:
+                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
+                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1}".format(k,v))
                     if not pobj.Env.isConfigBasedOn(v):
+                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
+                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj._mode))
                     for v in mv:
                         if v not in pobj._mode:
+                            api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                             part_lst.remove(pobj)
                             break
                 else:
                     #look up in the parts environment
                     try:
+                        api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Env[k]))
                         if common.is_list(pobj.Env[k]):
                             mv=v.split(',')
                             for v in mv:
-                                if v not in pobj._mode:
+                                if v not in pobj.Env[k]:
+                                    api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                                     part_lst.remove(pobj)
                                     break
                         elif pobj.Env[k] != v:
                             part_lst.remove(pobj)
+                            api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                     except KeyError:
+                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
         return part_lst
                 

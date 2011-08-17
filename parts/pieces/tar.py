@@ -3,30 +3,40 @@ import SCons.Script
 import parts.api as api
 
 def tar(target, source, env, type):
-        zf = tarfile.open(str(target[0]), type)
-        for s in source:
-            tmp=s.path
-            root_dir=env.get('src_dir',None)
-            if root_dir is not None:
-                root_dir=env.Dir(env.subst(root_dir)).path
-                t=tmp[len(root_dir):]
+            
+    # this code makes a seperate File handle directly
+    # as it was discovered that the tarfile logic will add the subdirectories
+    # to the current directory for the main archive as a "feature"
+    # this mean the build/variant directory will show up
+    fobj=open(str(target[0]),'wb')
+    #By doing it this way remove this extra data so it does not show up
+    # Note this is more of an issue for windows than linux, as classic linux
+    # tools will not show the extra data.
+    zf = tarfile.open(name=os.path.split(target[0].path)[1],fileobj=fobj,mode=type)
+    bd=env.Dir(env.subst('$BUILD_DIR')).abspath
+    sd=env.Dir(env.subst('$SRC_DIR')).abspath
+    root_dir=env.get('src_dir',None)
+    if root_dir is not None:
+        root_dir=env.Dir('$SRC_DIR').Dir(env.subst(root_dir)).abspath
+    for s in source:
+        tmp=s.abspath
+        if root_dir is not None:
+            t=tmp[len(root_dir):]
+            zf.add(tmp,t)
+        else:
+            if tmp.startswith(bd):
+                t=tmp[len(bd):]
+                zf.add(tmp,t)
+            elif tmp.startswith(sd):
+                t=tmp[len(sd):]
                 zf.add(tmp,t)
             else:
-                bd=env.Dir(env.subst('$BUILD_DIR')).path
-                sd=env.Dir(env.subst('$SRC_DIR')).path
-                if tmp.startswith(bd):
-                    t=tmp[len(bd):]
-                    zf.add(tmp,t)
-                elif tmp.startswith(sd):
-                    t=tmp[len(sd):]
-                    zf.add(tmp,t)
-                else:
-                    zf.add(tmp)
-        zf.close()
-    
-        #tar=tarfile.open(source,'r')
-        #tar.extractall(destination)
-        #tar.close()
+                zf.add(tmp)
+    zf.close()
+    fobj.close()
+    #tar=tarfile.open(source,'r')
+    #tar.extractall(destination)
+    #tar.close()
 
 
 TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w') )

@@ -21,7 +21,7 @@ def get_site_directories(subdir):
         if glb._host_sys is None:
             print "host_os bootstrap bug"
             1/0
-        host_os=glb._host_sys#SCons.Script.DefaultEnvironment()['PLATFORM'] # can't user HOST_OS because of bootstrap issue.
+        host_os=glb._host_sys # can't use HOST_OS because of bootstrap issue.
         syspath=[]
         localpath=[]
         # local data
@@ -49,8 +49,8 @@ def get_site_directories(subdir):
         
         sitepaths=[
             #current directory parts_site or user pointed site
-            os.path.join('.','parts-site',subdir),
-            os.path.join('.','.parts-site',subdir)
+            os.path.abspath(os.path.join('.','parts-site',subdir)),
+            os.path.abspath(os.path.join('.','.parts-site',subdir))
             #homedir/.parts-site
             ]+localpath+syspath+[
             # parts install

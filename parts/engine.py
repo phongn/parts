@@ -293,6 +293,11 @@ class parts_addon(object):
         api.output.verbose_msg("init","Registering exit handler")
         atexit.register(self.ShutDown)
         
+        # this is a hack to get around an issue with stuff like the extract builder that would create
+        # a a.sconsign.dblite file in the wrong directorty as a side effect of the variant direct change of 
+        # the CWD bug in SCons
+        self.def_env.File(get_Sconstruct_files()[0]).get_csig()
+        
         
                 
     def ShutDown(self):

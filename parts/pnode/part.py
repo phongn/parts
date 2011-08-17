@@ -1350,7 +1350,7 @@ class part(pnode.pnode):
             self._set_name(info.short_name)
         self.Version=version.version(info.version)
         
-        self.__platform_match=info.platform_match # should be handled by _setup_
+        self.__platform_match=platform_info.SystemPlatform(info.platform_match) # should be handled by _setup_
         self.__package_group=info.package_group # should be handled by _setup_
         self.__mode=info.mode #?? # should be handled by _setup_
         

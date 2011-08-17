@@ -6,11 +6,140 @@ from parts.platform_info import SystemPlatform
 import os
 
 
+# 32-bit 12.1
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
+    info=[
+        IntelcInfo(
+            version='12.1.*,2011.6.*-2011.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_12_1_posix,
+                'ia32',
+                'ICPP_COMPILER12'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
+    
+# 64-bit 12.1
+Intelc.Register(
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    info=[
+        IntelcInfo(
+            version='12.1.*,2011.6.*-2011.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_12_1_posix,
+                'intel64',
+                'ICPP_COMPILER12'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64'                     
+                        },
+            test_file='icc'
+            )
+        ]
+    )
+
+# 32-bit 12.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
+    info=[
+        IntelcInfo(
+            version='12.0.*,2011.0.*-2011.5.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_12_posix,
+                'ia32',
+                'ICPP_COMPILER12'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
+    
+# 64-bit 12.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    info=[
+        IntelcInfo(
+            version='12.0.*,2011.0.*-2011.5.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_12_posix,
+                'intel64',
+                'ICPP_COMPILER12'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64'                     
+                        },
+            test_file='icc'
+            )
+        ]
+    )
+##    
+### 64-bit 12.0
+##Intelc.Register(
+##    hosts=[SystemPlatform('posix','x86')],
+##    targets=[SystemPlatform('posix','x86_64')],
+##    info=[
+##        IntelcInfo(
+##            version='11.*',
+##            install_scanner=filescanner.file_scanner12(
+##                '/opt/intel',
+##                common.intel_12_posix,
+##                'intel64',
+##                'ICPP_COMPILER12'),
+##            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/IA32_Intel64/intel64.sh'),
+##            subst_vars={
+##            
+##            },
+##            shell_vars={
+##                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+##                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+##                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64'                     
+##                        },
+##            test_file='icc'
+##            )
+##        ]
+##    )
 
 # 32-bit 11.1 
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','x86')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -36,8 +165,8 @@ Intelc.Register(
     
 # 64-bit 11.1
 Intelc.Register(
-    hosts=[SystemPlatform('posix','x86_64')],
-    targets=[SystemPlatform('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
             version='11.*',
@@ -92,8 +221,8 @@ Intelc.Register(
 
 # 32-bit 10.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','any')],
-    targets=[SystemPlatform('posix','x86')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -118,8 +247,8 @@ Intelc.Register(
     
 # 64-bit 10.x
 Intelc.Register(
-    hosts=[SystemPlatform('posix','x86_64')],
-    targets=[SystemPlatform('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
             version='10.*',
@@ -170,8 +299,8 @@ Intelc.Register(
 
 # 9.x 64-bit    
 Intelc.Register(
-     hosts=[SystemPlatform('posix','x86_64')],
-     targets=[SystemPlatform('posix','x86_64')],
+     hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+     targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
      info=[
          IntelcInfo(
              version='9.*',
@@ -196,8 +325,8 @@ Intelc.Register(
 
 #9.x 32-bit
 Intelc.Register(
-     hosts=[SystemPlatform('posix','any')],
-     targets=[SystemPlatform('posix','x86')],
+     hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+     targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
      info=[
          IntelcInfo(
              version='9.*',

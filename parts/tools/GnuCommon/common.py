@@ -44,7 +44,7 @@ class GnuInfo(ToolInfo):
     def get_default_ver(self,path):
         fullpath=path
         if os.path.isfile(fullpath):
-            #is so get its version
+            #this is to get the version number
             pipe = subprocess.Popen(fullpath+' --version',
                                  shell=True,
                                  #stdin = 'devnull',

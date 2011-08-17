@@ -43,7 +43,7 @@ perl.Register(
 )
 
 perl.Register(
-    hosts=[SystemPlatform('posix','any')],
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
     targets=[SystemPlatform('any','any')],
     info=[
     GnuInfo(
@@ -51,8 +51,6 @@ perl.Register(
             PathFinder(['/usr/bin'])
             ],
         opt_dirs=[
-            '/opt/',
-            #'/opt/ActiveState',
             ],
         script=None,
         subst_vars={},

@@ -162,7 +162,15 @@ def _part_isUpToDate(self):
                     i.disambiguate()
                     
                     if isinstance(i,SCons.Node.FS.Base):
+                        
+                        st_info=i.get_stored_info()
+                        #Scons is  not storing information on source node
+                        # this tends to be an issue with Directories used as sources
+                        if st_info is None and isinstance(i,SCons.Node.FS.Dir):
+                            # we skip this at the moment
+                            continue
                         nbinfo=i.get_stored_info().binfo
+                            
                         if not os.path.exists(i.path) and not os.path.exists(i.srcnode().path) and \
                             nbinfo.bsourcesigs == [] and \
                             nbinfo.bdependsigs == [] and \
@@ -299,12 +307,15 @@ File.visited=parts_visited
 #Dir.visited=parts_visited
 
 def part_stat(self):
+    ''' 
+    This function replaces the built in SCons stat function to allow me an ability to deal with Symlinks better
+    This function is set after the init call of the Node to work around an ugly issue.
+    '''
     try: 
         return self._memo['stat']
     except KeyError: 
         try:
-            # for some reason I have not figured out yet.. this blows the stack when we are doing a "clean" run. 
-            # The Stored data can get stuck in a bad loop that keeps trying to load itself, for certain nodes.
+                
             if glb.engine._build_mode=='build' and (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
                 result = os.lstat(self.abspath)
             else:
@@ -314,7 +325,7 @@ def part_stat(self):
         self._memo['stat'] = result
     return result
 
-FSBase.stat=part_stat
+FSBase.pstat=part_stat
 
 #############################################
 ## these are pnode addition
@@ -346,6 +357,12 @@ def _my_init(self,name, directory, fs):
     self.orig_init(name, directory, fs)
     # may not be the best way.. but works for the moment
     glb.pnodes.AddNodeToKnown(self)
+    self.stat=self.pstat
+    # just in case the state was set we want to remove it and force it to be recached
+    try :
+        del self._memo['stat']
+    except:
+        pass
 
 SCons.Node.FS.Base.orig_init=SCons.Node.FS.Base.__init__
 SCons.Node.FS.Base.__init__=_my_init
@@ -436,27 +453,33 @@ SCons.Node.Node.GenerateStoredInfo=GenerateStoredInfo
 
 # these are "factories" to allow Parts to recreate the Node from cache latter.
 
+def Scons_fsnode_factory(func,ID=None,*lst,**kw):
+    if ID:
+        return func(ID,'#')
+    else:
+        return func(ID,*lst,**kw)
+
 def Scons_node_factory(func,ID=None,*lst,**kw):
     if ID:
         return func(ID)
     else:
-        return func(*lst,**kw)
+        return func(ID,*lst,**kw)
     
 def Scons_alias_node_factory(func,ID=None,*lst,**kw):
 
     if ID:
         tmp=func(ID)[0]
     else:
-        tmp=func(*lst,**kw)[0]
+        tmp=func(ID,*lst,**kw)[0]
     #binfo=glb.pnodes.GetAliasStoredInfo(tmp.ID)
     #if binfo:
         #tmp._memo['get_stored_info']=wrapper(binfo)
     
     return tmp
 
-pnode_manager.manager.RegisterNodeType(File, lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Dir,  lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().Dir,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Entry,lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().Entry,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(File, lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Dir,  lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Dir,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Entry,lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Entry,*lst,**kw))
 pnode_manager.manager.RegisterNodeType(Value,lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().Value,*lst,**kw))
 pnode_manager.manager.RegisterNodeType(Alias,lambda x,*lst,**kw: Scons_alias_node_factory(SCons.Script.DefaultEnvironment().Alias,*lst,**kw))
 
