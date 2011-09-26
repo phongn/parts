@@ -188,13 +188,14 @@ def _part_isUpToDate(self):
                                 i=n
                 else:
                     i=k     
-                    #try:
-                    j=k.get_stored_info().ninfo
-                    #except AttributeError:
-                        #if isinstance(k,Alias):
-                         #binfo=glb.pnodes.GetAliasStoredInfo(k.ID)
-                            #if binfo:
-                               # tmp._memo['get_stored_info']=wrapper(binfo)
+                    try:
+                        j=k.get_stored_info().ninfo
+                    except AttributeError:
+                        if isinstance(k,Alias):
+                            binfo=glb.pnodes.GetAliasStoredInfo(k.ID)
+                            if binfo:
+                                k._memo['get_stored_info']=wrapper(binfo)
+                            j=k.get_stored_info().ninfo
                         
                         
                 nodelist.append((i,j))

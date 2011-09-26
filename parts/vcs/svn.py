@@ -2,9 +2,9 @@
 from .. import common
 from .. import datacache
 from .. import api
-from base import base
+from base import base,removeall
 
-import os
+import os,re
 
 class svn(base):
     ''' This is the implmentation of the vcs SVN logic'''
@@ -55,27 +55,52 @@ class svn(base):
          command is the more correct option in this case than the update command!
          '''
         
+        cmd1= '"{0}" revert "{1}"'.format(svn.svnpath,out_dir)
+        strval1= '{0} revert "{1}"'.format('svn',out_dir)
+        clean_actions=[
+            self._env.Action(lambda target, source, env: self.remove_unversioned(out_dir),"Removing unversioned SVN files in {0}".format(out_dir)),
+            self._env.Action(cmd1,strval1)
+            ]
+        
         #if the server is different we need to relocate
         update_path=self.FullPath
         
-        if self.get_svn_data()['root'] != self.Server:
+        if self.get_svn_data()['root'] != self.Server and self.get_svn_data()['root'] is not None:
             strval1 ='%s switch --relocate $SVN_FLAGS %s %s "%s"'%('svn',self.get_svn_data()['root'],self.Server,out_dir)
             strval2 ='%s switch $SVN_FLAGS %s%s "%s"'%('svn',update_path,self.Revision,out_dir)
             
             cmd1= '"%s" switch --relocate $SVN_FLAGS %s %s "%s"'%(svn.svnpath,self.get_svn_data()['root'],self.Server,out_dir)
-            cmd2= '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)
-            return [self._env.Action(cmd1,strval1),self._env.Action(cmd2,strval2)]
+            cmd2= '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)        
+            ret = [self._env.Action(cmd1,strval1),self._env.Action(cmd2,strval2)]
+            if self._env.GetOption('vcs_clean') == True: 
+                ret = clean_actions + ret
+        # this happens when we switch repro types ( should do better fix for this..)
+        # what happens is that there is no SVN info to get and a possible directory
+        elif self.get_svn_data()['root'] is None:
+            ret=[self._env.Action(lambda target, source, env: removeall(out_dir),"Cleaning up checkout area for {0}".format(out_dir))]+self.CheckOutAction(out_dir)
         else:
             strval = '%s switch $SVN_FLAGS %s%s "%s"'%('svn',update_path,self.Revision,out_dir)
-            cmd = '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)
-        return self._env.Action(cmd,strval)
+            cmd = '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)            
+            ret = [self._env.Action(cmd,strval)]
+            if self._env.GetOption('vcs_clean') == True: 
+                ret = clean_actions + ret
+        
+        return ret
         
     def CheckOutAction(self,out_dir):
         ''' returns the action to do the checkout'''
         strval = '%s checkout $SVN_FLAGS %s%s "%s"'%('svn',self.FullPath,self.Revision,out_dir)
         cmd = '"%s" checkout $SVN_FLAGS %s%s "%s"'%(svn.svnpath,self.FullPath,self.Revision,out_dir)
-        return self._env.Action(cmd,strval)
-        
+        return [self._env.Action(cmd,strval)]
+    
+    def remove_unversioned(self,path):    
+        unver_re = re.compile('^ ?[\?ID] *[1-9 ]*[a-zA-Z]* +(.*)')
+        lines=self.command_output('svn status --no-ignore -v {0}'.format(path)).split('\n')
+        for i in lines:
+            tmp=unver_re.match(i)
+            if tmp: 
+                removeall(tmp.group(1))
+    
     def clean_step(self,out_dir):
         ''' since svn tends to checkout the .svn meta data area as readonly
         it turns out that we can't clean the checked out code correctly as 
@@ -85,7 +110,7 @@ class svn(base):
         
         import stat
         # small Hack to turn off SVN read only access so we can delete
-        # the mess via clean
+        # the mess via -clean
         for root, dirs, files in os.walk(out_dir, topdown=False):
             for f in files:
                 source=os.path.join(root, f)

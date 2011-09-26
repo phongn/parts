@@ -775,8 +775,8 @@ class parts_addon(object):
         api.output.trace_msg("logger_option","logger =",SCons.Script.GetOption('logger'))
         api.output.trace_msg("show_progress_option","show_progress =",SCons.Script.GetOption('show_progress'))
         api.output.trace_msg("parts_cache_option","parts_cache =",SCons.Script.GetOption('parts_cache'))
-        api.output.trace_msg("incremental_cache_option","incremental_cache =",SCons.Script.GetOption('incremental_cache'))
-        api.output.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
+        #api.output.trace_msg("incremental_cache_option","incremental_cache =",SCons.Script.GetOption('incremental_cache'))
+        #api.output.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
         api.output.trace_msg("vcs_jobs_option","vcs_jobs =",SCons.Script.GetOption('vcs_jobs'))
         api.output.trace_msg("update_option","update =",SCons.Script.GetOption('update'))
         
@@ -1027,9 +1027,12 @@ Use -H or --help-options for a list of scons options
     
     @def_env.setter
     def def_env(self,value):
+        cache_path=None
+        if self.__def_env:
+            cache_path=self.__def_env._CacheDir_path
         self.__def_env=SCons.Defaults._default_env=value
         # do some tweak that we seem to need for default environments
-        self.__def_env._CacheDir_path=None
+        self.__def_env._CacheDir_path=cache_path
         #This is backward compatibility for Parts
         self.__def_env['PREPROCESS_LOGIC_QUEUE']=self.__post_process_queue
         

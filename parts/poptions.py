@@ -266,6 +266,21 @@ SCons.Script.AddOption("--log",
             type='string',
             action='callback',
             help='True to use default logger, else name of logger to use')
+            
+SCons.Script.AddOption("--use-part-site",
+            dest='use_part_site',
+            default=None,
+            nargs=1, 
+            type='string',
+            action='store',
+            #metavar='DIR',
+            help='User provided part-site path. Overides all default location.')
+            
+SCons.Script.AddOption("--disable-global-part-site",
+            dest='global_part_site',
+            default=True,
+            action="store_false",
+            help='Disable Parts from using the part-site location in the system or user areas.')
 
 SCons.Script.AddOption("--build-config","--buildconfig","--bldcfg","--bcfg","--cfg",
             dest='build_config',
@@ -327,24 +342,6 @@ SCons.Script.AddOption("--disable-parts-cache",
             action="store_false",
             help='Disable Parts data cache from being used')
                         
-SCons.Script.AddOption("--disable-incremental-cache","--disable-inc-cache", 
-            dest="incremental_cache",
-            default=True,
-            action="store_false",
-            help='Disable Parts fast incremental logic')
-
-SCons.Script.AddOption("--disable-incremental-dependent-checks",
-            dest="incremental_dependent_checks",
-            default=True,
-            action="store_false",
-            help='Assume the dependents are up-to-date. Skipping update checks on dependents. May result in corrupt build!!!')
-            
-SCons.Script.AddOption("--disable-early-exit",
-            dest="early_exit",
-            default=True,
-            action="store_false",
-            help='Enable Parts to exit early if the update checks return True, forcing SCons longer (but possibily more correct) checks to happen')            
-
 SCons.Script.AddOption("--load-logic","--ll",
             dest='load_logic',
             default='all',
@@ -415,7 +412,16 @@ SCons.Script.AddOption("--enable-vcs-clean","--vcs-clean",
             callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'vcs_clean'),
             type='string',
             action='callback',
-            help='Controls is VCS update should ensure a clean, unmodifed, factory defaults update.')
+            help='Controls if VCS update should ensure a clean, unmodifed, factory defaults update.')
+
+SCons.Script.AddOption("--enable-vcs-retry","--vcs-retry",
+            dest='vcs_retry',            
+            default=False,
+            nargs='?',
+            callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'vcs_retry'),
+            type='string',
+            action='callback',
+            help='Controls if an failure with a VCS update or checkout is allow to retry the update by removing the existing code')
             
 SCons.Script.AddOption("--vcs-logic",
             dest='vcs_logic',

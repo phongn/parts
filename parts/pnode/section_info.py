@@ -10,7 +10,7 @@ class section_info(stored_info.stored_info):
         self.esigs={}
         self.dependson=[]
         self.exported_requirements=set()
-        self.force_load=False
+        self.user_env_diff={}
         #self.build_context=[]
         #self.config_context=[]
         

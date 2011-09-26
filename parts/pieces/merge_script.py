@@ -5,7 +5,7 @@ import copy
 import re
 import sys
 
-def normalize_env(shellenv, keys):
+def normalize_env(shellenv=None, keys=None):
     """Given a dictionary representing a shell environment, add the variables
     from os.environ needed for the processing of .bat files; the keys are
     controlled by the keys argument.
@@ -14,14 +14,21 @@ def normalize_env(shellenv, keys):
 
     Note: the environment is copied"""
     normenv = {}
+    # copy the shell env
     if shellenv:
-        if sys.platform=='win32':
-            for k in shellenv.keys():
-                normenv[k] = copy.deepcopy(shellenv[k]).encode('mbcs')
-
+        normenv.update(shellenv)
+    
+    # copy over any key from shell environment
+    if keys:
         for k in keys:
             if os.environ.has_key(k):
                 normenv[k] = os.environ[k]
+
+    # on windows we need to convert unicode text to mbcs
+    # because of odd bug with subprocess
+    if sys.platform=='win32':
+        for k in normenv.keys():
+            normenv[k] = copy.deepcopy(normenv[k]).encode('mbcs')
 
     return normenv
 

@@ -266,7 +266,7 @@ class TestToolSettings(unittest.TestCase):
         # This code raises the Exception in MatchVersionNumbers. I believe that
         # MatchVersionNumbers should handle the Exception and return True/False
         #try:
-        self.assertEqual(MatchVersionNumbers('1.', '1.1'), False)
+        self.assertEqual(MatchVersionNumbers('1.', '1.1'), True)
         #except:
         #    pass
 

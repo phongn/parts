@@ -43,7 +43,8 @@ class TestMergeScript(unittest.TestCase):
 
     if is_win32:
         def test_get_output(self):
-            output = get_output(os.path.join('testdata', 'testvars.cmd'), args = 'dummy_arg1 dummy_arg2', shellenv = self.env['ENV'])
+            norm_env = normalize_env(self.env['ENV'])
+            output = get_output(os.path.join('testdata', 'testvars.cmd'), args = 'dummy_arg1 dummy_arg2', shellenv = norm_env )
             #print 'output=' + str(output)
             expectedOutput = []
             expectedOutput.append(r'ARGTEST=dummy_arg1')

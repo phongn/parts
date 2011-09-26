@@ -47,15 +47,37 @@ def get_site_directories(subdir):
         else:
             syspath=[os.path.join('/usr/share/parts','parts-site',subdir)]
         
-        sitepaths=[
-            #current directory parts_site or user pointed site
-            os.path.abspath(os.path.join('.','parts-site',subdir)),
-            os.path.abspath(os.path.join('.','.parts-site',subdir))
-            #homedir/.parts-site
-            ]+localpath+syspath+[
-            # parts install
-            os.path.join(glb.parts_path,subdir)
-        ]
+        
+        if SCons.Script.GetOption('use_part_site'):
+            sitepaths=[
+                os.path.abspath(SCons.Script.GetOption('use_part_site')),
+                # parts install
+                os.path.join(glb.parts_path,subdir)
+            ]
+        elif SCons.Script.GetOption('global_part_site'):
+            sitepaths=[
+                #current directory parts_site or user pointed site
+                os.path.abspath(os.path.join('.','parts-site',subdir)),
+                os.path.abspath(os.path.join('.','.parts-site',subdir))
+                #homedir/.parts-site
+                ]+[
+                # user part-site in parts install
+                os.path.join(glb.parts_path,'parts-site',subdir),
+                # parts install
+                os.path.join(glb.parts_path,subdir)
+            ]
+        else:
+            sitepaths=[
+                #current directory parts_site or user pointed site
+                os.path.abspath(os.path.join('.','parts-site',subdir)),
+                os.path.abspath(os.path.join('.','.parts-site',subdir))
+                #homedir/.parts-site
+                ]+localpath+syspath+[
+                # user part-site in parts install
+                os.path.join(glb.parts_path,'parts-site',subdir),
+                # parts install
+                os.path.join(glb.parts_path,subdir)
+            ]
         
         g_site_dir_cache[subdir]=sitepaths
     return g_site_dir_cache[subdir]

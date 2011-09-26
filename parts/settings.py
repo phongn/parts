@@ -523,8 +523,8 @@ class Settings(object):
         return env.Clone()
 
     def _handle_var_change(self):
-        if self.__env_cache!={}:
-            print "Cleared Cache"
+        #if self.__env_cache!={}:
+        #    print "Cleared Cache"
         self.__env_cache={}
         
         

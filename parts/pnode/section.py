@@ -14,7 +14,7 @@ import hashlib
 import itertools
 
 import pprint
-pp=pprint.PrettyPrinter()
+
     
 gcnt=0
 class section(pnode.pnode):
@@ -32,11 +32,11 @@ class section(pnode.pnode):
         '__target_nodes', # target node for this section
         '__source_nodes', # Source node for this section
         '__installed_files',# anything that gets installed for packaging.
-                
-        '__force_load', # this tell us that we have to load this data from disk, for this sections ( stuff like run_utest::, or cases with AlwaysBuild() calls)
+        
         
         '__pobj', # reference to the part containing this section.
         '__env', # the environment for the given section (cloned from Parts object)
+        '__user_env_diff',
         '_cache'
     ]
     #
@@ -57,9 +57,10 @@ class section(pnode.pnode):
             self.__source_nodes = set()
             self.__target_nodes = set()
             self.__installed_files=set()
+            self.__user_env_diff={}
         
-            self.__force_load=False
             self._cache={}
+            super(section, self).__init__()
             
     def _setup_(self,pobj,env=None,*lst,**kw):
         self.__pobj=pobj
@@ -113,10 +114,10 @@ class section(pnode.pnode):
     def Env(self):
         return self.__env
     
-    # some state stuff
     @property
-    def ForceLoad(self): #readonly
-        return self.__force_load
+    def UserEnvDiff(self):
+        return self.__user_env_diff
+    
     
     def _map_targets(self):
         ''' 
@@ -271,7 +272,6 @@ class section(pnode.pnode):
                
         info.part=self.Part
         info.name=self.Name
-        info.force_load=self.__force_load
         
         info.esigs=self.esigs()
         info.exports=self.__exports        
@@ -291,6 +291,7 @@ class section(pnode.pnode):
                 'Section':d.Section,
             })
             
+        info.user_env_diff=self.__user_env_diff
         info.dependson=tmp
         # these are items that are exported, and noted as a map_as_depends in ExportItem()
         info.exported_requirements=self.ExportAsDepends
@@ -300,13 +301,15 @@ class section(pnode.pnode):
         info = self.Stored
         # get out owning part
         self.__part=info.part
-        self.__env=self.__part.Env
+        self.__env=self.__part.Env.Clone()
         self.__env['PART_SECTION']=self.Name
-        
+        self.__user_env_diff=info.user_env_diff
+        self.__env.Replace(**self.__user_env_diff)
         # import the values we export
         # We assume these are fully resolved so we don't need to get any data from anything this
         # section would have depended on
         self.__exports=info.exports 
+        
         # need to map these items as Aliases
         self.__export_as_depends=info.exported_requirements 
         for export in self.__export_as_depends:
@@ -332,7 +335,7 @@ class section(pnode.pnode):
                 #return False to signal there was a cache issue
                 return False
             # set our state
-            self.ReadState=glb.read_load
+            self.ReadState=glb.load_file
                             
             for dep in stored_data.dependson:
                 sec=dep['Section']

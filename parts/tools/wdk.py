@@ -180,9 +180,13 @@ if SCons.Util.can_read_reg:
             ToolInfo.__init__(self, '*', WdkScanner(), False,
                     subst_vars={
                         '_resolveWdkDir': _resolveWdkDir,
-                        'DIR': '${WDK._resolveWdkDir(WDK.VERSION)}'
+                        'DIR': '${WDK._resolveWdkDir(WDK.VERSION)}',
+                        'TOOL': 'setenv.bat',
                         },
-                    shell_vars={'WDK_DIR':'${WDK.DIR}'},
+                    shell_vars={
+                        'WDK_DIR':'${WDK.DIR}',
+                        'PATH': r'${WDK.DIR}\bin',
+                        },
                     test_file='setenv.bat'
                     )
         def version_set(self):
@@ -346,15 +350,15 @@ def generate(env):
     env['DDKLIBDIRSUFFIX']  = ''
     env['DDKINCPREFIX'] = '-I'
     env['DDKINCSUFFIX'] = ''
-    env['DDKCCCOM']      = '$DDKCC -Fo$TARGET -c $SOURCES $DDKCFLAGS $DDKCCFLAGS $_DDKCCCOMCOM'
+    env['DDKCCCOM']      = '${TEMPFILE("$DDKCC -Fo$TARGET -c $SOURCES $DDKCFLAGS $DDKCCFLAGS $_DDKCCCOMCOM")}'
     env['DDKCPPPATH'] =[r'${DDKDIR}\inc\ddk', r'${DDKDIR}\inc\api', r'${DDKDIR}\inc\crt']
     env['DDKLINKCOM'] = SCons.Action.Action('${TEMPFILE("$DDKLINK $_DDKLIBPATH $_DDKLIBDIRFLAGS $_DDKLINKFLAGS $DDKLINKFLAGS /OUT:$TARGET.windows $_DDKLIBDIRFLAGS $_DDKLIBFLAGS $_DDKLIBS $_PDB $SOURCES.windows")}')
     env['DDKLINKFLAGS'] = []
-    env['DDKASCOM']     = '$DDKAS $DDKASFLAGS $_DDKCPPDEFFLAGS -c -Fo$TARGET $SOURCES'
+    env['DDKASCOM']     = '${TEMPFILE("$DDKAS $DDKASFLAGS $_DDKCPPDEFFLAGS -c -Fo$TARGET $SOURCES)"}'
 
     env['DDKCFLAGS']   = '-nologo'
 
-    env['DDKCXXCOM']     = '$DDKCXX -Fo$TARGET -c $SOURCES $DDKCXXFLAGS $DDKCCFLAGS $_DDKCCCOMCOM'
+    env['DDKCXXCOM']     = '${TEMPFILE("$DDKCXX -Fo$TARGET -c $SOURCES $DDKCXXFLAGS $DDKCCFLAGS $_DDKCCCOMCOM")}'
     env['DDKCPPDEFPREFIX']  = '-D'
     env['DDKCPPDEFSUFFIX'] = ''
     env['DDKDRVSUFFIX'] = '.sys'

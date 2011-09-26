@@ -65,7 +65,6 @@ class part(pnode.pnode):
     
     '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
     '__env_diff_sig', # The MD5 value of this difference
-    '__user_env_diff', # values that the user set in the Part file
     
     '__build_context_files', 
     '__config_context_files',
@@ -164,7 +163,6 @@ class part(pnode.pnode):
         self.__sections={}
         # the environment object for the Part
         self.__env=None 
-        self.__user_env_diff={}
         
         ##basic data
         # the alias.. such as 
@@ -218,8 +216,8 @@ class part(pnode.pnode):
         try:
             self.__read_state=self.__read_state
         except:
-            self.__read_state=glb.read_ignore
-        
+            self.__read_state=glb.load_none
+        super(part, self).__init__()
 
     
     @staticmethod
@@ -422,13 +420,7 @@ class part(pnode.pnode):
     @property
     def _env_diff_sig(self): #readonly
         return self.__env_diff
-    
-    @property
-    def _user_env_diff(self):
-        '''
-        '''
-        return self.__user_env_diff
-    
+        
     @property
     def _build_context_files(self):
         ''' 
@@ -905,6 +897,8 @@ class part(pnode.pnode):
         
         if self.__is_read:
             print "\033[1;32m %swas already read"%self.__alias
+        if self.LoadState == glb.load_cache:
+            api.output.print_msg("{0} was load from cache, loading from file".format(self.__alias))
         
         if self.__is_read==False:
             # final set up for environment
@@ -986,6 +980,7 @@ class part(pnode.pnode):
             
             # set file as read
             self.__is_read=True
+            self.__classic_section.LoadState = glb.load_file
             
             sys.path=bk_path
             
@@ -1077,24 +1072,24 @@ class part(pnode.pnode):
             # check that stored data is exits
             if data is None:
                 self.__cache['hasFileChanged']=True
-                self.UpdateReadState(glb.read_load)
+                self.UpdateReadState(glb.load_file)
                 return True
             # Get File Node
             tmp=glb.pnodes.GetNode(data.file['name'],SCons.Node.FS.File)
             if tmp is None:
                 self.__cache['hasFileChanged']=True
-                self.UpdateReadState(glb.read_load)
+                self.UpdateReadState(glb.load_file)
                 return True
             # does this node look different
             if tmp.changed_since_last_build(tmp,tmp.make_ninfo_from_dict(data.file)):
                 self.__cache['hasFileChanged']=True
-                self.UpdateReadState(glb.read_load)
+                self.UpdateReadState(glb.load_file)
                 return True
             # does the parent look different
             try:
                 if not data.parent.isFileUpToDate():
                     self.__cache['hasFileChanged']=True
-                    self.UpdateReadState(glb.read_load)
+                    self.UpdateReadState(glb.load_file)
                     return True
             except AttributeError:
                 pass
@@ -1120,13 +1115,13 @@ class part(pnode.pnode):
         # check that stored data is exits
         data=self.Stored
         if data is None:
-            return glb.read_load
-        state=glb.read_ignore
+            return glb.load_file
+        state=glb.load_none
         for sub in data.subparts:
             sub=glb.pnodes.GetPNode(sub)
             if sub.ReadState > state:
                 state=sub.ReadState 
-            if state >= glb.read_load:
+            if state >= glb.load_file:
                 break
         return state
     
@@ -1158,6 +1153,7 @@ class part(pnode.pnode):
         info.platform_match=str(self.__platform_match)
         info.package_group=str(self.__package_group) 
         info.mode=self.__mode
+        info.force_load=self.ForceLoad
         
         #store any subparts aliases
         
@@ -1342,7 +1338,7 @@ class part(pnode.pnode):
         self.__alias=info.alias # should be handled by _setup_
         self.__short_alias=info.short_alias # should be handled by _setup_
         self.__root=info.root # should be handled by _setup_
-        
+        self.__force_load=info.force_load
         if info.parent:
             # we might not be loading the parent.... so we for set the parent name from cache
             self._set_name(info.short_name,info.parent.Stored.name)

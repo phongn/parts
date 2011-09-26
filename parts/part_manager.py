@@ -157,7 +157,7 @@ class load_parts_task(object):
 # basic loader all loader are based on
 class base(object):
     
-    def process_depends(self,depends):
+    def process_depends(self,part,depends):
         return
 
 class load_all_roots_loader(base): #task_master type
@@ -199,8 +199,14 @@ class load_all_roots_loader(base): #task_master type
     def __call__(self):
         parts_to_load=self.pmgr.parts.values()
         parts_to_load.sort(pcmp)
+        
+        total = len(parts_to_load) * 1.0
+        cnt=0
         for pobj in parts_to_load:
             self.pmgr.LoadPart(pobj)
+            api.output.console_msg("Loading {0:.2%} \033[K".format(cnt/total,cnt,total))
+            cnt+=1
+        api.output.print_msg("Loaded {0} Parts".format(len(self.pmgr.parts)))
         # we are loading everything..so we don't want to exit early
         return False
         
@@ -256,7 +262,7 @@ class direct_depends_loader(base): #task_master type
             return False
         
         for pobj in self.pmgr.parts.values():
-            if pobj.ReadState==glb.read_load:
+            if pobj.ReadState==glb.load_file:
                 self.__tasks.append(load_parts_task(pobj,self.pmgr,self))
             
     
@@ -271,7 +277,7 @@ class direct_depends_loader(base): #task_master type
         parts_to_load=self.pmgr.parts.values()
         parts_to_load.sort(pcmp)
         for pobj in parts_to_load:
-            if pobj.ReadState==glb.read_load:
+            if pobj.ReadState==glb.load_file:
                 self.pmgr.LoadPart(pobj)
         return False        
 
@@ -334,12 +340,12 @@ class no_depends_loader(base): #task_master type
                 self.hasStored=False
                 
             # set read state for this section            
-            sec.ReadState=glb.read_load
+            sec.ReadState=glb.load_file
             
             #for each of the dependents we need to set the depends as cache load                       
             for dep in stored_data.dependson:
                 dsec=dep['Section']
-                dsec.ReadState=glb.read_cache
+                dsec.ReadState=glb.load_cache
                 self.pmgr.LoadSection(dsec)
                 if dsec not in sec_to_load:                
                     sec_to_load.append(dsec)
@@ -347,9 +353,12 @@ class no_depends_loader(base): #task_master type
             if sec not in sec_to_load:                
                 sec_to_load.append(sec)
             
-            
+        total = len(sec_to_load) * 1.0
+        cnt=0
         for sec in sec_to_load:
             self.pmgr.LoadSection(sec)
+            api.output.console_msg("Loading {0:.2%} ({1}/{2} sections) \033[K".format(cnt/total,cnt, total))
+            cnt+=1
             
         return False       
 
@@ -384,7 +393,7 @@ class section_changed_loader(base): #task_master type
     def TagToPartLoad(self,pobj):
         '''Tag the Part and all sub parts to be loaded from file
         '''
-        pobj.UpdateReadState(glb.read_load)
+        pobj.UpdateReadState(glb.load_file)
         for sub in pobj.Stored.subparts:
             tmp=glb.pnodes.GetPNode(sub)
             self.TagToPartLoad(glb.pnodes.GetPNode(sub))
@@ -405,14 +414,14 @@ class section_changed_loader(base): #task_master type
         if sec.Name =='utest':
             self.LoadSection(sec.Stored.part.Stored.sections['build'])
         
-        sec.ReadState=glb.read_load
+        sec.ReadState=glb.load_file
         self._up_to_date=False
         #tag dependents that are not in ignore state to a cache state
         for dep in sec.Stored.dependson:
             tsec=dep['Section']
-            if tsec.ReadState == glb.read_ignore:
+            if tsec.ReadState == glb.load_none:
                 # set the cache state
-                tsec.ReadState=glb.read_cache
+                tsec.ReadState=glb.load_cache
                 
         #if this sec part is not a root we need to tag the parents depends as cache
         while sec.Stored.part.Stored.parent:
@@ -422,12 +431,11 @@ class section_changed_loader(base): #task_master type
                 sec=sec.Stored.part.Stored.parent.Stored.sections['build']
             for dep in sec.Stored.dependson:
                 tsec=dep['Section']
-                tsec.ReadState=glb.read_cache
+                tsec.ReadState=glb.load_cache
         
                 
             
-    def process_depends(self,depends):
-        
+    def process_depends(self,pobj,depends):
         if self._process_depend:
             # we want to try to map the dependancy to get a set of possible parts 
             # we need to look at. If the matching value Parts files are out of date
@@ -438,24 +446,33 @@ class section_changed_loader(base): #task_master type
                 # to help with matching.. in these cases we just add all possible cases to be safe
                 new_sections=dep.StoredMatchingSections
                 for dep_sec in new_sections:   
+                    # at the very least we would want to load the component as cache
+                    if dep_sec.Stored.part.Stored.root != pobj.Stored.root:
+                        dep_sec.ReadState=glb.load_cache
+                        same_root_part=False
+                    else:
+                        same_root_part=True
                     self.CheckForContextChanged(dep_sec)
+                    # if the depend section has force load set
+                    # should load it to be safe
+                    if dep_sec.Stored.part.Stored.force_load ==True:#dep_sec.hasPartFileChanged():
                     # see if the file changed
-                    #if dep_sec.hasPartFileChanged():
-                    #    # load the section
-                    #    #load this file ...
-                    #    api.output.verbose_msg("update_check",'{0} is out of date because the part file has changed.'.format(dep_sec.ID))
-                    #    #dep_sec.ReadState=glb.read_load
-                    #    self.TagToPartLoad(dep_sec.pobj)
-                    #    
-                    #    # need to change the cwd directory in the node FS object
-                    #    # get the current location
-                    #    tmp=glb.engine.def_env.fs.getcwd()
-                    #    # change the root location
-                    #    glb.engine.def_env.fs.chdir(glb.engine.def_env.Dir("#./"),True)
-                    #    # do load
-                    #    self.pmgr.ForceLoadSection(dep_sec)
-                    #    # change back to previous location
-                    #    glb.engine.def_env.fs.chdir(tmp,True)
+                        # set state
+                        self.LoadSection(dep_sec)
+                    if dep_sec.ReadState != glb.load_none and not same_root_part:
+                        # need to change the cwd directory in the node FS object
+                        # get the current location
+                        tmp=glb.engine.def_env.fs.getcwd()
+                        # change the root location
+                        glb.engine.def_env.fs.chdir(glb.engine.def_env.Dir("#./"),True)
+                        # do load
+                        self.pmgr.LoadSection(dep_sec)
+                        # change back to previous location
+                        try:
+                            glb.engine.def_env.fs.chdir(tmp,True)
+                        except OSError:
+                            glb.engine.def_env.fs.chdir(tmp.srcdir,True)
+                        
                     
                                  
     def CheckForContextChanged(self,sec,req=None):
@@ -493,7 +510,7 @@ class section_changed_loader(base): #task_master type
             
                 #load this file ...
                 api.output.verbose_msg("update_check",'{0} is out of date because the part file has changed.'.format(sec.ID))
-                #sec.ReadState=glb.read_load
+                #sec.ReadState=glb.load_file
                 self.TagToPartLoad(sec.Stored.part.Stored.root)
                 self._up_to_date=False
                 self.pmgr.LoadSection(sec)
@@ -513,7 +530,6 @@ class section_changed_loader(base): #task_master type
                     sec.Stored.dependson=new_depend_list
             else:
                 # this file has not changed so we can use the current Stored information    
-                
                 for dep in stored_data.dependson:
                     #get the Section
                     dep_sec=dep['Section']
@@ -530,7 +546,8 @@ class section_changed_loader(base): #task_master type
                     sec_changed=self.CheckForContextChanged(dep_sec,dep_req)
                     if sec_changed:
                         api.output.verbose_msg("update_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(sec.ID,dep_sec.ID))
-                        self.pmgr.LoadSection(sec)
+                        self.LoadSection(sec) # set the state
+                        #self.pmgr.LoadSection(sec) # do the load
                         changed=True
         
             # add to list of all section to process
@@ -598,7 +615,7 @@ class section_changed_loader(base): #task_master type
                         #this file is in the set of previous found files
                         # check if file has changed
                         if not node_helpers.node_up_to_date(file):
-                            api.output.verbose_msg("update_check",'fill in...'.format(alias,data['config'],t))
+                            api.output.verbose_msg("update_check",'{0} is out of data because the file "{1}" that defines the configuration has changed'.format(sec.ID,file['name']))
                             self._knowncfgs[key]=True
                             return True
                     else:
@@ -754,10 +771,9 @@ class section_changed_loader(base): #task_master type
         total=len(self.sections)*1.0
         cnt=0
         for sec in self.sections:
+            api.output.console_msg("Checking Content {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
             self.CheckForContextChanged(sec)
             cnt+=1
-            msg='pass1 {0}/{1} {2}'.format(cnt,total,sec)
-            api.output.console_msg(" %3.2f%% %s \033[K"%((cnt/total*100),msg))
         self._process_depend=False
         #print 1,time.time()-st
         
@@ -768,26 +784,24 @@ class section_changed_loader(base): #task_master type
         # 2) the exports of those dependents have not changed
         # 3) the requirements for this section are up-to-date
         # Note we have to do this again as a file might have change causing a upper section
-        # of stuff to be forced laoded.. but this does not mean we don't of a sub-tree of stuff 
+        # of stuff to be forced loaded.. but this does not mean we don't of a sub-tree of stuff 
         # load for different reasons.
         st=time.time()
         total=len(self._sections)*1.0
         cnt=0
         for i in self._sections:
+            api.output.console_msg("Checking Export Data {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
             self.CheckForNodeExportChanges(i)
             cnt+=1
-            msg='pass2 {0}/{1} {2}'.format(cnt,total,i)
-            api.output.console_msg(" %3.2f%% %s \033[K"%((cnt/total*100),msg))
         #print 2,time.time()-st
         
         st=time.time()
         total=len(self._sections)*1.0
         cnt=0
         for i in self._sections:
+            api.output.console_msg("Checking Requirement {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
             self.CheckForNodeRequirementsChanges(i)
             cnt+=1
-            msg='pass3 {0}/{1} {2}'.format(cnt,total,i)
-            api.output.console_msg(" %3.2f%% %s \033[K"%((cnt/total*100),msg))
         #print 3,time.time()-st
         
         # there is still a chance that a node changed that is a side effect is found out of date,
@@ -797,11 +811,23 @@ class section_changed_loader(base): #task_master type
         total=len(self._sections)*1.0
         cnt=0
         for i in self._sections:
+            api.output.console_msg("Checking Dependents {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
             self.CheckForDependentSectionChanges(i)
             cnt+=1
-            msg='pass4 {0}/{1} {2}'.format(cnt,total,i)
-            api.output.console_msg(" %3.2f%% %s \033[K"%((cnt/total*100),msg))
         #print 4,time.time()-st
+        
+        # at this point we should be good. We want to sort the items to dependent items ideally get loaded first
+        # however we only really need to sort/group the sections by there root part, as the loading of this item 
+        # should force the rest of the sub-parts to load
+        #root_parts_to_load=[]
+        #for sec in self._sections:
+            #print sec.Stored.part.Stored.root
+            #if sec.Stored.part.Stored.root not in root_parts_to_load:
+                #root_parts_to_load.append(sec.Stored.part.Stored.root)
+        
+        self._sections.sort(scmp)
+        
+            
         
         # at this point the list of parts with the correct load state set.
         # we go through this list and load anything that needs to be loaded
@@ -823,11 +849,15 @@ class section_changed_loader(base): #task_master type
         # load anything is it is out of date
         if not self._up_to_date:
             #for s in self._sections:
-             #   print s.ID,s.ReadState
-            
+                #print s.ID,s.ReadState
+            total = len(self._sections) * 1.0
+            cnt=0
             for s in self._sections:
                 #print s.ID,s.ReadState
+                api.output.console_msg("Loading {0:.2%} ({1}/{2} sections) \033[K".format(cnt/total,cnt,total))
                 self.pmgr.LoadSection(s)
+                cnt+=1
+                
         
         return self._up_to_date
   
@@ -1014,41 +1044,35 @@ class part_manager(object):
         
     def LoadSection(self,sec):
         
-        # to load a section we have to make sure to the 
-        # Part defining this section has been read in correctly
+        # when we load a section we in a way load the part that defines the section
+        # there are a few different cases that can happen
+        # 1) the section is ignored ( we don't care about it), but the Part needs to be loaded from file or cache
+        # 2) the section is to load from cache, but the Part needs to be loaded from file
+        # 3) the section and part have same load requirements
+        # in general as we don't have "new formats" yet the section and parts are always 3)
+        # the part can never be lower than the sections read state, the Parts is always
+        # equal or higher
         pobj=sec.Stored.part
-        if not pobj.isRead and pobj.isSetup:
-            # we can load this without issue
-            #print "LOADING PART",pobj.ID
-            self.LoadPart(pobj)
-        elif not pobj.isRead and not pobj.isSetup:
-            #print "LOADING PART from cache",pobj.ID
-            # in this case we want to load the parent and the simular section
-            #self.LoadSection(pobj.Stored.parent.Stored.sections[sec.Name])
-            # read in the Parts
-            self.LoadPart(pobj)
-            
-            
-            #pobj.LoadFromCache()
-            #self._add_part(pobj) 
-            #sec.LoadFromCache()
-            #try loading again
-            #self.LoadSection(sec)
-        if pobj.ReadState == glb.read_cache:
-            #print "LOADING SECTION",sec.ID
-            sec.LoadFromCache()
         
+        if (sec.LoadState < glb.load_file and sec.ReadState == glb.load_file):
+            self.LoadPart(pobj)
+            sec.LoadState = glb.load_file # should be set.. just being safe
+        elif (sec.LoadState < glb.load_cache and sec.ReadState == glb.load_cache):
+            self.LoadPart(pobj) # load part from cache (function will do nothing if already loaded)
+            sec.LoadFromCache() # load section from cache   
+            sec.LoadState = glb.load_cache     
         
     def LoadPart(self,pobj):
         part_file_load_time=time.time()
+        processed=False
         #see if this part is setup
         if pobj.isSetup:
             # it is setup, so the parent has been read in
             
-            if not pobj.isRead and (pobj.ReadState == glb.read_load or self.__hasStored==False):
+            if (pobj.LoadState < glb.load_file and pobj.ReadState == glb.load_file) or self.__hasStored==False:
                 #read in the data fully
                 api.output.verbose_msg(['loading'],"Loading from file: {0}".format(pobj.ID))
-                pobj.UpdateReadState(glb.read_load)
+                pobj.UpdateReadState(glb.load_file)
                 pobj.ReadFile()
                 # move this?? This maps any unknown Part() calls that should be rebound to a parts object
                 self._clean_unknown(pobj)
@@ -1086,49 +1110,52 @@ class part_manager(object):
             #api.output.verbose_msg(['loading'],"{0:60}[{1:.2f} secs]".format(msg,(time.time()-part_file_load_time)))
             #api.output.console_msg(" Loading %3.2f%% %s \033[K"%((cnt/total*100),msg))
             #cnt+=1
+                pobj.LoadState = glb.load_file
+                processed=True
                 
-            elif not pobj.isRead and pobj.ReadState == glb.read_cache:
+            elif pobj.LoadState < glb.load_cache and pobj.ReadState == glb.load_cache: #not pobj.isRead and pobj.ReadState == glb.load_cache:
                 api.output.verbose_msg(['loading'],"Loading from cache: {0}".format(pobj.ID))
                 pobj.LoadFromCache()
                 self._add_part(pobj) 
+                pobj.LoadState = glb.load_cache
+                processed=True
                 
-            else:
-                #print "Ignoring the loading of Parts:",pobj.ID,pobj.isRead,pobj.ReadState
+            elif pobj.ReadState == glb.load_none:
                 api.output.verbose_msg(['loading'],"not loading: {0}".format(pobj.ID))
         else:
             # we are trying to load some sub-part that has not had it parent read in yet
-            # there are two cases for this parent.. it is will be read-in via cache 
-            # or via reading the Parts file.
-            #If the Parts parents is not read yet. we want to read it
-            #print "**** part is not setup:",pobj.ID,pobj.ReadState
-            if not pobj.Stored.parent.isRead and pobj.Stored.parent.ReadState == glb.read_load:
-                #print "**** trying to load parent:",pobj.Stored.parent
+            # there are two cases for this parent.. 
+            # 1)it will be read-in via load_cache 
+            # 2)it will be read in via load_file.
+            # If the Parts parents is loaded yet, we need to load it
+            if pobj.Stored.parent.LoadState < glb.load_cache or pobj.Stored.parent.LoadState < pobj.Stored.parent.ReadState: 
                 self.LoadPart(pobj.Stored.parent)
                 
             #Given that it is read at this point. we need to check to see if we are read
             # given that parent should have loaded.. we should be loaded as well
             # if we are not and we are to be read in as cache ( what we should see if not read-in yet)
             # we want to load this part from cache
-            if not pobj.isRead and pobj.ReadState == glb.read_cache:
-                #print "**** load from cache",pobj.ID
+            
+            # At this point we should be setup at the very least, if not loaded
+            # if the parent was loaded from cache we might not be loaded yet
+            if pobj.LoadState < glb.load_cache and pobj.ReadState == glb.load_cache:
                 api.output.verbose_msg(['loading'],"Loading From cache: {0}".format(pobj.ID))
                 pobj.LoadFromCache()
                 self._add_part(pobj) 
+                pobj.LoadState = glb.load_cache
+                processed=True
             # it is possible a loader gave us a part we want to ignore    
-            elif not pobj.isRead and pobj.ReadState == glb.read_ignore:
-                #print "Ignoring the loading of Parts:",pobj.ID,pobj.isRead,pobj.ReadState
+            elif pobj.ReadState == glb.load_none:
                 api.output.verbose_msg(['loading'],"not loading: {0}".format(pobj.ID))
             elif not pobj.isRead:
                 # if we get here the most likely case is this is a complex part with lots of subparts
                 # we most likely have a case in which a sub-part that has yet to be readin is being force read
                 # as it is in a depends of a sub-part that was defined before it in the Parts file
-                # there is nothing we can do with this given the classic format. so we punt hand hope for the best
+                # there is nothing we can do with this given the classic format. so we punt and hope for the best
                 api.output.verbose_msg(['loading'],"Can't load {0} as this is a subpart that is has yet to be read by the parent part. Skipping, May cause failures".format(pobj.ID))
                 return
-            #else:
-                #return
                 
-        if pobj.ReadState != glb.read_ignore:
+        if processed:
             api.output.verbose_msg(['loading'],"Loaded {0:60}[{1:.2f} secs]".format(pobj.ID,(time.time()-part_file_load_time)))
                 
    
@@ -1280,6 +1307,8 @@ class part_manager(object):
         ## if not we need to update it
         api.output.print_msg("Updating disk")
         self.UpdateOnDisk( self.parts.values() )
+        if len(SCons.Script.BUILD_TARGETS) == 1 and SCons.Script.BUILD_TARGETS[0] == "extract_sources":
+            return
         
         skip_update_check=True
         nodes_up_to_date=True
@@ -1310,7 +1339,7 @@ class part_manager(object):
                             for s in sections:
                                 nodes_up_to_date=False
                                 #set the read state to be read ( change to cache later?)
-                                s.ReadState=glb.read_load
+                                s.ReadState=glb.load_file
                                 # add any missing sections
                                 if s not in sections_to_process:
                                     sections_to_process.append(s)
@@ -1485,13 +1514,13 @@ class part_manager(object):
                     p_list.append(vcsobj)
                 else:
                     s_list.append(vcsobj)
-        retcode=0    
+        
         def post_vcs_func(jobs,tm):
             if jobs.were_interrupted():
-                retcode=3
+                tm.ReturnCode=3
                 api.output.error_msg("Updating of disk was interrupted!",show_stack=False)
             elif tm.Stopped:
-                retcode=4
+                tm.ReturnCode=4
                 api.output.error_msg("Errors detected while updating disk!",show_stack=False)
                     
         #checkout anything in the queue
@@ -1509,7 +1538,11 @@ class part_manager(object):
                 jobs = SCons.Job.Jobs(1, s_list)
                 jobs.run(postfunc = lambda : post_vcs_func(jobs,s_list))
         except:
-            glb.engine.def_env.Exit(retcode)
+            if p_list.ReturnCode:
+                glb.engine.def_env.Exit(p_list.ReturnCode)
+            if s_list.ReturnCode:
+                glb.engine.def_env.Exit(p_list.ReturnCode)
+            glb.engine.def_env.Exit(2)
         finally:
             for p in part_set:
                 p.Vcs.PostProcess()

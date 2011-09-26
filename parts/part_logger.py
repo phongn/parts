@@ -2,10 +2,16 @@ import glb
 import common
 import console 
 import api.output
+import version
 
-import SCons.Script
 import subprocess,sys,string,os
 import thread,threading
+
+import SCons.Script
+
+import platform
+
+pyver=version.version(platform.python_version())
 
 class pipeRedirector(object):
     def _readerthread(self):
@@ -42,17 +48,18 @@ class part_spawner(object):
             ENV[k]=str(v)
         # get the part_logger
         output=self.env["PART_LOG_MAPPER"]
-        #tell it we are starting a given actio/command, get action_id
         
-        #it seems that the escape work for windows  (but does not seem needed)
-        # however the escape function really messes up Linux
-        if self.env["PLATFORM"]=="win32":
+        # we ignore the escape function as it breaks linux, 
+        # and was breaking on python 2.7 windows by adding extra " values
+        # ie '"c:\program file\x.exe" foo bar"' -> '""c:\program file\x.exe" foo bar""'
+        # we assume the command has "quotes" around it as need
+        if pyver < '2.7' and sys.platform == 'win32':
             command_line = escape(string.join(args))
         else:
             command_line = string.join(args)
         
+        #tell it we are starting a given action/command, get action_id        
         id=output.TaskStart(command_line)   
-        
         # do the call
         proc = subprocess.Popen(
             command_line,

@@ -4,9 +4,23 @@ from .. import errors
 
 class pnode(object):
     """description of class"""  
+        
+    def __init__(self):
+        self.__load_state=glb.load_none
+        
+    @property
+    def LoadState(self):
+        ''' This get the LoadState, or the state in which this node has been loaded so far
+        values can be None,Cache and File
+        '''
+        return self.__load_state
 
-    def __init__(self,ID):
-        pass
+    @LoadState.setter
+    def LoadState(self,value):
+        ''' This sets the LoadState, or the state in which this node has been loaded so far
+        values can be None,Cache and File
+        '''
+        self.__load_state=value
         
     @property
     def Stored(self):

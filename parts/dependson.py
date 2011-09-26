@@ -70,7 +70,7 @@ def depends_on_classic(env,depends):
     # this is needed to help case of Parts files changes that might have added
     # new dependancy values. We let the loader deal with the issues.
     # the dependancy mapping logic for the classic case stays unchanged
-    glb.engine._part_manager.Loader.process_depends(depends)
+    glb.engine._part_manager.Loader.process_depends(pobj,depends)
     
     api.output.verbose_msg('dependson', "Mapping data to Part",pobj.Name)
     # depends that get passed on

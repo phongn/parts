@@ -69,7 +69,7 @@ else:
 '''    
     f.write(command)
     f = open(str(target[1]), 'wb')
-    f.write("@ECHO OFF\npython "+target[0].abspath)
+    f.write("@ECHO OFF\npython "+target[0].abspath+" %*")
     f.close()
     st = os.stat(str(target[0]))
     os.chmod(str(target[0]), stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IEXEC)
