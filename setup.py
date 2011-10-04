@@ -71,11 +71,6 @@ class custom_install(install):
         out.write("\t\tpass\n")
         out.close()
 
-# Going forward I think this script is will be supporting only the install command. I make another script to make "install packages"
-# the extra part-site directory does not work with most of the Command builders in dist_util
-# this is one reason why I feel the move to a new set of scripts. Course the raw open source version will not care much
-# but it would be nice to allow other user syncing there own repository copy a way to add there own overrides.
-
 def get_packages(path):
     ret=[]
     for d in os.listdir(path):
@@ -107,56 +102,55 @@ def get_data_files(root,path,installpath):
         ret.append( (pth,files) )
     return ret
 
-app_path=''
-
-# global system area ..
-if sys.platform == 'win32':
-    syspath=os.environ['ALLUSERSPROFILE']
-elif sys.platform == 'darwin':
-    syspath='/Library/Application Support/parts'
-else:
-    syspath='/usr/share/parts'
-
-# to allow install if root access is not used	
-if os.path.exists(syspath) == False:
-	try:
-		os.makedirs(syspath)
-	except:
-		pass
-		
-if os.access(syspath,os.W_OK ) == False:
-    syspath=os.path.join(os.path.expanduser('~'))
-    local_overrides=get_data_files(syspath,'parts-site','.parts-site')
-else:
-    local_overrides=get_data_files(syspath,'parts-site','parts-site')
+def get_package_data(path,root):
+    ret=[]
+    files=[]
     
+    # might not exist...
+    if os.path.exists(path) == False:
+        return ret
+    
+    for d in os.listdir(path):
+        np=os.path.join(path,d)
+        pkg_file=os.path.join(root,d)
+        if os.path.isdir(np) and d.endswith('.svn')==False:
+            tmp= get_package_data(np,pkg_file)
+            if tmp!=[]:
+                ret.extend(tmp)
+        elif os.path.isfile(np) and d.endswith('.py'):
+            tmp=pkg_file.replace('\\','/')  
+            files.append(tmp)
+    
+    ret += files 
+    return ret
 
-## 
-###uninstall previous data
-##if 'install' in sys.argv:
-##    #remove the system overrides.. be smarter about it if we can    
-##    for path,flst in local_overrides:
-##        for f in flst:
-##            tmp= os.path.join(path,os.path.split(f)[1])
-##            if os.path.exists(tmp):
-##                print "Removing:",tmp
-##                os.remove(tmp)
-##        print "Removing:",path
-##        os.rmdir(path)
-##        
-##    # remove parts # just whack the whole directory
-##print 
-##    #distutils.dir_util.remove_tree()
-                
+pk_data=get_package_data('parts-site','')
+# if the packaging of this parts distro has not "special" data to install
+# we don't want to add the parts.parts-site directory package
+# doing this mean the package_data will be ignored
+if pk_data:
+    pk_package=['parts.parts-site']
+else:
+    pk_package=[]
+    
 from distutils.core import setup
+try:
+    import py2exe
+except:
+    print "py2exe not found"
+
 setup(name="parts",
         description="Extension module to SCons build system",
         author="Jason Kenny",
         author_email="jason.l.kenny@intel.com",
         version=parts_version._PARTS_VERSION,
-        packages=['parts']+get_packages('./parts'),
+        packages=['parts']+get_packages('./parts')+pk_package,
         scripts=['parts/parts.bat','parts/parts'],
         cmdclass={'install':custom_install},
-        data_files=local_overrides
+        package_dir={'parts.parts-site':'parts-site'},
+        package_data={
+                'parts.parts-site': pk_data,
+                },
+        console=['main.py']
         )
 

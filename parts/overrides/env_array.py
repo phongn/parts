@@ -7,8 +7,11 @@ def Parts__setitem__(self,key,val):
     if getattr(self,'_log_keys',False):
         if self.has_key(key)==False:
             pobj=glb.engine._part_manager._from_env(self)
-            if pobj and common.is_string(val):
-                pobj._user_env_diff[key]=val
+            sec=None
+            if pobj:
+                sec=pobj.DefiningSection
+            if sec and common.is_string(val):
+                sec.UserEnvDiff[key]=val
     self._orig__setitem__(key,val)
     if isinstance(val,common.bindable):
         try:

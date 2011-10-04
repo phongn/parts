@@ -24,6 +24,7 @@ class part_info(stored_info.stored_info):
         self.sdk_file={} #???
         self.build_context=[]
         self.config_context=[]
+        self.force_load=False
         
     
 

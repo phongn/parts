@@ -394,9 +394,10 @@ class section_changed_loader(base): #task_master type
         '''Tag the Part and all sub parts to be loaded from file
         '''
         pobj.UpdateReadState(glb.load_file)
-        for sub in pobj.Stored.subparts:
-            tmp=glb.pnodes.GetPNode(sub)
-            self.TagToPartLoad(glb.pnodes.GetPNode(sub))
+        if pobj.Stored: # this maybe a new previously unknown subpart
+            for sub in pobj.Stored.subparts:
+                tmp=glb.pnodes.GetPNode(sub)
+                self.TagToPartLoad(glb.pnodes.GetPNode(sub))
            
              
     def LoadSection(self,sec):
@@ -447,7 +448,13 @@ class section_changed_loader(base): #task_master type
                 new_sections=dep.StoredMatchingSections
                 for dep_sec in new_sections:   
                     # at the very least we would want to load the component as cache
-                    if dep_sec.Stored.part.Stored.root != pobj.Stored.root:
+                    
+                    # this is already loaded.. 
+                    # so this is already processed
+                    if dep_sec.LoadState == glb.load_file:
+                        continue
+                        
+                    if dep_sec.Stored and dep_sec.Stored.part.Stored.root != pobj.Root:
                         dep_sec.ReadState=glb.load_cache
                         same_root_part=False
                     else:
@@ -455,13 +462,14 @@ class section_changed_loader(base): #task_master type
                     self.CheckForContextChanged(dep_sec)
                     # if the depend section has force load set
                     # should load it to be safe
-                    if dep_sec.Stored.part.Stored.force_load ==True:#dep_sec.hasPartFileChanged():
+                    if dep_sec.Stored is None or dep_sec.Stored.part.Stored.force_load ==True:
                     # see if the file changed
                         # set state
                         self.LoadSection(dep_sec)
-                    if dep_sec.ReadState != glb.load_none and not same_root_part:
+                    
+                    if dep_sec.LoadState < dep_sec.ReadState and not same_root_part:
                         # need to change the cwd directory in the node FS object
-                        # get the current location
+                        # get the current location    
                         tmp=glb.engine.def_env.fs.getcwd()
                         # change the root location
                         glb.engine.def_env.fs.chdir(glb.engine.def_env.Dir("#./"),True)
@@ -469,12 +477,14 @@ class section_changed_loader(base): #task_master type
                         self.pmgr.LoadSection(dep_sec)
                         # change back to previous location
                         try:
+                            # change variant and and system
                             glb.engine.def_env.fs.chdir(tmp,True)
                         except OSError:
+                            # change src
                             glb.engine.def_env.fs.chdir(tmp.srcdir,True)
+                            # then variant ( which out changing system)
+                            glb.engine.def_env.fs.chdir(tmp,False)
                         
-                    
-                                 
     def CheckForContextChanged(self,sec,req=None):
         '''tests if the parts file, build and config context for the section as changed'''
         
@@ -500,8 +510,10 @@ class section_changed_loader(base): #task_master type
             stored_data=sec.Stored
             # test that we have Stored data
             if stored_data is None:
+                print sec.ID, sec.LoadState
                 raise LoadStoredError
                 
+                            
             # see if the Parts file defining the sections is changed
             if sec.hasPartFileChanged():
                 # in this case we are going to be out of date
@@ -526,7 +538,10 @@ class section_changed_loader(base): #task_master type
                         new_depend_list.append({
                         'Section':dep_sec
                         })
-                        self.CheckForContextChanged(dep_sec,dep.Requires)
+                        if sec.LoadState != glb.load_file: 
+                            # If this is loaded.. it may not have a cache for use to check
+                            # beside checking the cache is pointless, as it fully loaded
+                            self.CheckForContextChanged(dep_sec,dep.Requires)
                     sec.Stored.dependson=new_depend_list
             else:
                 # this file has not changed so we can use the current Stored information    
@@ -737,6 +752,12 @@ class section_changed_loader(base): #task_master type
             return 
         
         stored_data=sec.Stored
+        # this checks to see if the section has a "AlwaysBuild" state that was found
+        if sec.AlwaysBuild:
+            self._section_info[sec.ID]['changed']='always_build'
+            api.output.verbose_msg("update_check",'{0} out-of-date! section contains node that called AlwaysBuild()'.format(sec.ID))
+            self.LoadSection(sec)
+            return
 
         # check to see if the dependent is changed for some reason, then check to see
         # check to see if the stuff it depends in the dependent Export tables have changed
@@ -748,6 +769,7 @@ class section_changed_loader(base): #task_master type
                 api.output.verbose_msg("update_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(sec.ID,dep_sec.ID))
                 self.LoadSection(sec)
                 return
+            
             
 
     def CheckTargets(self):
@@ -780,7 +802,7 @@ class section_changed_loader(base): #task_master type
                 
         # we go through the list again and if the state of the section is None
         # we test:
-        # 1) that the direct dependents our not out of date
+        # 1) that the direct dependents are not out of date
         # 2) the exports of those dependents have not changed
         # 3) the requirements for this section are up-to-date
         # Note we have to do this again as a file might have change causing a upper section
@@ -795,11 +817,12 @@ class section_changed_loader(base): #task_master type
             cnt+=1
         #print 2,time.time()-st
         
+        # this pass we are going to test the nodes to be out of data
         st=time.time()
         total=len(self._sections)*1.0
         cnt=0
         for i in self._sections:
-            api.output.console_msg("Checking Requirement {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
+            api.output.console_msg("Checking Node State {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
             self.CheckForNodeRequirementsChanges(i)
             cnt+=1
         #print 3,time.time()-st
@@ -1001,6 +1024,21 @@ class part_manager(object):
                     ## ideally setup with only new formats will not have these issues, as we can read first, and get need info
                     name_matches=self.reduce_list_from_target_stored(tobj,pobjs_lst)
                     
+                    def _map_alias(_pobj,_tobj):
+                        # the section does not match the concept we want to use the Alias form to get the "sections"
+                        # as this does an extra check for some cases in which the Alias maps to nodes that require
+                        # special logic to happen, such as AlwaysBuild()
+                        tstr="{0}::alias::{1}".format(_tobj.Concept,_pobj.Alias)
+                        node=glb.pnodes.GetNode(tstr)
+                        if node:
+                            self.add_stored_node_info(node,[])
+                        else:
+                            self.__hasStored=False
+                        if not self.__hasStored: 
+                            api.output.verbose_msg(['target_mapping'],'Target: "{0}" missing stored data, Loading everything'.format(tstr))
+                            return True
+                        return False
+                    
                     if not name_matches:
                         api.output.verbose_msg(['target_mapping'],'No matched found for "{0}", Loading everything'.format(tobj))
                         return None
@@ -1010,6 +1048,9 @@ class part_manager(object):
                         # get stored section
                         if tobj.isRecursive:
                             # try to load this section
+                            if tobj.Section != tobj.Concept:
+                                if _map_alias(pobj,tobj):
+                                    return
                             tmp=pobj.Stored.sections.get(tobj.Section)
                             if tmp:
                                 ret.append(tmp)
@@ -1017,6 +1058,9 @@ class part_manager(object):
                             def get_subpart_section(_pobj):
                                 for subpobj in _pobj.Stored.subparts:
                                     subpobj=glb.pnodes.GetPNode(subpobj)
+                                    if tobj.Section != tobj.Concept:
+                                        if _map_alias(subpobj,tobj):
+                                            return
                                     tmp=subpobj.Stored.sections.get(tobj.Section)
                                     if tmp:
                                         ret.append(tmp)
@@ -1024,6 +1068,10 @@ class part_manager(object):
                             get_subpart_section(pobj)
                                 
                         else:
+                            if tobj.Section != tobj.Concept:
+                                if _map_alias(pobj,tobj):
+                                    return
+                                
                             # try to load this section
                             tmp=pobj.Stored.sections.get(tobj.Section)
                             # did we find a section.. if not error and exist
@@ -1068,10 +1116,30 @@ class part_manager(object):
         #see if this part is setup
         if pobj.isSetup:
             # it is setup, so the parent has been read in
-            
-            if (pobj.LoadState < glb.load_file and pobj.ReadState == glb.load_file) or self.__hasStored==False:
+            if pobj.isLoading:
+                api.output.verbose_msg(['loading'],"{0} is already being loaded. Not Loading!".format(pobj.ID))
+                return
+            elif pobj.LoadState == glb.load_file:
+                api.output.verbose_msg(['loading'],"{0} was already loaded. Ignoring!".format(pobj.ID))
+                return
+            elif (pobj.LoadState < glb.load_file and pobj.ReadState == glb.load_file) or\
+                 not glb.pnodes.isKnownPNodeStored(pobj.ID) or\
+                 self.__hasStored==False or\
+                 pobj.ForceLoad:
+                     
+                # we want to read this Parts file. However this might be getting promoted form being loaded from cache to file 
+                # in this case we need to check that the parent has been read in if this is a subpart. If this is not the
+                # case we want to read it in first and return. The reading of the parent should cause the sub-part to be
+                # read, when the sub parts Part() call happens. This is mainly a "classic" format issue. The new format
+                # should not have this problem.
+                if not pobj.isRoot and pobj.Parent.LoadState < glb.load_file and not pobj.Parent.isLoading:
+                    api.output.verbose_msg(['loading'],"Trying to loading from file: {0},\n but the parent Part has not been read yet".format(pobj.ID))
+                    self.LoadPart(pobj.Parent)
+                    return
+                     
                 #read in the data fully
                 api.output.verbose_msg(['loading'],"Loading from file: {0}".format(pobj.ID))
+                pobj.isLoading=True
                 pobj.UpdateReadState(glb.load_file)
                 pobj.ReadFile()
                 # move this?? This maps any unknown Part() calls that should be rebound to a parts object
@@ -1112,12 +1180,15 @@ class part_manager(object):
             #cnt+=1
                 pobj.LoadState = glb.load_file
                 processed=True
+                pobj.isLoading=False
                 
             elif pobj.LoadState < glb.load_cache and pobj.ReadState == glb.load_cache: #not pobj.isRead and pobj.ReadState == glb.load_cache:
                 api.output.verbose_msg(['loading'],"Loading from cache: {0}".format(pobj.ID))
+                pobj.isLoading=True
                 pobj.LoadFromCache()
                 self._add_part(pobj) 
                 pobj.LoadState = glb.load_cache
+                pobj.isLoading=False
                 processed=True
                 
             elif pobj.ReadState == glb.load_none:
@@ -1128,7 +1199,7 @@ class part_manager(object):
             # 1)it will be read-in via load_cache 
             # 2)it will be read in via load_file.
             # If the Parts parents is loaded yet, we need to load it
-            if pobj.Stored.parent.LoadState < glb.load_cache or pobj.Stored.parent.LoadState < pobj.Stored.parent.ReadState: 
+            if pobj.Stored.parent.LoadState < pobj.Stored.parent.ReadState: 
                 self.LoadPart(pobj.Stored.parent)
                 
             #Given that it is read at this point. we need to check to see if we are read
@@ -1147,12 +1218,22 @@ class part_manager(object):
             # it is possible a loader gave us a part we want to ignore    
             elif pobj.ReadState == glb.load_none:
                 api.output.verbose_msg(['loading'],"not loading: {0}".format(pobj.ID))
-            elif not pobj.isRead:
+            elif pobj.LoadState == glb.load_none:
                 # if we get here the most likely case is this is a complex part with lots of subparts
-                # we most likely have a case in which a sub-part that has yet to be readin is being force read
-                # as it is in a depends of a sub-part that was defined before it in the Parts file
-                # there is nothing we can do with this given the classic format. so we punt and hope for the best
-                api.output.verbose_msg(['loading'],"Can't load {0} as this is a subpart that is has yet to be read by the parent part. Skipping, May cause failures".format(pobj.ID))
+                # check to see if the parent still defined this sub-part, it may have been removed or renamed
+                if pobj.ID in pobj.Stored.parent.Stored.subparts and not pobj.Stored.parent.isLoading:
+                    #This appears to be so. We want to mark this data to be removed so we don't look for it again
+                    api.output.verbose_msg(['loading'],"Can't load {0} as this is a subpart does not appear to exist in the parent anymore.".format(pobj.ID))
+                    pobj._remove_cache=True
+                
+                elif pobj.Stored.parent.isLoading:
+                    # we most likely have a case in which a sub-part that has yet to be read in is being force read
+                    # as it is in a depends of a sub-part that was defined before it in the Parts file
+                    # there is nothing we can do with this given the classic format. so we punt and hope for the best
+                    api.output.verbose_msg(['loading'],"Can't load {0} as parent part is still loading. Skipping, May cause failures".format(pobj.ID))
+                
+                else:
+                    api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Skipping, May cause failures".format(pobj.ID))
                 return
                 
         if processed:
@@ -1307,6 +1388,7 @@ class part_manager(object):
         ## if not we need to update it
         api.output.print_msg("Updating disk")
         self.UpdateOnDisk( self.parts.values() )
+        api.output.print_msg("Updating disk - Done")
         if len(SCons.Script.BUILD_TARGETS) == 1 and SCons.Script.BUILD_TARGETS[0] == "extract_sources":
             return
         
@@ -1345,7 +1427,7 @@ class part_manager(object):
                                     sections_to_process.append(s)
             except errors.LoadStoredError:
                 self.__hasStored=False                
-            api.output.verbose_msg(['loading'], "reduced parts_to_process=",[i.ID for i in sections_to_process])
+            api.output.verbose_msg(['loading'], "reduced sections to process=",[i.ID for i in sections_to_process])
                     
             #SCons.Script.GetOption("early_exit")
             if self.__hasStored and sections_to_process:
@@ -1354,18 +1436,23 @@ class part_manager(object):
                 # by doing some form of reduce reads based on what we know is up-to-date or not
                 
                 policy=SCons.Script.GetOption("load_logic")
+                if policy=='default': policy='min'
                 api.output.verbose_msg(['loading'],"Using load logic: {0}".format(policy))
-                if policy =='case1' or glb.engine._build_mode=='clean':
+                if policy =='target' or glb.engine._build_mode=='clean':
                     #fully load all direct depends ( no cache loads )
                     loader=direct_depends_loader(sections_to_process,self)
                 
-                elif policy=='case2':
+                elif policy=='min':
                     #Load all Part that are out of date, immediate depends from cache, ignore everything else
                     loader=section_changed_loader(sections_to_process,self)
                 
-                elif policy=='case3':
+                elif policy=='unsafe':
                     # load only the sections assume everything is up to date
                     loader=no_depends_loader(sections_to_process,self)
+                    api.output.warning_msg('''Load logic case of "unsafe" is being used!
+ All dependents are assumed up-to-date!
+ If this is not the case the build may be incorrect or fail!''',show_stack=False)
+                    
                     
                 elif policy =='all':
                     # load everything
@@ -1608,21 +1695,25 @@ class part_manager(object):
         if not tmp: 
             if use_stored_info:
                 # what we had stored
-                stored_dict=datacache.GetCache("part_map")['name_to_alias'].get(name)
-                if stored_dict:
-                    for v in stored_dict.itervalues():
-                        full_set.add(v)
-                        
-            # what is up-to-date
-            alias_lst=self._alias_list(name)
-            if alias_lst!=[]:
-                for v in alias_lst:
-                    full_set.add(self._from_alias(v))
+                if name:
+                    stored_dict=datacache.GetCache("part_map")['name_to_alias'].get(name)
+                    if stored_dict:
+                        for v in stored_dict.itervalues():
+                            full_set.add(v)
+                elif target.Alias and self.parts.get(target.Alias):
+                    full_set.add(self.parts.get(target.Alias))
+                else:
+                    api.output.error_msg("{0} target is to ambigous to find any possible match".format(target.OrignialString))
+            else:            
+                # what is up-to-date
+                alias_lst=self._alias_list(name)
+                if alias_lst!=[]:
+                    for v in alias_lst:
+                        full_set.add(self._from_alias(v))
                 
         else:
             full_set=tmp
         ret= self.reduce_list_from_target_stored(target,full_set) if use_stored_info else self.reduce_list_from_target(target,full_set) 
-        
         #if user_reduce:
             #user_reduce(name,ret)
         
@@ -1682,31 +1773,42 @@ class part_manager(object):
     
     def reduce_list_from_target_stored(self,tobj,part_lst):
         
+        api.output.verbose_msg("stored_reduce_target_mapping","Reducing list of parts based on target {0}".format(tobj))
         for k,v in tobj.Properties.iteritems():
             for pobj in part_lst.copy():
+                api.output.verbose_msg("stored_reduce_target_mapping"," Testing Part {0}".format(pobj.ID))
                 if pobj.Stored is None:
                     #We have no stored info. skip test 
                     #(ie load it as it might be needed)
                     pass
                 elif k == 'version':
+                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Stored.version))
                     if common.is_string(v):
                         v=version.version_range(v+'.*')
                     if pobj.Stored.version not in v:
+                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['target','target-platform','target_platform']:
+                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Stored.target_platform))
                     if pobj.Stored.target_platform != v:
+                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['platform_match']:
+                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}".format(k,v,pobj.Stored.platform_match,type(v),type(pobj.Stored.platform_match)))
                     if pobj.Stored.platform_match != v:
+                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
                     # weak... make better code for this case
+                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1}".format(k,v))
                     if not pobj.Stored.config != v:# pobj.Env.isConfigBasedOn(v):
+                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
                     for v in mv:
                         if v not in pobj.Stored.mode:
+                            api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                             part_lst.remove(pobj)
                             break
                 else:
@@ -1795,14 +1897,17 @@ class part_manager(object):
             stored_data=datacache.GetCache("part_map")
             data={}
             # we want to store information about the Parts we have in this run
+            # or update any parts that are read in
             tmp= stored_data['known_parts'] if stored_data else {}
             has_old=False
             # this needed to tell if we have a alias target
-            # however I may not need all the data that is stored
+            # however I may not need all the data that is stored here
+            # we can clean this up later
             for k,v in self.parts.iteritems():
                 format=v.Format
                 if format != 'new': has_old=True
-                if v.isRead: # might need to relook at this case when we get new formats working
+                # update only part that have been loaded from file
+                if v.LoadState == glb.load_file: # might need to relook at this case when we get new formats working
                     tmp[k]={
                         'name':v.Name,
                         #'version':v.Version,
@@ -1836,10 +1941,12 @@ class part_manager(object):
         # check to see if the cache is good
         if self.__hasStored==False: return
         # get node data if any
-        if node.Stored and node.Stored.components:
+        if node.Stored and node.Stored.components:    
             # we have parts information to add
             for alias, sections in node.Stored.components.iteritems():
                 for section in sections:
+                    if node.Stored.always_build:
+                        section.AlwaysBuild=True
                     nlist.append(section)
         elif node.Stored:
             # we are here because there as no data stored about what sections to

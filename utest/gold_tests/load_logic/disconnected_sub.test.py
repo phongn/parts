@@ -13,7 +13,7 @@ test.AddCleanRun()
 test.AddOutOfDateCheck()
 
 t=test.AddTestRun("build-target")
-t.cmd="scons --console-stream=none A"
+t.cmd="scons --console-stream=none A --ll=all"
 t.returncode=0
 
 test.AddUpdateCheck('A')
@@ -21,22 +21,22 @@ test.AddOutOfDateCheck('A.sub1')
 test.AddOutOfDateCheck('A.sub2')
 test.AddOutOfDateCheck('A.sub3')
 
-t=test.AddTestRun("build-target-case1")
-t.cmd="scons --console-stream=none A:: --ll=case1"
+t=test.AddTestRun("build-target-target")
+t.cmd="scons --console-stream=none A:: --ll=target"
 t.returncode=0
 
 test.AddUpdateCheck()
 test.AddCleanRun()
 
-t=test.AddTestRun("build-target-case2")
-t.cmd="scons --console-stream=none A:: --ll=case2"
+t=test.AddTestRun("build-target-min")
+t.cmd="scons --console-stream=none A:: --ll=min"
 t.returncode=0
 
 test.AddUpdateCheck()
 test.AddCleanRun()
 
-t=test.AddTestRun("build-target-case3")
-t.cmd="scons --console-stream=none A:: --ll=case3"
+t=test.AddTestRun("build-target-unsafe")
+t.cmd="scons --console-stream=none A:: --ll=unsafe"
 t.returncode=0
 
 test.AddUpdateCheck()

@@ -43,10 +43,13 @@ class html(logger.Logger):
         if file.endswith(".html") ==False:
             file+=".html"
         self.m_file=open(os.path.join(dir,file),"w")
+        super(html, self).__init__(dir,file)
         
         self.colors=SCons.Script.GetOption('use_color')
-        self.fg_color=0
+        self.fg_color=color.White
+        self.default_color=color.White
         self.writeheader()
+        
         
     def writeheader(self):
         self.m_file.write('''<html>
@@ -119,39 +122,40 @@ class html(logger.Logger):
         }
     </style>
 </head>
-<body>
+<body bgcolor="#000000">
         ''')
 
     def out_color(self,col):
         fg=col.Foreground()
         if fg == color.Bright:
-            if self.fg_color < 8:
-                fg=self.fg_color+8
+            if self.default_color < 8:
+                fg=self.default_color+8
             else:
-                fg=self.fg_color
+                fg=self.default_color
         elif fg == color.Dim:
-            if self.fg_color > 8:
-                fg=self.fg_color-8
+            if self.default_color > 8:
+                fg=self.default_color-8
             else:
-                fg=self.fg_color
-        else:
-            self.fg_color=fg
+                fg=self.default_color
         
-        self.m_file.write("<span class=\"%s\">"%(RtfColorIndex(self.fg_color)))
+        self.fg_color=fg
+        with self._lock:
+            self.m_file.write("<span class=\"%s\">"%(RtfColorIndex(self.fg_color)))
         
     def writestr(self,msg):
-        for c in msg:
-            if c == '>':
-                self.m_file.write('&gt')
-            elif c == '<':
-                self.m_file.write('&lt')
-            elif c == '&':
-                self.m_file.write('&amp')
-            elif c == '\n':
-                self.m_file.write('<br/>')
-            else:
-                self.m_file.write(c)
-        self.m_file.write("</span>\n")
+        with self._lock:
+            for c in msg:
+                if c == '>':
+                    self.m_file.write('&gt')
+                elif c == '<':
+                    self.m_file.write('&lt')
+                elif c == '&':
+                    self.m_file.write('&amp')
+                elif c == '\n':
+                    self.m_file.write('<br/>')
+                else:
+                    self.m_file.write(c)
+            self.m_file.write("</span>\n")
     
     def logout(self,msg):
         self.out_color(self.colors['stdout'])
@@ -178,5 +182,6 @@ class html(logger.Logger):
         self.writestr(msg)
     
     def shutdown(self):
-        self.m_file.write("</body></html>")
+        with self._lock:
+            self.m_file.write("</body></html>")
         self.m_file.close()

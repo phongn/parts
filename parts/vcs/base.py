@@ -6,15 +6,9 @@ import subprocess
 from .. import common
 from .. import datacache
 from .. import api
-
-def rmgeneric(path, __func__):
-
-    #try:
-    __func__(path)
-    #except OSError, (errno, strerror):
-    #    return False
-    return True
-            
+from .. import part_ref
+from .. import target_type
+           
 def removeall(path):
     ''' 
     This allow for a simple removeall of data on windows or linux. Python
@@ -22,25 +16,31 @@ def removeall(path):
     remove these files from the test area without issue.
     '''
 
-    if not os.path.isdir(path):
+    def rm_file(p):
+        st = os.stat(p)
+        os.chmod(p, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        os.remove(p)            
+        
+    
+    def rm_dir(p):
+        removeall(p) # remove all files in directory first
+        st = os.stat(p)
+        os.chmod(p, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        os.rmdir(p)
+
+    if os.path.isfile(path):
+        rm_file(path)
         return
+        
     
     files=os.listdir(path)
 
     for x in files:
         fullpath=os.path.join(path, x)
         if os.path.isfile(fullpath):
-            f=os.remove
-            st = os.stat(fullpath)
-            os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-            rmgeneric(fullpath, f)            
+            rm_file(fullpath)            
         elif os.path.isdir(fullpath):
-            removeall(fullpath)
-            f=os.rmdir
-            st = os.stat(fullpath)
-            os.chmod(fullpath, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-            rmgeneric(fullpath, f)
-
+            rm_dir(fullpath)
     
 class base(object):
     ''' 
@@ -132,23 +132,12 @@ class base(object):
     def _has_target_match(self,update_option):
         
         if common.is_list(update_option):
-            # move this logic to part object??
-            alias=self._env.subst("$PART_ALIAS_CONCEPT")
-            name=self._env.subst("$PART_NAME_CONCEPT")
             for i in update_option:
-                if i == self._pobj.Alias: # change to Name
+                tmp=part_ref.part_ref(target_type.target_type(i))
+                if tmp.hasStoredMatch and self._pobj in tmp.StoredMatches:
                     return True
-                elif i.startswith(alias) and i.endswith(self.Alias):
-                    return True
-                # clean up latter .. assume 3 version number logic.. not N
-                elif i.startswith(name) and (\
-                        i.endswith(self._pobj.Name) or\
-                        i.endswith("%s_%s"%(self._pobj.Name,self._pobj.Version)) or \
-                        i.endswith("%s_%s"%(self._pobj.Name,self._pobj.ShortVersion)) or\
-                        i.endswith("%s_%s"%(self._pobj.Name,self._pobj.Version.major())\
-                        )):
-                    return True
-                
+                elif tmp.hasMatch and self._pobj in tmp.Matches:
+                    return True                
         return False
                 
     def NeedsToUpdate(self):
@@ -174,6 +163,7 @@ class base(object):
                 ret=self.do_force_logic()
             elif logic_type=='none':
                 ret=False
+                return ret
             
             if ret:
                 # get policy for how to handle a positive reponse
@@ -251,21 +241,38 @@ class base(object):
         ''' This function does the update logic on the disk'''
         
         if self.PartFileExists:
-            ret=self.Update()
-            if ret and self._env.GetOption('vcs_clean') == True:
-                api.output.print_msg("Update action failed, restoring clean state.") 
-                api.output.print_msg('Deleting directory: %s'%self.CheckOutDir) 
-                ret=removeall(self.CheckOutDir)
-                api.output.print_msg("Doing full checkout.")
-                ret=self.CheckOut()
+            try:
+                ret=self.Update()
+            except:    
+                api.output.print_error("Unexpected exception when doing Update actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
+                import traceback,StringIO
+                traceback.print_exc()
+                raise
+            if ret and self._env.GetOption('vcs_retry') == True:
+                astr="Update"
         else:
-            ret=self.CheckOut()
-            if ret and self._env.GetOption('vcs_clean') == True:
-                api.output.print_msg("Checkout action failed, restoring clean state.") 
-                api.output.print_msg('Deleting directory: %s'%self.CheckOutDir) 
-                ret=removeall(self.CheckOutDir)
-                api.output.print_msg("Doing full checkout.")
+            try:
                 ret=self.CheckOut()
+            except:    
+                api.output.print_error("Unexpected exception when Checkout actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
+                import traceback,StringIO
+                traceback.print_exc()
+                raise
+            if ret and self._env.GetOption('vcs_retry') == True:
+                astr="Checkout"
+                
+        if ret and self._env.GetOption('vcs_retry') == True:
+            api.output.print_msg("{0} action failed, restoring clean state for {1}.".format(astr,self._pobj.Alias)) 
+            api.output.print_msg('Deleting directory: %s'%self.CheckOutDir) 
+            try:
+                removeall(self.CheckOutDir)
+            except OSError, e:
+                api.output.print_error("Failed to remove directory: {0}".format(e),show_stack=False,exit=False) 
+                raise
+            api.output.print_msg("Doing full checkout of {0}.".format(self._pobj.Alias))
+            ret=self.CheckOut()
+            if ret:
+                api.output.print_error("Checkout action failed again for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
         return ret
         
             
@@ -342,7 +349,7 @@ class base(object):
         '''
         pass
         
-    def command_output (self, cmd_str, echo=False,ret_code=None):
+    def command_output (self, cmd_str, echo=False):
         '''
         This internal call is to help with making a system call and printing
         basic error messages
@@ -376,10 +383,7 @@ class base(object):
             print 
         # get return codes
         ret = proc.returncode
-        if ret:
-            return None
-        else:
-            return cmd_output
+        return (ret,cmd_output)
         #except KeyError:
         #    raise
         #except:

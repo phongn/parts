@@ -249,7 +249,9 @@ class manager(object):
         valuestostore= {} if stored_data is None else stored_data.get('known_pnodes',{})
         store_all=valuestostore == {}
         for k,node in self.__known_pnodes.copy().iteritems():
-            if (node.ReadState==glb.load_file) or store_all:
+            if node._remove_cache:
+                del valuestostore[node.ID]
+            elif (node.ReadState==glb.load_file) or store_all:
                 sd=node.GenerateStoredInfo()
                 #import section
                 #import difflib

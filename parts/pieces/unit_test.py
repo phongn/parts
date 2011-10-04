@@ -97,10 +97,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     ## make a new Part object
     parent_obj=glb.engine._part_manager._from_env(env)
     sec= parent_obj.Section("utest")
-    if sec.Name!='utest':
-        short_alias=env.subst('${UTEST_PREFIX}%s'%target)
-        sec=glb.pnodes.Create(pnode.section.utest_section,parent_obj,env=env.Clone(**kw))
-        parent_obj._AddSection("utest",sec)
+    #if sec.Name!='utest':
+    short_alias=env.subst('${UTEST_PREFIX}%s'%target)
+    sec=glb.pnodes.Create(pnode.section.utest_section,parent_obj,env=env.Clone(**kw))
+    parent_obj._AddSection("utest",sec)
         #sec._setup_(parent_obj,env=env.Clone(**kw))
     
     curr_sec=parent_obj.DefiningSection
@@ -120,8 +120,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         src_dir=curr_path
 
     build_dir_leaf=sec.Env['UNIT_TEST_TARGET']
-    #build_dir=os.path.join(env.subst('$BUILD_DIR'),build_dir_leaf)
-    build_dir=sec.Env.subst('$BUILD_DIR')
+    build_dir=sec.Env.subst("{0}/{1}".format('$BUILD_DIR',build_dir_leaf))
     
     ## map autodepends stuff
     sec.Env.DependsOn([sec.Env.Component(env.PartName(),env.PartVersion(),section='build')])
@@ -234,20 +233,23 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     base_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_alias)
     base_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_run_alias)
+    sec.Env.AlwaysBuild(base_run_alias)
     
     
     recurse_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_alias)
     recurse_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_run_alias)
+    sec.Env.AlwaysBuild(recurse_run_alias)
     
     
     talias=common.map_alias_to_root(sec.Part,'utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
     talias_run=common.map_alias_to_root(sec.Part,'run_utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
+    sec.Env.AlwaysBuild(talias_run)
     
     
     #Top level
     sec.Env.Alias('${BUILD_UTEST_CONCEPT}',talias)
-    sec.Env.Alias('${RUN_UTEST_CONCEPT}',talias_run)
-    
+    r=sec.Env.Alias('${RUN_UTEST_CONCEPT}',talias_run)
+    sec.Env.AlwaysBuild(r)
     parent_obj.DefiningSection=curr_sec
     errors.ResetPartStackFrameInfo()
     return ret

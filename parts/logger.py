@@ -1,12 +1,12 @@
 import api
 import console #for stream types
-
+import thread
 import os
 
 
 class Logger(object):
     def __init__(self,dir="",file=""):
-        pass
+        self._lock=thread.allocate_lock() # used to sync output
     
     def logout(self,msg):
         pass
@@ -35,6 +35,7 @@ class Logger(object):
 
 class QueueLogger(Logger):
     def __init__(self,dir="",file=""):
+        super(QueueLogger, self).__init__(dir,file)
         self.queue=[]
     
     def logout(self,msg):

@@ -102,6 +102,14 @@ class section(pnode.pnode):
     def Depends(self,val):
         common.extend_if_absent(self.__depends,val)
     
+    @property    
+    def AlwaysBuild(self):
+        return self._cache.get("always_build",False)
+    
+    @AlwaysBuild.setter   
+    def AlwaysBuild(self,val):
+        self._cache["always_build"]=val
+    
     @property
     def FullDepends(self):
         return self.__full_depends
@@ -365,7 +373,10 @@ class section(pnode.pnode):
     
     @ReadState.setter
     def ReadState(self,state):
-        self.Stored.part.UpdateReadState(state)
+        if self.__pobj is None:
+            self.Stored.part.UpdateReadState(state)
+        else:
+            self.Part.UpdateReadState(state)
     
     #
     #def Serialize(self):

@@ -7,6 +7,9 @@ class pnode(object):
         
     def __init__(self):
         self.__load_state=glb.load_none
+        self._remove_cache=False
+        # state
+        self.__is_loading=False
         
     @property
     def LoadState(self):
@@ -21,6 +24,18 @@ class pnode(object):
         values can be None,Cache and File
         '''
         self.__load_state=value
+    
+    @property
+    def isLoading(self):
+        ''' Tell us if we are being loaded
+        '''
+        return self.__is_loading
+
+    @isLoading.setter
+    def isLoading(self,value):
+        ''' Tell us if we are being loaded
+        '''
+        self.__is_loading=value
         
     @property
     def Stored(self):
@@ -66,10 +81,16 @@ def pnode_factory(klass,*lst,**kw):
     # and if we need to setup the node with passed in data
     id,setup=klass._process_arg(*lst,**kw)
     if id and setup and glb.pnodes.isKnownPNode(id):
-        # we have the not .. Get it
+        # we have the node .. Get it
         ret= glb.pnodes.GetPNode(id)
+        if ret.LoadState ==glb.load_cache and ret.ReadState ==glb.load_file:
+            # this is a case of promotion from a cache to file load state
+            # when this happens we want to regenerate the node
+            ret.__init__(*lst,**kw)
+            ret.LoadState=glb.load_cache 
         # setup the node
         ret._setup_(*lst,**kw)
+        
     elif id and setup and not glb.pnodes.isKnownPNode(id):
         #We don't have this node yet
         #make it 
@@ -79,8 +100,8 @@ def pnode_factory(klass,*lst,**kw):
         # register it
         glb.pnodes.AddPNodeToKnown(ret)
     elif id and not setup and glb.pnodes.isKnownPNode(id):
-        # we have the not .. Get it
-        ret= glb.pnodes.GetPNode(id)
+        # we have the node .. Get it
+        ret= glb.pnodes.GetPNode(id)    
     elif id and not setup and not glb.pnodes.isKnownPNode(id):
         #We don't have this node yet
         #make it 
@@ -88,28 +109,38 @@ def pnode_factory(klass,*lst,**kw):
         # register it
         glb.pnodes.AddPNodeToKnown(ret)
     elif not id: 
-        #can not generate the ID early
-        # so we make a node and call setup
-        # at this point we have and ID
+        # can not generate the ID at this point
+        # but this does not mean we don't have
+        # an instance of this object
+        # so we make a tmp node and call setup
+        # to get an ID
         ret= klass(*lst,**kw)
         ret._setup_(gen_ID=True,*lst,**kw)
         id=ret.ID
         # see if this is a known ID
         if glb.pnodes.isKnownPNode(id):
-            #This is known
+            # This is a known node
             # get this node and return it
             ret=glb.pnodes.GetPNode(id)
             # if this known, and it is not setup
             if setup and not ret.isSetup:
-                # recall __init__ on the object
+                # we want to recall __init__ on the object
+                # because we have new "better" init state
                 ret.__init__(*lst,**kw)
+            elif ret.LoadState ==glb.load_cache and ret.ReadState ==glb.load_file:
+                # this is a case of promotion from a cache to file load state
+                # when this happens we want to regenerate the node
+                ret.__init__(*lst,**kw)
+                setup=True # this should be set to True
+                ret.LoadState=glb.load_cache 
         else:
-            # else return the node we have and register it
+            # else this is not a known node
+            # return the node we have and register it
             glb.pnodes.AddPNodeToKnown(ret)
         
         if setup and not ret.isSetup:
             # setup the node
             ret._setup_(*lst,**kw)
-        
+            
     return ret
 

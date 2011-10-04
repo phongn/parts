@@ -55,7 +55,10 @@ class dependent_ref(object):
         matches=self.__part_ref.StoredMatches
         # try to turn matches in to sections
         for m in matches:
-            self.__stored_matches.append(m.Stored.sections[self.__sectionname])
+            if m.Stored:
+                self.__stored_matches.append(m.Stored.sections[self.__sectionname])
+            else:
+                self.__stored_matches.append(m.Section(self.__sectionname))
         return self.__stored_matches
     
     # clean up the below functions... so we only have one case 

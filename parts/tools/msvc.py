@@ -203,17 +203,17 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['CC']         = 'cl'
     env['CCFLAGS']    = SCons.Util.CLVar('')
     env['CFLAGS']     = SCons.Util.CLVar('')
-    env['CCCOM']      = '$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM'
+    env['CCCOM']      = '${TEMPFILE("$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM")}'
     env['SHCC']       = '$CC'
     env['SHCCFLAGS']  = SCons.Util.CLVar('$CCFLAGS')
     env['SHCFLAGS']   = SCons.Util.CLVar('$CFLAGS')
-    env['SHCCCOM']    = '$SHCC /Fo$TARGET /c $SOURCES $SHCFLAGS $SHCCFLAGS $_CCCOMCOM'
+    env['SHCCCOM']    = '${TEMPFILE("$SHCC /Fo$TARGET /c $SOURCES $SHCFLAGS $SHCCFLAGS $_CCCOMCOM")}'
     env['CXX']        = '$CC'
     env['CXXFLAGS']   = SCons.Util.CLVar('$( /TP $)')
-    env['CXXCOM']     = '$CXX /Fo$TARGET /c $SOURCES $CXXFLAGS $CCFLAGS $_CCCOMCOM'
+    env['CXXCOM']     = '${TEMPFILE("$CXX /Fo$TARGET /c $SOURCES $CXXFLAGS $CCFLAGS $_CCCOMCOM")}'
     env['SHCXX']      = '$CXX'
     env['SHCXXFLAGS'] = SCons.Util.CLVar('$CXXFLAGS')
-    env['SHCXXCOM']   = '$SHCXX /Fo$TARGET /c $SOURCES $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM'
+    env['SHCXXCOM']   = '${TEMPFILE("$SHCXX /Fo$TARGET /c $SOURCES $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM")}'
     env['CPPDEFPREFIX']  = '/D'
     env['CPPDEFSUFFIX']  = ''
     env['INCPREFIX']  = '/I'
@@ -225,7 +225,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['RC'] = 'rc'
     env['RCFLAGS'] = SCons.Util.CLVar('')
     env['RCSUFFIXES']=['.rc','.rc2']
-    env['RCCOM'] = '$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES'
+    env['RCCOM'] = '${TEMPFILE("$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES")}'
     env['BUILDERS']['RES'] = res_builder
     env['OBJPREFIX']      = ''
     env['OBJSUFFIX']      = '.obj'
@@ -236,9 +236,9 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['CXXFILESUFFIX'] = '.cc'
 
     env['PCHPDBFLAGS'] = SCons.Util.CLVar(['${(PDB and "/Yd") or ""}'])
-    env['PCHCOM'] = '$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS'
+    env['PCHCOM'] = '${TEMPFILE("$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS")}'
     env['BUILDERS']['PCH'] = pch_builder
-    
+
     # fix this up so we can control its printing to screen better.
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 

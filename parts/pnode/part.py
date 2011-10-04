@@ -38,68 +38,67 @@ import hashlib
 class part(pnode.pnode):
     """description of class"""
     
-    __slots__=[
-    # calling params
-    '__append',     # This is stuff we want to append to the environment
-    '__prepend',    # this is stuff we would want to prepend
-    '__kw',         # this is stuff we want to replace        
-        
-    # basic attibutes
-    '__ID',
-    '__file',         # the Parts file
-    '__src_path',      # The Source path ( the path of the _file
-    '__version',      # the version of this part
-    '__name',         # the name of this part (foo.bar.goo)
-    '__alias',        # the alias of this part (foo0.bar0.goo0)
-    '__short_name',   # the short name of this parts (goo)
-    '__short_alias',  # the short name of this parts (goo0)
-    '__parent',       # the parent part object, else None
-    '__root',         # the root part object, might be self
-    '__subparts',      # dictionary of sub-parts 
-    
-    '__mode',          # special build values
-    '__uses',      # list of Parts that this we want to map to first
-    '__settings',       # The setting object used to create the enviornment
-    '__env',            # the prime SCons Environment
-    '__platform_match', # this is how we can depend on this object
-    
-    '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
-    '__env_diff_sig', # The MD5 value of this difference
-    
-    '__build_context_files', 
-    '__config_context_files',
-    
-    '__sections', # the section the part contains
-    '__classic_section', # the classic format case
-    
-    
-    # sdk data 
-    '__create_sdk',     # create the SDK
-    '__create_sdk_data', # This is the data for the SDK file we will want to make
-    '__sdk_files',      # the file that are copied in to the SDK
-    '__sdk_file',       # the name of the SDK file we will make.. if any
-    
-    # some state stuff
-    '__force_load', # tells us that this Parts should be loaded
-    '__format',     #The format of the part file
-    '__is_setup',    # the Parts has been setup to be buildable
-    '__is_read',      # the file has been read
-    '__is_default_target', # do we set this as a default build target
-    '__defining_section', # current section we are defining
-    '__read_state',
-    
-    #packaging stuff
-    '__package_group', # the package group this maps to
-    
-    #VCS stuff
-    '__vcs', #The information on how to check out this Part, None to use as file as local path.
-    
-    #compatiblity stuff
-    '__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
-    '__order_value', # use to help with ordering in a compatible way between classic and new formats
-    '__cache', # used for internal caching of data
-    #'__dict__'
-    ]
+    #__slots__=[
+    ## calling params
+    #'__append',     # This is stuff we want to append to the environment
+    #'__prepend',    # this is stuff we would want to prepend
+    #'__kw',         # this is stuff we want to replace        
+    #    
+    ## basic attibutes
+    #'__ID',
+    #'__file',         # the Parts file
+    #'__src_path',      # The Source path ( the path of the _file
+    #'__version',      # the version of this part
+    #'__name',         # the name of this part (foo.bar.goo)
+    #'__alias',        # the alias of this part (foo0.bar0.goo0)
+    #'__short_name',   # the short name of this parts (goo)
+    #'__short_alias',  # the short name of this parts (goo0)
+    #'__parent',       # the parent part object, else None
+    #'__root',         # the root part object, might be self
+    #'__subparts',      # dictionary of sub-parts 
+    #
+    #'__mode',          # special build values
+    #'__uses',      # list of Parts that this we want to map to first
+    #'__settings',       # The setting object used to create the enviornment
+    #'__env',            # the prime SCons Environment
+    #'__platform_match', # this is how we can depend on this object
+    #
+    #'__env_diff', # the difference of this environment with the Default environment of the defining Setting object
+    #'__env_diff_sig', # The MD5 value of this difference
+    #
+    #'__build_context_files', 
+    #'__config_context_files',
+    #
+    #'__sections', # the section the part contains
+    #'__classic_section', # the classic format case
+    #
+    #
+    ## sdk data 
+    #'__create_sdk',     # create the SDK
+    #'__create_sdk_data', # This is the data for the SDK file we will want to make
+    #'__sdk_files',      # the file that are copied in to the SDK
+    #'__sdk_file',       # the name of the SDK file we will make.. if any
+    #
+    ## some state stuff
+    #'__force_load', # tells us that this Parts should be loaded
+    #'__format',     #The format of the part file
+    #'__is_setup',    # the Parts has been setup to be buildable
+    #'__is_default_target', # do we set this as a default build target
+    #'__defining_section', # current section we are defining
+    #'__read_state',
+    #
+    ##packaging stuff
+    #'__package_group', # the package group this maps to
+    #
+    ##VCS stuff
+    #'__vcs', #The information on how to check out this Part, None to use as file as local path.
+    #
+    ##compatiblity stuff
+    #'__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
+    #'__order_value', # use to help with ordering in a compatible way between classic and new formats
+    #'__cache', # used for internal caching of data
+    ##'__dict__'
+    #]
     # constructor
     def __init__(self,file=None,mode=[],vcs_t=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,alias=None,name=None,
@@ -137,8 +136,7 @@ class part(pnode.pnode):
         
         # the part has been fully processed or not
         #self.__Processed=False
-        # the file has been read
-        self.__is_read=kw.get('__is_read',False)
+        
         # this is the style/format the part file used
         self.__format=None
         
@@ -226,7 +224,6 @@ class part(pnode.pnode):
         if id: setup= False
         else: setup = True
         return id,setup
-
 
     ## properties
     #calling params
@@ -360,7 +357,7 @@ class part(pnode.pnode):
             if id(obj) != id(self.__subparts[obj.ID]):
                 api.output.error_msg("%s is already defined"%obj.Alias)
         except KeyError:
-            self.__subparts[obj.Alias]=obj
+            self.__subparts[obj.ID]=obj
        
     @property
     def Mode(self): #readonly non-mutable
@@ -488,18 +485,13 @@ class part(pnode.pnode):
         return self.__is_setup
     
     @property
-    def isRead(self):
-        '''Returns is we have read the file'''
-        return self.__is_read
-    
-    @property
     def isDefaultTarget(self):
         '''Returns true is this Part is set as a default Target to be built'''
         return self.__is_default_target
     
     @property
     def isVisited(self):
-        return self.isRead
+        return self.LoadState==glb.load_file
 
     @isVisited.setter
     def _set_isVisited(self,value):
@@ -563,11 +555,6 @@ class part(pnode.pnode):
     def Section(self,case):
         try:
             tmp=self.__sections[case]
-            ## see if this needs to be loaded in
-            ## should only happen if the section ( or this parts) is loaded in from stored info
-            ## all other cases should be this full read in
-            #if tmp.LoadState <pnode.readin:
-            #    tmp.LoadFromCache()
             return tmp
         except:
             return self.__classic_section
@@ -702,39 +689,8 @@ class part(pnode.pnode):
                 api.output.warning_msg('use of "architecture_indepenent" is depreciated. Please use "architecture_independent" instead.')
         
         self.__classic_section=glb.pnodes.Create(section.build_section,self)
-        
         self.__is_setup=True
         
-    
-    #def _update(self,alias=None,name=None,Version=None,file=None,mode=[],vcs_t=None,default=False,
-    #        append={},prepend={},create_sdk=True,package_group=None,
-    #        **kw):
-    #    '''
-    #    The logic here is to only add value here until the component is setup
-    #    Once it is setup we don't want any value to overide existing values. 
-    #    This mean the Part from the user point of view is read-only.
-    #    .. need to refactor more ...
-    #    '''
-    #    if self.__is_setup == False:
-    #        self.__alias=alias
-    #        self.__name=name
-    #        self.__version=version.version(Version)
-    #        self.__file=file
-    #        self.__mode=common.make_list(mode)
-    #        self.__vcs=vcs_t
-    #        self.__set_as_default_target=default
-    #        self.__append=append
-    #        self.__prepend=prepend
-    #        self.__create_sdk=create_sdk
-    #        self.__kw=kw
-    #        self.__package_group=package_group
-    #    elif alias==None and name==None and version==None and file==None\
-    #        and file==None and mode==[] and vcs_type==None and default==False\
-    #        and append=={} and prepend == {} and create_sdk==True and package_group==None:
-    #        pass
-    #    else:
-    #        api.output.error_msg('Part alias = "%s" already has been setup.'%(self.__alias))
-    
     def _merge(self,otherobj):
         #turn other object in to this guy the best we can
         otherobj.__dict__=self.__dict__    
@@ -870,24 +826,7 @@ class part(pnode.pnode):
         '''
         self.__classic_section._map_targets()
         return
-    #    # seems to be an issue for compatibility
-    #    utest_call=False
-    #    targets=SCons.Script.BUILD_TARGETS
-    #    for t in targets:
-    #        tmp=target_type(t)
-    #        sep_len=len(self.__env.subst("$ALIAS_SEPARTATOR"))
-    #        if tmp.concept == self.__env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == self.__env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
-    #            utest_call=True
-    #            break
-    #    # if we are not building unit tests
-    #    # and this is a classic format
-    #    # and this part did not call any SdkXXX or InstallXXX
-    #    # then we don't want to define any build actions it may have
-    #    if utest_call==False and self._sdk_or_installed_called==False and self._is_classic_format:
-    #        pass
-    #    else:
-    #        self.__env.Alias('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,list(self.__classic_section.Targets))
-        
+  
         
         
     def ReadFile(self):
@@ -895,14 +834,20 @@ class part(pnode.pnode):
         # and check at the end if we processed a new format or an old format
         # error on mixed formats??
         
-        if self.__is_read:
-            print "\033[1;32m %swas already read"%self.__alias
-        if self.LoadState == glb.load_cache:
-            api.output.print_msg("{0} was load from cache, loading from file".format(self.__alias))
-        
-        if self.__is_read==False:
+        if self.LoadState == glb.load_file:
+            print "\033[1;32m %s was already read"%self.__alias
+            return
+        #if self.LoadState == glb.load_cache:
+        #    print "promotion state from cache to file"
+        #    tmp=self.__sections.get('build')
+        #    print tmp
+        #    if self.__classic_section is None and tmp:
+        #        self.__classic_section = tmp
+                
+                
+        if self.LoadState < glb.load_file:
             # final set up for environment
-            self.__is_read=None
+            
             env=self.__classic_section.Env            
             ## setup what we want to export
             # global objects
@@ -946,8 +891,8 @@ class part(pnode.pnode):
                         errors.ResetPartStackFrameInfo()
                         ret=self.__env.SConscript(
                             self.__file,
-                            src_dir=self.__env.subst('$SRC_DIR'),
-                            variant_dir=self.__env.subst('$BUILD_DIR'),
+                            src_dir=sdir,
+                            variant_dir=bdir,
                             duplicate=self.__env['duplicate_build'],
                             exports=export_map
                             )
@@ -979,7 +924,7 @@ class part(pnode.pnode):
             #common.tag_node_ownership(self.__env,bdir)
             
             # set file as read
-            self.__is_read=True
+            
             self.__classic_section.LoadState = glb.load_file
             
             sys.path=bk_path
@@ -991,7 +936,7 @@ class part(pnode.pnode):
         return None if the file has not been read (ie this is unknown)
         otherwise it returns True or False
         '''
-        if self.__is_read:
+        if self.LoadState == glb.load_none:
             return name in self.__sections
         return None
     
@@ -1099,10 +1044,6 @@ class part(pnode.pnode):
     def UpdateReadState(self,state):
         if self.__read_state < state:
             self.__read_state = state
-            # reset isRead state to allow for cache -> file loading promotions
-            # clean up once we clean up sections a bit more to get unit tests working...
-            self.__is_read=False 
-            self.__sections={}
             
     @property
     def ReadState(self):
@@ -1369,13 +1310,9 @@ class part(pnode.pnode):
             self.__env=self.__root.Env.Clone()
             self.__is_setup=True
         
-        self.__is_read=True
         self._map_alias()
         
                 
-        
-        
-        
         
     def _setup_from_cache_data(self,data):
         '''

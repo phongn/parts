@@ -22,7 +22,7 @@ def SetOptionDefault(key,value):
     #special logger logic
     if key=='LOGGER':
         if type(glb.rpter.logger) is not logger.QueueLogger:
-            api.output.print_msg('Logger already set -- ignoring')
+            api.output.warning_msg('Logger already set -- ignoring')
             pass
         else:
             ### clean up
@@ -50,7 +50,7 @@ def SetOptionDefault(key,value):
             log_obj=log_obj(directory.abspath,env['LOG_FILE_NAME'])
             glb.rpter.reset_logger(log_obj)
             
-    api.output.print_msg('Setting default value of',key,'to',value)
+    api.output.verbose_msg(['settings'],'Setting default value of',key,'to',value)
     try:
         settings.DefaultSettings().vars[key].Default=value
     except KeyError:
@@ -241,7 +241,21 @@ def opt_logging(option, opt, value, parser):
     except ImportError:
         raise OptionValueError('No logger called "%s" was found' % value)
 
-
+SCons.Script.AddOption("--use-parts-site",
+            dest='use_part_site',
+            default=None,
+            nargs=1, 
+            type='string',
+            action='store',
+            #metavar='DIR',
+            help='User provided part-site path. Overides all default location.')
+            
+SCons.Script.AddOption("--disable-global-parts-site",
+            dest='global_part_site',
+            default=True,
+            action="store_false",
+            help='Disable Parts from using the part-site location in the system or user areas.')
+            
 SCons.Script.AddOption("--verbose",
             dest='verbose',
             default=[],
@@ -267,21 +281,6 @@ SCons.Script.AddOption("--log",
             action='callback',
             help='True to use default logger, else name of logger to use')
             
-SCons.Script.AddOption("--use-part-site",
-            dest='use_part_site',
-            default=None,
-            nargs=1, 
-            type='string',
-            action='store',
-            #metavar='DIR',
-            help='User provided part-site path. Overides all default location.')
-            
-SCons.Script.AddOption("--disable-global-part-site",
-            dest='global_part_site',
-            default=True,
-            action="store_false",
-            help='Disable Parts from using the part-site location in the system or user areas.')
-
 SCons.Script.AddOption("--build-config","--buildconfig","--bldcfg","--bcfg","--cfg",
             dest='build_config',
             default=None,
@@ -344,12 +343,12 @@ SCons.Script.AddOption("--disable-parts-cache",
                         
 SCons.Script.AddOption("--load-logic","--ll",
             dest='load_logic',
-            default='all',
+            default='default',
             nargs=1,
             type='choice',
-            choices=['all','case1','case2','case3'],
+            choices=['all','target','min','unsafe','default'],
             action='store',
-            help='fill in')     
+            help='Tell Part what logic to use when loading the Parts objects.')     
 
 
 ##SCons.Script.AddOption("--use-sdk",

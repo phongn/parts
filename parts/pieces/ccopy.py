@@ -13,6 +13,23 @@ from parts.part_logger import part_nil_logger
 # generic copy builder
 if sys.platform == 'win32':
     import ctypes
+    from ctypes.wintypes import BOOLEAN, LPWSTR, DWORD
+
+    # this function is return value is messed up because of a programmer mistake as MS
+    # have to reprototype it do it works correctly. basically make return a BOOLEAN not a BOOL
+    try:
+        CreateSymbolicLink = ctypes.windll.kernel32.CreateSymbolicLinkW
+        CreateSymbolicLink.argtypes = (
+            ctypes.wintypes.LPWSTR,
+            ctypes.wintypes.LPWSTR,
+            ctypes.wintypes.DWORD,
+            )
+        CreateSymbolicLink.restype = ctypes.wintypes.BOOLEAN
+    except AttributeError: # CreateSymbolicW not found
+        def CreateSymbolicLink(arg1, arg2, arg3):
+            ctypes.SetLastError(1) #ERROR_INVALID_FUNCTION
+            return 0
+
     def ccopy_hard_soft(dest,source):
         # we only deal with files in our cases
         api.output.verbose_msg("ccopy","ccopy_hard_soft dest=%s source=%s"%(dest,source))
@@ -20,7 +37,7 @@ if sys.platform == 'win32':
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
             os.remove(dest)
         try:
-            
+
             ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
             if ret==0:
                 api.output.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
@@ -30,7 +47,7 @@ if sys.platform == 'win32':
                 #get the relpath
                 tmp=os.path.split(source)
                 tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
-                ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+                ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
                 if ret==0:
                     api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
                     raise IOError,ctypes.FormatError(ctypes.GetLastError())
@@ -40,7 +57,7 @@ if sys.platform == 'win32':
                     api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
 
-    def ccopy_soft_hard(dest,source):    
+    def ccopy_soft_hard(dest,source):
         # we only deal with files in our cases
         api.output.verbose_msg("ccopy","ccopy_soft_hard dest=%s source=%s"%(dest,source))
         #get the relpath
@@ -50,7 +67,7 @@ if sys.platform == 'win32':
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
             os.remove(dest)
         try:
-            ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+            ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
             if ret==0:
                 api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
@@ -65,7 +82,7 @@ if sys.platform == 'win32':
                 if ret==0:
                     api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
-                
+
     def ccopy_hard(dest,source):
         # we only deal with files in our cases
         api.output.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
@@ -82,7 +99,7 @@ if sys.platform == 'win32':
             if ret==0:
                 api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
-        
+
     def ccopy_soft(dest,source):
         # we only deal with files in our cases
         #get the relpath
@@ -93,7 +110,7 @@ if sys.platform == 'win32':
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
             os.remove(dest)
         try:
-            ret=ctypes.windll.kernel32.CreateSymbolicLinkW(unicode(dest),unicode(tmp),0)
+            ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
             if ret==0:
                 api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
@@ -102,7 +119,7 @@ if sys.platform == 'win32':
             if ret==0:
                 api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
-        
+
     def ccopy_copy(dest,source):
         api.output.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
         ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
@@ -115,7 +132,7 @@ else:
         if os.path.exists(dest):
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
             os.remove(dest)
-        try:        
+        try:
             os.link(source,dest)
         except:
             try:
@@ -125,12 +142,12 @@ else:
                 st = os.stat(source)
                 os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
-    def ccopy_soft_hard(dest,source):   
+    def ccopy_soft_hard(dest,source):
         api.output.verbose_msg("ccopy","ccopy_soft_hard dest=%s source=%s"%(dest,source))
         if os.path.exists(dest):
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
-            os.remove(dest) 
-        try:        
+            os.remove(dest)
+        try:
             os.symlink(source,dest)
         except:
             try:
@@ -140,19 +157,19 @@ else:
                 st = os.stat(source)
                 os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
-        
-    def ccopy_hard(dest,source):     
+
+    def ccopy_hard(dest,source):
         api.output.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
         if os.path.exists(dest):
             api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
-            os.remove(dest)   
+            os.remove(dest)
         try:
             os.link(source,dest)
         except:
             shutil.copy2(source, dest)
             st = os.stat(source)
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-        
+
     def ccopy_soft(dest,source):
         api.output.verbose_msg("ccopy","ccopy_soft dest=%s source=%s"%(dest,source))
         if os.path.exists(dest):
@@ -164,7 +181,7 @@ else:
             shutil.copy2(source, dest)
             st = os.stat(source)
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-        
+
     def ccopy_copy(dest,source):
         api.output.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
         if os.path.lexists(dest):
@@ -178,7 +195,7 @@ else:
 
 
 def CCopyFuncWrapper(dest, source, env, copyfunc):
-    
+
     if os.path.isdir(source):
         if os.path.exists(dest):
             if not os.path.isdir(dest):
@@ -190,25 +207,25 @@ def CCopyFuncWrapper(dest, source, env, copyfunc):
         shutil.copytree(source, dest)
     else:
         copyfunc(dest,source)
-        
+
     return 0
 
 def CCopyFunc(target, source, env, copy_logic):
-    
+
     # get the logger for the given part
     output=env.get("PART_LOG_MAPPER",part_nil_logger)
     # tell it we are starting a task
     id=output.TaskStart(CCopyStringFunc(target,source,env)+"\n")
-        
+
     assert( len(target) == len(source) ), "\ntarget: %s\nsource: %s" %(map(str, target),map(str, source))
-    
+
     for t, s in zip(target, source):
         #Get info if this should be handled as a symlink
         symlink=env.MetaTagValue(t,'SymLink')
         if symlink is not None:
             # it a symlink so make a new link
-            node_helpers.make_link_bf([t],None,env)            
-        else: 
+            node_helpers.make_link_bf([t],None,env)
+        else:
             #Do normal copy stuff
             CCopyFuncWrapper(t.get_path(), s.get_path(), env,copy_logic)
     #tell logger the task has end correctly.
@@ -223,7 +240,7 @@ def CCopyStringFunc(target, source, env):
     else:
         type = 'file'
     target_path, target_f = os.path.split(str(target))
-    
+
     return 'Parts: Copying %s: "%s" to "%s" as: "%s"' % (type, source, target_path,target_f)
 
 def CCopyEmit(target, source, env):
@@ -253,7 +270,7 @@ def convert(str):
         else:
             api.output.warning_msg("unknown string value for CCOPY_LOGIC")
     return str
-    
+
 
 
 def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
@@ -264,13 +281,13 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         dnodes = env.arg2nodes(target, target_factory.Dir)
     except TypeError:
         api.output.error_msg("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))
-    
+
     #setup copy function
     if copy_logic == CCopy.default:
         copy_logic=convert(
             env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
             )
- 
+
     if copy_logic == CCopy.copy:
         copy_logic=env.__CCopyBuilderC__
     elif copy_logic == CCopy.hard_soft_copy:
@@ -283,10 +300,10 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         copy_logic=env.__CCopyBuilderSC__
     else:
         copy_logic=env.__CCopyBuilderC__
-    
+
     source=common.make_list(source)
     sources=[]
-    
+
     # workaround to not having symlinks yet
     for s in source:
         tmp=env.arg2nodes(s, env.fs.Entry)
@@ -296,7 +313,7 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         if symlink is not None:
             env.MetaTag(tmp[0],SymLink=symlink)
         sources.extend(tmp)
-        
+
     #sources = env.arg2nodes(source, env.fs.Entry)
     n_targets = []
     for dnode in dnodes:
@@ -317,20 +334,20 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
             except (AttributeError, IndexError):
                 pass
             n_targets.extend(tmp)
-            
-            
+
+
     return n_targets
 
 
 def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     result = []
     #setup copy function
-    
+
     if copy_logic == CCopy.default:
         copy_logic=convert(
             env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
             )
-            
+
     if copy_logic == CCopy.copy:
         copy_logic=env.__CCopyBuilderC__
     elif copy_logic == CCopy.hard_soft_copy:
@@ -343,7 +360,7 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         copy_logic=env.__CCopyBuilderSC__
     else:
         copy_logic=env.__CCopyBuilderC__
-        
+
     for src, tgt in map(lambda x, y: (x, y), source, target):
         result.extend(copy_logic(tgt, src,**kw))
     return result
@@ -355,7 +372,7 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
 def _sdk_copy(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     api.output.warning_msg("_SDKCOPY_ is an internal function, please use CCopy")
     return env.CCopy(target, source,copy_logic,**kw)
-    
+
 
 def _sdk_copyas(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     api.output.warning_msg("_SDKCOPYAs_ is an internal function, please use CCopyAs")
@@ -434,11 +451,11 @@ api.register.add_builder('__CCopyBuilderC__',SCons.Builder.Builder(
         name='CCOPY'
         ))
 
-api.register.add_global_object('CCopy',CCopy)        
-api.register.add_global_parts_object('CCopy',CCopy)        
-        
-        
+api.register.add_global_object('CCopy',CCopy)
+api.register.add_global_parts_object('CCopy',CCopy)
+
+
 api.register.add_enum_variable('CCOPY_LOGIC','hard-soft-copy',
         '',['hard-soft-copy','soft-hard-copy','hard-copy','soft-copy','copy'])
-        
-        
+
+

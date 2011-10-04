@@ -3,15 +3,23 @@
 
 from .. import glb
 from .. import settings
+from .. import api
 
 import SCons.Script
+
 
 scons_DefaultEnvironment=SCons.Script.DefaultEnvironment
 
 def Part_DefaultEnvironment(*args,**kw):
-        env=settings.DefaultSettings().DefaultEnvironment()#*args,**kw)
+    env=settings.DefaultSettings().DefaultEnvironment()#*args,**kw)
+    if id(glb.engine.def_env) != id(env):
         glb.engine.def_env=env
-        return env
+    return env
         
 
+# this updates some internal calls that can happen
 SCons.Script.DefaultEnvironment=Part_DefaultEnvironment
+# this allows use to update th "global" DefaultEnvironment in the SConstruct
+# this is needed as the "pointer" to the orginal functions is already set
+# my overide does not change this value in the globals
+api.register.add_global_object('DefaultEnvironment',Part_DefaultEnvironment) 

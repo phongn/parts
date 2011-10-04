@@ -8,6 +8,7 @@ class scons_node_info(stored_info.stored_info):
         self.issymlink=False
         self.components={}
         self.side_effects=[]
+        self.always_build=False
         # self.srcnode # optional value that exist only if needed
         
     def SrcNode(self,other):

@@ -11,6 +11,7 @@ class task_master(object):
         self.__i = 0
         self.__tasks = []
         self.__stopped=False
+        self.__return_code=0
     
     def check_vcs_output(self,vcsobj):
         ''' 
@@ -45,6 +46,14 @@ class task_master(object):
     @property
     def Stopped(self):
         return self.__stopped
+    
+    @property
+    def ReturnCode(self):
+        return self.__return_code
+    
+    @ReturnCode.setter
+    def ReturnCode(self,value):
+        self.__return_code=value
         
     def cleanup(self):
         pass

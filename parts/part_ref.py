@@ -68,6 +68,10 @@ class part_ref(object):
         return len(self.Matches)>0
     
     @property
+    def hasStoredMatch(self):
+        return len(self.StoredMatches)>0
+    
+    @property
     def hasUniqueMatch(self):
         return len(self.Matches)==1
     

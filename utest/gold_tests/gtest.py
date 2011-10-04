@@ -518,7 +518,8 @@ class Engine(object):
                 self.results[test.name]=self.run_test(test)
         
         #report out an issues
-        self.makereport()
+        return self.makereport()
+        
         
     def makereport(self):
         
@@ -646,6 +647,7 @@ class Engine(object):
             print "There were a total of",num_failures,"failures"
         else:
             print "Everything passed"
+        return num_failures
                 
     
     def scan_for_tests(self):
@@ -1006,7 +1008,8 @@ class stream_writter(object):
 
 if __name__ == '__main__':
     engine=Engine()
-    engine.start()
+    ret=engine.start()
     #if os.path.exists(test_root):
     #    removeall(test_root)
+    sys.exit(ret)
 

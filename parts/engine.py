@@ -255,7 +255,7 @@ class parts_addon(object):
         glb.rpter.Setup(
             log_obj,
             silent=SCons.Script.GetOption('silent'),
-            verbose=SCons.Script.GetOption('verbose'),
+            verbose=[i.lower() for i in SCons.Script.GetOption('verbose')],
             trace=SCons.Script.GetOption('trace'),
             use_color=use_color
             )
@@ -852,7 +852,13 @@ Use -H or --help-options for a list of scons options
 
     def generate_cache_key(self):
         
-            
+        try:
+            tmp=self.__cache_key=SCons.Script.ARGUMENTS['USE_CACHE_KEY']
+            print "using key",tmp
+            return tmp
+        except KeyError:
+            pass
+        
         md5=hashlib.md5()        
                 
         # get overides
@@ -869,7 +875,8 @@ Use -H or --help-options for a list of scons options
             'tools',
             'mode',
             'CCOPY_LOGIC',
-            'BUILD_BRANCH'
+            'BUILD_BRANCH',
+            'USE_CACHE_KEY'
             ]
         for k,v in vars.iteritems():
             if k not in white_list:

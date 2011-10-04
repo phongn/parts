@@ -22,7 +22,7 @@ def db_key(length):
     except KeyError:
         import hashlib
         md5=hashlib.md5()
-        md5.update("DB Cache Version 1.0 length %s"%(length))
+        md5.update("DB Cache Version 1.1 length %s"%(length))
         __db_key[length]=md5.hexdigest()
     return __db_key[length]
      
@@ -80,7 +80,9 @@ def GetCache(name,key=None):
     get data from data cache.. if in memory use that, else load it.
     '''
     global __cache
+    api.output.verbose_msg("DataCache",'Loading "{0}" with DB key={1}'.format(name,key))
     if SCons.Script.GetOption("parts_cache") == False or __bad_cache==True:
+        api.output.verbose_msg("DataCache",'Cache is viewed as bad')
         return None
     #if key is None get default key
     if key is None:
@@ -106,6 +108,7 @@ def GetCache(name,key=None):
                     __cache[filename]=ret[1]
                     return ret[1]
     # we don't have a cache for this combo
+    __cache[filename]=None
     return None
 
 def StoreData(name,data,key=None):

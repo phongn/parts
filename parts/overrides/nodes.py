@@ -227,18 +227,24 @@ def _part_isUpToDate(self):
             binfo=self.get_stored_info().binfo
         except AttributeError:
             # this is probally an Value I was loading from my parts DB
-            binfo=self.get_binfo()            
-        
+            binfo=self.get_binfo() 
+            
         # see if anything this node depends on is out of date, if so we are out of date
         nodes=itertools.izip(binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs,
             getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]))
-            
+        
         if not check_nodes(nodes):
             self._memo['_part_isUpToDate'] = False
             return self._memo['_part_isUpToDate'] 
+                
         
-        # check any side effect nodes
         if self.Stored:
+            # check for AlwaysBuild State
+            if self.Stored.always_build:
+                api.output.verbose_msg("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node'.format(self.ID))
+                self._memo['_part_isUpToDate'] = False
+                return self._memo['_part_isUpToDate'] 
+            # check any side effect nodes
             side_effects=self.Stored.side_effects
             for node in side_effects:
                 if not node.pisUpToDate:
@@ -445,6 +451,7 @@ def GenerateStoredInfo(self):
     info.components=metatag.MetaTagValue(self,'components',ns='partinfo',default={})
     info.side_effects=self.side_effects # these are nodes that need to be checked for
     info.issymlink=metatag.MetaTagValue(self,'SymLink',default=False)
+    info.always_build=self.always_build
     if isinstance(self,FSBase):
         if self.ID != self.srcnode().ID:
             info.srcnode=self.srcnode()

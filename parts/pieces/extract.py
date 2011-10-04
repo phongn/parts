@@ -12,6 +12,7 @@ import stat
 from parts.common import matches
 from parts import api
 from parts import datacache
+import hashlib
 
 try:
     import cPickle as pickle
@@ -36,8 +37,12 @@ class Cache:
 
     def getfiles(self, generator, env):
         
+        md5=hashlib.md5()
+        md5.update(self.key)
+        hash_key=md5.hexdigest()
+        
         if not self.file_node.changed():
-            files = datacache.GetCache('extract', self.key)
+            files = datacache.GetCache(hash_key,key='extract')
         else:
             files = None
 
@@ -47,7 +52,7 @@ class Cache:
             items.append(item)
 
         if files is None:
-            datacache.StoreData('extract', items, self.key)
+            datacache.StoreData(hash_key,items, key='extract')
 
         return items
 

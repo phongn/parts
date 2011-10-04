@@ -34,7 +34,7 @@ class Test_tool_mapping(unittest.TestCase):
             self.assertNotEqual(len(tools), 0)
 
             tools = get_tools(self.env, [('cl', '0.0')])
-            self.assertEqual(len(tools), 0)
+            self.assertNotEqual(len(tools), 0)
     elif is_linux:
         def test_ToolChain(self):
             """Test that if 'gcc' toolchain is created then 'gcc' and 'g++' tools are in the list of 'CONFIGURED_TOOLS' env variable"""
@@ -53,4 +53,4 @@ class Test_tool_mapping(unittest.TestCase):
             self.assertNotEqual(len(tools), 0)
 
             tools = get_tools(self.env, [('intelc', '0.0')])
-            self.assertEqual(len(tools), 0)
+            self.assertNotEqual(len(tools), 0)

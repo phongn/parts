@@ -79,7 +79,7 @@ def export_file(env,targets,pobj,prop):
             # if this matches we want to not add this file
             # as doing this would upset the linker
             continue
-        elif getattr(t.attributes,'pdb_owner',None):
+        elif getattr(t.attributes,'FilterAs',None):
             continue
         
         pobj.DefiningSection.Exports[prop]=[file]+pobj.DefiningSection.Exports[prop]

@@ -44,4 +44,5 @@ if not sys._getframe(2).f_code.co_filename.endswith(".py"):
 ## this will be viewed as global function to the user in the Sconstruct file
 globals().update(glb.globals)
 
-
+import SCons.Script
+SCons.Script.Alias('extract_sources')

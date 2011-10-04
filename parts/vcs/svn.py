@@ -95,7 +95,7 @@ class svn(base):
     
     def remove_unversioned(self,path):    
         unver_re = re.compile('^ ?[\?ID] *[1-9 ]*[a-zA-Z]* +(.*)')
-        lines=self.command_output('svn status --no-ignore -v {0}'.format(path)).split('\n')
+        lines=self.command_output('svn status --no-ignore -v {0}'.format(path))[1].split('\n')
         for i in lines:
             tmp=unver_re.match(i)
             if tmp: 
@@ -268,8 +268,8 @@ class svn(base):
             if svnver is None:
                 svnver=self._env.WhereIs('svnversion',os.environ['PATH'])
             
-            data=self.command_output('"%s"'%svnver)
-            if data:
+            ret,data=self.command_output('"%s"'%svnver)
+            if not ret:
                 data=data.strip('\n\r\t ')
                 tmp=data.split(':')
                 if data =='exported':
@@ -318,8 +318,8 @@ class svn(base):
                     
        
             #get the path
-            data=self.command_output('"%s" info %s'%(svn.svnpath,self.CheckOutDir))
-            if data:
+            ret,data=self.command_output('"%s" info %s'%(svn.svnpath,self.CheckOutDir))
+            if not ret:
                 data=data.replace('\r\n','\n')
                 tmp=data.split('\n')
                 for i in tmp:

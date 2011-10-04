@@ -7,17 +7,20 @@ import copy
 import SCons.Errors
 
 def MatchVersionNumbers(verStr1, verStr2):
-
+    if verStr1[-1] == '.':
+        verStr1=verStr1[:-1]
     major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
     major1=int(major1)
     minor1=int(minor1)
     rev1=int(rev1)
 
+    if verStr2[-1] == '.':
+        verStr2=verStr2[:-1]
     major2, minor2, rev2, junk = (verStr2+'.-1.-1.-1').split('.',3)
     major2=int(major2)
     minor2=int(minor2)
     rev2=int(rev2)
-
+    
     if major1 != major2:
         return False
     if major1 == major2 and (minor1 == -1 or minor2 == -1):

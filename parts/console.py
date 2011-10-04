@@ -85,13 +85,11 @@ class Console(object):
                                     self,
                                     conio,
                                 ) 
-        self.__console.ForceFlush=True
         self.__console.ClearLine=False
         self.Output=ansi_stream.ColorTextStream(
                                     self,            
                                     sys.__stdout__
                                 )
-        self.Output.ForceFlush=True
         self.Error=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stderr__
@@ -100,22 +98,33 @@ class Console(object):
                                     self,
                                     sys.__stderr__
                                 )
-        
         self.Message=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
-        self.Message.ForceFlush=True
         self.Trace=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
-        self.Trace.ForceFlush=True
+        
         self.Verbose=ansi_stream.ColorTextStream(
                                     self,
                                     sys.__stdout__
                                 )
+        
+        
+        # this items we want to force flush
+        self.__console.ForceFlush=True
+        self.Output.ForceFlush=True
+        self.Message.ForceFlush=True
+        self.Trace.ForceFlush=True
         self.Verbose.ForceFlush=True
+        # these items we want an option to control if we force
+        self.Error.ForceFlush=True
+        self.Output.ForceFlush=True
+        self.Warning.ForceFlush=True
+        
+        
             
     
     def ShutDown(self):

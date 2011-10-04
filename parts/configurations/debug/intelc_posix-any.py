@@ -15,7 +15,8 @@ config=configuration(map_default_version)
 
 config.VersionRange("7-*",
                     append=ConfigValues(
-                        CCFLAGS=['-O0','-g']
+                        CCFLAGS=['-O0','-g'],
+                        CPPDEFINES=['DEBUG']
                         )
                     )
                     

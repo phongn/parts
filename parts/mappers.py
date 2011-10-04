@@ -37,7 +37,7 @@ class mapper(object):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
     # old function to remove when it is safe
@@ -60,7 +60,7 @@ class mapper(object):
             stackframe=self.stackframe,
             exit=False
             )
-        #because the exception thrown will not get threw the try catch in subst()
+        #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
         
     def name_to_alias_failed(self,env,match,policy=Policy.ReportingPolicy.error):
@@ -68,9 +68,7 @@ class mapper(object):
         if match.hasMatch:
             reason=match.AmbiguousMatchStr()
         else:
-            reason=match.NoMatchStr()
-                
-            
+            reason=match.NoMatchStr() 
         api.output.policy_msg(
             Policy.ReportingPolicy.error,
             [self.name,'mappers'],
@@ -78,7 +76,7 @@ class mapper(object):
             stackframe=self.stackframe,
             exit=False
             )
-        #because the exception thrown will not get threw the try catch in subst()
+        #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
         
     def unexpected_error(self,env):
@@ -89,7 +87,7 @@ class mapper(object):
             stackframe=self.stackframe,
             exit=False
             )
-        #because the exceptionthrown will not get threw the try catch in subst()
+        #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
 
 
@@ -197,7 +195,7 @@ class part_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
         return ret
@@ -297,7 +295,7 @@ class part_id_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
         return ret
@@ -360,14 +358,20 @@ class part_id_export_mapper(mapper):
                         # of the tree.. so if we get a KeyError we can ignore it
                         if common.is_list(sec.Exports[self.part_prop]):
                             api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in export table")
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before Export value: {0}",sec.Exports[self.part_prop])
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before Export value: {0}".format(sec.Exports[self.part_prop]))
                             
-                            idx=sec.Exports[self.part_prop].index(str_val)
+                            try:
+                                idx=sec.Exports[self.part_prop].index(str_val)
+                            except ValueError:
+                                # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
+                                api.output.trace_msg(['partexport_mapper','mapper'],spacer," {0} was not found, trying {0}".format(str_val,(str_val,)))
+                                idx=sec.Exports[self.part_prop].index((str_val,))
+                                str_val=(str_val,)
                             if ret:
                                 sec.Exports[self.part_prop][0:idx+1]=common.extend_if_absent(sec.Exports[self.part_prop][0:idx],ret)
                             else:
                                 sec.Exports[self.part_prop].remove(idx)
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," After export value: {0}",sec.Exports[self.part_prop])
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," After export value: {0}".format(sec.Exports[self.part_prop]))
                         else:
                             sec.Exports[self.part_prop]=ret
                     except KeyError:
@@ -379,7 +383,15 @@ class part_id_export_mapper(mapper):
                         api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
                         api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
                         api.output.trace_msg(['partexport_mapper','mapper'],spacer," Value to set: {0}".format(ret))
-                        idx=env[self.part_prop].index(str_val)
+                        
+                        try:
+                            idx=env[self.part_prop].index(str_val)
+                        except ValueError:
+                            # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
+                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," {0} was not found, trying {0}".format(str_val,(str_val,)))
+                            idx=env[self.part_prop].index((str_val,))
+                            str_val=(str_val,)
+                            
                         if common.is_list(env[self.part_prop]):
                             if ret != []:
                                 env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
@@ -415,7 +427,7 @@ class part_id_export_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
         return ret
@@ -530,7 +542,7 @@ class part_lib_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
         return ret
@@ -570,7 +582,7 @@ class part_subst_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
             
         return ret
@@ -599,7 +611,7 @@ class part_name_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
         return ret
 
@@ -630,7 +642,7 @@ class part_shortname_mapper(mapper):
                 stackframe=self.stackframe,
                 exit=False
                 )
-            #because the exceptionthrown will not get threw the try catch in subst()
+            #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
         return ret
 

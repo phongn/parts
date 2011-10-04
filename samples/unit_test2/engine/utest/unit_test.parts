@@ -4,3 +4,4 @@ env.PartName('unit_tests')
 env.DependsOn([Component('engine',env.PartVersion())])
 
 env.UnitTest("test",["test.cpp"])
+env.UnitTest("test2",["test.cpp"])

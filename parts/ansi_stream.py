@@ -69,8 +69,10 @@ class ColorTextStream(object):
             
     def flush(self,lock=True):
         if lock: self.__console.lock()
-        self.__stream.flush()
-        if lock: self.__console.release()
+        try:
+            self.__stream.flush()
+        finally:
+            if lock: self.__console.release()
         
         
     

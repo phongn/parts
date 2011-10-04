@@ -1,9 +1,9 @@
 
 import os
   
-read_ignore=0
-read_cache=1
-read_load=2
+load_none=0
+load_cache=1
+load_file=2
     
 build_context_files=set()
 
