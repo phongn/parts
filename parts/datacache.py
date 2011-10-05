@@ -80,9 +80,8 @@ def GetCache(name,key=None):
     get data from data cache.. if in memory use that, else load it.
     '''
     global __cache
-    api.output.verbose_msg("DataCache",'Loading "{0}" with DB key={1}'.format(name,key))
+    
     if SCons.Script.GetOption("parts_cache") == False or __bad_cache==True:
-        api.output.verbose_msg("DataCache",'Cache is viewed as bad')
         return None
     #if key is None get default key
     if key is None:

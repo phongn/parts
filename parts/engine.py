@@ -256,7 +256,7 @@ class parts_addon(object):
             log_obj,
             silent=SCons.Script.GetOption('silent'),
             verbose=[i.lower() for i in SCons.Script.GetOption('verbose')],
-            trace=SCons.Script.GetOption('trace'),
+            trace=[i.lower() for i in SCons.Script.GetOption('trace')],
             use_color=use_color
             )
             

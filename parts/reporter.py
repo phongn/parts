@@ -216,7 +216,7 @@ class reporter(object):
     def verbose_msg(self,catagory,msg_lst):
         tmp=common.make_list(catagory)
         for c in tmp:
-            if c in self.verbose:
+            if c.lower() in self.verbose:
                 msg=map(str,msg_lst[1:-1])
                 msg=msg_lst[0].join(msg)+msg_lst[-1]
                 s='Verbose: [%s] %s'%(tmp[0],msg)
@@ -226,7 +226,7 @@ class reporter(object):
     def trace_msg(self,catagory,msg_lst):
         tmp=common.make_list(catagory)
         for c in tmp:
-            if c in self.trace:
+            if c.lower() in self.trace:
                 msg=map(str,msg_lst[1:-1])
                 msg=msg_lst[0].join(msg)+msg_lst[-1]
                 s='Trace: [%s] %s'%(tmp[0],msg)

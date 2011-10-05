@@ -38,67 +38,67 @@ import hashlib
 class part(pnode.pnode):
     """description of class"""
     
-    #__slots__=[
-    ## calling params
-    #'__append',     # This is stuff we want to append to the environment
-    #'__prepend',    # this is stuff we would want to prepend
-    #'__kw',         # this is stuff we want to replace        
-    #    
-    ## basic attibutes
-    #'__ID',
-    #'__file',         # the Parts file
-    #'__src_path',      # The Source path ( the path of the _file
-    #'__version',      # the version of this part
-    #'__name',         # the name of this part (foo.bar.goo)
-    #'__alias',        # the alias of this part (foo0.bar0.goo0)
-    #'__short_name',   # the short name of this parts (goo)
-    #'__short_alias',  # the short name of this parts (goo0)
-    #'__parent',       # the parent part object, else None
-    #'__root',         # the root part object, might be self
-    #'__subparts',      # dictionary of sub-parts 
-    #
-    #'__mode',          # special build values
-    #'__uses',      # list of Parts that this we want to map to first
-    #'__settings',       # The setting object used to create the enviornment
-    #'__env',            # the prime SCons Environment
-    #'__platform_match', # this is how we can depend on this object
-    #
-    #'__env_diff', # the difference of this environment with the Default environment of the defining Setting object
-    #'__env_diff_sig', # The MD5 value of this difference
-    #
-    #'__build_context_files', 
-    #'__config_context_files',
-    #
-    #'__sections', # the section the part contains
-    #'__classic_section', # the classic format case
-    #
-    #
-    ## sdk data 
-    #'__create_sdk',     # create the SDK
-    #'__create_sdk_data', # This is the data for the SDK file we will want to make
-    #'__sdk_files',      # the file that are copied in to the SDK
-    #'__sdk_file',       # the name of the SDK file we will make.. if any
-    #
-    ## some state stuff
-    #'__force_load', # tells us that this Parts should be loaded
-    #'__format',     #The format of the part file
-    #'__is_setup',    # the Parts has been setup to be buildable
-    #'__is_default_target', # do we set this as a default build target
-    #'__defining_section', # current section we are defining
-    #'__read_state',
-    #
-    ##packaging stuff
-    #'__package_group', # the package group this maps to
-    #
-    ##VCS stuff
-    #'__vcs', #The information on how to check out this Part, None to use as file as local path.
-    #
-    ##compatiblity stuff
-    #'__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
-    #'__order_value', # use to help with ordering in a compatible way between classic and new formats
-    #'__cache', # used for internal caching of data
-    ##'__dict__'
-    #]
+    __slots__=[
+    # calling params
+    '__append',     # This is stuff we want to append to the environment
+    '__prepend',    # this is stuff we would want to prepend
+    '__kw',         # this is stuff we want to replace        
+        
+    # basic attibutes
+    '__ID',
+    '__file',         # the Parts file
+    '__src_path',      # The Source path ( the path of the _file
+    '__version',      # the version of this part
+    '__name',         # the name of this part (foo.bar.goo)
+    '__alias',        # the alias of this part (foo0.bar0.goo0)
+    '__short_name',   # the short name of this parts (goo)
+    '__short_alias',  # the short name of this parts (goo0)
+    '__parent',       # the parent part object, else None
+    '__root',         # the root part object, might be self
+    '__subparts',      # dictionary of sub-parts 
+    
+    '__mode',          # special build values
+    '__uses',      # list of Parts that this we want to map to first
+    '__settings',       # The setting object used to create the enviornment
+    '__env',            # the prime SCons Environment
+    '__platform_match', # this is how we can depend on this object
+    
+    '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
+    '__env_diff_sig', # The MD5 value of this difference
+    
+    '__build_context_files', 
+    '__config_context_files',
+    
+    '__sections', # the section the part contains
+    '__classic_section', # the classic format case
+    
+    
+    # sdk data 
+    '__create_sdk',     # create the SDK
+    '__create_sdk_data', # This is the data for the SDK file we will want to make
+    '__sdk_files',      # the file that are copied in to the SDK
+    '__sdk_file',       # the name of the SDK file we will make.. if any
+    
+    # some state stuff
+    '__force_load', # tells us that this Parts should be loaded
+    '__format',     #The format of the part file
+    '__is_setup',    # the Parts has been setup to be buildable
+    '__is_default_target', # do we set this as a default build target
+    '__defining_section', # current section we are defining
+    '__read_state',
+    
+    #packaging stuff
+    '__package_group', # the package group this maps to
+    
+    #VCS stuff
+    '__vcs', #The information on how to check out this Part, None to use as file as local path.
+    
+    #compatiblity stuff
+    '__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
+    '__order_value', # use to help with ordering in a compatible way between classic and new formats
+    '__cache', # used for internal caching of data
+    #'__dict__'
+    ]
     # constructor
     def __init__(self,file=None,mode=[],vcs_t=None,default=False,
             append={},prepend={},create_sdk=True,package_group=None,alias=None,name=None,
