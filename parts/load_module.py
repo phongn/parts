@@ -50,7 +50,7 @@ def get_site_directories(subdir):
         
         if SCons.Script.GetOption('use_part_site'):
             sitepaths=[
-                os.path.abspath(SCons.Script.GetOption('use_part_site')),
+                os.path.join(os.path.abspath(SCons.Script.GetOption('use_part_site')), subdir),
                 # parts install
                 os.path.join(glb.parts_path,subdir)
             ]

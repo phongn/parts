@@ -19,12 +19,12 @@ class section_info(stored_info.stored_info):
         and merge with the parts version as needed'''
         
         # currently we just use the Parts version
-        return self.part.Stored.config_context
+        return self.part.Stored.root.Stored.config_context
     
     def GetBuilderContext(self):
         '''This will get the builder context for a given section
         and merge with the parts version as needed'''
         
         # currently we just use the Parts version
-        return self.part.Stored.build_context    
+        return self.part.Stored.root.Stored.build_context    
 

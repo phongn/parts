@@ -263,12 +263,11 @@ class section(pnode.pnode):
         return self._cache['esigs']
 
     def LoadStoredInfo(self):
-        return glb.pnodes.GetStoredPNodeInfo(self)
-        #md5=hashlib.md5()
-        #md5.update(self.ID)
-        #stored_data=datacache.GetCache("pnode-{0}".format(md5.hexdigest()))
-        #return stored_data
-        
+        tmp=glb.pnodes.GetStoredPNodeInfo(self)
+        if tmp.part: # quick sanity check that this is good data
+            return tmp
+        return None
+                
     #def StoreStoredInfo(self):
     #    info=self.GenerateStoredInfo()
     #    md5=hashlib.md5()

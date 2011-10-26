@@ -3,7 +3,6 @@ import parts.glb as glb
 import parts.common as common
 import parts.api as api
 import parts.errors as errors
-import parts.core as core
 import parts.node_helpers as node_helpers
 import parts.pattern as pattern
 import parts.functors as functors

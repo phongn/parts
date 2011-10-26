@@ -513,7 +513,7 @@ class Settings(object):
             if env['HOST_PLATFORM'] == 'posix':
                 env['ENV']['HOME']=os.environ['HOME']               
                 
-            env['ENV']=os.environ 
+            #env['ENV']=os.environ 
             env['RPATH']=[]
             
                 # stuff to zap

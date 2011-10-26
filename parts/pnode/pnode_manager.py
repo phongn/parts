@@ -105,7 +105,8 @@ class manager(object):
                 buffin=cStringIO.StringIO(tmp)
                 upkl=cPickle.Unpickler(buffin)
                 upkl.persistent_load =pickle_helpers.persistent_unpickle
-                info=upkl.load()        
+                info=upkl.load()    
+                info.post_load_convet()
                 return info
             except KeyError:
                 pass
@@ -120,7 +121,8 @@ class manager(object):
                 buffin=cStringIO.StringIO(tmp)
                 upkl=cPickle.Unpickler(buffin)
                 upkl.persistent_load =pickle_helpers.persistent_unpickle
-                info=upkl.load()        
+                info=upkl.load()
+                info.post_load_convet()
                 return info
             except KeyError:
                 pass

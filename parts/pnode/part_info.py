@@ -1,5 +1,5 @@
 import stored_info
-
+from .. import platform_info
 class part_info(stored_info.stored_info):
     """description of class"""
     def __init__(self):
@@ -27,4 +27,7 @@ class part_info(stored_info.stored_info):
         self.force_load=False
         
     
-
+    def post_load_convet(self):
+        self.target_platform=platform_info.SystemPlatform(self.target_platform)
+        self.platform_match=platform_info.SystemPlatform(self.platform_match)
+        

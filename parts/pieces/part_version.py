@@ -14,7 +14,7 @@ def part_version(env,ver=None):
 
     part_obj=glb.engine._part_manager._from_env(env)       
     ret=version.version(ver)
-    if part_obj.Version != '0.0.0' and ret != part_obj.Version:
+    if part_obj.Version != '0.0.0' and ret != part_obj.Version and part_obj.LoadState != glb.load_cache:
         api.output.warning_msg("Version already set to %s, ignoring new value of %s"%(part_obj.Root.Version,ret))
         return part_obj.Version 
     part_obj.Version=ret

@@ -44,7 +44,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'                            
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'                            
                             ,
                         'INCLUDE':
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
@@ -55,12 +55,12 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib'+os.pathsep+
                             get_current_sdk()+'/lib'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'
                         ,
                         'LIBPATH':
                             '${MSVC.VCINSTALL}ATLMFC/LIB'+os.pathsep+
                             get_current_sdk()+'/lib'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
@@ -104,7 +104,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'                            
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'                            
                             ,
                         'INCLUDE':
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
@@ -115,12 +115,12 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
                             get_current_sdk()+'lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'LIBPATH':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
@@ -168,7 +168,7 @@ msvc.Register(
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                             ,
                         'INCLUDE':
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
@@ -179,12 +179,12 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'LIBPATH':
                             '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
                             get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
@@ -232,7 +232,7 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
                             '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'                            
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'                            
                             ,
                         'INCLUDE':
                             '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
@@ -243,12 +243,12 @@ msvc.Register(
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
                             '${MSVC.VCINSTALL}/lib/ia64'+os.pathsep+
                             get_current_sdk()+'/lib/ia64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'LIBPATH':
                             '${MSVC.VCINSTALL}/ATLMFC/LIB/ia64'+os.pathsep+
                             get_current_sdk()+'/lib/ia64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.21006'
+                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
                         ,
                         'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },

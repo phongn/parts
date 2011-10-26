@@ -323,7 +323,9 @@ def part_stat(self):
     except KeyError: 
         try:
                 
-            if glb.engine._build_mode=='build' and (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
+            #if glb.engine.isSconstructLoaded and\
+            if glb.engine._build_mode=='build' and\
+                (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
                 result = os.lstat(self.abspath)
             else:
                 result = os.stat(self.abspath)
@@ -388,15 +390,21 @@ def _my_init(self, value, built_value=None):
 SCons.Node.Python.Value.orig_init=SCons.Node.Python.Value.__init__
 SCons.Node.Python.Value.__init__=_my_init
 
+def map_alias_stored(obj):
+    binfo=glb.pnodes.GetAliasStoredInfo(obj.ID)
+    if binfo:
+        obj._memo['get_stored_info']=wrapper(binfo)
+
 def _my_init(self,name):
     self.orig_init(name)
     # may not be the best way.. but works for the moment
     glb.pnodes.AddAlias(self)
     glb.pnodes.AddNodeToKnown(self)
     
-    binfo=glb.pnodes.GetAliasStoredInfo(self.ID)
-    if binfo:
-        self._memo['get_stored_info']=wrapper(binfo)
+    if glb.engine.isSconstructLoaded:
+        map_alias_stored(self)
+    else:
+        glb.engine.SConstructLoadedEvent+=lambda : map_alias_stored(self)
 
 SCons.Node.Alias.Alias.orig_init=SCons.Node.Alias.Alias.__init__
 SCons.Node.Alias.Alias.__init__=_my_init

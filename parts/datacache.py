@@ -80,7 +80,6 @@ def GetCache(name,key=None):
     get data from data cache.. if in memory use that, else load it.
     '''
     global __cache
-    
     if SCons.Script.GetOption("parts_cache") == False or __bad_cache==True:
         return None
     #if key is None get default key

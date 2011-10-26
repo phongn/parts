@@ -498,6 +498,7 @@ class part(pnode.pnode):
         pass
         
     #packaging stuff
+    @property
     def PackageGroup(self):
         '''the Package group this Part is mapped to'''
         return self.__package_group
@@ -1058,12 +1059,15 @@ class part(pnode.pnode):
         if data is None:
             return glb.load_file
         state=glb.load_none
-        for sub in data.subparts:
-            sub=glb.pnodes.GetPNode(sub)
-            if sub.ReadState > state:
-                state=sub.ReadState 
-            if state >= glb.load_file:
-                break
+        for name,sub in data.subparts.iteritems():
+            #sub=glb.pnodes.GetPNode(sub)
+            if sub:
+                if sub.ReadState > state:
+                    state=sub.ReadState 
+                if state >= glb.load_file:
+                    break
+            else:
+                api.output.verbose_msg(['loading'],"SubPart {0} is None in cache of {1}... Trying to set ReadState".format(name,self.ID))
         return state
     
     
@@ -1285,9 +1289,11 @@ class part(pnode.pnode):
             self._set_name(info.short_name,info.parent.Stored.name)
         else:
             self._set_name(info.short_name)
-        self.Version=version.version(info.version)
+
+        if self.Version == '0.0.0':
+            self.Version=version.version(info.version)
         
-        self.__platform_match=platform_info.SystemPlatform(info.platform_match) # should be handled by _setup_
+        self.__platform_match=info.platform_match # should be handled by _setup_
         self.__package_group=info.package_group # should be handled by _setup_
         self.__mode=info.mode #?? # should be handled by _setup_
         

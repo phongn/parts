@@ -169,7 +169,7 @@ class SystemPlatform(common.bindable):
             platform_str = os
         else:
             platform_str = os + '-' + arch
-        lst = ValidatePlatform(platform_str)
+        lst = ValidatePlatform(str(platform_str))
         #if not lst:
             #lst = ValidatePlatform(os)
         if not lst:

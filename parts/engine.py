@@ -235,12 +235,15 @@ class parts_addon(object):
         self.__cache_key=None
         self.__build_mode=None
         self.__had_error=None
+        self.__is_sconstruct_loaded=False
         
         self._exit_up_to_date=False
         
         #events
         self.CacheDataEvent=events.Event()
         self.CacheDataEvent+=self._store_global_data
+        self.SConstructLoadedEvent=events.Event()
+        self.PostProcessEvent=events.Event()
         
         # start up the reporter which controls the streams and all output
         use_color=SCons.Script.GetOption('use_color')
@@ -361,7 +364,10 @@ class parts_addon(object):
         that we might want to do. such as processing the part files, 
         delayed mapping, etc
         '''
+        
         self.__had_error=False
+        self.__is_sconstruct_loaded=True
+        self.SConstructLoadedEvent()
         try:
             targets=SCons.Script.BUILD_TARGETS
             # check to see that we even have targets to process
@@ -384,7 +390,8 @@ class parts_addon(object):
             self.__part_manager.ProcessParts()
                     
             # process Queue
-            self.parts_process_queue()        
+            self.parts_process_queue()   
+            self.PostProcessEvent()
 
             #clear the datacache
             datacache.ClearCache()
@@ -923,81 +930,7 @@ Use -H or --help-options for a list of scons options
         
         self.__cache_key=md5.hexdigest()
         
-    #state APIs
-    #def add_to_known_targets(self, tlist,pobj):
-    #    for t in tlist:
-    #        #SCons does not like having duplicate Target nodes
-    #        # given this we know we should only see it once
-    #        # however we still want to record information 
-    #        # for items using the Parts allow_duplicates feature
-    #        alias=pobj.Alias
-    #        section=pobj.DefiningSection.Env['PART_SECTION']
-    #        if isinstance(t,SCons.Node.FS.File):
-    #            type='File'
-    #            key=t.path
-    #        elif isinstance(t,SCons.Node.FS.Dir):
-    #            type='Dir'
-    #            key=t.path
-    #        elif isinstance(t,SCons.Node.FS.Entry):
-    #            type='Entry'
-    #            key=t.path
-    #        elif isinstance(t,SCons.Node.Alias.Alias):
-    #            type='Alias'
-    #            key=t.name
-    #        elif isinstance(t,SCons.Node.Python.Value):
-    #            type='Value'
-    #            key=t.value
-    #        else:
-    #            pass
-    #        try:
-    #            self.__known_targets[key]['_type']=type
-    #            self.__known_targets[key]['node']=t
-    #            try:
-    #                self.__known_targets[key][alias].add(section)
-    #            except KeyError:
-    #                self.__known_targets[key][alias]=set([section])
-    #        except KeyError:
-    #            self.__known_targets[key]={
-    #                        alias:set([section]),
-    #                        '_type':type,
-    #                        'node':t
-    #                        }
-    #        
-    #        if isinstance(t,SCons.Node.FS.File) or isinstance(t,SCons.Node.FS.Dir):
-    #            dnode=t.Dir('.')
-    #                    
-    #            while True:
-    #                try:
-    #                    if alias in self.__known_targets[dnode.path].keys():
-    #                        return
-    #                except KeyError:
-    #                    pass
-    #                try:
-    #                    self.__known_targets[dnode.path]['_type']='dir'
-    #                    self.__known_targets[dnode.path]['node']=dnode
-    #                    try:
-    #                        self.__known_targets[dnode.path][alias].add(section)
-    #                    except KeyError:
-    #                        self.__known_targets[dnode.path][alias]=set([section])
-    #                except KeyError:
-    #                    self.__known_targets[dnode.path]={
-    #                                alias:set([section]),
-    #                                '_type':'dir',
-    #                                'node':dnode
-    #                                }
-    #                if dnode == dnode.Dir('..'):
-    #                    return
-    #                dnode=dnode.Dir('..')
-    #            
-    #                
-    #
-    #def AddAlias(self,data):
-    #    self.__aliases.update(data)
-    #    
-    #@property
-    #def Aliases(self):
-    #    return self.__aliases
-    #
+   
     @property
     def _cache_key(self):
         if self.__cache_key is None:
@@ -1027,6 +960,10 @@ Use -H or --help-options for a list of scons options
     @HadError.setter
     def HadError(self,value):
         self.__had_error=value
+    
+    @property             
+    def isSconstructLoaded(self):
+        return self.__is_sconstruct_loaded
    
     @property                
     def def_env(self):

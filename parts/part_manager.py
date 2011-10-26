@@ -165,7 +165,6 @@ class load_all_roots_loader(base): #task_master type
     
     '''
     def __init__(self,pmanager):
-        
         self.pmgr=pmanager
         self._section_from_cache=set() # all the section we need to load from cache
         self._parts_to_read=set() # all the parts we have to readin
@@ -202,6 +201,14 @@ class load_all_roots_loader(base): #task_master type
         
         total = len(parts_to_load) * 1.0
         cnt=0
+        # in case of a fallback we really want to make sure
+        # all known parts are loaded from file. We need to set
+        # that state, so any promotions forms of cache to file
+        # happen correctly
+        for pobj in parts_to_load:
+            #print 8769, pobj.ID, pobj.isLoading, pobj.ReadState, pobj.LoadState, pobj._remove_cache
+            pobj.UpdateReadState(glb.load_file)
+            pobj.isLoading=False
         for pobj in parts_to_load:
             self.pmgr.LoadPart(pobj)
             api.output.console_msg("Loading {0:.2%} \033[K".format(cnt/total,cnt,total))
@@ -327,7 +334,6 @@ class no_depends_loader(base): #task_master type
         
         pass
             
-    
     def __call__(self): 
         
         sec_to_load=[]
@@ -339,14 +345,27 @@ class no_depends_loader(base): #task_master type
                 #return False to signal there was a cache issue
                 self.hasStored=False
                 
-            # set read state for this section            
+            # set read state for this section  
             sec.ReadState=glb.load_file
-            
+            if stored_data.part.Stored.parent:
+                try:
+                    tmp=stored_data.part.Stored.parent.Stored.sections[sec.Name]
+                except KeyError:
+                    tmp=stored_data.part.Stored.parent.Stored.sections['build']
+                if tmp not in self.sections:
+                    self.sections.append(tmp)
+            if sec.Name=='utest':
+                # this is a bit of a hack
+                # but in general with classic formats (maybe new as well.. don't know yet)
+                # we want to load the Build sections as well.
+                tmp=glb.pnodes.GetPNode("build::{0}".format(stored_data.part.ID))
+                tmp.ReadState=glb.load_cache
+                self.sections.append(tmp)
+
             #for each of the dependents we need to set the depends as cache load                       
             for dep in stored_data.dependson:
                 dsec=dep['Section']
                 dsec.ReadState=glb.load_cache
-                self.pmgr.LoadSection(dsec)
                 if dsec not in sec_to_load:                
                     sec_to_load.append(dsec)
 
@@ -356,9 +375,16 @@ class no_depends_loader(base): #task_master type
         total = len(sec_to_load) * 1.0
         cnt=0
         for sec in sec_to_load:
-            self.pmgr.LoadSection(sec)
-            api.output.console_msg("Loading {0:.2%} ({1}/{2} sections) \033[K".format(cnt/total,cnt, total))
-            cnt+=1
+            if sec.ReadState == glb.load_cache:
+                self.pmgr.LoadSection(sec)
+                api.output.console_msg("Loading {0:.2%} ({1}/{2} sections) \033[K".format(cnt/total,cnt, total))
+                cnt+=1
+
+        for sec in sec_to_load:
+            if sec.ReadState == glb.load_file:
+                self.pmgr.LoadSection(sec)
+                api.output.console_msg("Loading {0:.2%} ({1}/{2} sections) \033[K".format(cnt/total,cnt, total))
+                cnt+=1
             
         return False       
 
@@ -448,7 +474,6 @@ class section_changed_loader(base): #task_master type
                 new_sections=dep.StoredMatchingSections
                 for dep_sec in new_sections:   
                     # at the very least we would want to load the component as cache
-                    
                     # this is already loaded.. 
                     # so this is already processed
                     if dep_sec.LoadState == glb.load_file:
@@ -505,16 +530,31 @@ class section_changed_loader(base): #task_master type
                 return False
                 
         except KeyError:
-            changed=False
+            context_changed=False
         
             stored_data=sec.Stored
             # test that we have Stored data
             if stored_data is None:
-                print sec.ID, sec.LoadState
-                raise LoadStoredError
-                
-                            
+                raise errors.LoadStoredError
+
+            self._section_info[sec.ID]={
+                    'section':sec
+                    }
+            ## given the file did not change .. check the config context
+            if self.hasConfigContextChange(sec):
+                self._section_info[sec.ID]['changed']='config'
+                self.LoadSection(sec)
+                self._up_to_date=False
+                context_changed=True
+            # given the file did not change .. check the builder context
+            elif self.hasBuildContextChanged(sec):
+                self._section_info[sec.ID]['changed']='builder'
+                self.LoadSection(sec)
+                self._up_to_date=False
+                context_changed=True
+
             # see if the Parts file defining the sections is changed
+            changed=False
             if sec.hasPartFileChanged():
                 # in this case we are going to be out of date
                 # however we need to check the "new" dependance for being out of date
@@ -570,33 +610,14 @@ class section_changed_loader(base): #task_master type
         
             if changed:    
                 #add that this section is out of date
-                self._section_info[sec.ID]={
-                    'section':sec,
-                    'changed':"file",
-                    'requirements':requirement.REQ()
-                }
+                self._section_info[sec.ID]['changed']="file"
+                self._section_info[sec.ID]['requirements']=requirement.REQ()                
                 return True
             else:
-                
-                self._section_info[sec.ID]={
-                    'section':sec,
-                    'changed':None,
-                    'requirements':req
-                }
-            ## given the file did not change .. check the config context
-            if self.hasConfigContextChange(sec):
-                self._section_info[sec.ID]['changed']='config'
-                self.LoadSection(sec)
-                self._up_to_date=False
-                return True
-            # given the file did not change .. check the builder context
-            if self.hasBuildContextChanged(sec):
-                self._section_info[sec.ID]['changed']='builder'
-                self.LoadSection(sec)
-                self._up_to_date=False
-                return True
+                self._section_info[sec.ID]['changed']=None
+                self._section_info[sec.ID]['requirements']=req         
             
-            return False
+            return context_changed
            
     def hasConfigContextChange(self,sec):
         
@@ -614,7 +635,7 @@ class section_changed_loader(base): #task_master type
                                 sec.Stored.part.Stored.config,
                                 tool,
                                 platform_info.HostSystem(),
-                                platform_info.SystemPlatform(sec.Stored.part.Stored.target_platform))
+                                sec.Stored.part.Stored.target_platform)
                 ## first check to see if these are the files we have cached
                 # check to see that we have the same amount of files
                 if len(cfg_files)!=len(file_list):
@@ -651,21 +672,36 @@ class section_changed_loader(base): #task_master type
         # call method to get stored info.. also get info from "part" object is needed
         stored_bld_data=sec.Stored.GetBuilderContext()
         key=str(stored_bld_data)
-        try:
-            return self._knownbuilders[key]
-        except KeyError:    
-            # next we test the build context files
-            for t in stored_bld_data:
-                if node_helpers.node_up_to_date(t) == False:
+        
+        
+        for bld in stored_bld_data:
+            try:
+                #Do we know of this item yet
+                tmp=self._knownbuilders[bld['name']]                
+                # yes we do
+                if tmp: # is it out of date?
+                    api.output.verbose_msg(
+                      "update_check",
+                      '{0} is out of date because file "{1}" that defines builders has changed'.format(
+                            sec.ID,bld['name']
+                            )
+                        )
+                    return tmp
+            except KeyError:    
+                # we don't know of this file as of yet
+                # next we test the build context file to see if this is good or bad
+                if node_helpers.node_up_to_date(bld) == False:
                     api.output.verbose_msg(
                         "update_check",
                         '{0} is out of date because file "{1}" that defines builders has changed'.format(
-                                sec.ID,t['name']
-                                )
+                            sec.ID,bld['name']
                             )
-                    self._knownbuilders[key]=True
+                        )
+                    self._knownbuilders[bld['name']]=True
                     return True
-        self._knownbuilders[key]=False
+                self._knownbuilders[key]=False
+        # if we got here we loop through all builder items
+        # and it all looks good, return there false to say no changes
         return False
                 
                 
@@ -905,7 +941,7 @@ class part_manager(object):
         '''Turn the targets into a list of pnodes or Node ( given if can't be mapped to a Pnode) objects'''
         ret=[] # the new target list
         ret_nodes=[]
-        name_matches=None
+        
         
         stored_data=datacache.GetCache("part_map")
         
@@ -916,6 +952,7 @@ class part_manager(object):
         stored_name_to_alias=stored_data['name_to_alias']
             
         for t in SCons.Script.BUILD_TARGETS:
+            name_matches=None
             if isinstance(t,SCons.Node.Node):
                 api.output.verbose_msg(['target_mapping'],"Target is SCons node")
                 tmp=[]
@@ -1022,8 +1059,7 @@ class part_manager(object):
                     ## and even possiblity not loading stuff ( ie in more complex cases of sub-parts with lots of Customization )
                     ## however common simple cases should be ok ( ie no sub-parts or no to minimum Customization form the default settings)
                     ## ideally setup with only new formats will not have these issues, as we can read first, and get need info
-                    name_matches=self.reduce_list_from_target_stored(tobj,pobjs_lst)
-                    
+                    name_matches=self.reduce_list_from_target_stored(tobj,set(pobjs_lst))
                     def _map_alias(_pobj,_tobj):
                         # the section does not match the concept we want to use the Alias form to get the "sections"
                         # as this does an extra check for some cases in which the Alias maps to nodes that require
@@ -1104,17 +1140,25 @@ class part_manager(object):
         
         if (sec.LoadState < glb.load_file and sec.ReadState == glb.load_file):
             self.LoadPart(pobj)
-            sec.LoadState = glb.load_file # should be set.. just being safe
+            if pobj._remove_cache:
+                sec._remove_cache=True
+            else:
+                sec.LoadState = glb.load_file # should be set.. just being safe
         elif (sec.LoadState < glb.load_cache and sec.ReadState == glb.load_cache):
             self.LoadPart(pobj) # load part from cache (function will do nothing if already loaded)
-            sec.LoadFromCache() # load section from cache   
-            sec.LoadState = glb.load_cache     
+            if pobj._remove_cache:
+                sec._remove_cache=True
+            else:
+                sec.LoadFromCache() # load section from cache   
+                sec.LoadState = glb.load_cache     
         
     def LoadPart(self,pobj):
         part_file_load_time=time.time()
         processed=False
         #see if this part is setup
-        if pobj.isSetup:
+        if pobj._remove_cache:
+            api.output.verbose_msg(['loading'],"{0} being ignored as it seems to not exist in the SConstruct anymore".format(pobj.ID)) 
+        elif pobj.isSetup:
             # it is setup, so the parent has been read in
             if pobj.isLoading:
                 api.output.verbose_msg(['loading'],"{0} is already being loaded. Not Loading!".format(pobj.ID))
@@ -1126,7 +1170,6 @@ class part_manager(object):
                  not glb.pnodes.isKnownPNodeStored(pobj.ID) or\
                  self.__hasStored==False or\
                  pobj.ForceLoad:
-                     
                 # we want to read this Parts file. However this might be getting promoted form being loaded from cache to file 
                 # in this case we need to check that the parent has been read in if this is a subpart. If this is not the
                 # case we want to read it in first and return. The reading of the parent should cause the sub-part to be
@@ -1199,8 +1242,29 @@ class part_manager(object):
             # 1)it will be read-in via load_cache 
             # 2)it will be read in via load_file.
             # If the Parts parents is loaded yet, we need to load it
+            policy=SCons.Script.GetOption("load_logic")
+            if pobj.Stored.parent is None:
+                # this part was probally removed
+                api.output.verbose_msg(['loading'],"not loading: {0} because it looks like it is not defined anymore".format(pobj.ID))
+                self.__hasStored=False
+                pobj._remove_cache=True
+                
+                if policy!='all':
+                    api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                    SCons.Script.Main.OptionsParser.values.load_logic='all'
+                    #SCons.Script.SetOption("load_logic",'all')
+                    raise errors.LoadStoredError
+                return
             if pobj.Stored.parent.LoadState < pobj.Stored.parent.ReadState: 
-                self.LoadPart(pobj.Stored.parent)
+                try:
+                    self.LoadPart(pobj.Stored.parent)
+                except errors.LoadStoredError:
+                    raise
+            # check to see if the whole parts seems to be missing
+            if pobj.Stored.parent._remove_cache:
+                pobj._remove_cache=True
+                api.output.verbose_msg(['loading'],"{0} being ignored as {1} seems to not exist in the SConstruct anymore".format(pobj.ID,pobj.Stored.root.ID)) 
+                return
                 
             #Given that it is read at this point. we need to check to see if we are read
             # given that parent should have loaded.. we should be loaded as well
@@ -1230,10 +1294,26 @@ class part_manager(object):
                     # we most likely have a case in which a sub-part that has yet to be read in is being force read
                     # as it is in a depends of a sub-part that was defined before it in the Parts file
                     # there is nothing we can do with this given the classic format. so we punt and hope for the best
-                    api.output.verbose_msg(['loading'],"Can't load {0} as parent part is still loading. Skipping, May cause failures".format(pobj.ID))
+                    if policy!='all':
+                        api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                        SCons.Script.Main.OptionsParser.values.load_logic='all'
+                        self.__hasStored=False
+                        #SCons.Script.SetOption("load_logic",'all')
+                        raise errors.LoadStoredError
+                    else:
+                        api.output.verbose_msg(['loading'],"Can't load {0} as parent part is still loading. Skipping, May cause failures".format(pobj.ID))
                 
                 else:
-                    api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Skipping, May cause failures".format(pobj.ID))
+                    
+                    if policy!='all':
+                        api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Falling back".format(pobj.ID))
+                        api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                        SCons.Script.Main.OptionsParser.values.load_logic='all'
+                        self.__hasStored=False
+                        #SCons.Script.SetOption("load_logic",'all')
+                        raise errors.LoadStoredError
+                    else:
+                        api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Skipping, May cause failures".format(pobj.ID))
                 return
                 
         if processed:
@@ -1334,7 +1414,7 @@ class part_manager(object):
                 else:
                     pobj_lst = [self._from_alias(i) for i in alias_lst]
                 #filter out any of these that don't match the properties
-                pobj_lst=self.reduce_list_from_target(tobj,pobj_lst)
+                pobj_lst=self.reduce_list_from_target(tobj,set(pobj_lst))
                 if not pobj_lst:
                     api.output.error_msg('"%s" did not map to any defined Parts'%t)
                 for pobj in pobj_lst:
@@ -1465,10 +1545,17 @@ class part_manager(object):
                     
         else:
             api.output.verbose_msg(['loading'],"Loading everything as there is no cache")
+            self.__hasStored=False
             loader=load_all_roots_loader(self)
         
         self.__loader=loader
-        up_to_date=loader()
+        try:
+            up_to_date=self.__loader()
+        except errors.LoadStoredError:
+            api.output.verbose_msg(['loading'],"Loading everything as changes seem to be complex")
+            self.__hasStored=False
+            self.__loader=load_all_roots_loader(self)
+            up_to_date=self.__loader()
                 
         if up_to_date and nodes_up_to_date:
             api.output.verbose_msg(['loading'],"Everything is up-to-date!")

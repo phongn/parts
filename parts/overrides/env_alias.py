@@ -2,13 +2,17 @@
 
 from .. import glb
 from .. import common
-
+#
 #def Parts_Alias(self,target, source=[], action=None, **kw):
+#    if glb.pnodes.isKnownNode(target):
+#        a=glb.pnodes.GetNode(target)
+#        if hasattr(a,'builder') and a.builder is None:
+#            a.convert()
 #    tmp=self._orig_Alias(target,source,action,**kw)
-#    glb.pnodes.AddAlias(tmp)
+##    glb.pnodes.AddAlias(tmp)
 #    return tmp
-#
-#
+##
+##
 #from SCons.Script.SConscript import SConsEnvironment
 #
 ## override __setitem__ bind env with bindable objects when set

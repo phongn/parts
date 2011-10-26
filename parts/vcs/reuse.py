@@ -66,7 +66,18 @@ class reuse_part_vcs(base):
             self._vcs=self._partref.Vcs
         elif common.is_string(self._partref):
             # assume this is a part alias
-            self._partref=glb.engine._part_manager._from_alias(self._partref)
+            tmpalias=None
+            if self._env['ALIAS_POSTFIX'] or self._env['ALIAS_PREFIX']:
+                tmpalias="{0}{1}{2}".format(self._env.subst('$ALIAS_PREFIX'),self._partref,self._env.subst('$ALIAS_POSTFIX'))
+            tmp=glb.engine._part_manager._from_alias(self._partref)
+            if tmp is None and tmpalias:
+                tmp=glb.engine._part_manager._from_alias(tmpalias)
+            if tmp is None:
+                if tmpalias:
+                    api.output.error_msg("Can not find Part that maps to the alias of {0} or {1}".format(self._partref,tmpalias))
+                else:
+                    api.output.error_msg("Can not find Part that maps to the alias of {0} or {1}".format(self._partref))
+            self._partref=tmp
             self._vcs=self._partref.Vcs
         else:
             api.output.error_msg('VcsReuse was unable to map the vcs object to part "%s"'%(self._partref))
