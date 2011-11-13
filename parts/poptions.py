@@ -297,14 +297,6 @@ SCons.Script.AddOption("--tool-chain","--toolchain","--tc",
             action='callback',
             help='Tool chains to use for build')
             
-SCons.Script.AddOption("--target","--target-platform",
-            dest='target_platform',
-            default=None,
-            nargs=1,
-            callback=opt_target,
-            type='string',
-            action='callback',
-            help='Sets the default TARGET_PLATFORM use for cross builds')
 
 SCons.Script.AddOption("--mode",
             dest='mode',
@@ -460,6 +452,21 @@ SCons.Script.AddOption("--vcs-policy",
             action='store',
             help='Policy in how Parts should react if the automatic vcs check find that it is out of date. The policy values can be warning, error, update')         
             
+
+
+
+def post_option_setup():
+    ''' These options need to be setup in a delayed way
+    '''
+    SCons.Script.AddOption("--target","--target-platform",
+            dest='target_platform',
+            default=None,
+            nargs=1,
+            callback=opt_target,
+            type='string',
+            action='callback',
+            help='Sets the default TARGET_PLATFORM use for cross builds')
+
    
             
 

@@ -1,0 +1,15 @@
+Import('*')
+
+env.PartName("merge")
+env.PartVersion("1.0")
+
+env.DependsOn([Component('A',requires=REQ.SDKLIB),Component('B',requires=REQ.SDKLIB)])
+
+# ideally the env['LIBS'] has what we want. But since the real world
+# will probally depend on other stuff so it will want to get the A 
+# and B values explictly not implictly
+
+
+env.InstallOpt(
+env.OptFile("cmod",['c_foo.in'])
+)

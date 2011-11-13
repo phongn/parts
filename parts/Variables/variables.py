@@ -169,7 +169,7 @@ class Variables(dict,object):
             if SCons.Util.is_List(key) or SCons.Util.is_Tuple(key):
                 key=key[0]
         if self.has_key(key):
-            api.output.warning_msg("Variable {0} is already defined.")
+            api.output.warning_msg("Variable {0} is already defined.".format(key))
         val._on_change+=self._on_change
         self[key]=val
         

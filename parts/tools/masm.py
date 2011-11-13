@@ -38,7 +38,7 @@ import SCons.Tool
 import SCons.Util
 
 import parts.api.output as output
-from MSCommon import msvc,is_win64
+from parts.tools.MSCommon import msvc,is_win64
 
 ASSuffixes = ['.s', '.asm', '.ASM']
 ASPPSuffixes = ['.spp', '.SPP', '.sx']

@@ -8,7 +8,7 @@ def AddArchitecture(arch_alias,arch = '', change_arch_map = False):
     if arch == '':
         arch = arch_alias
     if (arch_alias in glb.arch_map) and (not change_arch_map): 
-        output.warning_msg(os_alias,"already exists as a Valid Platform\n  To force a change use AddArchitecture(arch_alias,arch,True)")
+        output.warning_msg(alias_alias,"already exists as a Valid Platform\n  To force a change use AddArchitecture(arch_alias,arch,True)")
     else:
         glb.arch_map[arch_alias] = arch 
     platform_info.UpdateValidArchList()

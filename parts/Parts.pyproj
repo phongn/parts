@@ -5,18 +5,20 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{8f62fc3b-b6cf-46be-a8da-7c9c423a9db5}</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>target_type.py</StartupFile>
-    <SearchPath>
-    </SearchPath>
-    <WorkingDirectory>
-    </WorkingDirectory>
+    <StartupFile>C:\Python27\Scripts\scons-2.1.0.py</StartupFile>
+    <SearchPath>C:\Python27\scons-2.1.0</SearchPath>
+    <WorkingDirectory>c:\users\jlkenny\code\parts</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
     <InterpreterPath />
-    <CommandLineArguments />
+    <CommandLineArguments>--target=mic-l1om</CommandLineArguments>
     <IsWindowsApplication>False</IsWindowsApplication>
     <DebugStdLib>False</DebugStdLib>
+    <InterpreterId>9a7a9026-48c1-4688-9d5d-e5699d47d074</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterArguments />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -101,7 +103,6 @@
     <None Include="configurations\release\__init__.py" />
     <None Include="configurations\__init__.py" />
     <None Include="console.py" />
-    <None Include="core.py" />
     <None Include="datacache.py" />
     <None Include="dependent_ref.py" />
     <None Include="dependson.py" />
@@ -227,6 +228,7 @@
     <None Include="tools\MSCommon\vc_old.py" />
     <None Include="tools\MSCommon\vsx_sdk.py" />
     <None Include="tools\MSCommon\__init__.py" />
+    <None Include="tools\mscsc.py" />
     <None Include="tools\mslib.py" />
     <None Include="tools\mslink.py" />
     <None Include="tools\mssdk.py" />
@@ -275,5 +277,8 @@
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts_tigris\trunk\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="overrides\tool.py" />
   </ItemGroup>
 </Project>

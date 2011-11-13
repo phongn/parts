@@ -1,5 +1,5 @@
 
-import GnuCommon.perl
+import parts.tools.GnuCommon.perl
 import parts.api.output as output
 
 def generate(env):
@@ -7,11 +7,11 @@ def generate(env):
     # no builder yets.. add a PerlCommand()?
     
     # set up shell env for running compiler
-    GnuCommon.perl.perl.MergeShellEnv(env)
+    parts.tools.GnuCommon.perl.perl.MergeShellEnv(env)
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('perl',env['PERL']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
-    return GnuCommon.perl.perl.Exists(env)
+    return parts.tools.GnuCommon.perl.perl.Exists(env)
 
 # Local Variables:
 # tab-width:4

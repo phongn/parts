@@ -1,7 +1,7 @@
 
 import SCons.Util
 import SCons.Tool.cc
-import GnuCommon
+import parts.tools.GnuCommon
 
 import parts.api.output as output
 
@@ -10,7 +10,7 @@ def generate(env):
     SCons.Tool.cc.generate(env)
     
     # set up shell env for running compiler
-    GnuCommon.gcc.MergeShellEnv(env)
+    parts.tools.GnuCommon.gcc.MergeShellEnv(env)
     env['CC'] = env['GCC']['TOOL']
 
    # this setting is what SCons has.. It seem odd, I thought cygwin handled -fpic fine
@@ -35,7 +35,7 @@ def generate(env):
     
 
 def exists(env):
-    return GnuCommon.gcc.Exists(env)
+    return parts.tools.GnuCommon.gcc.Exists(env)
 
 # Local Variables:
 # tab-width:4

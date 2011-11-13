@@ -1,5 +1,5 @@
 
-import IntelCommon
+import parts.tools.IntelCommon
 import SCons.Util
 import SCons.Warnings
 import os
@@ -48,12 +48,12 @@ def generate(env):
                                         % (envlicdir, defaultlicdir))
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
         
-    IntelCommon.Intelc.MergeShellEnv(env)
+    parts.tools.IntelCommon.Intelc.MergeShellEnv(env)
     
     # fix this up so we can control its printing to screen better.
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
-    return IntelCommon.Intelc.Exists(env)
+    return parts.tools.IntelCommon.Intelc.Exists(env)
 
 # end of file

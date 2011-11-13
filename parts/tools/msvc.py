@@ -49,7 +49,7 @@ import SCons.Warnings
 import SCons.Scanner.RC
 
 #from MSCommon import msvc_exists,setup_env,is_win64
-from MSCommon import msvc,validate_vars
+from parts.tools.MSCommon import msvc,validate_vars
 
 import parts.api.output as output
 
@@ -243,7 +243,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('msvc',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
-    return msvc.Exists(env)#msvc_exists(env,'cl')
+    return msvc.Exists(env)
 
 # Local Variables:
 # tab-width:4

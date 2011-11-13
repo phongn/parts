@@ -12,4 +12,5 @@ import env_clone
 import error_handling
 import scanner
 import nodes
+import tool
 

@@ -40,7 +40,7 @@ import SCons.Tool.msvc
 import SCons.Util
 
 import parts.api.output as output
-from MSCommon import msvc
+from parts.tools.MSCommon import msvc
 
 def generate(env):
     """Add Builders and construction variables for lib to an Environment."""

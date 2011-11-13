@@ -267,6 +267,7 @@ class parts_addon(object):
         
     def Start(self):
         api.output.verbose_msg("init","Starting up Parts")
+        poptions.post_option_setup()
         # setup variable
         self._setup_variables()
         # setup command line arguments
@@ -366,16 +367,17 @@ class parts_addon(object):
         '''
         
         self.__had_error=False
+        # generate the cache key
+        self.generate_cache_key()
+        # set state sconstruct to loaded
         self.__is_sconstruct_loaded=True
+        # call event that we are loaded
         self.SConstructLoadedEvent()
         try:
             targets=SCons.Script.BUILD_TARGETS
             # check to see that we even have targets to process
             if targets == []:
                 return 
-            
-            # generate the cache key
-            self.generate_cache_key()
             
             #set stack info for reporting issues
             #errors.SetPartStackFrameInfo()
@@ -868,7 +870,7 @@ Use -H or --help-options for a list of scons options
         
         md5=hashlib.md5()        
                 
-        # get overides
+        # get overides Variables
         vars={}
         #vars=copy.deepcopy(glb.defaultoverides)        
         vars.update(SCons.Script.ARGUMENTS)
@@ -890,8 +892,9 @@ Use -H or --help-options for a list of scons options
                 tmp=common.get_content(v)
                 md5.update(k+tmp )
                 
-        
+        # set of --options
         # list of arguments we want to process as they might effect build state
+        # these items we know effect the build ( should change to list of item we know don't effect the system)
         args_to_process=[
             #'build_config', # get this from the def env
             'cfg_file',
@@ -923,10 +926,18 @@ Use -H or --help-options for a list of scons options
         # store the ENV value as this has value that can tell us of differences
         md5.update(common.get_content(self.def_env['ENV']))
         
+        # we make a different key based on the different "concepts" we building
+        # as each concept would ideally define a different section, and different sections 
+        # define different set of actions and nodes we need to know about
         targets=SCons.Script.BUILD_TARGETS
         for t in targets:
             tmp=target_type.target_type(t)
             md5.update(tmp.Section)
+
+        # we add information about that parts we have defined.
+        # a different set gets a different key
+        for pobj in self.__part_manager.parts.values():
+            if pobj.isRoot: md5.update(pobj.ID)
         
         self.__cache_key=md5.hexdigest()
         

@@ -163,7 +163,7 @@ def make_link_bf(target, source, env):
     t=target[0]
     symlink=env.MetaTagValue(t,'SymLink')
     make_dummy_file=env.MetaTagValue(t,'SymLinkMakeDummyFile',default=True)
-    print "Creating SymLink",t.get_path(),"pointing to",symlink
+    api.output.print_msg("Creating SymLink {0} pointing to {1}".format(t.get_path(),symlink))
     if env['HOST_OS']=='win32':
         import win32file
         import win32com.client

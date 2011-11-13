@@ -42,7 +42,7 @@ import SCons.Scanner.IDL
 import SCons.Util
 
 import parts.api.output as output
-from MSCommon import msvc
+from parts.tools.MSCommon import msvc
 
 def midl_emitter(target, source, env):
     """Produces a list of outputs from the MIDL compiler"""

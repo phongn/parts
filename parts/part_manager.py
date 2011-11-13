@@ -472,11 +472,13 @@ class section_changed_loader(base): #task_master type
                 # might have more than on at this point as we don't have some environment data
                 # to help with matching.. in these cases we just add all possible cases to be safe
                 new_sections=dep.StoredMatchingSections
+                api.output.verbose_msg("process_depends","{0} mapped to {1}".format(dep.PartRef.Target,new_sections))
                 for dep_sec in new_sections:   
                     # at the very least we would want to load the component as cache
                     # this is already loaded.. 
                     # so this is already processed
                     if dep_sec.LoadState == glb.load_file:
+                        api.output.verbose_msg("process_depends","{0} already loaded".format(dep_sec.ID))
                         continue
                         
                     if dep_sec.Stored and dep_sec.Stored.part.Stored.root != pobj.Root:
@@ -491,7 +493,7 @@ class section_changed_loader(base): #task_master type
                     # see if the file changed
                         # set state
                         self.LoadSection(dep_sec)
-                    
+                    api.output.verbose_msg("process_depends","{0} LoadState={1} ReadState={2}".format(dep_sec.ID,dep_sec.LoadState, dep_sec.ReadState))
                     if dep_sec.LoadState < dep_sec.ReadState and not same_root_part:
                         # need to change the cwd directory in the node FS object
                         # get the current location    
@@ -830,6 +832,11 @@ class section_changed_loader(base): #task_master type
         cnt=0
         for sec in self.sections:
             api.output.console_msg("Checking Content {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
+            # this is a hack we should refactor out..
+            # set load state of soem code in the parts manager
+            # happen to set the read state
+            if sec.ReadState == glb.load_file:
+                self.LoadSection(sec)
             self.CheckForContextChanged(sec)
             cnt+=1
         self._process_depend=False
@@ -1148,7 +1155,7 @@ class part_manager(object):
             self.LoadPart(pobj) # load part from cache (function will do nothing if already loaded)
             if pobj._remove_cache:
                 sec._remove_cache=True
-            else:
+            elif sec.LoadState < glb.load_cache: 
                 sec.LoadFromCache() # load section from cache   
                 sec.LoadState = glb.load_cache     
         
@@ -1317,7 +1324,7 @@ class part_manager(object):
                 return
                 
         if processed:
-            api.output.verbose_msg(['loading'],"Loaded {0:60}[{1:.2f} secs]".format(pobj.ID,(time.time()-part_file_load_time)))
+            api.output.verbose_msg(['loading'],"Loaded {0:45}[{1:.2f} secs]".format(pobj.ID,(time.time()-part_file_load_time)))
                 
    
     def _define_sub_part(self,env,alias,parts_file,mode=[],vcs_type=None,
@@ -1345,6 +1352,8 @@ class part_manager(object):
                         default=default,append=new_append,prepend=new_prepend,
                         create_sdk=create_sdk,package_group=package_group,
                         parent_part=parent_part,**new_kw)
+        
+        
         # setup new object
         #tmp._setup_()
         # add to set of known parts
@@ -1354,6 +1363,31 @@ class part_manager(object):
             self.LoadPart(tmp)
         else:
             print tmp.ID,"is NOT SETUP!!!!!!!!"
+
+        # store setup state if this is a read cache or ignore case, as it might need to load latter as a file
+        # and we will not be able to get the orginal state to "reinit" this component
+        if tmp.ReadState != glb.load_file:
+            tmp_args=new_kw
+            tmp_args.update({
+                            'alias':alias,
+                            'file':parts_file,
+                            'mode':mode,
+                            'vcs_t':vcs_type,
+                            'default':default,
+                            'append':new_append,
+                            'prepend':new_prepend,
+                            'create_sdk':create_sdk,
+                            'package_group':package_group,
+                            'parent_part':parent_part
+                           })
+            tmp._cache["init_state"]=tmp_args
+
+        if tmp.LoadState == glb.load_cache:
+            #If this is the case we need to make sure the sections are processed
+            for s in tmp.Stored.sections.itervalues():
+                if s.ReadState == glb.load_cache:
+                    s.LoadFromCache() # load section from cache   
+                    s.LoadState = glb.load_cache     
         
         return tmp
     
@@ -1516,7 +1550,10 @@ class part_manager(object):
                 # by doing some form of reduce reads based on what we know is up-to-date or not
                 
                 policy=SCons.Script.GetOption("load_logic")
-                if policy=='default': policy='min'
+                if policy=='default': 
+                    policy='min'
+                if SCons.Script.GetOption("interactive") and policy != "unsafe":
+                    policy='all'
                 api.output.verbose_msg(['loading'],"Using load logic: {0}".format(policy))
                 if policy =='target' or glb.engine._build_mode=='clean':
                     #fully load all direct depends ( no cache loads )
@@ -1982,7 +2019,7 @@ class part_manager(object):
     def Store(self,goodexit):
         if goodexit:
             stored_data=datacache.GetCache("part_map")
-            data={}
+            data={'__version__':'1.0'}
             # we want to store information about the Parts we have in this run
             # or update any parts that are read in
             tmp= stored_data['known_parts'] if stored_data else {}
@@ -2003,12 +2040,12 @@ class part_manager(object):
                         'root_alias':v.Root.Alias
                     }
             
-            data["known_parts"]=self.parts
+            data["known_parts"]=tmp
             
             tmp= stored_data['name_to_alias'] if stored_data else {}
             # this is needed to help with name targets
             for name,aliaslst in self.__name_to_alias.iteritems():
-                tmp2={}
+                tmp2=tmp.get(name,{}) if self.__hasStored else {}
                 for alias in aliaslst:
                     pobj=self._from_alias(alias)
                     tmp2[pobj.ID]=pobj
@@ -2072,6 +2109,9 @@ class part_manager(object):
             for n in nodes:
                 # get each node we care about.
                 tnode=glb.pnodes.GetNode(n)
+                if tnode is None:
+                    self.__hasStored=False
+                    return
                 tlist=[]
                 # check the children node
                 self.add_stored_node_info(tnode,tlist)

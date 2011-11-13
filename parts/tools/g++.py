@@ -1,7 +1,7 @@
 
 import SCons.Util
 import SCons.Tool
-import GnuCommon
+import parts.tools.GnuCommon
 
 # have to copy this file from Scons as I can't seem to get the import to get it from the standad SCons install
 cplusplus = __import__('c++', globals(), locals(), [])
@@ -16,7 +16,7 @@ def generate(env):
     cplusplus.generate(env)
 
     # set up shell env for running compiler
-    GnuCommon.gxx.MergeShellEnv(env)
+    parts.tools.GnuCommon.gxx.MergeShellEnv(env)
 
     env['CXX'] = env['GXX']['TOOL']
 
@@ -44,7 +44,7 @@ def generate(env):
 
 
 def exists(env):
-    return GnuCommon.gxx.Exists(env)
+    return parts.tools.GnuCommon.gxx.Exists(env)
 
 # Local Variables:
 # tab-width:4

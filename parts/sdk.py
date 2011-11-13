@@ -34,9 +34,7 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
             if t not in src_dir:
                 src_dir.append(t)
             t,sr=s.target_source(target_dir)
-#            for d in s.sub_dirs():
-#                final_dir=os.path.join(str(dest_dir),str(d))
-#                clean_list.append(final_dir)
+
             if create_sdk==False:
                 out+=sr#s.files(t)
             else:
@@ -123,6 +121,15 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
     
     pobj=glb.engine._part_manager._from_env(env)
     
+    
+    # this is a little bit of hack.. but better than nothing till I refactor
+    tmp="".join(target_dir.split("_")[1:]).upper() # SDK_TOP_LEVEL -> TOPLEVEL
+    for i in export_info:
+        if i[1] == tmp:
+            break
+    else:
+        export_info.append((Xp.EXPORT_TYPES.PATH_FILE ,tmp))
+
     # this is for classic formats and compatible behavior with 0.9
     pobj._sdk_or_installed_called=True
     
@@ -183,6 +190,10 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
             else:
                 pobj._create_sdk_data.append(('SdkItem',[target_dir,common._make_rel(targets),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))
     
+    tmp=target_dir[1:].replace('_','',1)
+    if create_sdk:
+        env.ExportItem(tmp,targets,create_sdk,True)
+
     errors.ResetPartStackFrameInfo()
     return targets
 
@@ -194,8 +205,6 @@ def SdkInclude(env,sources,sub_dir='',add_to_path=None,use_src_dir=False,create_
     ret=SdkItem(env,'$SDK_INCLUDE',sources,sub_dir,'',[(Xp.EXPORT_TYPES.PATH ,'CPPPATH')],
             add_to_path=add_to_path,auto_add_file=True,use_src_dir=use_src_dir,
             use_build_dir=False,create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKINCLUDE',ret,create_sdk,True)
     return ret
     
     
@@ -206,106 +215,76 @@ def SdkLib(env,sources,sub_dir='',add_to_path=None,auto_add_libs=True,use_src_di
     ret=SdkItem(env,'$SDK_LIB',sources,sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
             add_to_path=add_to_path,auto_add_file=auto_add_libs,use_src_dir=use_src_dir,
             use_build_dir=True,create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKLIB',ret,create_sdk,True)
     return ret        
     
 def SdkBin(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_BIN',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKBIN',ret,create_sdk,True)
     return ret
 
 def SdkConfig(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_CONFIG',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKCONFIG',ret,create_sdk,True)
     return ret
     
 def SdkDoc(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_DOC',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKDOC',ret,create_sdk,True)
     return ret    
 
 def SdkHelp(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_HELP',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKHELP',ret,create_sdk,True)
     return ret
 
 def SdkManPage(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_MANPAGE',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKMANPAGE',ret,create_sdk,True)
     return ret
 
 def SdkData(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_DATA',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKDATA',ret,create_sdk,True)
     return ret
 
 def SdkMessage(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_MESSAGE',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKMESSAGE',ret,create_sdk,True)
     return ret
 
 def SdkResource(env,sources,sub_dir='',create_sdk=True):
     
     ret=SdkItem(env,'$SDK_RESOURCE',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKRESOURCE',ret,create_sdk,True)
     return ret
 
 def SdkSample(env, sources, sub_dir='',create_sdk=True):
         
     ret=SdkItem(env,'$SDK_SAMPLE',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKSAMPLE',ret,create_sdk,True)
     return ret
 
 def SdkTopLevel(env, sources, sub_dir='',create_sdk=True):
 
     ret=SdkItem(env,'$SDK_TOP_LEVEL',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKTOPLEVEL',ret,create_sdk,True)
     return ret
 
-def SdkPkgNo(env, sources, sub_dir='',create_sdk=True):
+def SdkNoPkg(env, sources, sub_dir='',create_sdk=True):
 
-    ret=SdkItem(env,'$SDK_NO_INSTALL',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKNOINSTALL',ret,create_sdk,True)
+    ret=SdkItem(env,'$SDK_NO_PKG',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkAPI(env, sources, sub_dir='',create_sdk=True):
 
     ret=SdkItem(env,'$SDK_API',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKAPI',ret,create_sdk,True)
     return ret
 
 def SdkPython(env, sources, sub_dir='',create_sdk=True):
 
     ret=SdkItem(env,'$SDK_PYTHON',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKPYTHON',ret,create_sdk,True)
     return ret
 
 def SdkScript(env, sources, sub_dir='',create_sdk=True):
 
     ret=SdkItem(env,'$SDK_SCRIPT',sources,sub_dir,'',[],create_sdk=create_sdk)
-    if env['CREATE_SDK'] == True and create_sdk:
-        env.ExportItem('SDKSCRIPT',ret,create_sdk,True)
     return ret
 
 
@@ -491,7 +470,8 @@ SConsEnvironment.SdkResource=SdkResource
 SConsEnvironment.SdkItem=SdkItem
 SConsEnvironment.SdkSample=SdkSample
 SConsEnvironment.SdkTopLevel=SdkTopLevel
-SConsEnvironment.SdkPkgNo=SdkPkgNo
+SConsEnvironment.SdkNoPkg=SdkNoPkg
+SConsEnvironment.SdkPkgNo=SdkNoPkg
 SConsEnvironment.SdkAPI=SdkAPI
 SConsEnvironment.SdkPython=SdkPython
 SConsEnvironment.SdkScript=SdkScript
@@ -531,7 +511,7 @@ api.register.add_variable('SDK_MESSAGE','$SDK_ROOT/message','Full SDK directory 
 api.register.add_variable('SDK_RESOURCE','$SDK_ROOT/resource','Full SDK directory for the resource concept')
 api.register.add_variable('SDK_SAMPLE','$SDK_ROOT/sample','Full SDK directory for the sample concept')
 api.register.add_variable('SDK_TOP_LEVEL','$SDK_ROOT/TOP_LEVEL','Full SDK directory for the file that get installed as the top level (such readme.txt)')
-api.register.add_variable('SDK_NO_INSTALL','$SDK_ROOT/NO_INSTALL','For files needed for the product in some way, but should not be added in the final install package')
+api.register.add_variable('SDK_NO_PKG','$SDK_ROOT/NO_INSTALL','For files needed for the product in some way, but should not be added in the final install package')
 api.register.add_variable('SDK_PYTHON','$SDK_ROOT/python','Full SDK directory for the python file concept')
 api.register.add_variable('SDK_SCRIPT','$SDK_ROOT/scripts','Full SDK directory for general script file concept')
 

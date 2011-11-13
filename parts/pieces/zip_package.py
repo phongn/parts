@@ -31,7 +31,7 @@ def ZipPackage_wrapper(env,target,sources,**kw):
     
     sources=[env.subst(s) for s in sources]
         
-    glb.g_engine.add_preprocess_logic_queue(map_zip_builder(env,target[0],sources,**kw))    
+    glb.engine.add_preprocess_logic_queue(map_zip_builder(env,target[0],sources,**kw))    
     
     if str(target[0]).endswith('.zip'):
         out_target=[env.File(target[0])]

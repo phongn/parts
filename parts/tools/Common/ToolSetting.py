@@ -84,6 +84,7 @@ class ToolSetting(object):
         
         # used as the namespace for common values such as version and script
         self.name=name.upper() 
+        api.output.verbose_msg("toolsettings","Creating Setting object {0}".format(self.name))
         # <name>_VERSION
         self.version_tag=self.name+'_VERSION'
         # <name>_SCRIPT
@@ -391,6 +392,7 @@ class ToolSetting(object):
             items=self.tools[target]
         except KeyError:
             # not defined so we just add the set and return
+            api.output.verbose_msg("toolsettings", "For tool {0} adding info for target:{1} verions:{2}".format(self.name,target,[str(i) for i in tools.keys()]))
             self.tools[target]=tools       
             return
         
@@ -449,6 +451,7 @@ class ToolSetting(object):
         try:
             return self.shell_cache[cache_key]
         except KeyError:
+            api.output.verbose_msg(['toolsettings'],"Getting environment for {0}".format(key))
             _env=env.Clone()
             # query data
             if version is not None:    
@@ -524,7 +527,7 @@ class ToolSetting(object):
         # Add data to env
         for k, v in shell_env.iteritems():
             env.PrependENVPath(k, v, delete_existing=1)
-        api.output.verbose_msg('ToolSettings',"env['ENV'] equal to\n",pprint.pformat(env['ENV']))
+        api.output.verbose_msg('toolsettings',"env['ENV'] equal to\n",pprint.pformat(env['ENV']))
         ## setup any common state
         #setup version info
         env[self.name]=ns._rebind(env,self.name)
@@ -532,7 +535,7 @@ class ToolSetting(object):
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
         
-        api.output.verbose_msg('ToolSettings',"Tool",self.name,"configured to version:",version)
+        api.output.verbose_msg('toolsettings',"Tool",self.name,"configured to version:",version)
  #       import pprint
  #       pp = pprint.PrettyPrinter(indent=4)
  #       pp.pprint(self.__dict__)

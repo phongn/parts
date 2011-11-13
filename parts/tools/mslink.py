@@ -44,7 +44,7 @@ import SCons.Util
 
 import parts.api.output as output
 import parts.common as common
-from MSCommon import msvc, validate_vars
+from parts.tools.MSCommon import msvc, validate_vars
 
 def pdbGenerator(env, target, source, for_signature):
     try:

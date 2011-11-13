@@ -195,7 +195,11 @@ def _part_isUpToDate(self):
                             binfo=glb.pnodes.GetAliasStoredInfo(k.ID)
                             if binfo:
                                 k._memo['get_stored_info']=wrapper(binfo)
-                            j=k.get_stored_info().ninfo
+                            try:
+                                j=k.get_stored_info().ninfo
+                            except AttributeError:
+                                j=k.get_ninfo()
+                            
                         
                         
                 nodelist.append((i,j))
@@ -322,9 +326,8 @@ def part_stat(self):
         return self._memo['stat']
     except KeyError: 
         try:
-                
-            #if glb.engine.isSconstructLoaded and\
-            if glb.engine._build_mode=='build' and\
+            if glb.engine.isSconstructLoaded and\
+                glb.engine._build_mode=='build' and\
                 (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
                 result = os.lstat(self.abspath)
             else:

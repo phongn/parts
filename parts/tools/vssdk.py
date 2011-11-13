@@ -2,8 +2,8 @@ import os.path
 import os
 import SCons.Util
 
-import MSCommon.vsx_sdk
-from MSCommon import vssdk
+import parts.tools.MSCommon.vsx_sdk
+from parts.tools.MSCommon import vssdk
 import parts.api.output as output
 
 ctc_action = SCons.Action.Action('$CTC_COM', '$CTC_COMSTR')

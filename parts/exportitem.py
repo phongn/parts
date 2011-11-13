@@ -86,9 +86,9 @@ def export_file(env,targets,pobj,prop):
         
     return ret
 
-def export_file_path(env,targets,pinfo,prop,use_src):
+def export_file_path(env,targets,pobj,prop,use_src):
     ret=[]
-    prop_val=pobj.DefiningSection.Exports[prop]
+    prop_val=[]
     for t in targets:
         if common.is_string(t):
             t=env.File(t)
@@ -97,10 +97,11 @@ def export_file_path(env,targets,pinfo,prop,use_src):
         ret.append(final_path)
         if use_src==False:
             # use build directory
-            if build_path not in pinfo[prop]:
+            if build_path not in pobj.DefiningSection.Exports[prop]:
                 prop_val.append(build_path)
-        elif final_path not in pinfo[prop]:
+        elif final_path not in pobj.DefiningSection.Exports[prop]:
                 prop_val.append(final_path)
+        env.ExportItem(prop,prop_val,create_sdk=False,map_as_depenance=True)
     return ret
 
 

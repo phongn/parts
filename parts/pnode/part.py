@@ -34,8 +34,18 @@ import SCons.Node
 import types
 import hashlib
 
+class part_compatiblity(object):
 
-class part(pnode.pnode):
+    @property
+    def version(self):
+        return self.Version
+    
+    @property
+    def alias(self):
+        return self.Alias
+
+
+class part(pnode.pnode,part_compatiblity):
     """description of class"""
     
     __slots__=[
@@ -290,11 +300,6 @@ class part(pnode.pnode):
     def ShortAlias(self):
         """Get the current alias."""
         return self.__short_alias
-    
-    @property #readonly non-mutable
-    def alias(self):
-        """for backwards compatibility."""
-        return self.__alias
     
     @property
     def Name(self): #read only non-mutable as it based on short name and parent
@@ -754,6 +759,9 @@ class part(pnode.pnode):
         self.__env['PART_VERSION']="${PARTS('"+self.__alias+"','Version')}"
         self.__env['PART_SHORT_VERSION']="${PARTS('"+self.__alias+"','ShortVersion')}"
         
+        if "__DEBUG__POBJ__" in self.__env["MODE"]:
+            self.__env['POBJ']=self
+
         #self.__env['PART_SECTION']='build'
 ##        # some data we will use for our own DB file
 ##        if glb.name_alias_map.has_key(alias) == False:
@@ -838,12 +846,12 @@ class part(pnode.pnode):
         if self.LoadState == glb.load_file:
             print "\033[1;32m %s was already read"%self.__alias
             return
-        #if self.LoadState == glb.load_cache:
-        #    print "promotion state from cache to file"
-        #    tmp=self.__sections.get('build')
-        #    print tmp
-        #    if self.__classic_section is None and tmp:
-        #        self.__classic_section = tmp
+        if self.LoadState == glb.load_cache and self.__classic_section is None:
+            #print "promotion state from cache to file"
+            try:
+                glb.pnodes.Create(part,**self._cache['init_state'])
+            except:
+                pass
                 
                 
         if self.LoadState < glb.load_file:
@@ -897,6 +905,8 @@ class part(pnode.pnode):
                             duplicate=self.__env['duplicate_build'],
                             exports=export_map
                             )
+                    except errors.LoadStoredError:
+                         raise
                     except Exception,ec:
                         import traceback,StringIO
                         ec_str=StringIO.StringIO()

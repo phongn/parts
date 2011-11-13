@@ -81,9 +81,10 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                             add_to_path=True,auto_add_file=True,
                             use_build_dir=True,create_sdk=create_sdk)
                     else:
-                        env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
+                        ret=env.SdkItem(dest_sdk,[s],sub_dir,'',[],create_sdk=create_sdk,
                         add_to_path=kw.get('add_to_path',True),
                         auto_add_file=kw.get('auto_add_file',True))
+                        
                         
                 sdkf,sr=s.target_source(pattern_dest_sdk)
                 inst,sr=s.target_source(dest_dir)

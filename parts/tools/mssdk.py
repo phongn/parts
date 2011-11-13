@@ -11,8 +11,8 @@ Note this "Tool" is more of a library. it just adds paths, no builders
 
 """
 
-import MSCommon.sdk
-from MSCommon import mssdk
+import parts.tools.MSCommon.sdk
+from parts.tools.MSCommon import mssdk
 import parts.api.output as output
 
 

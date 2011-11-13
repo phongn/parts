@@ -3,10 +3,6 @@ import SCons.Util
 import parts.common 
 import Finders
 import os
-import parts.pieces.merge_script as merge_script
-
-               
-                
        
    
     
@@ -94,7 +90,7 @@ class ToolInfo(object):
             if SCons.Util.is_String(script):
                 # process the script directly
                 if os.path.exists(script):
-                    ret=merge_script.get_script_env(env,script)
+                    ret=env.GetScriptVariables(scripts)
                 else:
                     # error as no file exits   
                     pass
@@ -106,7 +102,7 @@ class ToolInfo(object):
                     if script_data is None:
                     # we have an error as script was not found                    
                         return {}
-                    ret=merge_script.get_script_env(env,script_data[0],script_data[1])
+                    ret=env.GetScriptVariables(script_data[0],script_data[1])
                 else:
                     return {}
                 

@@ -96,4 +96,4 @@ api.register.add_variable('FILE_SYSTEM_SERVER','','')
 api.register.add_variable('PREBUILT_SERVER','','') #compatibility
 
 api.register.add_global_object('VcsFileSystem',file_system)
-api.register.add_global_object('VcsPreBuilt',file_system) # compatiblity
+api.register.add_global_object('VcsPreBuilt',file_system) # compatibility

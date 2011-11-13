@@ -48,12 +48,6 @@ class part_spawner(object):
             ENV[k]=str(v)
         # get the part_logger
         output=self.env["PART_LOG_MAPPER"]
-    
-        # we ignore the escape function as it breaks linux, 
-        # and was breaking on python 2.7 64-bit windows by adding extra " values
-        # ie '"c:\program file\x.exe" foo bar"' -> '""c:\program file\x.exe" foo bar""'
-        # we assume the command has "quotes" around it as need
-        command_line = string.join(args)
         
         # we ignore the escape function as it breaks linux, 
         # and was breaking on python 2.7 windows by adding extra " values

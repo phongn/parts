@@ -49,7 +49,7 @@ import SCons.Script.SConscript
 import SCons.Util
 import SCons.Warnings
 
-from MSCommon import msvc
+from parts.tools.MSCommon import msvc
 
 ##############################################################################
 # Below here are the classes and functions for generation of
