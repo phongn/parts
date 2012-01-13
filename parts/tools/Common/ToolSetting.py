@@ -84,7 +84,7 @@ class ToolSetting(object):
         
         # used as the namespace for common values such as version and script
         self.name=name.upper() 
-        api.output.verbose_msg("toolsettings","Creating Setting object {0}".format(self.name))
+        api.output.verbose_msgf("toolsettings","Creating Setting object {0}",self.name)
         # <name>_VERSION
         self.version_tag=self.name+'_VERSION'
         # <name>_SCRIPT
@@ -392,7 +392,7 @@ class ToolSetting(object):
             items=self.tools[target]
         except KeyError:
             # not defined so we just add the set and return
-            api.output.verbose_msg("toolsettings", "For tool {0} adding info for target:{1} verions:{2}".format(self.name,target,[str(i) for i in tools.keys()]))
+            api.output.verbose_msgf("toolsettings", "For tool {0} adding info for target:{1} verions:{2}",self.name,target,[str(i) for i in tools.keys()])
             self.tools[target]=tools       
             return
         
@@ -451,7 +451,7 @@ class ToolSetting(object):
         try:
             return self.shell_cache[cache_key]
         except KeyError:
-            api.output.verbose_msg(['toolsettings'],"Getting environment for {0}".format(key))
+            api.output.verbose_msgf(['toolsettings'],"Getting environment for {0}",key)
             _env=env.Clone()
             # query data
             if version is not None:    

@@ -93,7 +93,7 @@ def load_module(path,name,type):
         api.output.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
         file, path1, desc = imp.find_module(name,path)
         oldPath = sys.path[:]
-        sys.path.extend(path)
+        sys.path=path+sys.path
         
         try:
             mod = imp.load_module(modname, file, path1, desc)

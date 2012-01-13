@@ -196,7 +196,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     # Set-up ms tools paths for default version
     msvc.MergeShellEnv(env)
 
-    env['CCPDBFLAGS'] = SCons.Util.CLVar(['${(PDB and "/Z7") or ""}'])
+    env['CCPDBFLAGS'] = SCons.Util.CLVar(['${"/Z7" if PDB else ""}'])
     env['CCPCHFLAGS'] = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}'])
     env['_MSVC_OUTPUT_FLAG'] = msvc_output_flag
     env['_CCCOMCOM']  = '$CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS $CCPCHFLAGS $CCPDBFLAGS'
@@ -225,7 +225,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env['RC'] = 'rc'
     env['RCFLAGS'] = SCons.Util.CLVar('')
     env['RCSUFFIXES']=['.rc','.rc2']
-    env['RCCOM'] = '${TEMPFILE("$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES")}'
+    env['RCCOM'] = "$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES"
     env['BUILDERS']['RES'] = res_builder
     env['OBJPREFIX']      = ''
     env['OBJSUFFIX']      = '.obj'

@@ -32,15 +32,15 @@ if sys.platform == 'win32':
 
     def ccopy_hard_soft(dest,source):
         # we only deal with files in our cases
-        api.output.verbose_msg("ccopy","ccopy_hard_soft dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_hard_soft dest={0} source={1}",dest,source)
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
 
             ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to create HardLink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             try:
@@ -49,88 +49,88 @@ if sys.platform == 'win32':
                 tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
                 ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
                 if ret==0:
-                    api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    api.output.verbose_msgf("ccopy","Failed to create Symlink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                     raise IOError,ctypes.FormatError(ctypes.GetLastError())
             except:
                 ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
-                    api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    api.output.verbose_msgf("ccopy","Failed to copy: {0}",ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
 
     def ccopy_soft_hard(dest,source):
         # we only deal with files in our cases
-        api.output.verbose_msg("ccopy","ccopy_soft_hard dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_soft_hard dest={0} source={1}",dest,source)
         #get the relpath
         tmp=os.path.split(source)
         tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to create Symlink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             try:
                 ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
                 if ret==0:
-                    api.output.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    api.output.verbose_msgf("ccopy","Failed to create HardLink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                     raise IOError,ctypes.FormatError(ctypes.GetLastError())
             except:
                 ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
                 if ret==0:
-                    api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                    api.output.verbose_msgf("ccopy","Failed to copy: {0}",ctypes.FormatError(ctypes.GetLastError()))
                     raise ctypes.WinError()
 
     def ccopy_hard(dest,source):
         # we only deal with files in our cases
-        api.output.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_hard dest={0} source={1}",dest,source)
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             ret=ctypes.windll.kernel32.CreateHardLinkW(unicode(dest),unicode(source),0)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to create HardLink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to create HardLink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to copy: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
 
     def ccopy_soft(dest,source):
         # we only deal with files in our cases
         #get the relpath
-        api.output.verbose_msg("ccopy","ccopy_soft dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_soft dest={0} source={1}",dest,source)
         tmp=os.path.split(source)
         tmp=os.path.join(common.relpath(tmp[0],os.path.split(dest)[0]),tmp[1])
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             ret=CreateSymbolicLink(unicode(dest),unicode(tmp),0)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to create Symlink: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to create Symlink: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise IOError,ctypes.FormatError(ctypes.GetLastError())
         except:
             ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
             if ret==0:
-                api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
+                api.output.verbose_msgf("ccopy","Failed to copy: {0}",ctypes.FormatError(ctypes.GetLastError()))
                 raise ctypes.WinError()
 
     def ccopy_copy(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_copy dest={0} source={1}",dest,source)
         ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
         if ret==0:
-            api.output.verbose_msg("ccopy","Failed to copy: %s"%ctypes.FormatError(ctypes.GetLastError()))
+            api.output.verbose_msgf("ccopy","Failed to copy: {0}",ctypes.FormatError(ctypes.GetLastError()))
             raise ctypes.WinError()
 else:
     def ccopy_hard_soft(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_hard_soft dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_hard_soft dest={0} source={1}",(dest,source))
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             os.link(source,dest)
@@ -143,9 +143,9 @@ else:
                 os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
     def ccopy_soft_hard(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_soft_hard dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_soft_hard dest={0} source={1}",dest,source)
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             os.symlink(source,dest)
@@ -159,9 +159,9 @@ else:
 
 
     def ccopy_hard(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_hard dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_hard dest={0} source={1}",dest,source)
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             os.link(source,dest)
@@ -171,9 +171,9 @@ else:
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
     def ccopy_soft(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_soft dest=%s source=%s"%(dest,source))
+        api.output.verbose_msgf("ccopy","ccopy_soft dest={0} source={1}",dest,source)
         if os.path.exists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} exists on disk, deleting file so links can be created correctly',dest)
             os.remove(dest)
         try:
             os.symlink(source,dest)
@@ -183,9 +183,9 @@ else:
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
     def ccopy_copy(dest,source):
-        api.output.verbose_msg("ccopy","ccopy_copy dest=%s source=%s"%(dest,source))
+        api.output.verbose_msfg("ccopy","ccopy_copy dest={0} source={1}",dest,source)
         if os.path.lexists(dest):
-            api.output.verbose_msg("ccopy",'File: {0} links exists on disk, deleting file so copy can be created correctly'.format(dest))
+            api.output.verbose_msgf("ccopy",'File: {0} links exists on disk, deleting file so copy can be created correctly',dest)
             os.remove(dest)
         shutil.copy2(source, dest)
         st = os.stat(source)
@@ -199,7 +199,7 @@ def CCopyFuncWrapper(dest, source, env, copyfunc):
     if os.path.isdir(source):
         if os.path.exists(dest):
             if not os.path.isdir(dest):
-                raise SCons.Errors.UserError, "cannot overwrite non-directory `%s' with a directory `%s'" % (str(dest), str(source))
+                raise SCons.Errors.UserError, "cannot overwrite non-directory '%s' with a directory '%s'" % (str(dest), str(source))
         else:
             parent = os.path.split(dest)[0]
             if not os.path.exists(parent):
@@ -362,11 +362,9 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         copy_logic=env.__CCopyBuilderC__
 
     for src, tgt in map(lambda x, y: (x, y), source, target):
-        result.extend(copy_logic(tgt, src,**kw))
+        result.extend(copy_logic(env.File(tgt), env.File(src),**kw))
     return result
 
-    #n_targets=env.__SDKBuilder__(target=target,source=source)
-    #return results
 
 
 def _sdk_copy(env, target=None, source=None,copy_logic=CCopy.default,**kw):

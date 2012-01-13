@@ -205,6 +205,7 @@ class load_all_roots_loader(base): #task_master type
         # all known parts are loaded from file. We need to set
         # that state, so any promotions forms of cache to file
         # happen correctly
+        t1=time.time()
         for pobj in parts_to_load:
             #print 8769, pobj.ID, pobj.isLoading, pobj.ReadState, pobj.LoadState, pobj._remove_cache
             pobj.UpdateReadState(glb.load_file)
@@ -213,7 +214,11 @@ class load_all_roots_loader(base): #task_master type
             self.pmgr.LoadPart(pobj)
             api.output.console_msg("Loading {0:.2%} \033[K".format(cnt/total,cnt,total))
             cnt+=1
-        api.output.print_msg("Loaded {0} Parts".format(len(self.pmgr.parts)))
+        num_parts=len(self.pmgr.parts)
+        tt=time.time()-t1
+        if num_parts:
+            api.output.verbose_msgf(['loading','load_stats'],"Loaded {0} Parts\n Total time:{1} sec\n Time per part:{2}",num_parts,tt,tt/num_parts)
+        api.output.print_msg("Loaded {0} Parts".format(num_parts,))
         # we are loading everything..so we don't want to exit early
         return False
         
@@ -298,8 +303,6 @@ class no_depends_loader(base): #task_master type
         #.. assume nodes are filtered out if ther did not expand to a section
         self.sections=targets 
         self.pmgr=pmanager
-        
-        
         
     @property
     def hasStored(self):
@@ -472,13 +475,13 @@ class section_changed_loader(base): #task_master type
                 # might have more than on at this point as we don't have some environment data
                 # to help with matching.. in these cases we just add all possible cases to be safe
                 new_sections=dep.StoredMatchingSections
-                api.output.verbose_msg("process_depends","{0} mapped to {1}".format(dep.PartRef.Target,new_sections))
+                api.output.verbose_msgf("process_depends","{0} mapped to {1}",dep.PartRef.Target,new_sections)
                 for dep_sec in new_sections:   
                     # at the very least we would want to load the component as cache
                     # this is already loaded.. 
                     # so this is already processed
                     if dep_sec.LoadState == glb.load_file:
-                        api.output.verbose_msg("process_depends","{0} already loaded".format(dep_sec.ID))
+                        api.output.verbose_msgf("process_depends","{0} already loaded",dep_sec.ID)
                         continue
                         
                     if dep_sec.Stored and dep_sec.Stored.part.Stored.root != pobj.Root:
@@ -486,14 +489,14 @@ class section_changed_loader(base): #task_master type
                         same_root_part=False
                     else:
                         same_root_part=True
-                    self.CheckForContextChanged(dep_sec)
+                    self.CheckForContextChanged(dep_sec,recursive_call=True)
                     # if the depend section has force load set
                     # should load it to be safe
                     if dep_sec.Stored is None or dep_sec.Stored.part.Stored.force_load ==True:
                     # see if the file changed
                         # set state
                         self.LoadSection(dep_sec)
-                    api.output.verbose_msg("process_depends","{0} LoadState={1} ReadState={2}".format(dep_sec.ID,dep_sec.LoadState, dep_sec.ReadState))
+                    api.output.verbose_msgf("process_depends","{0} LoadState={1} ReadState={2}",dep_sec.ID,dep_sec.LoadState, dep_sec.ReadState)
                     if dep_sec.LoadState < dep_sec.ReadState and not same_root_part:
                         # need to change the cwd directory in the node FS object
                         # get the current location    
@@ -511,24 +514,27 @@ class section_changed_loader(base): #task_master type
                             glb.engine.def_env.fs.chdir(tmp.srcdir,True)
                             # then variant ( which out changing system)
                             glb.engine.def_env.fs.chdir(tmp,False)
-                        
-    def CheckForContextChanged(self,sec,req=None):
+
+    # need to refactor this function
+    def CheckForContextChanged(self,sec,req=None,recursive_call=False):
         '''tests if the parts file, build and config context for the section as changed'''
         
         try:
-            # if we seen this already.. return if it is different
+            # we try to see if we know of this already
+            # given that we do we want to see if this has changed
             if self._section_info[sec.ID]['changed'] is not None:
+                # since this has changed we already know we will load everything 
                 return True
-            else:
+            elif self._section_info[sec.ID]['requirements']:
+                # This is not changed so we need to add any special requirements we
+                # might have, or set this to None to load everything or this is a top level
+                # call meaning that all requirements need to be tested as this was part of the targets
                 # add new requirements
-                if req is None: # if ths is None and we already have a setup
+                if req is None or not recursive_call: # if this is None and we already have a setup
                     # this means we need build everything this component has
                     self._section_info[sec.ID]['requirements']=None
                 else:
-                    if self._section_info[sec.ID]['requirements']:
-                        self._section_info[sec.ID]['requirements'] |= req
-                    else:
-                        self._section_info[sec.ID]['requirements']= req
+                    self._section_info[sec.ID]['requirements'] |= req
                 return False
                 
         except KeyError:
@@ -563,7 +569,7 @@ class section_changed_loader(base): #task_master type
                 # as these may add new files to load in some way
             
                 #load this file ...
-                api.output.verbose_msg("update_check",'{0} is out of date because the part file has changed.'.format(sec.ID))
+                api.output.verbose_msgf("update_check",'{0} is out of date because the part file has changed.',sec.ID)
                 #sec.ReadState=glb.load_file
                 self.TagToPartLoad(sec.Stored.part.Stored.root)
                 self._up_to_date=False
@@ -583,7 +589,7 @@ class section_changed_loader(base): #task_master type
                         if sec.LoadState != glb.load_file: 
                             # If this is loaded.. it may not have a cache for use to check
                             # beside checking the cache is pointless, as it fully loaded
-                            self.CheckForContextChanged(dep_sec,dep.Requires)
+                            self.CheckForContextChanged(dep_sec,dep.Requires,recursive_call=True)
                     sec.Stored.dependson=new_depend_list
             else:
                 # this file has not changed so we can use the current Stored information    
@@ -600,16 +606,16 @@ class section_changed_loader(base): #task_master type
                             if r in tmp:
                                 dep_req|=r
                     
-                    sec_changed=self.CheckForContextChanged(dep_sec,dep_req)
+                    sec_changed=self.CheckForContextChanged(dep_sec,dep_req,recursive_call=True)
                     if sec_changed:
-                        api.output.verbose_msg("update_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(sec.ID,dep_sec.ID))
+                        api.output.verbose_msgf("update_check",'{0} out-of-date! Dependent section "{1}" is out of date',sec.ID,dep_sec.ID)
                         self.LoadSection(sec) # set the state
                         #self.pmgr.LoadSection(sec) # do the load
                         changed=True
         
             # add to list of all section to process
             self._sections.append(sec)
-        
+            
             if changed:    
                 #add that this section is out of date
                 self._section_info[sec.ID]['changed']="file"
@@ -641,9 +647,10 @@ class section_changed_loader(base): #task_master type
                 ## first check to see if these are the files we have cached
                 # check to see that we have the same amount of files
                 if len(cfg_files)!=len(file_list):
-                    api.output.verbose_msg(
+                    api.output.verbose_msgf(
                     "update_check",
-                    '{0} is out of date because the set of files defining configuration "{1}" for tool "{2}" are different.'.format(sec.ID,sec.Stored.part.Stored.config,tool)
+                    '{0} is out of date because the set of files defining configuration "{1}" for tool "{2}" are different.',
+                    sec.ID,sec.Stored.part.Stored.config,tool
                     )
                     self._knowncfgs[key]=True
                     return True
@@ -653,15 +660,15 @@ class section_changed_loader(base): #task_master type
                         #this file is in the set of previous found files
                         # check if file has changed
                         if not node_helpers.node_up_to_date(file):
-                            api.output.verbose_msg("update_check",'{0} is out of data because the file "{1}" that defines the configuration has changed'.format(sec.ID,file['name']))
+                            api.output.verbose_msgf("update_check",'{0} is out of data because the file "{1}" that defines the configuration has changed',sec.ID,file['name'])
                             self._knowncfgs[key]=True
                             return True
                     else:
-                        api.output.verbose_msg(
+                        api.output.verbose_msgf(
                         "update_check",
-                        '{0} is out of date because the set of files defining configuration "{1}" for tool "{2}" are different.\n The file "{3}" was not in set of: {4}'.format(
-                                sec.ID,sec.Stored.part.Stored.config,tool,file['name'],cfg_files
-                                )
+                        '{0} is out of date because the set of files defining configuration "{1}" for tool "{2}" are different.\n The file "{3}" was not in set of: {4}',
+                         sec.ID,sec.Stored.part.Stored.config,tool,file['name'],cfg_files
+                                
                             )
                         self._knowncfgs[key]=True
                         return True
@@ -682,23 +689,21 @@ class section_changed_loader(base): #task_master type
                 tmp=self._knownbuilders[bld['name']]                
                 # yes we do
                 if tmp: # is it out of date?
-                    api.output.verbose_msg(
+                    api.output.verbose_msgf(
                       "update_check",
-                      '{0} is out of date because file "{1}" that defines builders has changed'.format(
+                      '{0} is out of date because file "{1}" that defines builders has changed',
                             sec.ID,bld['name']
-                            )
-                        )
+                    )
                     return tmp
             except KeyError:    
                 # we don't know of this file as of yet
                 # next we test the build context file to see if this is good or bad
                 if node_helpers.node_up_to_date(bld) == False:
-                    api.output.verbose_msg(
+                    api.output.verbose_msgf(
                         "update_check",
-                        '{0} is out of date because file "{1}" that defines builders has changed'.format(
-                            sec.ID,bld['name']
-                            )
-                        )
+                        '{0} is out of date because file "{1}" that defines builders has changed',
+                         sec.ID,bld['name']
+                    )
                     self._knownbuilders[bld['name']]=True
                     return True
                 self._knownbuilders[key]=False
@@ -721,7 +726,7 @@ class section_changed_loader(base): #task_master type
             # see if the dependent has changed
             if self._section_info[dep_sec.ID]['changed'] is not None:
                 self._section_info[sec.ID]['changed']='dependent'
-                api.output.verbose_msg("update_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(sec.ID,dep_sec.ID))
+                api.output.verbose_msgf("update_check",'{0} out-of-date! Dependent section "{1}" is out of date',sec.ID,dep_sec.ID)
                 self.LoadSection(sec)
                 return
             # see if the esig changed from what we required of it
@@ -739,7 +744,7 @@ class section_changed_loader(base): #task_master type
                 if dep_sec.Stored.esigs.get(req.key,'0')!=rsigs.get(req.key,'0'):
                     #print dep_sec.Stored.esigs.get(req.key,'0'),rsigs.get(req.key,'0')
                     self._section_info[sec.ID]['changed']='export'
-                    api.output.verbose_msg("update_check",'{0} out-of-date! Dependent values "{1}" from "{2}" changed'.format(sec.ID,req.key,dep_sec.ID))
+                    api.output.verbose_msgf("update_check",'{0} out-of-date! Dependent values "{1}" from "{2}" changed',sec.ID,req.key,dep_sec.ID)
                     self.LoadSection(sec)
                     return
         
@@ -759,7 +764,7 @@ class section_changed_loader(base): #task_master type
             # here we turn each requirement in to a Node
             # which we will use, via the node logic to see if it changed or out of date.
             for r in requirements:
-                if r.key in stored_data.exported_requirements or "INSTALL" in r.key or "SDK" in r.key:
+                if r.key in stored_data.exported_requirements:
                     target_nodes.append(glb.pnodes.GetNode('{0}::alias::{1}::{2}'.format(stored_data.name,stored_data.part.ID,r.key)))          
         else:    
             # if this was None used the default requirement
@@ -774,12 +779,12 @@ class section_changed_loader(base): #task_master type
                 
             # the hasNodeChanged uses logic added to the SCons Nodes to see if the value it changed by looking at what it 
             # depends on and if it view of the dependent is different
-            
+            api.output.verbose_msgf("update_check_extra",'{0} checking for changes in node {0}',sec.ID,tnode.ID)
             if tnode and not tnode.pisUpToDate: #hasNodeChanged
                     # we are out of date
         
                     self._section_info[sec.ID]['changed']="nodes"
-                    api.output.verbose_msg("update_check",'{0} out-of-date! Section Target "{1}" is out of date'.format(sec.ID,tnode))
+                    api.output.verbose_msgf("update_check",'{0} out-of-date! Section Target "{1}" is out of date',sec.ID,tnode),
                     self.LoadSection(sec)
                     break
                 
@@ -793,7 +798,7 @@ class section_changed_loader(base): #task_master type
         # this checks to see if the section has a "AlwaysBuild" state that was found
         if sec.AlwaysBuild:
             self._section_info[sec.ID]['changed']='always_build'
-            api.output.verbose_msg("update_check",'{0} out-of-date! section contains node that called AlwaysBuild()'.format(sec.ID))
+            api.output.verbose_msgf("update_check",'{0} out-of-date! section contains node that called AlwaysBuild()',sec.ID)
             self.LoadSection(sec)
             return
 
@@ -804,7 +809,7 @@ class section_changed_loader(base): #task_master type
             # see if the dependent has changed
             if self._section_info[dep_sec.ID]['changed'] is not None:
                 self._section_info[sec.ID]['changed']='dependent'
-                api.output.verbose_msg("update_check",'{0} out-of-date! Dependent section "{1}" is out of date'.format(sec.ID,dep_sec.ID))
+                api.output.verbose_msgf("update_check",'{0} out-of-date! Dependent section "{1}" is out of date',sec.ID,dep_sec.ID)
                 self.LoadSection(sec)
                 return
             
@@ -829,6 +834,13 @@ class section_changed_loader(base): #task_master type
         st=time.time()
         self._process_depend=True
         total=len(self.sections)*1.0
+        cnt=0
+        for sec in self.sections:
+            api.output.console_msg("Checking Parts File for Changes {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
+            if sec.hasPartFileChanged():
+                self.TagToPartLoad(sec.Stored.part.Stored.root)
+            cnt+=1
+
         cnt=0
         for sec in self.sections:
             api.output.console_msg("Checking Content {0:.2%} {1}/{2} \033[K".format((cnt/total),cnt,total))
@@ -967,7 +979,7 @@ class part_manager(object):
                 ret+=tmp
                 ret_nodes.append((t,tmp))
                 if not self.__hasStored: 
-                    api.output.verbose_msg(['target_mapping'],'No Stored info found for "{0}", Loading everything'.format(t.ID))
+                    api.output.verbose_msgf(['target_mapping'],'No Stored info found for "{0}", Loading everything',t.ID)
                     return
             else:
                 #This is a string to a target we need to figure out
@@ -993,12 +1005,12 @@ class part_manager(object):
                     #    pass
                     if name_matches:
                         # we have some matches
-                        api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a known name'.format(tn.Name))
+                        api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a known name',tn.Name)
                         tobj=tn
                     #see if this is an alias we have
                     elif glb.pnodes.isKnownPNode(ta.Alias):# known_parts.keys():
                         # this looks like an alias we should know about
-                        api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a known alias'.format(t))
+                        api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a known alias',t)
                         tobj=ta
                     elif glb.pnodes.isKnownNodeStored(t):
                         node=glb.pnodes.GetNode(t)
@@ -1007,9 +1019,9 @@ class part_manager(object):
                         ret+=tmp
                         ret_nodes.append((node,tmp))
                         if not self.__hasStored: 
-                            api.output.verbose_msg(['target_mapping'],'Target: "{0}" missing stored data, Loading everything'.format(t))
+                            api.output.verbose_msgf(['target_mapping'],'Target: "{0}" missing stored data, Loading everything',t)
                             return
-                        api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a known SCons node'.format(t))
+                        api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a known SCons node',t)
                         continue
                     else:
                         # we don't know this.. assume we have to load everything
@@ -1033,9 +1045,9 @@ class part_manager(object):
                         self.add_stored_node_info(node,tmp)
                         ret+=tmp
                         if not self.__hasStored: 
-                            api.output.verbose_msg(['target_mapping'],'Target: "{0}" missing stored data, Loading everything'.format(tobj))
+                            api.output.verbose_msgf(['target_mapping'],'Target: "{0}" missing stored data, Loading everything',tobj)
                             return
-                        api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a Alias'.format(tobj))
+                        api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a Alias',tobj)
                     
                     ## get pobj                    
                     #if glb.pnodes.isKnownPNodeStored(tobj.Alias): 
@@ -1046,15 +1058,15 @@ class part_manager(object):
                     #    ret.append(tmp)
                     else:
                         # this is not known.. backout
-                        api.output.verbose_msg(['target_mapping'],'No stored information found for "{0}", Loading everything'.format(tobj))
+                        api.output.verbose_msgf(['target_mapping'],'No stored information found for "{0}", Loading everything',tobj)
                         return None
                 elif tobj.Name:
-                    api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a name'.format(tobj))
+                    api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a name',tobj)
                     if name_matches is None:
                         name_matches=stored_name_to_alias.get(tobj.Name)
                         
                     if not name_matches:
-                        api.output.verbose_msg(['target_mapping'],'No matches found for name, Loading everything'.format(tobj))
+                        api.output.verbose_msgf(['target_mapping'],'No matches found for name, Loading everything',tobj)
                         return None # we don't have any known found values.. backout
                     
                     pobjs_lst = name_matches.values()
@@ -1078,12 +1090,12 @@ class part_manager(object):
                         else:
                             self.__hasStored=False
                         if not self.__hasStored: 
-                            api.output.verbose_msg(['target_mapping'],'Target: "{0}" missing stored data, Loading everything'.format(tstr))
+                            api.output.verbose_msgf(['target_mapping'],'Target: "{0}" missing stored data, Loading everything',tstr)
                             return True
                         return False
                     
                     if not name_matches:
-                        api.output.verbose_msg(['target_mapping'],'No matched found for "{0}", Loading everything'.format(tobj))
+                        api.output.verbose_msgf(['target_mapping'],'No matched found for "{0}", Loading everything',tobj)
                         return None
                     for pobj in name_matches:
                         # the target mapping logic will handle the case of groups mapping
@@ -1125,10 +1137,10 @@ class part_manager(object):
                 else:
                     # add the concept:: alias as we define this
                     tmp=glb.engine.def_env.Alias(concept+"::")[0]
-                    api.output.verbose_msg(['target_mapping'],'Target: "{0}" is a concept'.format(tobj))
+                    api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a concept',tobj)
                     self.add_stored_node_info(tmp,ret)
                     if not self.__hasStored: 
-                        api.output.verbose_msg(['target_mapping'],'No stored information found for "{0}", Loading everything'.format(tobj))
+                        api.output.verbose_msgf(['target_mapping'],'No stored information found for "{0}", Loading everything',tobj)
                         return
         
         return (ret,ret_nodes)
@@ -1164,14 +1176,14 @@ class part_manager(object):
         processed=False
         #see if this part is setup
         if pobj._remove_cache:
-            api.output.verbose_msg(['loading'],"{0} being ignored as it seems to not exist in the SConstruct anymore".format(pobj.ID)) 
+            api.output.verbose_msgf(['loading'],"{0} being ignored as it seems to not exist in the SConstruct anymore",pobj.ID) 
         elif pobj.isSetup:
             # it is setup, so the parent has been read in
             if pobj.isLoading:
-                api.output.verbose_msg(['loading'],"{0} is already being loaded. Not Loading!".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"{0} is already being loaded. Not Loading!",pobj.ID)
                 return
             elif pobj.LoadState == glb.load_file:
-                api.output.verbose_msg(['loading'],"{0} was already loaded. Ignoring!".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"{0} was already loaded. Ignoring!",pobj.ID)
                 return
             elif (pobj.LoadState < glb.load_file and pobj.ReadState == glb.load_file) or\
                  not glb.pnodes.isKnownPNodeStored(pobj.ID) or\
@@ -1183,12 +1195,12 @@ class part_manager(object):
                 # read, when the sub parts Part() call happens. This is mainly a "classic" format issue. The new format
                 # should not have this problem.
                 if not pobj.isRoot and pobj.Parent.LoadState < glb.load_file and not pobj.Parent.isLoading:
-                    api.output.verbose_msg(['loading'],"Trying to loading from file: {0},\n but the parent Part has not been read yet".format(pobj.ID))
+                    api.output.verbose_msgf(['loading'],"Trying to loading from file: {0},\n but the parent Part has not been read yet",pobj.ID)
                     self.LoadPart(pobj.Parent)
                     return
                      
                 #read in the data fully
-                api.output.verbose_msg(['loading'],"Loading from file: {0}".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"Loading from file: {0}",pobj.ID)
                 pobj.isLoading=True
                 pobj.UpdateReadState(glb.load_file)
                 pobj.ReadFile()
@@ -1233,7 +1245,7 @@ class part_manager(object):
                 pobj.isLoading=False
                 
             elif pobj.LoadState < glb.load_cache and pobj.ReadState == glb.load_cache: #not pobj.isRead and pobj.ReadState == glb.load_cache:
-                api.output.verbose_msg(['loading'],"Loading from cache: {0}".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"Loading from cache: {0}",pobj.ID)
                 pobj.isLoading=True
                 pobj.LoadFromCache()
                 self._add_part(pobj) 
@@ -1242,7 +1254,7 @@ class part_manager(object):
                 processed=True
                 
             elif pobj.ReadState == glb.load_none:
-                api.output.verbose_msg(['loading'],"not loading: {0}".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"not loading: {0}",pobj.ID)
         else:
             # we are trying to load some sub-part that has not had it parent read in yet
             # there are two cases for this parent.. 
@@ -1252,12 +1264,12 @@ class part_manager(object):
             policy=SCons.Script.GetOption("load_logic")
             if pobj.Stored.parent is None:
                 # this part was probally removed
-                api.output.verbose_msg(['loading'],"not loading: {0} because it looks like it is not defined anymore".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"not loading: {0} because it looks like it is not defined anymore",pobj.ID)
                 self.__hasStored=False
                 pobj._remove_cache=True
                 
                 if policy!='all':
-                    api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                    api.output.verbose_msgf(['loading'],"Trying to set load-logic to all logic",pobj.ID)
                     SCons.Script.Main.OptionsParser.values.load_logic='all'
                     #SCons.Script.SetOption("load_logic",'all')
                     raise errors.LoadStoredError
@@ -1270,7 +1282,7 @@ class part_manager(object):
             # check to see if the whole parts seems to be missing
             if pobj.Stored.parent._remove_cache:
                 pobj._remove_cache=True
-                api.output.verbose_msg(['loading'],"{0} being ignored as {1} seems to not exist in the SConstruct anymore".format(pobj.ID,pobj.Stored.root.ID)) 
+                api.output.verbose_msgf(['loading'],"{0} being ignored as {1} seems to not exist in the SConstruct anymore",pobj.ID,pobj.Stored.root.ID) 
                 return
                 
             #Given that it is read at this point. we need to check to see if we are read
@@ -1281,20 +1293,20 @@ class part_manager(object):
             # At this point we should be setup at the very least, if not loaded
             # if the parent was loaded from cache we might not be loaded yet
             if pobj.LoadState < glb.load_cache and pobj.ReadState == glb.load_cache:
-                api.output.verbose_msg(['loading'],"Loading From cache: {0}".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"Loading From cache: {0}",pobj.ID)
                 pobj.LoadFromCache()
                 self._add_part(pobj) 
                 pobj.LoadState = glb.load_cache
                 processed=True
             # it is possible a loader gave us a part we want to ignore    
             elif pobj.ReadState == glb.load_none:
-                api.output.verbose_msg(['loading'],"not loading: {0}".format(pobj.ID))
+                api.output.verbose_msgf(['loading'],"not loading: {0}",pobj.ID)
             elif pobj.LoadState == glb.load_none:
                 # if we get here the most likely case is this is a complex part with lots of subparts
                 # check to see if the parent still defined this sub-part, it may have been removed or renamed
                 if pobj.ID in pobj.Stored.parent.Stored.subparts and not pobj.Stored.parent.isLoading:
                     #This appears to be so. We want to mark this data to be removed so we don't look for it again
-                    api.output.verbose_msg(['loading'],"Can't load {0} as this is a subpart does not appear to exist in the parent anymore.".format(pobj.ID))
+                    api.output.verbose_msgf(['loading'],"Can't load {0} as this is a subpart does not appear to exist in the parent anymore.",pobj.ID)
                     pobj._remove_cache=True
                 
                 elif pobj.Stored.parent.isLoading:
@@ -1302,29 +1314,29 @@ class part_manager(object):
                     # as it is in a depends of a sub-part that was defined before it in the Parts file
                     # there is nothing we can do with this given the classic format. so we punt and hope for the best
                     if policy!='all':
-                        api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                        api.output.verbose_msgf(['loading'],"Trying to set load-logic to all logic",pobj.ID)
                         SCons.Script.Main.OptionsParser.values.load_logic='all'
                         self.__hasStored=False
                         #SCons.Script.SetOption("load_logic",'all')
                         raise errors.LoadStoredError
                     else:
-                        api.output.verbose_msg(['loading'],"Can't load {0} as parent part is still loading. Skipping, May cause failures".format(pobj.ID))
+                        api.output.verbose_msgf(['loading'],"Can't load {0} as parent part is still loading. Skipping, May cause failures",pobj.ID)
                 
                 else:
                     
                     if policy!='all':
-                        api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Falling back".format(pobj.ID))
-                        api.output.verbose_msg(['loading'],"Trying to set load-logic to all logic".format(pobj.ID))
+                        api.output.verbose_msgf(['loading'],"Can't load {0} Not sure why? Falling back",pobj.ID)
+                        api.output.verbose_msgf(['loading'],"Trying to set load-logic to all logic",pobj.ID)
                         SCons.Script.Main.OptionsParser.values.load_logic='all'
                         self.__hasStored=False
                         #SCons.Script.SetOption("load_logic",'all')
                         raise errors.LoadStoredError
                     else:
-                        api.output.verbose_msg(['loading'],"Can't load {0} Not sure why? Skipping, May cause failures".format(pobj.ID))
+                        api.output.verbose_msgf(['loading'],"Can't load {0} Not sure why? Skipping, May cause failures",pobj.ID)
                 return
                 
         if processed:
-            api.output.verbose_msg(['loading'],"Loaded {0:45}[{1:.2f} secs]".format(pobj.ID,(time.time()-part_file_load_time)))
+            api.output.verbose_msgf(['loading'],"Loaded {0:45}[{1:.2f} secs]",pobj.ID,(time.time()-part_file_load_time))
                 
    
     def _define_sub_part(self,env,alias,parts_file,mode=[],vcs_type=None,
@@ -1396,7 +1408,7 @@ class part_manager(object):
         
         # trying to translate based on everything being read in
         new_list=[] # the new target list
-        api.output.verbose_msg(['loading'],"Orginal BUILD_TARGETS: %s"%SCons.Script.BUILD_TARGETS)
+        api.output.verbose_msgf(['loading'],"Orginal BUILD_TARGETS: {0}",SCons.Script.BUILD_TARGETS)
         for t in SCons.Script.BUILD_TARGETS:
             tobj=target_type(t)
             # first see if this is ambiguous
@@ -1488,7 +1500,7 @@ class part_manager(object):
                 else:
                     new_list.append(basestr)
         SCons.Script.BUILD_TARGETS=new_list
-        api.output.verbose_msg(['loading'],"Updated BUILD_TARGETS: %s"%SCons.Script.BUILD_TARGETS)
+        api.output.verbose_msgf(['loading'],"Updated BUILD_TARGETS: {0}",SCons.Script.BUILD_TARGETS)
         
     
     def ProcessParts(self):
@@ -1500,9 +1512,11 @@ class part_manager(object):
         ##update the disk
         ##is everything up to date on disk update file on disk?
         ## if not we need to update it
-        api.output.print_msg("Updating disk")
-        self.UpdateOnDisk( self.parts.values() )
-        api.output.print_msg("Updating disk - Done")
+        if SCons.Script.GetOption('update'):
+            api.output.print_msg("Updating disk")
+            self.UpdateOnDisk( self.parts.values() )
+            api.output.print_msg("Updating disk - Done")
+
         if len(SCons.Script.BUILD_TARGETS) == 1 and SCons.Script.BUILD_TARGETS[0] == "extract_sources":
             return
         
@@ -1554,7 +1568,7 @@ class part_manager(object):
                     policy='min'
                 if SCons.Script.GetOption("interactive") and policy != "unsafe":
                     policy='all'
-                api.output.verbose_msg(['loading'],"Using load logic: {0}".format(policy))
+                api.output.verbose_msgf(['loading'],"Using load logic: {0}",policy)
                 if policy =='target' or glb.engine._build_mode=='clean':
                     #fully load all direct depends ( no cache loads )
                     loader=direct_depends_loader(sections_to_process,self)
@@ -1820,6 +1834,8 @@ class part_manager(object):
             if use_stored_info:
                 # what we had stored
                 if name:
+                    if datacache.GetCache("part_map") is None:
+                        return []
                     stored_dict=datacache.GetCache("part_map")['name_to_alias'].get(name)
                     if stored_dict:
                         for v in stored_dict.itervalues():
@@ -1827,7 +1843,8 @@ class part_manager(object):
                 elif target.Alias and self.parts.get(target.Alias):
                     full_set.add(self.parts.get(target.Alias))
                 else:
-                    api.output.error_msg("{0} target is to ambigous to find any possible match".format(target.OrignialString))
+                    return []
+                    #api.output.error_msg("{0} target is to ambigous to find any possible match".format(target.OrignialString))
             else:            
                 # what is up-to-date
                 alias_lst=self._alias_list(name)
@@ -1897,42 +1914,42 @@ class part_manager(object):
     
     def reduce_list_from_target_stored(self,tobj,part_lst):
         
-        api.output.verbose_msg("stored_reduce_target_mapping","Reducing list of parts based on target {0}".format(tobj))
+        api.output.verbose_msgf("stored_reduce_target_mapping","Reducing list of parts based on target {0}",tobj)
         for k,v in tobj.Properties.iteritems():
             for pobj in part_lst.copy():
-                api.output.verbose_msg("stored_reduce_target_mapping"," Testing Part {0}".format(pobj.ID))
+                api.output.verbose_msgf("stored_reduce_target_mapping"," Testing Part {0}",pobj.ID)
                 if pobj.Stored is None:
                     #We have no stored info. skip test 
                     #(ie load it as it might be needed)
                     pass
                 elif k == 'version':
-                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Stored.version))
+                    api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Stored.version)
                     if common.is_string(v):
                         v=version.version_range(v+'.*')
                     if pobj.Stored.version not in v:
-                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['target','target-platform','target_platform']:
-                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Stored.target_platform))
+                    api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Stored.target_platform)
                     if pobj.Stored.target_platform != v:
-                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['platform_match']:
-                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}".format(k,v,pobj.Stored.platform_match,type(v),type(pobj.Stored.platform_match)))
+                    api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}",k,v,pobj.Stored.platform_match,type(v),type(pobj.Stored.platform_match))
                     if pobj.Stored.platform_match != v:
-                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
                     # weak... make better code for this case
-                    api.output.verbose_msg("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1}".format(k,v))
+                    api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
                     if not pobj.Stored.config != v:# pobj.Env.isConfigBasedOn(v):
-                        api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
                     for v in mv:
                         if v not in pobj.Stored.mode:
-                            api.output.verbose_msg("stored_reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                            api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
                             part_lst.remove(pobj)
                             break
                 else:
@@ -1945,56 +1962,56 @@ class part_manager(object):
     
     def reduce_list_from_target(self,tobj,part_lst):
         
-        api.output.verbose_msg("reduce_target_mapping","Reducing list of parts based on target {0}".format(tobj))
+        api.output.verbose_msgf("reduce_target_mapping","Reducing list of parts based on target {0}",tobj)
         for k,v in tobj.Properties.iteritems():    
             for pobj in part_lst.copy():
-                api.output.verbose_msg("reduce_target_mapping"," Testing Part {0}".format(pobj.ID))
+                api.output.verbose_msgf("reduce_target_mapping"," Testing Part {0}",pobj.ID)
                 if k == 'version':
-                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Version))
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Version)
                     if common.is_string(v):
                         v=version.version_range(v+'.*')
                     if pobj.Version not in v:
-                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['target','target-platform','target_platform']:
-                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Env['TARGET_PLATFORM']))
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Env['TARGET_PLATFORM'])
                     if pobj.Env['TARGET_PLATFORM'] != v:
-                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
                         part_lst.remove(pobj)
                 elif k in ['platform_match']:
-                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}".format(k,v,pobj.PlatformMatch,type(v),type(pobj.PlatformMatch)))
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2} Types:{3} {4}",k,v,pobj.PlatformMatch,type(v),type(pobj.PlatformMatch))
                     if pobj.PlatformMatch != v:
-                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
-                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1}".format(k,v))
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
                     if not pobj.Env.isConfigBasedOn(v):
-                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
-                    api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj._mode))
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj._mode)
                     for v in mv:
                         if v not in pobj._mode:
-                            api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                            api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                             part_lst.remove(pobj)
                             break
                 else:
                     #look up in the parts environment
                     try:
-                        api.output.verbose_msg("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}".format(k,v,pobj.Env[k]))
+                        api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Env[k])
                         if common.is_list(pobj.Env[k]):
                             mv=v.split(',')
                             for v in mv:
                                 if v not in pobj.Env[k]:
-                                    api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                                    api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                                     part_lst.remove(pobj)
                                     break
                         elif pobj.Env[k] != v:
                             part_lst.remove(pobj)
-                            api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                            api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                     except KeyError:
-                        api.output.verbose_msg("reduce_target_mapping","  Removing Part {0}".format(pobj.ID))
+                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
         return part_lst
                 
@@ -2050,12 +2067,14 @@ class part_manager(object):
                     pobj=self._from_alias(alias)
                     tmp2[pobj.ID]=pobj
                 tmp[name]=tmp2
-            
             data['name_to_alias']=tmp
         
             # not sure about this one
             data["hasClassic"]=has_old
             datacache.StoreData("part_map",data)
+
+       
+
             
             
     def add_stored_node_info(self,node,nlist):
@@ -2071,7 +2090,10 @@ class part_manager(object):
                 for section in sections:
                     if node.Stored.always_build:
                         section.AlwaysBuild=True
-                    nlist.append(section)
+                    if section is None:
+                        self.__hasStored=False
+                    else:
+                        nlist.append(section)
         elif node.Stored:
             # we are here because there as no data stored about what sections to
             # load for this node. This is not an issue as this node should have been

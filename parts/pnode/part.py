@@ -580,6 +580,12 @@ class part(pnode.pnode,part_compatiblity):
 
     # see if we can remove the env arg latter
     def _setup_(self,_env=None,*lst,**kw):
+
+        #if this is a help mode run ( get help setting for user)
+        # we want to skip this work
+        if glb.engine._build_mode=='help':
+            return
+
         # this value allows us a work around to the 
         # issue of generating an ID vs a full setup
         genid=kw.get('gen_ID')
@@ -882,7 +888,7 @@ class part(pnode.pnode,part_compatiblity):
             st=time.time()
             sdir=env.Dir(self.__src_path)
             bk_path=sys.path[:]
-            sys.path.append(sdir.abspath)
+            sys.path=[sdir.abspath]+bk_path
             
             if (glb.engine._build_mode=='build') or (os.path.exists(self.__file.srcnode().abspath)==True):
                 if os.path.exists(self.__file.srcnode().abspath)==False:

@@ -130,14 +130,18 @@ class reporter(object):
         self.trace=trace
         if self.trace==[]:
             api.output.trace_msg=_empty_msg
-        #else:
-            #api.output.trace_msg=api.output._trace_msg
+            api.output.trace_msgf=_empty_msg
+        else:
+            api.output.trace_msg=api.output._trace_msg
+            api.output.trace_msgf=api.output._trace_msgf
             
         self.verbose=verbose
         if self.verbose==[]:
             api.output.verbose_msg=_empty_msg
-        #else:
-            #api.output.verbose_msg=api.output._verbose_msg
+            api.output.verbose_msgf=_empty_msg
+        else:
+            api.output.verbose_msg=api.output._verbose_msg
+            api.output.verbose_msgf=api.output._verbose_msgf
             
         self.logger=logger
         self.__is_setup=True
@@ -205,8 +209,10 @@ class reporter(object):
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
         
-    def part_message(self,msg,show_prefix):
+    def part_message(self,msg_lst,show_prefix):
         if self.silent ==False:
+            msg=map(str,msg_lst[1:-1])
+            msg=msg_lst[0].join(msg)+msg_lst[-1]
             if show_prefix:
                 s="Parts: "+msg
             else:

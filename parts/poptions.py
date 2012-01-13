@@ -22,7 +22,7 @@ def SetOptionDefault(key,value):
     #special logger logic
     if key=='LOGGER':
         if type(glb.rpter.logger) is not logger.QueueLogger:
-            api.output.warning_msg('Logger already set -- ignoring')
+            api.output.verbose_msg(['settings'],'Logger already set -- ignoring')
             pass
         else:
             ### clean up
@@ -340,17 +340,7 @@ SCons.Script.AddOption("--load-logic","--ll",
             type='choice',
             choices=['all','target','min','unsafe','default'],
             action='store',
-            help='Tell Part what logic to use when loading the Parts objects.')     
-
-
-##SCons.Script.AddOption("--use-sdk",
-##            dest='use_sdk',
-##            default=False,
-##            nargs='?',
-##            callback=lambda option, opt, value, parser:opt_bool_enum(option, opt, value, parser,'show_progress',['force','auto']),
-##            type='string',
-##            action='callback',
-##            help='Controls if progress state is shown')  
+            help='Tells Parts what logic to use when loading files. Options are "all", "target", "min", "unsafe", "default"')     
 
 SCons.Script.AddOption("--enable-color","--use-color","--color",
             dest='use_color',            

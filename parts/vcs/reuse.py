@@ -76,7 +76,7 @@ class reuse_part_vcs(base):
                 if tmpalias:
                     api.output.error_msg("Can not find Part that maps to the alias of {0} or {1}".format(self._partref,tmpalias))
                 else:
-                    api.output.error_msg("Can not find Part that maps to the alias of {0} or {1}".format(self._partref))
+                    api.output.error_msg("Can not find Part that maps to the alias of {0}".format(self._partref,))
             self._partref=tmp
             self._vcs=self._partref.Vcs
         else:

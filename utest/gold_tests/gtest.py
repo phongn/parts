@@ -8,6 +8,7 @@ import difflib
 import types
 import shutil
 import stat
+import zipfile, tarfile
 
 # TODO: Move this file into parts' root: ../../
 
@@ -95,11 +96,77 @@ def TestTemplate(name):
 def TestSample(name):
     return os.path.join(cwd_dir,'../../samples',name)
 
+''' This Define a basic test. A basic test is a set of TestRun
+Each test Run run soem kind of command, and fro each run we can test
+Some state to make sure everything is OK.
+'''
 class Test(object):
-    ''' This Define a basic test. A basic test is a set of TestRun
-    Each test Run run soem kind of command, and fro each run we can test
-    Some state to make sure everything is OK.
-    '''
+    # Class to perform setup stage before tests are run
+    class Setup():
+        def __init__(self, test):
+            self.__test = test
+
+        def copyDirectory(self, copyItem):
+            # Copy directory with test data to location specified
+            # 'copyItem' can be one of the following types:
+            # * False means no copy needed
+            # * True means copy contents of test directory
+            # * String means path of directory to copy
+            # * Tuple with 2 elements means (fromPath, toPath)
+            # * List means multiple items of types above
+            print "Creating test run directory data"
+            for copyDirItem in copyItem if type(copyItem) == types.ListType else [copyItem]:
+                if type(copyDirItem) is types.BooleanType and copyDirItem == True:
+                    # if this bool True copy the directory tree that has the test in it
+                    shutil.copytree(self.__test.location, self.__test.test_dir)
+                elif type(copyDirItem) is types.StringType:
+                    if os.path.exists(copyDirItem):
+                        shutil.copytree(copyDirItem, self.__test.test_dir)
+                    elif os.path.exists(os.path.join(self.__test.location, copyDirItem)):
+                        shutil.copytree(os.path.join(self.__test.location, copyDirItem), self.__test.test_dir)
+                elif type(copyDirItem) is types.TupleType and len(copyDirItem) == 2:
+                    fromPath = copyDirItem[0]
+                    # toPath is relative to test_dir
+                    toPath = copyDirItem[1]
+                    if os.path.exists(fromPath):
+                        shutil.copytree(fromPath, os.path.join(self.__test, toPath))
+                else:
+                    raise TypeError('Unsupported type "%s" passed to "copyDirectory"'% \
+                        str(copyItem.__class__.__name__))
+
+        def createSvnRepository(self, repository, dirToAdd):
+            # Creates svn file repository and adds files in it. 'svn' and 'svnadmin'
+            # are expected in PATH
+            # 'repository' is a path to repository root. It is relative to test_dir.
+            # 'dirToAdd' is a path to directory which contents will be added to repository.
+            # It is relative to test_dir.
+            print "Creating local SVN repository"
+            repoFullPath = os.path.abspath(os.path.join(self.__test.test_dir, \
+                repository)).replace('\\', '/')
+            dirToAddFullPath = os.path.abspath(os.path.join(self.__test.test_dir, \
+                dirToAdd)).replace('\\', '/')
+
+            if os.path.exists(repoFullPath):
+                raise Exception('Repository at "%s" already exists' % repoFullPath)
+
+            cmdStr = 'svnadmin create %s' % repoFullPath
+            #print 'Running ' + cmdStr
+            svnadminProcess = subprocess.Popen(cmdStr, shell = False, bufsize = 0,
+                stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+            (stdout, stderr) = svnadminProcess.communicate()
+            returnCode = svnadminProcess.returncode
+            if returnCode != 0:
+                raise Exception('Command "%s" returned %d, stderr: %s' % (cmdStr, returnCode, stderr))
+
+            cmdStr = 'svn import %s file:///%s -m "" --non-interactive' % (dirToAddFullPath, repoFullPath)
+            #print 'Running ' + cmdStr
+            svnimportProcess = subprocess.Popen(cmdStr, shell = False, bufsize = 0,
+                stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+            (stdout, stderr) = svnimportProcess.communicate()
+            returnCode = svnimportProcess.returncode
+            if returnCode != 0:
+                raise Exception('Command "%s" returned %d, stderr: %s' % (cmdStr, returnCode, stderr))
+
     def __init__(self,name,location):
         #traits
         self.name=name
@@ -107,8 +174,18 @@ class Test(object):
         self.run_serial=False
         self.summary=''
         self.sconstruct_file=None
-        self.copy_directory=False #true to copy contents of test directory else path of directory to copy
         self.run=[]
+        self.setup = self.Setup(self)
+        self.test_dir = os.path.normpath(os.path.join(test_root, location, name))
+
+    @property
+    def copy_directory(self):
+        raise NotImplementedError('Getting "copy_directory" not implemented')
+
+    @copy_directory.setter
+    def copy_directory(self, val):
+        print 'WARNING: assignment of "copy_directory" is deprecated. Use "setup.copyDirectory" instead'
+        self.setup.copyDirectory(val)
 
     def AddTestRun(self,name='general',displaystr=None):
         tmp=TestRun(self,"%s-%s"%(len(self.run),name),displaystr)
@@ -183,7 +260,6 @@ class Test(object):
     def AddOutOfDateCheck(self,target='all'):
         self.AddOutOfDateCheckSCons(target)
         self.AddOutOfDateCheckParts(target)
-
 
 
 class TestRun(object):
@@ -304,17 +380,102 @@ class Stream(object):
             self.full_stream,
             self.full_stream_tester)
 
+class Tester:
+    def __init__(self):
+        pass
+
+    def test(self):
+        # Returns tuple (res, msg). Here 'res' is True is test was successful and
+        # False otherwise. If 'res' is True 'msg' is None. If 'res' is False 'msg'
+        # is a string storing some message with the reason of failure
+        raise NotImplementedError("Not implemented")
+
+class ContentTester(Tester):
+    def __init__(self):
+        pass
+
+    def test(self):
+        raise NotImplementedError("Not implemented")
+
+class TextContentTester(ContentTester):
+    def __init__(self, fromFile, contains = None, notContains = None):
+        # 'contains' is a path to text file relative to location of 'fromFile'
+        # with text which should be if file tested
+        # 'notContains' is a path to text file relative to location of 'fromFile'
+        # with text which should NOT be if file tested
+        self.__fromFile = fromFile
+        self.__contains = contains
+        self.__notContains = notContains
+        self.__content_tester = difflib.context_diff
+
+    def test(self):
+        if self.__fromFile is None or (self.__contains is None and self.__notContains is None):
+            # Assume check fails if there is no valid input
+            raise ValueError('No valid input specified')
+
+        if self.__notContains is not None:
+            raise NotImplementedError('Support of "notContains" is not implemented')
+
+        # Setup data for the test
+        fromfile = self.__fromFile.FullName
+        tofile = os.path.join(self.__fromFile.test.location, self.__contains)
+        if os.path.exists(tofile):
+            fromlines = open(fromfile, 'U').readlines()
+            tolines = open(tofile, 'U').readlines()
+        else:
+            return (False, "Error File: ["+tofile+"] was not found!")
+
+        msg = "".join(self.__content_tester(tolines, fromlines, tofile, fromfile))
+        return (True, None) if not msg else (False, msg)
+
+class ZipContentTester(ContentTester):
+    def __init__(self, fromFile, contains = None, notContains = None):
+        # 'fromFile' is a file of known archive format
+        # 'contains' is a list of filenames which should be present in 'fromFile'
+        # 'notContains' is a list of filenames which should NOT be present in 'fromFile'
+        self.__fromFile = fromFile
+        self.__contains = contains
+        self.__notContains = notContains
+
+    def test(self):
+        if self.__fromFile is None or (self.__contains is None and self.__notContains is None):
+            # Assume check fails if there is no valid input
+            raise ValueError('No valid input specified')
+
+        fileName = self.__fromFile.name.lower()
+        if fileName.endswith('.tar.gz') or fileName.endswith('.tgz') or fileName.endswith('.tar.bz2') \
+            or fileName.endswith('.tbz') or fileName.endswith('.tb2'):
+            archive = tarfile.open(self.__fromFile.FullName)
+            names = archive.getnames()
+        elif fileName.endswith('.zip'):
+            archive = zipfile.ZipFile(self.__fromFile.FullName)
+            names = archive.namelist()
+        else:
+            raise ValueError('Unsupported archive extension for file %s' % self.__fromFile.name)
+
+        if self.__contains:
+            for contain in self.__contains:
+                if contain not in names:
+                    return (False, '"%s" is not in "%s"' % (contain, self.__fromFile.name))
+
+        if self.__notContains:
+            for notContain in self.__notContains:
+                if notContain in names:
+                    return (False, '"%s" is in "%s"' % (notContain, self.__fromFile.name))
+
+        return (True, None)
+
+
 class File(object):
     '''
     Allows us to test for a file. We can test for size, existance and content
     '''
-    def __init__(self,test,name,exists=None,size=None,content=None):
-        self.test=test
-        self.name=name
-        self.exists=exists
-        self.size=size
-        self.content=content
-        self.content_tester=difflib.context_diff
+    def __init__(self, test, name, exists = None, size = None, content_testers = None):
+        self.test = test
+        self.name = name
+        self.exists = exists
+        self.size = size
+        self.content_testers = content_testers
 
     @property
     def FullName(self):
@@ -325,33 +486,25 @@ class File(object):
 
 
     def TestSize(self):
-
-        # see if we want to test this:
         if self.size is None:
             return None
-        # get file full path
 
-        # open file
-
-        # seek to get size()
-
-        return (self.size==file_size,file_size)
+        file_size = os.path.getsize(self.FullName)
+        return (self.size == file_size, file_size)
 
     def TestContent(self):
+        if self.content_testers is None:
+            raise ValueError("No testers specified")
 
-        if self.content is None:
-            return None
-        # Setup data for the test
-        fromfile=self.name
-        tofile=os.path.join(self.test.location,self.content)
-        if os.path.exists(tofile):
-            fromlines = open(fromfile, 'U').readlines()
-            tolines = open(tofile, 'U').readlines()
-        else:
-            return "Error File: ["+tofile+"] was not found!"
+        for tester in self.content_testers:
+            if not isinstance(tester, ContentTester):
+                raise TypeError('Tester of "%s" type should be a subclass of "%s"'% \
+                    (str(tester.__class__.__name__), str(ContentTester.__name__)))
+            res, msg = tester.test()
+            if not res:
+                return res, msg
 
-        return "".join(self.content_tester(tolines,fromlines,tofile,fromfile))
-
+        return True, None
 
 
 class Dir(object):
@@ -369,15 +522,21 @@ class Disk(object):
         self.files=[]
         self.dirs=[]
 
-    def file(self,name,exists=None,size=None,content=None):
-        tmp=File(self.test,name,exists,size,content)
+    def file(self,name,exists=None,size=None,content_testers=None):
+        tmp=File(self.test,name,exists,size,content_testers)
         self.__dict__[name]=tmp
-        self.files.append(File(self.test,name,exists,size,content))
+        self.files.append(File(self.test,name,exists,size,content_testers))
 
     def dir(self,name,exists=None):
         tmp=Dir(self.test,name,exists)
         self.__dict__[name]=tmp
         self.dirs.append(Dir(name,exists))
+
+    def getDefaultTextTester(self, fromFileName, contains = None, notContains = None):
+        return TextContentTester(File(self.test, fromFileName), contains, notContains)
+
+    def getDefaultZipTester(self, fromFileName, contains = None, notContains = None):
+        return ZipContentTester(File(self.test, fromFileName), contains, notContains)
 
 class TestResult(object):
     def __init__(self,test,testrun):
@@ -441,10 +600,10 @@ class TestResult(object):
                 tmp['exists']= (_file.exists==False)
                 tmp['exists_actual']=False
             # do we test size
-            if _file.size:
+            if _file.size is not None:
                 tmp['size'],tmp['size_actual']=_file.TestSize()
-            if _file.content:
-                tmp['content']=_file.TestContent()
+            if _file.content_testers is not None:
+                tmp['content_testers']=_file.TestContent()
 
             self.files[_file.name]=tmp
 
@@ -480,8 +639,12 @@ class TestResult(object):
         if self.full_stream is not None and len(self.full_stream) > 0:
             return "Failed - fullstream mismatch"
         for k,v in self.files.items():
-            if v['exists']==False or v.get('size',True)==False or (v.get('content') is not None and len(v.get('content',"")) > 0):
+            if v['exists'] == False or v.get('size', True) == False:
                 return "Failed - File test:",k
+            if v.get('content_testers'):
+                testRes, testMsg = v.get('content_testers')
+                if not testRes:
+                    return 'Failed - File test: "%s", %s' % (k, testMsg)
 
         for k,v in self.dirs.items():
             if v['exists']==False:
@@ -669,80 +832,47 @@ class Engine(object):
         '''Runs the testruns of a given test'''
 
         #First we need to load a given test
-        print "Loading Test", test.name,'in',test.location,
+        print "Loading Test", test.name,'in',test.location,'...'
 
-        ## load the test data. this mean exec the data
+        # load the test data. this mean exec the data
         #create the locals we want to pass
         locals={'test':test,'TestTemplate':TestTemplate, 'TestSample':TestSample}
         #get full path
         tmp=os.path.join(test.location,test.name+".test.py")
         execfile(tmp,{},locals)
-        print "Done"
-        print "Creating test run directory data"
-        # create test directory ( test_root+test_location+test_name)
-        test_dir=os.path.normpath(os.path.join(test_root,test.location,test.name))
-        test.test_dir = test_dir
+        print "Loading done"
 
-        # copy and directory data
-        def procCopyDirItem(copyDirItem):
-            if type(copyDirItem) is types.BooleanType and copyDirItem == True:
-                # if this bool True copy the directory tree that has the test in it
-                shutil.copytree(test.location,test_dir)
-                return True
-            elif type(copyDirItem) is types.StringType:
-                if os.path.exists(copyDirItem):
-                    shutil.copytree(copyDirItem, test_dir)
-                    return True
-                elif os.path.exists(os.path.join(test.location, copyDirItem)):
-                    shutil.copytree(os.path.join(test.location, copyDirItem), test_dir)
-                    return True
-            elif type(copyDirItem) is types.TupleType and len(copyDirItem) == 2:
-                fromPath = copyDirItem[0]
-                # toPath is relative to test_dir
-                toPath = copyDirItem[1]
-                if os.path.exists(fromPath):
-                    shutil.copytree(fromPath, os.path.join(test_dir, toPath))
-                    return True
-
-        copyDirMade = False
-        copyDirItems = test.copy_directory if type(test.copy_directory) == types.ListType else \
-            [test.copy_directory]
-        for copyDirItem in copyDirItems:
-            if procCopyDirItem(copyDirItem):
-                copyDirMade = True
-        if not copyDirMade:
-            os.makedirs(test_dir)
-        #copy the scontruct file
-        tmp=os.path.join(test_dir,"sconstruct")
+        # TODO: Move this stuff into smth like Setup.finalizeSetup
+        # create test directory if it is absent (test_root+test_location+test_name)
+        if not os.path.exists(test.test_dir):
+            os.makedirs(test.test_dir)
+        # Copy the SConstruct file
+        sconstructTarget = os.path.join(test.test_dir, "sconstruct")
         if test.sconstruct_file is None:
-            if os.path.exists(os.path.join(test.location,"SConstruct_"+test.name)):
-                shutil.copy2(os.path.join(test.location,"SConstruct_"+test.name),tmp)
-            if os.path.exists(os.path.join(test.location,"Sconstruct_"+test.name)):
-                shutil.copy2(os.path.join(test.location,"Sconstruct_"+test.name),tmp)
-            if os.path.exists(os.path.join(test.location,"sconstruct_"+test.name)):
-                shutil.copy2(os.path.join(test.location,"sconstruct_"+test.name),tmp)
-            elif os.path.exists(os.path.join(test.location,"SConstruct")):
-                shutil.copy2(os.path.join(test.location,"SConstruct"),tmp)
-            elif os.path.exists(os.path.join(test.location,"Sconstruct")):
-                shutil.copy2(os.path.join(test.location,"Sconstruct"),tmp)
-            elif os.path.exists(os.path.join(test.location,"sconstruct")):
-                shutil.copy2(os.path.join(test.location,"sconstruct"),tmp)
-
+            # Try to find SConstruct in test directory
+            for sconstructName in ['sconstruct'] if sys.platform == 'win32' else \
+                    ["SConstruct", "Sconstruct", "sconstruct"]:
+                for sconstructSuffix in ['_' + test.name, '']:
+                    sconstructSrc = os.path.join(test.location, sconstructName + sconstructSuffix)
+                    if os.path.exists(sconstructSrc):
+                        if os.path.exists(sconstructTarget):
+                            print 'WARNING!!! Overriding existing "%s" with "%s"' % \
+                                (sconstructTarget, sconstructSrc)
+                        shutil.copy2(sconstructSrc, sconstructTarget)
         elif type(test.sconstruct_file) is types.StringType:
-            if os.path.exists(test.sconstruct_file):
-                shutil.copy2(test.sconstruct_file,tmp)
-            if os.path.exists(os.path.join(test.location,test.sconstruct_file)):
-                shutil.copy2(os.path.join(test.location,test.sconstruct_file),tmp)
+            for sconstructSrc in [test.sconstruct_file, os.path.join(test.location, test.sconstruct_file)]:
+                if os.path.exists(sconstructSrc):
+                    if os.path.exists(sconstructTarget):
+                        print 'WARNING!!! Overriding existing "%s" with "%s"' % \
+                            (sconstructTarget, sconstructSrc)
+                    shutil.copy2(sconstructSrc, sconstructTarget)
 
-            #We want to copy the test run data to a temp run directory
         ret=[]
         # run each sequence, or each until we get an Error
         print "Processing test {0}".format(test.name)
         for t in test.run:
             ret.append(self.do_test_run(test,t))
         return ret
-
-
 
     def do_test_run(self,test,testrun):
         testresult=TestResult(test,testrun)

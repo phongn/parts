@@ -204,7 +204,7 @@ class manager(object):
             except cPickle.PicklingError,e:
                 #ec_str=StringIO.StringIO()
                 #traceback.print_exc(file=ec_str)
-                api.output.warning_msg('Can\'t save Unpickle-able data for node "{0}" {1}'.format(node.ID,e))
+                api.output.warning_msgf('Can\'t save Unpickle-able data for node "{0}" {1}',node.ID,e)
         
         
         data={}

@@ -92,8 +92,8 @@ def export_file_path(env,targets,pobj,prop,use_src):
     for t in targets:
         if common.is_string(t):
             t=env.File(t)
-        build_path=t.abspath
-        final_path=t.srcnode().abspath
+        build_path=t.path
+        final_path=t.srcnode().path
         ret.append(final_path)
         if use_src==False:
             # use build directory
@@ -101,7 +101,7 @@ def export_file_path(env,targets,pobj,prop,use_src):
                 prop_val.append(build_path)
         elif final_path not in pobj.DefiningSection.Exports[prop]:
                 prop_val.append(final_path)
-        env.ExportItem(prop,prop_val,create_sdk=False,map_as_depenance=True)
+    env.ExportItem(prop,prop_val,create_sdk=False,map_as_depenance=True)
     return ret
 
 

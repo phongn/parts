@@ -14,6 +14,7 @@ def generate(env):
         env['CC']        = 'icl'
         env['CXX']       = 'icl'
         env['LINK']      = 'xilink'
+        env['AR']        = 'xilib'
     else:
         env['CC']        = 'icc'
         env['CXX']       = 'icpc'

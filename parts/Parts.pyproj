@@ -7,12 +7,12 @@
     <ProjectHome>.</ProjectHome>
     <StartupFile>C:\Python27\Scripts\scons-2.1.0.py</StartupFile>
     <SearchPath>C:\Python27\scons-2.1.0</SearchPath>
-    <WorkingDirectory>c:\users\jlkenny\code\parts</WorkingDirectory>
+    <WorkingDirectory>c:\users\jlkenny\code\loadtimetest</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
     <InterpreterPath />
-    <CommandLineArguments>--target=mic-l1om</CommandLineArguments>
+    <CommandLineArguments>foo</CommandLineArguments>
     <IsWindowsApplication>False</IsWindowsApplication>
     <DebugStdLib>False</DebugStdLib>
     <InterpreterId>9a7a9026-48c1-4688-9d5d-e5699d47d074</InterpreterId>
@@ -160,7 +160,6 @@
     <None Include="pieces\tar.py" />
     <None Include="pieces\unit_test.py" />
     <None Include="pieces\version_mapping.py" />
-    <None Include="pieces\zipfile.py" />
     <None Include="pieces\zip_package.py" />
     <None Include="pieces\__init__.py" />
     <None Include="platform_info.py" />

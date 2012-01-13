@@ -128,10 +128,16 @@ def _dllEmitter(target, source, env, paramtp):
     #    tmp.attributes.FilterAs=target[0]
     #    extratargets.append(tmp)
 
-    if env.has_key('PDB') and env['PDB']:
+    if env.has_key('PDB') and env['PDB'] and not env.get('IGNORE_PDB',False):
         pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
         extratargets.append(pdb)
         target[0].attributes.pdb = pdb
+    
+    # may need some tweaks still
+    # if cli code is being used there is no .lib file made
+    # this might be true if no .obj files are made.. need to test
+    if env.FindIxes(source, "OBJPREFIX", "CLIOBJSUFFIX"):
+        no_import_lib=True
 
     if not no_import_lib and \
        not env.FindIxes(target, "LIBPREFIX", "LIBSUFFIX"):
@@ -181,7 +187,7 @@ def prog_emitter(target, source, env):
     #    tmp.attributes.FilterAs=target[0]
     #    extratargets.append(tmp)                            
     #                        
-    if env.has_key('PDB') and env['PDB']:
+    if env.has_key('PDB') and env['PDB'] and not env.get('IGNORE_PDB',False):
         pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
         extratargets.append(pdb)
         target[0].attributes.pdb = pdb
@@ -300,6 +306,18 @@ embedManifestProgCheck = SCons.Action.Action (EmbedManifestProgFunc, None)
 
 linkcomAction = SCons.Action.Action('${TEMPFILE("$LINK $LINKFLAGS /OUT:$TARGET.windows $_LIBDIRFLAGS $_LIBFLAGS $_PDB $SOURCES.windows")}')
 compositelinkcomAction = linkcomAction + embedManifestProgCheck + signCheck + registerServerCheck
+
+def smart_link(source, target, env, for_signature):
+    
+    has_native= env.FindIxes(source, "OBJPREFIX", "OBJSUFFIX")
+    has_dotnet = env.FindIxes(source, "OBJPREFIX", "CLIOBJSUFFIX")
+    #
+    #if has_native and has_dotnet:
+    #    return ???
+    #elif has_dotnet:
+    #    return ??
+    ##else case
+    #return '$CC'
 
 def generate(env):
     """Add Builders and construction variables for ar to an Environment."""

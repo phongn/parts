@@ -529,4 +529,6 @@ SConsEnvironment.Version = version
 SConsEnvironment.VersionRange = version_range
 
 api.register.add_global_parts_object('Version',version)
+api.register.add_global_parts_object('VersionRange',version_range)
 api.register.add_global_object('Version',version)
+api.register.add_global_object('VersionRange',version_range)

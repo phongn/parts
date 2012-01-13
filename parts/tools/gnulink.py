@@ -120,7 +120,7 @@ def _setUpPdbActions(env):
     env['_pdbStripAction'] = "objcopy --strip-unneeded %(binary)s"
     env['_pdbStripActionString'] = "Stripping %(binary)s"
 
-    env['_pdbGnuDebugLinkAction'] = "objcopy --add-gnu-debuglink=%(binary)s %(binary)s"
+    env['_pdbGnuDebugLinkAction'] = "objcopy --add-gnu-debuglink=%(pdb)s %(binary)s"
 
     env['PDB_CREATE_ACTION'] = SCons.Action.CommandAction(
         '${_pdbResolveString(TARGETS, _pdbAction)}',

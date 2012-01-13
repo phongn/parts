@@ -38,7 +38,8 @@ def get_Sconstruct_files():
     '''
     #Get the name of the SConstruct file... as the user mighthave used -F
     fnames=SCons.Script.GetOption('file')
-    if fnames == []:
+    
+    if not fnames:
         # check current directory to see if what "default" file exits
         if os.path.exists("SConstruct"):
             fnames=["SConstruct"]
@@ -255,11 +256,20 @@ class parts_addon(object):
                 
         log_obj=logger.QueueLogger
         log_obj=log_obj('','')
+        try:
+            verbose = [i.lower() for i in SCons.Script.GetOption('verbose')]
+        except:
+            verbose = []
+        try:
+            trace = [i.lower() for i in SCons.Script.GetOption('trace')]
+        except:
+            trace = []
+
         glb.rpter.Setup(
             log_obj,
             silent=SCons.Script.GetOption('silent'),
-            verbose=[i.lower() for i in SCons.Script.GetOption('verbose')],
-            trace=[i.lower() for i in SCons.Script.GetOption('trace')],
+            verbose=verbose,
+            trace=trace,
             use_color=use_color
             )
             
@@ -418,12 +428,14 @@ class parts_addon(object):
             msg='{0}/{1}'.format(cnt,total)
             api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
             for i in self.__post_process_queue:
-                i()
                 cnt+=1
                 msg='{0}/{1} '.format(cnt,total)
-                api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
+                api.output.verbose_msg(["post_process_queue"],"Processing post logic queue {0:.2%} {1}".format((cnt/total),i))
+                api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
+                i()
+
             msg='{0}/{1}'.format(cnt,total)
-            api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
+            api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
             self.__post_process_queue=[]
             api.output.print_msg("Processing post logic queue finished!")
         
@@ -726,7 +738,9 @@ class parts_addon(object):
                         tmp,
                         'logger')  
                     log_obj=mod.__dict__.get(tmp,logger.QueueLogger)
-        
+        # just in case of some not running in a normal build run
+        if not log_obj:
+            log_obj = logger.nil_logger
         #If the first try at this had nothing we have a Queue logger
         # to store everything we have to report so far
         if type(glb.rpter.logger) is logger.QueueLogger:

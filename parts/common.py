@@ -46,6 +46,8 @@ import SCons.Util
 #    # add a mapper to resolve latter or error out
 #
 
+
+
 ###############
 # this class allows us to add object varible that get a reference to the env
 # that holds it
@@ -64,7 +66,11 @@ class DelayVariable(object):
         return self.__func()
     def __str__(self):
         return str(self.__eval__())
-    
+
+class dformat(DelayVariable):
+    def __init__(self,sfmt,*lst,**kw):
+        tmp=lambda : sfmt.format(*lst,**kw)
+        super(dformat, self).__init__(tmp)
     
 class namespace(dict,bindable):
     ''' helper class to allow making subst varaible in SCons to allow a clean

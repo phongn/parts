@@ -171,7 +171,6 @@ class section(pnode.pnode):
         # build::alias::foo -> build::alias::foo:: -> build::
         self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
         #add to queue the delayed mapping of high level Alias to other high level alias
-        def_env=SCons.Script.DefaultEnvironment()
         glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
         # add call back for latter full mapping of build context
         glb.engine.add_preprocess_logic_queue(functors.map_build_context(self.Part))

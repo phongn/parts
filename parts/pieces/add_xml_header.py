@@ -13,17 +13,17 @@ def scanFile(env,infile, outfile):
     sfile = "" + str(infile)
     outputf = file(outfile.abspath, 'w');
     inputf = file(infile.abspath)
-    
+    XmlHeader=env.subst('$XML_HEADER')
     for line in inputf:
         lineno +=  1
         
         if lineno == 1:
-            outputf.writelines(env.XmlHeader +'\n')           
+            outputf.writelines(XmlHeader +'\n')           
         line = line.rstrip()        
         outputf.write(line+'\n')           
 
 def addXmlHeader(target, source, env):
-    
+    XmlHeader=env.subst('$XML_HEADER')
     for outfile, infile in zip(target,source):                                                  
         lineno = 0       # line number
         outputf = file(outfile.abspath, 'w');
@@ -31,7 +31,7 @@ def addXmlHeader(target, source, env):
         
         for line in inputf:           
             if lineno == 1:
-                outputf.writelines(env.XmlHeader +'\n')           
+                outputf.writelines(XmlHeader +'\n')           
             line = line.rstrip()        
             outputf.write(line+'\n') 
             lineno +=  1

@@ -5,6 +5,7 @@
 
 import os
 import sys
+import ctypes
 from SCons.Script import _SConscript 
 
 if sys.platform=='win32':
@@ -60,7 +61,7 @@ if sys.platform=='win32':
         return ret
     
     def shared_open(filename, mode='r', bufsize=-1):
-        import ctypes
+        
         # this is sort of ugly
         # open the file with better shared flags
         
@@ -103,7 +104,7 @@ if sys.platform=='win32':
     ## the File or Dir nodes to do all file operation in SCon someday
     ## this will then change to allow help in that migration
     def win32_rm(path):
-        import ctypes
+        
         r=ctypes.windll.kernel32.DeleteFileW(unicode(path))
         if r ==0 :
             raise OSError,ctypes.FormatError(ctypes.GetLastError())

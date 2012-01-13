@@ -24,7 +24,7 @@ class Parts_Tool(object):
         # TODO: Interchange zipimport with normal initilization for better error reporting
         oldpythonpath = sys.path
         sys.path = self.toolpath + sys.path
-
+        
         try:
             try:
                 file, path, desc = imp.find_module(self.name, self.toolpath)

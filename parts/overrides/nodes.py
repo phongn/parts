@@ -156,7 +156,7 @@ def _part_isUpToDate(self):
                                 #it exists.. make a entry node
                                 i=glb.pnodes.Create(Entry,k)
                             else:
-                                api.output.verbose_msg("update_check",'{0} out-of-date! {1} is not known'.format(self.ID,k))
+                                api.output.verbose_msgf("update_check",'{0} out-of-date! {1} is not known',self.ID,k)
                                 return False
                             
                     i.disambiguate()
@@ -210,20 +210,25 @@ def _part_isUpToDate(self):
             #process the list of nodes
             md5=hashlib.md5()
             for i in nodelist:
+                api.output.verbose_msgf("update_check_extra",'{0} checking for changes in node {0}',self.ID,i[0])
                 # test to see if it thinks it is out of date
                 if not i[0].pisUpToDate:
-                    api.output.verbose_msg("update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date'.format(self.ID,i[0]))
+                    api.output.verbose_msgf("update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date',self.ID,i[0])
                     return False
                 
                 # we test if this is out of date from the local point of view
                 if isinstance(i[0],FSBase):
                     if not i[0].exists():
-                        api.output.verbose_msg("update_check",'{0} out-of-date! "{1}" does not exist'.format(self.ID,i[0]))
+                        api.output.verbose_msgf("update_check",'{0} out-of-date! "{1}" does not exist',self.ID,i[0])
                         return False
-                    elif i[0].changed_since_last_build(self,i[1]):#_node_up_to_date(i[0],i[1]):
+                    else:
+                        api.output.verbose_msgf("update_check_extra",'{0} -- "{1}" does exist',self.ID,i[0])
+                    if i[0].changed_since_last_build(self,i[1]):#_node_up_to_date(i[0],i[1]):
                         #print i[0].get_ninfo().__dict__,i[1].__dict__#,i[0].get_csig()
-                        api.output.verbose_msg("node_update_check",'{0} out-of-date! "{1}" is different since this node was last built'.format(self.ID,i[0]))
+                        api.output.verbose_msgf("update_check",'{0} out-of-date! "{1}" is different since this node was last built',self.ID,i[0])
                         return False
+                    else:
+                        api.output.verbose_msgf("update_check_extra",'{0} -- "{1}" does not look like it changed',self.ID,i[0])
                 
             return True
         
@@ -245,14 +250,14 @@ def _part_isUpToDate(self):
         if self.Stored:
             # check for AlwaysBuild State
             if self.Stored.always_build:
-                api.output.verbose_msg("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node'.format(self.ID))
+                api.output.verbose_msgf("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node',self.ID)
                 self._memo['_part_isUpToDate'] = False
                 return self._memo['_part_isUpToDate'] 
             # check any side effect nodes
             side_effects=self.Stored.side_effects
             for node in side_effects:
                 if not node.pisUpToDate:
-                    api.output.verbose_msg("update_check",'{0} out-of-date! Side effect target {1} is out of date'.format(self.ID,node.ID))
+                    api.output.verbose_msgf("update_check",'{0} out-of-date! Side effect target {1} is out of date',self.ID,node.ID)
                     self._memo['_part_isUpToDate'] = False
                     return self._memo['_part_isUpToDate'] 
                     

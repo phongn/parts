@@ -133,11 +133,18 @@ class base(object):
         
         if common.is_list(update_option):
             for i in update_option:
-                tmp=part_ref.part_ref(target_type.target_type(i))
-                if tmp.hasStoredMatch and self._pobj in tmp.StoredMatches:
-                    return True
-                elif tmp.hasMatch and self._pobj in tmp.Matches:
-                    return True                
+                target=target_type.target_type(i)
+                tmp=part_ref.part_ref(target)
+                if tmp.hasStoredMatch or tmp.hasMatch:
+                    if self._pobj in tmp.StoredMatches or self._pobj in tmp.Matches:
+                        return True
+                else:
+                    # this is a little bit of a hack.. will want to refactor this later
+                    if datacache.GetCache("part_map") is None:
+                        api.output.warning_msgf("Skipping the update of {0} because there is no part cache for mapping the value '{0}' to the Part",i,print_once=True,show_stack=False)
+                    else:
+                        api.output.warning_msgf("Skipping the update of {0} as it is not a known part to update. Is this a type-o?",i,print_once=True,show_stack=False)
+                
         return False
                 
     def NeedsToUpdate(self):

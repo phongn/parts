@@ -99,7 +99,7 @@ class part_logger(object):
         self.reporter=glb.rpter
         tmp=SCons.Script.GetOption('num_jobs') > 1
         if tmp:
-            self.block_text=2 # partail blocking of text
+            self.block_text=2 # partial blocking of text
         else:
             self.block_text=0 # no blocking of text
         self.cache={}
@@ -123,7 +123,10 @@ class part_logger(object):
 
         self._empty_cache(id) 
         self.other_out.End(self.env,id,exit_code)
-        del self.cache[id]
+        try:
+            del self.cache[id]
+        except KeyError:
+            pass
 
     def WriteOut(self,id,msg):
         if self.block_text==False:
@@ -162,7 +165,9 @@ class part_logger(object):
                 self.cache[id].append([console.Console.error_stream,msg])
     
     def _empty_cache(self,id):
-        for text in self.cache[id]:
+        testlst=self.cache[id]
+        self.cache[id]=[]
+        for text in testlst:
             if text[0] == console.Console.out_stream:
                 brkup=text[1].split('\n')
                 grpstr=''
@@ -201,6 +206,7 @@ class part_logger(object):
                 # we have some error or unknown code
                 pass
         
+
 class part_nil_logger(object):
     ''' the point of this class is to define the base interface for all part logger
     items. The goal is the this object is to be a empty object that can be written to
