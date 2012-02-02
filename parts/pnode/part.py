@@ -288,12 +288,14 @@ class part(pnode.pnode,part_compatiblity):
     @property #readonly non-mutable
     def Alias(self): 
         """Get the current alias."""
+        if self.__alias is None:
+            self.__alias=self.__ID
         return self.__alias
     
     @pnode.pnode.ID.getter
     def ID(self):
         if self.__ID is None:
-            self.__ID=self.Alias
+            self.__ID=self.__alias
         return self.__ID
     
     @property #readonly non-mutable
@@ -626,7 +628,7 @@ class part(pnode.pnode,part_compatiblity):
             if base_env['toolchain']!= self.__env['toolchain']:
                 diff['toolchain']=self.__env['toolchain']
             if base_env.subst('$CONFIG')!= self.__env.subst('$CONFIG'):
-                diff['CONFIG']=self.subst('$CONFIG')
+                diff['CONFIG']=self.__env.subst('$CONFIG')
             base_env=self.__settings.Environment(TARGET_PLATFORM=self.__env['TARGET_PLATFORM'],CONFIG=self.__env.subst('$CONFIG'),toolchain=self.__env['TOOLCHAIN'])
         
         diff.update(diff_env(base_env,self.__env))
@@ -762,8 +764,12 @@ class part(pnode.pnode,part_compatiblity):
             self.__env['PART_PARENT_NAME']="${PARTS('"+self.__parent.__alias+"','Name')}"
 
         ## version info
-        self.__env['PART_VERSION']="${PARTS('"+self.__alias+"','Version')}"
-        self.__env['PART_SHORT_VERSION']="${PARTS('"+self.__alias+"','ShortVersion')}"
+        self.__env['PartVersion']=self.__env.PartVersion
+        self.__env['PART_VERSION']="${PartVersion()}"
+        self.__env['PART_SHORT_VERSION']="${PartVersion()[0:2]}"
+        self.__env['PART_MAJOR_VERSION']="${PartVersion()[0]}"
+        self.__env['PART_MINOR_VERSION']="${PartVersion()[1]}"
+        
         
         if "__DEBUG__POBJ__" in self.__env["MODE"]:
             self.__env['POBJ']=self

@@ -183,7 +183,7 @@ else:
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
     def ccopy_copy(dest,source):
-        api.output.verbose_msfg("ccopy","ccopy_copy dest={0} source={1}",dest,source)
+        api.output.verbose_msgf("ccopy","ccopy_copy dest={0} source={1}",dest,source)
         if os.path.lexists(dest):
             api.output.verbose_msgf("ccopy",'File: {0} links exists on disk, deleting file so copy can be created correctly',dest)
             os.remove(dest)

@@ -55,8 +55,8 @@ class svn(base):
          command is the more correct option in this case than the update command!
          '''
         
-        cmd1= '"{0}" revert "{1}"'.format(svn.svnpath,out_dir)
-        strval1= '{0} revert "{1}"'.format('svn',out_dir)
+        cmd1= '"{0}" -R revert "{1}"'.format(svn.svnpath,out_dir)
+        strval1= '{0} -R revert "{1}"'.format('svn',out_dir)
         clean_actions=[
             self._env.Action(lambda target, source, env: self.remove_unversioned(out_dir),"Removing unversioned SVN files in {0}".format(out_dir)),
             self._env.Action(cmd1,strval1)
@@ -268,7 +268,7 @@ class svn(base):
             if svnver is None:
                 svnver=self._env.WhereIs('svnversion',os.environ['PATH'])
             
-            ret,data=self.command_output('"%s"'%svnver)
+            ret,data=self.command_output('"{0}"'.format(svnver,self.CheckOutDir))
             if not ret:
                 data=data.strip('\n\r\t ')
                 tmp=data.split(':')

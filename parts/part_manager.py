@@ -861,8 +861,7 @@ class section_changed_loader(base): #task_master type
         # 2) the exports of those dependents have not changed
         # 3) the requirements for this section are up-to-date
         # Note we have to do this again as a file might have change causing a upper section
-        # of stuff to be forced loaded.. but this does not mean we don't of a sub-tree of stuff 
-        # load for different reasons.
+        # of stuff to be forced loaded.. 
         st=time.time()
         total=len(self._sections)*1.0
         cnt=0
@@ -1064,13 +1063,12 @@ class part_manager(object):
                     api.output.verbose_msgf(['target_mapping'],'Target: "{0}" is a name',tobj)
                     if name_matches is None:
                         name_matches=stored_name_to_alias.get(tobj.Name)
-                        
+                                                
                     if not name_matches:
                         api.output.verbose_msgf(['target_mapping'],'No matches found for name, Loading everything',tobj)
                         return None # we don't have any known found values.. backout
                     
                     pobjs_lst = name_matches.values()
-                    
                     # try to process known values
                     ## keep in mind this assume classic formats
                     ## and it will get stuff wrong.. 
@@ -1083,7 +1081,7 @@ class part_manager(object):
                         # the section does not match the concept we want to use the Alias form to get the "sections"
                         # as this does an extra check for some cases in which the Alias maps to nodes that require
                         # special logic to happen, such as AlwaysBuild()
-                        tstr="{0}::alias::{1}".format(_tobj.Concept,_pobj.Alias)
+                        tstr="{0}::alias::{1}{2}".format(_tobj.Concept,_pobj.Alias,"::" if tobj.isRecursive else "")
                         node=glb.pnodes.GetNode(tstr)
                         if node:
                             self.add_stored_node_info(node,[])
@@ -1093,10 +1091,22 @@ class part_manager(object):
                             api.output.verbose_msgf(['target_mapping'],'Target: "{0}" missing stored data, Loading everything',tstr)
                             return True
                         return False
-                    
+
+                    def get_subpart_section(_pobj):
+                        for subpobj in _pobj.Stored.subparts:
+                            subpobj=glb.pnodes.GetPNode(subpobj)
+                            if tobj.Section != tobj.Concept:
+                                if _map_alias(subpobj,tobj):
+                                    return
+                            tmp=subpobj.Stored.sections.get(tobj.Section)
+                            if tmp:
+                                ret.append(tmp)
+                            get_subpart_section(subpobj)
+
                     if not name_matches:
                         api.output.verbose_msgf(['target_mapping'],'No matched found for "{0}", Loading everything',tobj)
                         return None
+
                     for pobj in name_matches:
                         # the target mapping logic will handle the case of groups mapping
                         # for loading a section a group still requires us to load a whole section
@@ -1110,16 +1120,6 @@ class part_manager(object):
                             if tmp:
                                 ret.append(tmp)
                             # if we are recursive, we need to add all section from any subpart we can find.
-                            def get_subpart_section(_pobj):
-                                for subpobj in _pobj.Stored.subparts:
-                                    subpobj=glb.pnodes.GetPNode(subpobj)
-                                    if tobj.Section != tobj.Concept:
-                                        if _map_alias(subpobj,tobj):
-                                            return
-                                    tmp=subpobj.Stored.sections.get(tobj.Section)
-                                    if tmp:
-                                        ret.append(tmp)
-                                    get_subpart_section(subpobj)
                             get_subpart_section(pobj)
                                 
                         else:
@@ -1914,7 +1914,7 @@ class part_manager(object):
     
     def reduce_list_from_target_stored(self,tobj,part_lst):
         
-        api.output.verbose_msgf("stored_reduce_target_mapping","Reducing list of parts based on target {0}",tobj)
+        api.output.verbose_msgf("stored_reduce_target_mapping","Reducing list of parts based on target {0}\n list={1}",tobj,part_lst)
         for k,v in tobj.Properties.iteritems():
             for pobj in part_lst.copy():
                 api.output.verbose_msgf("stored_reduce_target_mapping"," Testing Part {0}",pobj.ID)
@@ -1957,7 +1957,7 @@ class part_manager(object):
                     # skip this test for stored information
                     # as we don't have an env object yet
                     pass
-        
+        api.output.verbose_msgf("stored_reduce_target_mapping","Final reduced list {0}",part_lst)
         return part_lst
     
     def reduce_list_from_target(self,tobj,part_lst):
@@ -2013,6 +2013,7 @@ class part_manager(object):
                     except KeyError:
                         api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
+        api.output.verbose_msgf("reduce_target_mapping","Final reduced list {0}",part_lst)
         return part_lst
                 
         
@@ -2073,7 +2074,20 @@ class part_manager(object):
             data["hasClassic"]=has_old
             datacache.StoreData("part_map",data)
 
-       
+            ## for each known part get the file mapped to it
+            #for pobj in self.parts.iteritems():
+            #    
+            ## for each part file we get an MD5
+            #    data[pobj.File.srcnode().path]={}
+            #    fdata['csig']=pobj.File.get_csig()
+            ## get the known alias and names mapped to the given part ( ie can have more of one for each)
+            #    [
+            #     {'alias':pobj.Alias,
+            #      'names':pobj.Name,
+            #        'ver':pobj.Version
+            #        }
+            #     ]
+            #     
 
             
             

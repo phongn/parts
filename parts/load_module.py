@@ -82,7 +82,7 @@ def get_site_directories(subdir):
         g_site_dir_cache[subdir]=sitepaths
     return g_site_dir_cache[subdir]
 
-def load_module(path,name,type):
+def load_module(pathlst,name,type):
     """Return the imported module
     made more generic so Parts can reuse the logic
     instead of using the C&P anti-patttern.
@@ -91,10 +91,10 @@ def load_module(path,name,type):
     modname='<'+type+'>'+name
     if not sys.modules.has_key(modname):
         api.output.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))
-        file, path1, desc = imp.find_module(name,path)
+        file, path1, desc = imp.find_module(name,pathlst)
         oldPath = sys.path[:]
-        sys.path=path+sys.path
-        
+        sys.path=pathlst+sys.path
+
         try:
             mod = imp.load_module(modname, file, path1, desc)
             api.output.verbose_msg("load_module","Module was loaded from <%s>"%path1)

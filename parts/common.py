@@ -293,11 +293,14 @@ def is_float(obj):
 def is_catagory_file(env,cat,file):
     ''' this function is the master function for finding a if a file matches a type pattern.'''
     '''This function returns True if the argument looks like a file that would be copied to a LIB directory'''
-    patterns=env[cat]
-    for i in patterns:
-        if fnmatch.fnmatchcase(str(file),i):
-            return True;
-    return False
+    try:
+        return is_catagory_file(env, cat, file.attributes.FilterAs)
+    except AttributeError:
+        patterns=env[cat]
+        for i in patterns:
+            if fnmatch.fnmatchcase(str(file),i):
+                return True;
+        return False
 
 def option_bool(val,option, default=False):
     if is_string(val):

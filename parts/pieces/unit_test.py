@@ -28,12 +28,11 @@ def unit_test_script_bfe(target, source, env):
     # get target file
     tf=os.path.split(str(target[0]))[1]
     # make new name
-    tout=[os.path.join('$UNIT_TEST_DIR',tf),
-        os.path.join('$UNIT_TEST_DIR',tf+'.cmd')
+    target+=[
+        target[0].Dir('.').File(tf+'.cmd')
         ]
-    
     #env.Clean(env['ALIAS'],tout)
-    return (tout,source)
+    return (target,source)
 
 def unit_test_script_bf(target, source, env):
     f = open(str(target[0]), 'wb')
@@ -183,7 +182,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     sec.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
     
     ## the option to build with PDB or not
-    # might not to do this any more... as teh PDB will work correctly on non windows systems
+    # might not to do this any more... as the PDB will work correctly on non windows systems
     if make_pdb==True: 
         sec.Env['PDB']=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME']+'.pdb'
     else:
@@ -218,10 +217,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    scripts_out=sec.Env.__UTEST__(build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
-    
+    scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
+    scripts_out=sec.Env.CCopy("$UNIT_TEST_DIR",scripts_out)
     ### here we map a bunch of aliases
-    core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out)
+    core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out+ret)
     ## the command action to Run this stuff
     cmd='$UNIT_TEST_RUN_SCRIPT_COMMAND'
     # map top level run alias... first one maps to build based 'base_alias'
@@ -281,7 +280,7 @@ api.register.add_variable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to ru
 
 api.register.add_variable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
 api.register.add_variable('UNIT_TEST_DIR',
-			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET_NAME/',
+			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET/',
 			'Full directory used for a given unit test run'
 			)
 api.register.add_variable('UNIT_TEST_ENV',
@@ -290,9 +289,12 @@ api.register.add_variable('UNIT_TEST_ENV',
 api.register.add_variable('UNIT_TEST_TARGET_NAME',
 			'${PART_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
 			'Default value of a given unit test executable')
+api.register.add_variable('UNIT_TEST_SCRIPT_NAME',
+			'${UNIT_TEST_TARGET}',
+			'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
-			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_TARGET_NAME}',
-			'Command action used to run a unit test script in SCons')
+			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_SCRIPT_NAME}',
+			'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
 		'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
-		'Command action used to run a unit test in SCons')
+		'Command action used to run a unit test in the script')

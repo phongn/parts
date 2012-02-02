@@ -180,10 +180,10 @@ class base(object):
                     api.output.warning_msg(ret,show_stack=False)
                 elif pol == 'error':
                     # report the error
-                    api.output.warning_msg(ret,show_stack=False)
+                    api.output.error_msg(ret,show_stack=False)
                 elif pol =='update':
                     ret_val = True
-                    api.output.print_msg(ret)
+                    api.output.verbose_msg('vcs_update',ret)
                 else:
                     ret_val = False
             else:

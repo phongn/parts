@@ -151,4 +151,5 @@ from SCons.Script.SConscript import SConsEnvironment
 # adding logic to Scons Enviroment object
 SConsEnvironment.Pattern=pattern
 
+api.register.add_global_object('Pattern',Pattern)
 api.register.add_global_parts_object('Pattern',Pattern)

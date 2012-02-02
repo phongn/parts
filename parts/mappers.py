@@ -65,7 +65,7 @@ class mapper(object):
         
     def name_to_alias_failed(self,env,match,policy=Policy.ReportingPolicy.error):
         
-        if match.hasMatch:
+        if match.hasAmbiguousMatch:
             reason=match.AmbiguousMatchStr()
         else:
             reason=match.NoMatchStr() 

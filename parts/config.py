@@ -414,7 +414,7 @@ def found_config_files(name,tool,host,target):
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
-            api.output.verbose_msg("Configuration","Unexpected failure:\n",ec_str.getvalue())
+            api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
             
     return ret
     
