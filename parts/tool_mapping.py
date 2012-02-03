@@ -76,9 +76,16 @@ def _ToolChain(env,chainlist):
             env.Replace(**t[1])
         else:
             t[1](env)
-            
+        # this is a small hack that allow items like mstool to 
+        # not have the MS compiler add its value to the environment
+        # when the Configuration() call happens 
+        try:
+            configure_tool = t[2]
+        except IndexError:
+            configure_tool = True
+        if configure_tool:
         # apply the tool to the enviroment
-        env['CONFIGURED_TOOLS'].append(t[0])
+            env['CONFIGURED_TOOLS'].append(t[0])
         tmp=SCons.Tool.Tool(t[0],toolpath=env['toolpath'])
         #env.Tool(t[0])
         env['_BUILD_CONTEXT_FILES'].add(tmp.generate.func_code.co_filename)

@@ -184,3 +184,11 @@ def allProducts():
         index += 1
         yield Product(buff.value)
 
+
+if __name__ == '__main__':
+    import re
+    for product in allProducts():
+        if re.match('Intel.*Compiler.*(IA-32|Intel.*64)', product.ProductName):
+            print product.ProductName, product.VersionString
+# vim: set et ts=4 sw=4 ft=python :
+

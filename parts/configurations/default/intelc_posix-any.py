@@ -28,7 +28,7 @@ def post_process_func(env):
         #print env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']
         #print env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']
            
-        env.Append(CCFLAGS=['-gcc-name='+os.path.join(env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']),
+        env.AppendUnique(CCFLAGS=['-gcc-name='+os.path.join(env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']),
             '-gxx-name='+os.path.join(env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']),
             '-gcc-version='+ver])
     except:
@@ -37,9 +37,9 @@ def post_process_func(env):
     ## code coverage feature additions
     if make_bool(env.get('codecov',False)) == True:    
         if(env.Version(env['INTELC_VERSION']) >= 11):
-            env.Append(CCFLAGS=['-prof-gen=srcpos'])
+            env.AppendUnique(CCFLAGS=['-prof-gen=srcpos'])
         else:
-            env.Append(CCFLAGS=['-prof-genx'])
+            env.AppendUnique(CCFLAGS=['-prof-genx'])
 
 
 

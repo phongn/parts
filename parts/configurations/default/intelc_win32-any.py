@@ -25,24 +25,24 @@ def post_process_func(env):
     except:
         raise RuntimeError("You need to define mstools or compatible tool chain with Intel tool chain")
     if ver >=10:
-        env.Append(CCFLAGS=['/Qvc10'])
+        env.AppendUnique(CCFLAGS=['/Qvc10'])
     elif ver >=9:
-        env.Append(CCFLAGS=['/Qvc9'])
+        env.AppendUnique(CCFLAGS=['/Qvc9'])
     elif ver >=8:
-        env.Append(CCFLAGS=['/Qvc8'])
+        env.AppendUnique(CCFLAGS=['/Qvc8'])
     elif ver >=7.1:
-        env.Append(CCFLAGS=['/Qvc7.1'])
+        env.AppendUnique(CCFLAGS=['/Qvc7.1'])
     elif ver >=7:
-        env.Append(CCFLAGS=['/Qvc7'])
+        env.AppendUnique(CCFLAGS=['/Qvc7'])
     elif ver >=6:
-        env.Append(CCFLAGS=['/Qvc6'])
+        env.AppendUnique(CCFLAGS=['/Qvc6'])
     
     ## code coverage feature additions
     if make_bool(env.get('codecov',False)) == True:    
         if(env.Version(env['INTELC_VERSION']) >= 11):
-            env.Append(CCFLAGS=['/Qprof-gen:srcpos'])
+            env.AppendUnique(CCFLAGS=['/Qprof-gen:srcpos'])
         else:
-            env.Append(CCFLAGS=['/Qprof-genx'])
+            env.AppendUnique(CCFLAGS=['/Qprof-genx'])
 
 
 config=configuration(map_default_version,post_process_func)

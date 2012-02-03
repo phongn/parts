@@ -66,7 +66,12 @@ class MsiFinder(object):
     def resolve_version(self, version):
         return version
 
-
+if __name__ == '__main__':
+    def selfTest():
+#        finder = MsiFinder('.*Python.*', 'PythonExe')
+        finder = MsiFinder('.*Intel Compiler.*', 'IclExe')
+        print finder()
+    selfTest()
 
 # vim: set et ts=4 sw=4 ft=python :
 

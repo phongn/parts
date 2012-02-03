@@ -10,8 +10,8 @@ def resolve(env,version):
     host=env['HOST_PLATFORM']
     if host.OS=='darwin':
         return [
-                ('g++',func),
-                ('gcc',func),
+                ('g++',func,False),
+                ('gcc',func,False),
                 ('ar',None),
                 ('gas',None),
                 ('applelink',None)
@@ -19,8 +19,8 @@ def resolve(env,version):
 
     else:        
         return [
-                ('g++',func),
-                ('gcc',func),
+                ('g++',func,False),
+                ('gcc',func,False),
                 ('ar',None),
                 ('gas',None),
                 ('gnulink',None)
