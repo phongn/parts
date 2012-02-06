@@ -49,6 +49,10 @@ sections=set()
 # path to where Parts is installed
 parts_path=os.path.abspath(os.path.split(__file__)[0])
 
+# this is the path to the Sconstruct file
+# this get reset to a better value
+sconstruct_path=os.path.abspath(".")
+
 # for packaging support 
 _INSTALLED_PACKAGING_GROUPS={}
 _INSTALLED_NO_PACKAGING_GROUPS={}

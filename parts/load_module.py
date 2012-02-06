@@ -21,6 +21,7 @@ def get_site_directories(subdir):
         if glb._host_sys is None:
             print "host_os bootstrap bug"
             1/0
+
         host_os=glb._host_sys # can't use HOST_OS because of bootstrap issue.
         syspath=[]
         localpath=[]
@@ -57,8 +58,8 @@ def get_site_directories(subdir):
         elif SCons.Script.GetOption('global_part_site'):
             sitepaths=[
                 #current directory parts_site or user pointed site
-                os.path.abspath(os.path.join('.','parts-site',subdir)),
-                os.path.abspath(os.path.join('.','.parts-site',subdir))
+                os.path.join(glb.sconstruct_path,'parts-site',subdir),
+                os.path.join(glb.sconstruct_path,'.parts-site',subdir)
                 #homedir/.parts-site
                 ]+[
                 # user part-site in parts install
@@ -69,8 +70,8 @@ def get_site_directories(subdir):
         else:
             sitepaths=[
                 #current directory parts_site or user pointed site
-                os.path.abspath(os.path.join('.','parts-site',subdir)),
-                os.path.abspath(os.path.join('.','.parts-site',subdir))
+                os.path.join(glb.sconstruct_path,'parts-site',subdir),
+                os.path.join(glb.sconstruct_path,'.parts-site',subdir)
                 #homedir/.parts-site
                 ]+localpath+syspath+[
                 # user part-site in parts install
@@ -87,7 +88,6 @@ def load_module(pathlst,name,type):
     made more generic so Parts can reuse the logic
     instead of using the C&P anti-patttern.
     """
-    
     modname='<'+type+'>'+name
     if not sys.modules.has_key(modname):
         api.output.verbose_msg("load_module",'Trying to load module <%s> type <%s>'%(name,type))

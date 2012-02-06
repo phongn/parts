@@ -7,6 +7,7 @@ from .. import api
 
 import SCons.Script
 
+glb.sconstruct_path=SCons.Script.DefaultEnvironment().Dir("#").abspath
 
 scons_DefaultEnvironment=SCons.Script.DefaultEnvironment
 
