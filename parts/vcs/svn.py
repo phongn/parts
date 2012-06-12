@@ -268,8 +268,8 @@ class svn(base):
             if svnver is None:
                 svnver=self._env.WhereIs('svnversion',os.environ['PATH'])
             
-            ret,data=self.command_output('"{0}"'.format(svnver,self.CheckOutDir))
-            if not ret:
+            ret,data=self.command_output('"{0}" {1}'.format(svnver,self.CheckOutDir))
+            if not ret and not data.startswith('Unversioned'):
                 data=data.strip('\n\r\t ')
                 tmp=data.split(':')
                 if data =='exported':
@@ -318,7 +318,7 @@ class svn(base):
                     
        
             #get the path
-            ret,data=self.command_output('"%s" info %s'%(svn.svnpath,self.CheckOutDir))
+            ret,data=self.command_output('"{0}" info {1}'.format(svn.svnpath,self.CheckOutDir))
             if not ret:
                 data=data.replace('\r\n','\n')
                 tmp=data.split('\n')

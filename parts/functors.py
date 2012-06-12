@@ -1,6 +1,7 @@
 import glb
 import common
 import api.output
+import requirement
 
 import SCons.Script
 
@@ -48,30 +49,30 @@ class map_parts_alias(object):
         ## self.env.Alias(install_alias,flist2)
 
 
-def full_parts_depends_list(env):
-    ''' make a full depends list ( internal and non internal) for the given Env
-    We will probally want to refactor some of this into state in def_env later
-    '''
-    
-    pobj=glb.engine._part_manager._from_env(env)
-    
-    cache_tmp=pobj.FullDepends
-    if cache_tmp is None:
-        dlst=pobj.Depends
-        flst=[]
-        for d in dlst:
-            val=d.resolve_alias(env)
-            if val == "":
-                continue
-            flst.append(val)
-            
-            tmp_env=glb.engine._part_manager._from_alias(val).env
-            tmp=full_parts_depends_list(tmp_env)
-            flst.extend(tmp)
-            pobj.set_full_depends(flst)
-    else:
-        flst=cache_tmp
-    return flst
+#def full_parts_depends_list(env):
+#    ''' make a full depends list ( internal and non internal) for the given Env
+#    We will probally want to refactor some of this into state in def_env later
+#    '''
+#    
+#    pobj=glb.engine._part_manager._from_env(env)
+#    
+#    cache_tmp=pobj.FullDepends
+#    if cache_tmp is None:
+#        dlst=pobj.Depends
+#        flst=[]
+#        for d in dlst:
+#            val=d.resolve_alias(env)
+#            if val == "":
+#                continue
+#            flst.append(val)
+#            
+#            tmp_env=glb.engine._part_manager._from_alias(val).env
+#            tmp=full_parts_depends_list(tmp_env)
+#            flst.extend(tmp)
+#            pobj.set_full_depends(flst)
+#    else:
+#        flst=cache_tmp
+#    return flst
 
 
 def gen_rpath_link(sec):
@@ -97,7 +98,10 @@ def gen_rpath_link(sec):
                     
     # setup everything that we depend on that we may not have added yet
     for d in dlst:
-        if d.PartRef.hasUniqueMatch:
+        # make sure we depend on a LIBPATH value of this component
+        if requirement.REQ.LIBPATH not in d.Requires:
+            pass
+        elif d.PartRef.hasUniqueMatch:
             try:
                 # try to get a cached value
                 rtmp=d.Section.Exports['rlink']

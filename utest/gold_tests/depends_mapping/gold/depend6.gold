@@ -1,1 +1,0 @@
-Verbose: [gtest] ["${PARTIDEXPORTS('name::part1@platform_match:win32-x86_64@version:*','build','CPPPATH',0)}"] True

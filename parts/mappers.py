@@ -9,6 +9,7 @@ import target_type
 
 import SCons.Script.Main
 import SCons.Script 
+import SCons.Subst
 
 import StringIO
 import traceback
@@ -674,7 +675,118 @@ class relpath_mapper(mapper):
             f = env.Entry(env.subst(self._from)).abspath
         f = env.Entry(env.subst("${"+self._from+"}")).abspath
         return common.relpath(t,f)+os.sep
-    
+
+
+import tempfile
+
+class TempFileMunge(mapper):
+
+    """A callable class.  You can set an Environment variable to this,
+    then call it with a string argument, then it will perform temporary
+    file substitution on it.  This is used to circumvent the long command
+    line limitation.
+
+    By default, the name of the temporary file used begins with a
+    prefix of '@'.  This may be configred for other tool chains by
+    setting '$TEMPFILEPREFIX'.
+
+    env["TEMPFILEPREFIX"] = '-@'        # diab compiler
+    env["TEMPFILEPREFIX"] = '-via'      # arm tool chain
+
+    This is the Parts overide of the SCons version of this class
+    to address a some complex issues with path handling when on 
+    windows and using GNU like tool chains
+
+    todo.. push back into SCons
+
+    """
+    name='TEMPFILE'
+    def __init__(self, cmd, force_posix_paths = False):
+        self.cmd = cmd
+        self.force_posix_paths=force_posix_paths
+
+    def __call__(self, target, source, env, for_signature):
+        if for_signature:
+            # If we're being called for signature calculation, it's
+            # because we're being called by the string expansion in
+            # Subst.py, which has the logic to strip any $( $) that
+            # may be in the command line we squirreled away.  So we
+            # just return the raw command line and let the upper
+            # string substitution layers do their thing.
+            return self.cmd
+
+        # Now we're actually being called because someone is actually
+        # going to try to execute the command, so we have to do our
+        # own expansion.
+        cmd = env.subst_list(self.cmd, SCons.Subst.SUBST_CMD, target, source)[0]
+        try:
+            maxline = int(env.subst('$MAXLINELENGTH'))
+        except ValueError:
+            maxline = 2048
+
+        length = 0
+        for c in cmd:
+            length += len(c)
+        if length <= maxline:
+            return self.cmd
+
+        # We do a normpath because mktemp() has what appears to be
+        # a bug in Windows that will use a forward slash as a path
+        # delimiter.  Windows's link mistakes that for a command line
+        # switch and barfs.
+        #
+        # We use the .lnk suffix for the benefit of the Phar Lap
+        # linkloc linker, which likes to append an .lnk suffix if
+        # none is given.
+        (fd, tmp) = tempfile.mkstemp('.lnk', text=True)
+        native_tmp = SCons.Util.get_native_path(os.path.normpath(tmp))
+
+        if env['SHELL'] and env['SHELL'] == 'sh':
+            # The sh shell will try to escape the backslashes in the
+            # path, so unescape them.
+            native_tmp = native_tmp.replace('\\', '/')
+            # In Cygwin, we want to use rm to delete the temporary
+            # file, because del does not exist in the sh shell.
+            rm = env.Detect('rm') or 'del'
+        else:
+            # Don't use 'rm' if the shell is not sh, because rm won't
+            # work with the Windows shells (cmd.exe or command.com) or
+            # Windows path names.
+            rm = 'del'
+
+        prefix = env.subst('$TEMPFILEPREFIX')
+        if not prefix:
+            prefix = '@'
+
+        args = list(map(SCons.Subst.quote_spaces, cmd[1:]))
+        data=" ".join(args)
+        #This is a little bit of a hack as it could mess up switches using '\'
+        # however this is unlikely as windows uses / or - for switchs and posix uses - or --
+        if self.force_posix_paths:
+            data= data.replace('\\', '/')
+        os.write(fd, data + "\n")
+        os.close(fd)
+        # XXX Using the SCons.Action.print_actions value directly
+        # like this is bogus, but expedient.  This class should
+        # really be rewritten as an Action that defines the
+        # __call__() and strfunction() methods and lets the
+        # normal action-execution logic handle whether or not to
+        # print/execute the action.  The problem, though, is all
+        # of that is decided before we execute this method as
+        # part of expanding the $TEMPFILE construction variable.
+        # Consequently, refactoring this will have to wait until
+        # we get more flexible with allowing Actions to exist
+        # independently and get strung together arbitrarily like
+        # Ant tasks.  In the meantime, it's going to be more
+        # user-friendly to not let obsession with architectural
+        # purity get in the way of just being helpful, so we'll
+        # reach into SCons.Action directly.
+        if SCons.Action.print_actions:
+            print("Using tempfile "+native_tmp+" for command line:\n"+
+                  str(cmd[0]) + " " + " ".join(args))
+        return [ cmd[0], prefix + native_tmp + '\n' + rm, native_tmp ]
+
+
 
 api.register.add_mapper(part_mapper)
 api.register.add_mapper(part_id_mapper)
@@ -685,5 +797,6 @@ api.register.add_mapper(part_shortname_mapper)
 api.register.add_mapper(abspath_mapper)
 api.register.add_mapper(relpath_mapper)
 api.register.add_mapper(part_lib_mapper)
+api.register.add_mapper(TempFileMunge)
 
 api.register.add_bool_variable('MAPPER_BAD_ALIAS_AS_WARNING',True,'Controls if a missing alias is an error or a warning')

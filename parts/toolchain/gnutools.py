@@ -2,8 +2,10 @@
 # defines tools chain for the general Gnu set( as needed for Intel Compiler posix or simular tools)
 
 def _setup(env,ver):
-    env['GXX_VERSION']=ver
-    env['GCC_VERSION']=ver
+    if env.get('GXX_VERSION') is None:
+        env['GXX_VERSION']=ver
+    if env.get('GCC_VERSION') is None:
+        env['GCC_VERSION']=ver
 
 def resolve(env,version):
     func=lambda x : _setup(x,version)
@@ -14,7 +16,8 @@ def resolve(env,version):
                 ('gcc',func,False),
                 ('ar',None),
                 ('gas',None),
-                ('applelink',None)
+                ('applelink',None),
+                ('lipo', None)
             ]
 
     else:        

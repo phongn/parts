@@ -375,12 +375,22 @@ class Settings(object):
             self.__env_cache[key]=env
         return env
 
-    def Environment(self,**kw):
+    def Environment(self, **kw):
         '''
-        This makes a environment with the toolchain and configruation set on it
+        This makes a copy of environment with the toolchain and configruation set on it
         given the user is not setting tools directly. This if for Raw Scons file
         compatibilty. Otherwise we try to use any tools in our toolchain.
         '''
+        return self._env_const_ref(**kw).Clone()
+
+    def _env_const_ref(self,**kw):
+        """
+        This makes a reference to environment with the toolchain and configruation set on it
+        given the user is not setting tools directly. This if for Raw Scons file
+        compatibilty. Otherwise we try to use any tools in our toolchain.
+
+        WANRING! Clone the returned object before modifying it!
+        """
         
         ## case 1 BASE + default toolchain logic
         if kw =={}:
@@ -403,7 +413,7 @@ class Settings(object):
                                     normalize_map(kw))#,
                                     #normalize_map(glb.defaultoverides))
             try:
-                env=self.__env_cache[cache_key].Clone()
+                env=self.__env_cache[cache_key]
             except KeyError:
                 #print "new custom"
                 # check to see if the user set their own tools up in the old way
@@ -431,10 +441,16 @@ class Settings(object):
                 # reapply an convert logic on them. To do this we seperate them
                 # from the rest of the general key values 
                 vars={}
-                for k in kw.keys():
+                tmp_kw=kw.copy()
+                for k,v in tmp_kw.iteritems():
+                    #if the value if a callable we want to add it as a function
+                    if hasattr(v, '__call__'):
+                            api.output.verbose_msgf("settings","Adding function {0} as {1}",v,k)
+                            env.AddMethod(v,k)
                     if k in self.vars:
-                        vars[k]=kw[k]
+                        vars[k]=v
                         del kw[k]
+                    
             
                 # Clone it and apply any overides we need to.
                 env=env.Clone(**kw)
@@ -472,7 +488,7 @@ class Settings(object):
         ## See if the user want to whack the default environment with the shell value.
         #if  SCons.Script.GetOption('use_env') == True or self.UseSystemEnvironment:
         #    env['ENV']=os.environ
-        return env.Clone()
+        return env
 
         
     def BasicEnvironment(self):

@@ -1,4 +1,4 @@
-
+"""
 import sys
 import os
 # load the SCons code
@@ -7,10 +7,10 @@ scons_setup.scons_path()
 
 sys.path=[#os.path.abspath('./'),
             #os.path.abspath('../'),
-            
+
             # this is a hack till better code is generated
             #'c:/python26/lib/site-packages/parts',
-            #'c:/python27/lib/site-packages/parts'    
+            #'c:/python27/lib/site-packages/parts'
           ]+sys.path
 
 import cPickle
@@ -25,3 +25,4 @@ tmp=os.path.split(os.path.split(os.path.abspath(datafile))[0])[1]
 glb.engine._cache_key=tmp
 
 glb.pnodes.dump()
+"""

@@ -1,3 +1,3 @@
 
-_PARTS_VERSION='0.10.1.Beta'
+_PARTS_VERSION='0.10.1.0.Beta'
 

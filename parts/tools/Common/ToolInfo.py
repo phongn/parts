@@ -3,13 +3,17 @@ import SCons.Util
 import parts.common 
 import Finders
 import os
-       
+import parts.api as api       
+from parts.version import version_range
    
     
 class ToolInfo(object):
     def __init__(self,version,install_scanner,script,subst_vars,shell_vars,test_file):
         # version of the tools this object refers to
-        self.version=version
+        if '*' in version:
+            self.version=version_range(version)
+        else:
+            self.version=version
         
         # list of objects or a scanner object that test for finding the root path
         self.install_root=install_scanner
@@ -34,17 +38,26 @@ class ToolInfo(object):
         # this allow use to make sure we overide certain toolinfo objects
         # when the host they are bound to is native over item that are not
         self.is_native=False
+        
     
     def version_set(self):
+        
         ret=[]
-        tmp=self.version.split('.')
+        try:
+            tmp=self.version.split('.')
+        except AttributeError:
+            return self.version
         for i in range (0,len(tmp)):
             # add path data
             ret.append(".".join(tmp[:i+1]))
         return ret
+        
 
     def resolve_version(self,version):
-        return self.version
+        try:
+            return self.install_root.resolve_version(version)
+        except AttributeError:
+            return self.version
     
     def make_ver_shell_env_set(self,ver,env):
         ret={}
@@ -119,20 +132,23 @@ class ToolInfo(object):
         return parts.common.namespace(**kw)
 
     def query(self,env,namespace,root_path,use_script):
-        
         if SCons.Util.is_List(self.install_root):
+            api.output.trace_msg("toolinfo","Query based on finders")
             found={self.version:root_path}        
         elif SCons.Util.is_String(use_script):
+            api.output.trace_msg("toolinfo","Query based on script")
             found={'0.0.0':None}
         else:
+            api.output.trace_msg("toolinfo","Query based on scanner object")
             found=self.install_root.scan()
-        
+        api.output.trace_msgf("toolinfo","Found {0}",found)
         if found is None:
             return None
 
         ret={}
         for v,p in found.iteritems():
             tmp=self.exists(env,namespace,v,p,use_script)
+            api.output.trace_msgf("toolinfo","Exists test returned {0}",tmp)
             if tmp is not None:
                 ret[v]=tmp
                 #ret.update(self.make_ver_shell_env_set(v,tmp))

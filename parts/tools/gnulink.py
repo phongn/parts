@@ -20,6 +20,7 @@ This module introduces two environment variables to control binary stripping and
 import SCons.Tool.gnulink
 import SCons.Action
 import parts.api.output
+import parts.tools.GnuCommon
 
 def _pdbEmitter(target, source, env):
     """
@@ -55,11 +56,10 @@ def _pdbResolveString(targets, template):
     targets is a list of Node objects the first one of which is path to binary to be built.
 
     template is a string to be expanded to a command which later will be executed by SCons.
-    The template is expected to contain %(binary)s and %(pdb)s named format specifiers to
-    be filled with binary and pdb file names.
     """
     try:
-        return template % {'binary': targets[0], 'pdb': targets[0].attributes.pdb}
+        if targets[0].attributes.pdb:
+            return template
     except (AttributeError, IndexError):
         return ""
 
@@ -74,17 +74,16 @@ def _stripResolveString(env, target, template):
     targets is a list of Node objects the first one of which is path to binary to be built.
 
     template is a string to be expanded to a command which later will be executed by SCons.
-    The template is expected to contain %(binary)s and %(pdb)s named format specifiers to
-    be filled with binary and pdb file names.
     """
     try:
         try:
-            # Always strip the binary if there should be created a pdb for it
-            return template % {'binary': target[0], 'pdb': target[0].attributes.pdb}
+            if target[0].attributes.pdb:
+                # Always strip the binary if there should be created a pdb for it
+                return template
         except AttributeError:
             # The binary has no pdb associated with it. Check NO_STRIP flag.
             if not env.get('NO_STRIP', True):
-                return template % {'binary': target, 'pdb': ''}
+                return template
     except IndexError:
         pass
     return ""
@@ -93,7 +92,7 @@ def _setUpPdbActions(env):
     """
     The function modifies the environment by adding PDB/stripping specific actions.
     """
-    if not env.Detect('objcopy'):
+    if not env.Detect('$OBJCOPY'):
         # If there are no objcopy utility on the system we cannot create pdbs.
         parts.api.output.warning_msg(
             "objcopy tool is not found on your system. " \
@@ -105,22 +104,25 @@ def _setUpPdbActions(env):
     env['_stripResolveString'] = _stripResolveString
 
 
-    env['_pdbAction'] = "objcopy --only-keep-debug %(binary)s %(pdb)s"
-    env['_pdbActionString'] = 'Creating PDB for %(binary)s'
+    env['_pdbAction'] = "$OBJCOPY --only-keep-debug ${TARGET} ${TARGET.attributes.pdb}"
+    env['_pdbActionString'] = 'Creating PDB for ${TARGET}'
 
-    if env.Detect("chmod"):
-        env['_pdbChmodAction'] = "chmod 644 %(pdb)s"
-    else:
-        env['_pdbChmodAction'] = ""
-        parts.api.output.warning_msg(
-            "chmod tool is not found on your system. " \
-            "Separate debug files created may have wrong permission bits"
-        )
+    if env.get('CHMODVALUE'):   
+        if env.Detect("chmod"):
+            env['_pdbChmodAction'] = "chmod $CHMODVALUE ${TARGET.attributes.pdb}"
+        else:
+            env['_pdbChmodAction'] = ""
+            parts.api.output.warning_msg(
+                "chmod tool is not found on your system. " \
+                "Separate debug files created may have wrong permission bits"
+            )
+    env['_pdbChmodActionString'] = 'Changing ${TARGET.attributes.pdb} flags to $CHMODVALUE'
 
-    env['_pdbStripAction'] = "objcopy --strip-unneeded %(binary)s"
-    env['_pdbStripActionString'] = "Stripping %(binary)s"
+    env['_pdbStripAction'] = "$OBJCOPY --strip-unneeded ${TARGET}"
+    env['_pdbStripActionString'] = "Stripping ${TARGET}"
 
-    env['_pdbGnuDebugLinkAction'] = "objcopy --add-gnu-debuglink=%(pdb)s %(binary)s"
+    env['_pdbGnuDebugLinkAction'] = "$OBJCOPY --add-gnu-debuglink=${TARGET.attributes.pdb} ${TARGET}"
+    env['_pdbGnuDebugLinkActionString'] = "Linking ${TARGET} to ${TARGET.attributes.pdb}"
 
     env['PDB_CREATE_ACTION'] = SCons.Action.CommandAction(
         '${_pdbResolveString(TARGETS, _pdbAction)}',
@@ -128,7 +130,7 @@ def _setUpPdbActions(env):
         )
     env['PDB_CHMOD_ACTION'] = SCons.Action.CommandAction(
         '${_pdbResolveString(TARGETS, _pdbChmodAction)}',
-        cmdstr = ''
+        cmdstr = '${_pdbResolveString(TARGETS, _pdbChmodActionString)}'
         )
     env['STRIP_ACTION'] = SCons.Action.CommandAction(
         '${_stripResolveString(__env__, TARGETS, _pdbStripAction)}',
@@ -136,7 +138,7 @@ def _setUpPdbActions(env):
         )
     env['PDB_GNU_DEBUGLINK_ACTION'] = SCons.Action.CommandAction(
         '${_pdbResolveString(TARGETS, _pdbGnuDebugLinkAction)}',
-        cmdstr = ''
+        cmdstr = '${_pdbResolveString(TARGETS, _pdbGnuDebugLinkActionString)}'
         )
 
     # Actions to be appended to Program and SharedLibrary builders
@@ -163,14 +165,36 @@ def generate(env):
     private _setUpPdbActions function which in its turn adds pdb creation/binary stripping
     actions to the environment
     """
+    
+    env['LIBPREFIX']      = 'lib'
+    env['LIBSUFFIX']      = '.a'
+    env['SHLIBPREFIX']    = 'lib'
+    env['SHLIBSUFFIX']    = '.so'
+    env['OBJCOPY']        = 'objcopy'
+    env['CHMODVALUE']     = '644'
 
     SCons.Tool.gnulink.generate(env)
+
+    parts.tools.GnuCommon.binutils.setup(env)
+
+    # Sometimes we have to use specific tools and command lines.
+    # For example when building Android executables on Windows host
+    env['OBJCOPY'] = env.get('BINUTILS', {}).get('OBJCOPY', env['OBJCOPY'])
+    env['CHMODVALUE'] = env.get('BINUTILS', {}).get('CHMODVALUE', env['CHMODVALUE'])
+    env['LINKCOM'] = env.get('BINUTILS', {}).get('LINKCOM', env.get('LINKCOM'))
+    env['SHLINKCOM'] = env.get('BINUTILS', {}).get('SHLINKCOM', env.get('SHLINKCOM'))
+    env['__RPATH'] = env.get('BINUTILS', {}).get('__RPATH', env.get('__RPATH'))
+    env['RPATHPREFIX'] = env.get('BINUTILS', {}).get('RPATHPREFIX', env.get('RPATHPREFIX'))
+
     _setUpPdbActions(env)
 
 def exists(env):
     """
     Proxy for SCons.Tool.gnulink.exists function.
     """
+    if env.has_key('BINUTILS_VERSION') or env.get('HOST_OS') == 'win32':
+        parts.tools.GnuCommon.binutils.MergeShellEnv(env)
+
     return SCons.Tool.gnulink.exists(env)
 
 # vim: set et ts=4 sw=4 ai ft=python :

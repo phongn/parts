@@ -75,17 +75,29 @@ def store_cache_data(datafile,data):
     output.close()
     
 
+__use_parts_cache = None
 def GetCache(name,key=None):
     '''
     get data from data cache.. if in memory use that, else load it.
     '''
     global __cache
-    if SCons.Script.GetOption("parts_cache") == False or __bad_cache==True:
+    global __use_parts_cache
+
+    # Performance note
+    # Using 'if SCons.Script.GetOption('parts_cache') == False ...' is the first thing you want to use
+    # but it called tooooo many times that's why we cache its returned value.
+    if __use_parts_cache is None:
+        __use_parts_cache = SCons.Script.GetOption('parts_cache') or False
+    if __use_parts_cache == False or __bad_cache==True:
         return None
     #if key is None get default key
     if key is None:
         key=_get_default_key()
-    filename=os.path.join(".parts.cache",key,name+".cache")
+
+    # Performance note
+    # str.join method is 20 times faster than os.path.join function
+    # and it is safe to call it here because neither key nor name contain os.sep
+    filename=os.sep.join([".parts.cache",key,name+".cache"])
     # see if we have it already loaded
     try:
         return __cache[filename]

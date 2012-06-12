@@ -26,18 +26,20 @@ def generate(env):
         env['SHCXXFLAGS'] = SCons.Util.CLVar('$CXXFLAGS -mminimal-toc')
         env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
         env['SHOBJSUFFIX'] = '$OBJSUFFIX'
-    elif env['PLATFORM'] == 'hpux':
+    else:
         env['SHOBJSUFFIX'] = '.pic.o'
-    elif env['PLATFORM'] == 'sunos':
-        env['SHOBJSUFFIX'] = '.pic.o'
-
+        env['OBJSUFFIX'] = '.o'
+    
     #Backward compatiblity
     env['CXXVERSION']=env['GXX']['VERSION']  
     
+    # this is a hack to deal with some migration issues with cross builds and existing parts files
+    # this is to work around broken linux installs that can break cross building
+    # with autoconfig via a Command() call.. or at least this helps
     if env['HOST_ARCH'] == 'x86' and env['TARGET_ARCH'] == 'x86_64':
         env['CXX']=env['CXX']+' -m64'
-    if env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
-        env['CXX']=env['CXX']+' -m32' 
+    elif env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
+        env['CXX']=env['CXX']+' -m32'
 
  # fix this up so we can control its printing to screen better.
     #api.output.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))

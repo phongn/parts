@@ -12,36 +12,36 @@ import types
 import glb
 
 # import Scons stuff
-import SCons.Script 
+import SCons.Script
 import SCons.Errors
 import SCons.Tool
 import SCons.Util
 
 
-    
+
 #def try_load_part_component(env,comp):
 #    curr_define_part=get_part(env)
 #    name_list=comp.name.split('.')[0]
 #    root_name=name_list[0]
 #    ver_range=comp.version
-#    
-#    # try to see if we can resolve the component 
-#    
+#
+#    # try to see if we can resolve the component
+#
 #    # Check DB for match
-#    
+#
 #    # If that failed try manual laoding of Parts till we get a hit
 #    # or detact deadlock
-#    
+#
 #    # first we try to find something that looks likes it
-#    
+#
 #    # check to see if we are laoding a sub part
-#    
+#
 #    # here we try to find the best match root part
-#    
-#        
-#    
+#
+#
+#
 #    # then we just start load stuff till we get a hit
-#    
+#
 #    # if that fails return None to have calling code
 #    # add a mapper to resolve latter or error out
 #
@@ -52,14 +52,14 @@ import SCons.Util
 # this class allows us to add object varible that get a reference to the env
 # that holds it
 class bindable(object):
-    pass 
+    pass
 
 class DelayVariable(object):
     ''' This class defines a varable that will not be evaluted until it is requested
     This allow it to be assigned some logic and not execute it till requested, as needed
     The class will reset the value in the SCons Environment with the delayed value
     once it is evaluated
-    '''    
+    '''
     def __init__(self,func):
         self.__func=func
     def __eval__(self):
@@ -71,7 +71,7 @@ class dformat(DelayVariable):
     def __init__(self,sfmt,*lst,**kw):
         tmp=lambda : sfmt.format(*lst,**kw)
         super(dformat, self).__init__(tmp)
-    
+
 class namespace(dict,bindable):
     ''' helper class to allow making subst varaible in SCons to allow a clean
     form of $a.b
@@ -90,12 +90,12 @@ class namespace(dict,bindable):
         if (is_string(tmp) or tmp is None) and self.__dict__.has_key('env'):
             return self.env.subst(tmp)
         return tmp
-    
+
     def __setattr__(self,name,value):
         self[name]=value
     def __delattr__(self,name):
         del self[name]
-        
+
     def _rebind(self,env,key):
         '''
         Rebind the environment to a new one.
@@ -107,10 +107,10 @@ class namespace(dict,bindable):
         tmp=namespace(**self.copy())
         tmp._bind(env,key)
         return tmp
-    
+
     def _bind(self,env,key):
         self.__dict__['env']=env
-        
+
     def clone(self):
         tmp=namespace(**self.copy())
         tmp._bind(None,None)
@@ -147,7 +147,7 @@ def get_content(obj):
         isinstance(obj,types.FunctionType ) or\
         isinstance(obj,types.CodeType):
         return SCons.Action._object_contents(obj)
-    
+
     elif isinstance(obj,types.DictionaryType):
         ret='{'
         for k,v in obj.iteritems():
@@ -162,8 +162,8 @@ def get_content(obj):
         ret+=']'
     else:
         ret=str(obj)
-            
-    return ret        
+
+    return ret
 
 def matches(value, includes, excludes=None):
     '''Function help with tell if a value (as a string) matched on of the include
@@ -182,9 +182,9 @@ def matches(value, includes, excludes=None):
     return match
 
 def make_list(obj):
-    ''' 
+    '''
     The purpose of thsi function is to make the obj into a list if it is not
-    already one. It will flatten as well    
+    already one. It will flatten as well
     '''
     if SCons.Util.is_List(obj):
         return SCons.Util.flatten(obj)
@@ -205,7 +205,7 @@ def make_unique(obj):
     return tmp
 
 def extend_unique(obj,lst):
-    ''' 
+    '''
     The purpose of this funtion is to add the items in the collection
     to a list in a unique way
     '''
@@ -214,11 +214,11 @@ def extend_unique(obj,lst):
     return obj
 
 def pre_extend_unique(obj,lst):
-    ''' 
+    '''
     The purpose of this funtion is to add the items in the collection
     to a list in a unique way
     '''
-    
+
     for i in lst:
         prepend_unique(obj,i)
     return obj
@@ -239,7 +239,7 @@ def prepend_unique(obj,val):
     else:
         obj.remove(val)
         obj[0:0]=[val]
-    
+
     return obj
 
 def append_if_absent(obj,val):
@@ -249,7 +249,7 @@ def append_if_absent(obj,val):
 
 def extend_if_absent(obj,val):
     ''' The purpose of this funtion is to add to the object only the list elements which are unique'''
-    
+
     for element in val:
         if element not in obj:
             obj.append(element)
@@ -267,10 +267,42 @@ def make_unique_str(obj):
         for j in tmp:
             if str(j) == str(i):
                  addit=False
-                 break 
+                 break
         if addit:
             tmp.append(i)
     return tmp
+
+# For dict returns a new one by wrapping each key and value
+# For list or tuple returns a new one by wrapping each item
+# For function returns its name followed by wrapped arguments' list
+# For instance returns class name followed by wrapped __dict__
+# For class returns its name followed by wrapped __dict__
+# For others returns str(obj)
+def wrap_to_string(obj):
+    return _wrap_to_string(obj, set([id(obj)]))
+
+def _wrap_to_string(obj, knownObjIds):
+    if id(obj) in knownObjIds:
+        return '...'
+
+    knownObjIds.add(id(obj))
+    if is_dictionary(obj):
+        return dict([[_wrap_to_string(k, initialObj, currRecursionDepth),
+            _wrap_to_string(v, initialObj, currRecursionDepth)] for k, v in obj.iteritems()])
+    elif is_list(obj):
+        return [_wrap_to_string(i, initialObj, currRecursionDepth) for i in obj]
+    elif isinstance(obj, tuple):
+        return tuple([_wrap_to_string(i, initialObj, currRecursionDepth) for i in obj])
+    elif isinstance(obj, types.FunctionType):
+        return 'function %s (%s)' % (str(obj.__name__),
+            ','.join(_wrap_to_string(obj.func_code.co_varnames, initialObj, currRecursionDepth)))
+    elif isinstance(obj, types.InstanceType):
+        return 'instance of %s with %s' % (str(obj.__class__.__name__),
+            _wrap_to_string(obj.__dict__, initialObj, currRecursionDepth))
+    elif isinstance(obj, types.ClassType):
+        return 'class %s %s' % (str(obj.__name__), _wrap_to_string(obj.__dict__, initialObj, currRecursionDepth))
+    else:
+        return str(obj)
 
 def is_list(obj):
     return SCons.Util.is_List(obj)
@@ -311,7 +343,7 @@ def option_bool(val,option, default=False):
         else:
             print 'Parts:',option,'set to invalid value of [',val,'], using default of value of [',default,']'
             return default
-    return bool(val)    
+    return bool(val)
 
 #def is_lib_file(env,file):
 #    '''This function returns True if the argument looks like a file that would be copied to a LIB directory'''
@@ -327,12 +359,12 @@ def tag_node_ownership(env,node):
     if alias not in tmp:
         #print "Tagged",alias, node
         env.MetaTag(node,'parts',owners=[alias]+tmp)
-        
+
     tmp=env.MetaTagValue(node.srcnode(),'owners','parts',[])
     if alias not in tmp:
         #print "Tagged",alias, node.srcnode()
         env.MetaTag(node.srcnode(),'parts',owners=[alias]+tmp)
-    
+
     for k,e in node.entries.iteritems():
         if isinstance(e,SCons.Node.FS.Dir) and k != '.' and k!='..':
             tag_node_ownership(env,e)
@@ -346,10 +378,10 @@ def relpath(to_dir, from_dir=os.curdir):
     Does not check to see if directories exist.. assumes you get that right yourself
     Also in drive based systems.. it returns the abs_path(to_dir) in cases of different drives
     """
-    
+
     from_dir_list = (os.path.abspath(from_dir)).split(os.sep)
     to_dir_list = (os.path.abspath(to_dir)).split(os.sep)
-    
+
     # On the windows platform the target may be on a completely different drive from the base.
     if os.name in ['nt','dos','os2'] and from_dir_list[0] != to_dir_list[0]:
         # we could error .. but instead I return the to_path
@@ -375,10 +407,10 @@ def relpath(to_dir, from_dir=os.curdir):
 #---------------------------------------------------------------------
 # parseVersionNumber
 #
-# Parses a version number string such as '8.1.0' and returns 
+# Parses a version number string such as '8.1.0' and returns
 # major_number, minor_number, and revision_number.  For any of these
 # fields, a value of -1 means 'any'.  For example, '8.x.1' would return
-# 8, -1, and 1.  The given version number string must not start with a 
+# 8, -1, and 1.  The given version number string must not start with a
 # product prefix.
 #
 # Returns (error_msg, major_number, minor_number, revision_number).
@@ -404,8 +436,8 @@ def parseVersionNumber(versionNumber):
 ##---------------------------------------------------------------------
 ## CompareVersionNumbers
 ##
-## Compares two discrete version numbers and returns (error_msg, result) 
-## where error_msg is an emptry string if there is no error.  
+## Compares two discrete version numbers and returns (error_msg, result)
+## where error_msg is an emptry string if there is no error.
 ## result contains the result of the comparison
 ## as follows:
 ##
@@ -455,12 +487,12 @@ def get_version_from_list(v, vlist):
             return vi
     return False
 
-    
+
 ## help objects
 class _make_rel(object):
     def __init__(self,lst):
         self.lst=lst
-    
+
     def string_it(self,env,path):
         import pattern
         ret='[ '
@@ -489,7 +521,7 @@ class _make_rel(object):
 class _make_reld(object):
     def __init__(self,lst):
         self.lst=lst
-    
+
     def string_it(self,env,path):
         ret=[]
         for i in self.lst:
@@ -502,7 +534,7 @@ class _make_reld(object):
 class named_parms(object):
     def __init__(self,_kw):
         self.kw=_kw
-    
+
     def string_it(self,env,path):
         ret=""
         i=len(self.kw)
@@ -513,7 +545,7 @@ class named_parms(object):
                 ret+=','
         if ret=='':
             ret='**{}'
-        return ret  
+        return ret
 
 
 def gen_arg(env,sdk_path,value):
@@ -543,7 +575,7 @@ def func_gen(env,sdk_path,func,values):
 
 
 def map_alias_to_root(pobj,concept,alias_str,action=None,always_build=False):
-    
+
     basestr=alias_str.format(concept,pobj.Alias)
     a=pobj.Env.Alias(basestr)
     if pobj.Parent:

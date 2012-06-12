@@ -25,6 +25,7 @@ class part_info(stored_info.stored_info):
         self.build_context=[]
         self.config_context=[]
         self.force_load=False
+        self.kw={}
         
     
     def post_load_convet(self):

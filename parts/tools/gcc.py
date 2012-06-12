@@ -21,14 +21,18 @@ def generate(env):
 
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']
-    
+        
+    env['SHOBJSUFFIX'] = '.pic.o'
+    env['OBJSUFFIX'] = '.o'
+
+    # this is a hack to deal with some migration issues with cross builds and existing parts files
     # this is to work around broken linux installs that can break cross building
-    # with autoconfig.. or at least this helps
+    # with autoconfig via a Command() call.. or at least this helps
     if env['HOST_ARCH'] == 'x86' and env['TARGET_ARCH'] == 'x86_64':
         env['CC']=env['CC']+' -m64'
-    if env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
+    elif env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
         env['CC']=env['CC']+' -m32'
-    
+
  # fix this up so we can control its printing to screen better.
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))
         

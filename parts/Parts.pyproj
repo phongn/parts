@@ -7,12 +7,12 @@
     <ProjectHome>.</ProjectHome>
     <StartupFile>C:\Python27\Scripts\scons-2.1.0.py</StartupFile>
     <SearchPath>C:\Python27\scons-2.1.0</SearchPath>
-    <WorkingDirectory>c:\users\jlkenny\code\loadtimetest</WorkingDirectory>
+    <WorkingDirectory>C:\Users\jlkenny\code\phase2\confhe4</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
     <InterpreterPath />
-    <CommandLineArguments>foo</CommandLineArguments>
+    <CommandLineArguments>all --verbose=loading</CommandLineArguments>
     <IsWindowsApplication>False</IsWindowsApplication>
     <DebugStdLib>False</DebugStdLib>
     <InterpreterId>9a7a9026-48c1-4688-9d5d-e5699d47d074</InterpreterId>
@@ -278,6 +278,25 @@
     <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="configurations\debug\g++_any-any_android-arm.py" />
+    <Compile Include="configurations\debug\g++_any-any_android-x86.py" />
+    <Compile Include="configurations\debug\gcc_any-any_android-arm.py" />
+    <Compile Include="configurations\debug\gcc_any-any_android-x86.py" />
+    <Compile Include="configurations\debug\wdk_win32-any_win32-x86.py" />
+    <Compile Include="configurations\debug\wdk_win32-any_win32-x86_64.py" />
+    <Compile Include="configurations\default\g++_any-x86_64_any-x86.py" />
+    <Compile Include="configurations\default\g++_any-x86_any-x86_64.py" />
+    <Compile Include="configurations\default\gcc_any-x86_64_any-x86.py" />
+    <Compile Include="configurations\default\gcc_any-x86_any-x86_64.py" />
+    <Compile Include="configurations\default\gnulink_any-x86_64_any-x86.py" />
+    <Compile Include="configurations\default\gnulink_any-x86_any-x86_64.py" />
+    <Compile Include="configurations\release\g++_any-any_android-arm.py" />
+    <Compile Include="configurations\release\g++_any-any_android-x86.py" />
+    <Compile Include="configurations\release\gcc_any-any_android-arm.py" />
+    <Compile Include="configurations\release\gcc_any-any_android-x86.py" />
+    <Compile Include="configurations\release\wdk_win32-any_win32-x86.py" />
+    <Compile Include="configurations\release\wdk_win32-any_win32-x86_64.py" />
     <Compile Include="overrides\tool.py" />
+    <Compile Include="tools\GnuCommon\android.py" />
   </ItemGroup>
 </Project>

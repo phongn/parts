@@ -3,6 +3,7 @@ from parts.tools.Common.ToolSetting import MatchVersionNumbers
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import PathFinder
 from parts.platform_info import SystemPlatform
+import parts.tools.mslink
 
 import SCons.Util
 import os
@@ -197,6 +198,15 @@ if SCons.Util.can_read_reg:
 
 WDK.Register(hosts=hosts, targets=targets, info=WdkInfo())
 
+def _pdbEmitter(target, source, env):
+    extratargets = []
+    if env.has_key('PDB') and env['PDB'] and not env.get('IGNORE_PDB', False):
+        pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
+        extratargets.append(pdb)
+        target[0].attributes.pdb = pdb
+
+    return (env.Precious(target + extratargets), env.Precious(source))
+
 def _ddkplatform(platform):
     try:
         return {
@@ -314,6 +324,11 @@ def generate(env):
 
     WDK.MergeShellEnv(env)
 
+    env.Append(DDKDRVEMITTER = [_pdbEmitter])
+    env['_PDB'] = parts.tools.mslink.pdbGenerator
+    env['DDKCCPDBFLAGS'] = SCons.Util.CLVar(['${"/Z7" if PDB else ""}'])
+    env['DDKCCPCHFLAGS'] = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}'])
+
     env['DDK_MIN_WIN'] = 'wnet'
 
     env['DDKOBJSUFFIX'] = '.dobj'
@@ -354,7 +369,7 @@ def generate(env):
     env['DDKCPPPATH'] =[r'${DDKDIR}\inc\ddk', r'${DDKDIR}\inc\api', r'${DDKDIR}\inc\crt']
     env['DDKLINKCOM'] = SCons.Action.Action('${TEMPFILE("$DDKLINK $_DDKLIBPATH $_DDKLIBDIRFLAGS $_DDKLINKFLAGS $DDKLINKFLAGS /OUT:$TARGET.windows $_DDKLIBDIRFLAGS $_DDKLIBFLAGS $_DDKLIBS $_PDB $SOURCES.windows")}')
     env['DDKLINKFLAGS'] = []
-    env['DDKASCOM']     = '${TEMPFILE("$DDKAS $DDKASFLAGS $_DDKCPPDEFFLAGS -c -Fo$TARGET $SOURCES)"}'
+    env['DDKASCOM']     = '${TEMPFILE("$DDKAS $DDKASFLAGS $_DDKCPPDEFFLAGS $_DDKCPPDEFINES $_DDKCPPINCFLAGS -c -Fo$TARGET $SOURCES")}'
 
     env['DDKCFLAGS']   = '-nologo'
 

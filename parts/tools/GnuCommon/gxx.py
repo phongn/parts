@@ -1,6 +1,9 @@
+import os
 from common import gxx, GnuInfo
 from parts.tools.Common.Finders import PathFinder,ScriptFinder
 from parts.platform_info import SystemPlatform
+from parts.tools.Common.ToolInfo import ToolInfo
+import android
 
 gxx.Register(
     # we assume that the system has the correct libraies installed to do a cross build
@@ -155,4 +158,104 @@ gxx.Register(
 
     ]
 )
+
+# android
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-','g++.exe'),            
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-14\arch-x86"'},
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\bin',
+                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include\backward'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\x86\include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\include', 
+                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\x86'                                                  
+                        },
+            test_file='i686-android-linux-g++.exe'
+            )
+    ]
+)
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','g++.exe'),        
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-14\arch-arm"'},
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GXX.VERSION}\prebuilt\windows\bin',
+                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include\backward'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\armeabi\include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GXX.VERSION}\prebuilt\windows\include',
+                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\armeabi-v7a'                                                    
+                        },
+            test_file='arm-linux-androideabi-g++.exe'
+            )
+    ]
+)
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-','g++'),  
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/bin',
+                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/include',
+                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86'
+                                                    
+                        },
+            test_file='i686-android-linux-g++'
+            )
+    ]
+)
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','g++'),    
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-14/arch-arm"'},
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GXX.VERSION}/prebuilt/linux-x86/bin',
+                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a/include'+os.pathsep+
+                            r'${GXX.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GXX.VERSION}/prebuilt/linux-x86/include',
+                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a'
+                                                    
+                        },
+            test_file='arm-linux-androideabi-g++'
+            )
+    ]
+)
+
 

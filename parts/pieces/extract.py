@@ -10,9 +10,37 @@ import SCons.Environment
 import time
 import shutil
 import stat
+import ctypes
 from parts.common import matches
 from parts import api
 from parts import datacache
+
+class SymlinkException(BaseException):
+    pass
+
+try:
+    symlink = os.symlink
+except AttributeError:
+    try:
+        CreateSymbolicLinkW = ctypes.windll.kernel32.CreateSymbolicLinkW
+        symlink = lambda src, dst: CreateSymbolicLinkW(unicode(dst), unicode(src), 1 if os.path.isdir(dst) else 0)
+    except AttributeError:
+        # it's pity but Windows prior Vista does not have CreateSymbolicLinkW function
+        def symlink(src, dst):
+            raise SymlinkException("Don't know how to make symlink on Windows XP")
+
+class HardlinkException(BaseException):
+    pass
+
+try:
+    link = os.link
+except AttributeError:
+    try:
+        CreateHardLinkW = ctypes.windll.kernel32.CreateHardLinkW
+        link = lambda src, dst: CreateHardLinkW(unicode(src), unicode(dst), None)
+    except AttributeError:
+        def link(src, dst):
+            raise HardlinkException("Don't know how to make hard link on Windows NT")
 
 def getNodesFromCache(fileNode, generator, env, factory):
     fileNodeCacheName = fileNode.for_signature()
@@ -85,6 +113,12 @@ def emitterUntar(target,source,env):
 
     return target, source
 
+if os.sep == '/':
+    normArchivePath = os.path.normpath
+else:
+    # Archives use "/" as separator. Even on Windows
+    normArchivePath = lambda x: os.path.normpath(x).replace('\\', '/')
+
 def makelink(z,i,f):
     try:
         os.makedirs(os.path.dirname(f))
@@ -95,7 +129,7 @@ def makelink(z,i,f):
     p = os.path.join(os.path.dirname(f), i.linkname)
     t = None
     if not os.path.exists(p):
-        t = z.getmember(os.path.normpath(os.path.dirname(i.name) +'/'+i.linkname))
+        t = z.getmember(normArchivePath(os.path.dirname(i.name) +'/'+i.linkname))
         if t.isreg():
             writeFile(z, t, p)
         elif t.isdir():
@@ -103,7 +137,7 @@ def makelink(z,i,f):
         elif t.islnk() or t.issym():
             makelink(z,t,p)
     if i.issym():
-        os.symlink(i.linkname, f)
+        symlink(i.linkname, f)
     else:
         os.link(p, f)
     if t is not None:

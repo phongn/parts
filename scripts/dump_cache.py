@@ -1,43 +1,100 @@
 import sys
 import os
-# load the SCons code
-import scons_setup
-scons_setup.scons_path()
-
-sys.path=[os.path.abspath('./'),
-            os.path.abspath('../'),
-            
-            # this is a hack till better code is generated
-            'c:/python26/lib/site-packages/parts',
-            'c:/python27/lib/site-packages/parts'    
-          ]+sys.path
-
-import cPickle
+import re
 import pprint
 
-import parts.pickle_helpers as pickle_helpers
-import parts.glb as glb
+import scons_setup
+import cache_unpickle
+import options_common
 
-datafile=sys.argv[1]
-tmp=os.path.split(os.path.split(os.path.abspath(datafile))[0])[1]
+indentIncrement = '  '
 
-glb.engine._cache_key=tmp
+if __name__ == '__main__':
+    parser = options_common.getCommonParser(str(__file__))
 
+    parser.add_option('--include-nodes', dest = 'includeNodes', metavar = 'REGEX',
+        action = 'append', default = [], help = 'Filter in by specific scons nodes' + \
+            'Applicable for "%s" cache file only' % cache_unpickle.CacheFilenames.FILE_NODEINFO)
 
+    parser.add_option('--exclude-nodes', dest = 'excludeNodes', metavar = 'REGEX',
+        action = 'append', default = [], help = 'Filter out by specific scons nodes' + \
+            'Applicable for "%s" cache file only' % cache_unpickle.CacheFilenames.FILE_NODEINFO)
 
-try:
-    if os.path.exists(datafile):
-        
-        output = open(datafile, 'rb')
-        p= cPickle.Unpickler(output)
-        p.persistent_load =pickle_helpers.persistent_unpickle
-        tmp=p.load()
-        (tmp,stored_data)=tmp
-        output.close()
-        
-except IOError,ec:
-    pass
+    parser.add_option('--include-aliases', dest = 'includeAliases', metavar = 'REGEX',
+        action = 'append', default = [], help = 'Filter in by specific aliases' + \
+            'Applicable for "%s" cache file only' % cache_unpickle.CacheFilenames.FILE_NODEINFO)
 
+    parser.add_option('--exclude-aliases', dest = 'excludeAliases', metavar = 'REGEX',
+        action = 'append', default = [], help = 'Filter out by specific aliases' + \
+            'Applicable for "%s" cache file only' % cache_unpickle.CacheFilenames.FILE_NODEINFO)
 
-pp=pprint.PrettyPrinter()
-pp.pprint(stored_data)
+    (options, args) = parser.parse_args()
+    if len(args) == 0:
+        parser.error('No path to cache file specified')
+        sys.exit(1)
+    elif len(args) > 1:
+        print 'WARNING: Extra argument(s) {0} ignored.'.format(args[1:])
+
+    datafile = args[0]
+    if not os.path.isfile(datafile):
+        parser.error('Not a valid filepath: %s' % str(datafile))
+        sys.exit(1)
+
+    (cacheRootDir, cacheDirName, cacheKey, cacheName) = cache_unpickle.split(datafile)
+
+    scons_setup.setup(options.sconsVersion)
+    storedData = cache_unpickle.unpickle(datafile)
+    assert(isinstance(storedData, dict))
+
+    includeRexes = {
+        cache_unpickle.NodeinfoKeys.KNOWN_PNODES: [re.compile(i) for i in options.includeParts],
+        cache_unpickle.NodeinfoKeys.KNOWN_NODES: [re.compile(i) for i in options.includeNodes],
+        cache_unpickle.NodeinfoKeys.ALIASES: [re.compile(i) for i in options.includeAliases],
+    }
+    excludeRexes = {
+        cache_unpickle.NodeinfoKeys.KNOWN_PNODES: [re.compile(i) for i in options.excludeParts],
+        cache_unpickle.NodeinfoKeys.KNOWN_NODES: [re.compile(i) for i in options.excludeNodes],
+        cache_unpickle.NodeinfoKeys.ALIASES: [re.compile(i) for i in options.excludeAliases],
+    }
+
+    someFilteringExists = any([len(v) > 0 for k, v in includeRexes.iteritems()]) or \
+        any([len(v) > 0 for k, v in excludeRexes.iteritems()])
+
+    if someFilteringExists and cache_unpickle.CacheFilenames.FILE_NODEINFO != cacheName:
+        raise Exception('Filtering options are supported only for "%s" cache file' % \
+            cache_unpickle.CacheFilenames.FILE_NODEINFO)
+
+    txtOutput = ''
+    pp = pprint.PrettyPrinter()
+    for rootKey, rootVal in storedData.iteritems():
+        if rootKey not in includeRexes.keys() or rootKey not in excludeRexes.keys():
+            raise Exception('Unknown key {0} in cache file'.format(rootKey))
+
+        if someFilteringExists and len(includeRexes[rootKey]) == 0 and len(excludeRexes[rootKey]) == 0:
+            continue
+
+        txtOutput += "'{0}'".format(rootKey) + '\n'
+
+        if isinstance(rootVal, dict):
+            for k, v in rootVal.iteritems():
+                if any([i.search(k) for i in excludeRexes[rootKey]]):
+                    continue
+                if includeRexes[rootKey] and not any([i.search(k) for i in includeRexes[rootKey]]):
+                    continue
+
+                val = v.__dict__ if hasattr(v, '__dict__') else v
+                printLines = ["'{0}' = ".format(k)] + pp.pformat(val).splitlines()
+                for line in printLines:
+                    txtOutput += indentIncrement + line + '\n'
+                txtOutput += '\n' # EOL
+        else:
+            txtOutput += indentIncrement + "'{0}'".format(rootVal) + '\n'
+            txtOutput += '\n' # EOL
+
+        txtOutput += '\n' # EOL
+
+    # Parts redirects stderr and stdout, need to return them back
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+    print txtOutput,

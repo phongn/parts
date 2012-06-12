@@ -15,6 +15,14 @@ def removeall(path):
     in general does not like read-only directory deleting. This allow us to 
     remove these files from the test area without issue.
     '''
+    def rm_link(p):
+        try:
+            st = os.lstat(p)
+            # should exist in 2.6, does not seem to be on some distros of 2.7??
+            os.lchmod(p, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        except:
+            pass
+        os.unlink(p)          
 
     def rm_file(p):
         st = os.stat(p)
@@ -37,7 +45,9 @@ def removeall(path):
 
     for x in files:
         fullpath=os.path.join(path, x)
-        if os.path.isfile(fullpath):
+        if os.path.islink(fullpath):
+            rm_link(fullpath)
+        elif os.path.isfile(fullpath):
             rm_file(fullpath)            
         elif os.path.isdir(fullpath):
             rm_dir(fullpath)
@@ -181,6 +191,9 @@ class base(object):
                 elif pol == 'error':
                     # report the error
                     api.output.error_msg(ret,show_stack=False)
+                elif pol =='message-update':
+                    ret_val = True
+                    api.output.print_msg(ret)
                 elif pol =='update':
                     ret_val = True
                     api.output.verbose_msg('vcs_update',ret)
@@ -251,7 +264,7 @@ class base(object):
             try:
                 ret=self.Update()
             except:    
-                api.output.print_error("Unexpected exception when doing Update actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
+                api.output.error_msg("Unexpected exception when doing Update actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
                 import traceback,StringIO
                 traceback.print_exc()
                 raise
@@ -261,7 +274,7 @@ class base(object):
             try:
                 ret=self.CheckOut()
             except:    
-                api.output.print_error("Unexpected exception when Checkout actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
+                api.output.error_msg("Unexpected exception when Checkout actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
                 import traceback,StringIO
                 traceback.print_exc()
                 raise
@@ -274,12 +287,12 @@ class base(object):
             try:
                 removeall(self.CheckOutDir)
             except OSError, e:
-                api.output.print_error("Failed to remove directory: {0}".format(e),show_stack=False,exit=False) 
+                api.output.error_msg("Failed to remove directory: {0}".format(e),show_stack=False,exit=False) 
                 raise
             api.output.print_msg("Doing full checkout of {0}.".format(self._pobj.Alias))
             ret=self.CheckOut()
             if ret:
-                api.output.print_error("Checkout action failed again for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
+                api.output.error_msg("Checkout action failed again for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
         return ret
         
             
@@ -368,6 +381,7 @@ class base(object):
         
         if echo:
             api.output.print_msg("cmd str=%s"%cmd_str)
+        api.output.verbose_msgf('vcs_command',"cmd str={0}",cmd_str)
         sys.stdout.flush ()
 
         #try:
@@ -390,6 +404,7 @@ class base(object):
             print 
         # get return codes
         ret = proc.returncode
+        api.output.verbose_msgf('vcs_command',"output={0}",cmd_output)
         return (ret,cmd_output)
         #except KeyError:
         #    raise

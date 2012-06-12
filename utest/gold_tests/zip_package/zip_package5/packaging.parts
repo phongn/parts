@@ -1,6 +1,0 @@
-Import('*')
-
-env.PartName("packaging")
-env.DependsOn([Component('zip_package1'), Component('zip_package2')])
-
-env.ZipPackage(target = 'install.zip', sources = ['pkg1', 'pkg2'])

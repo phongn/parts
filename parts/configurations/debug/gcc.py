@@ -1,5 +1,5 @@
 ######################################
-### gcc compiler configurations pat_debug
+### gcc compiler configurations debug
 ######################################
 
 import sys

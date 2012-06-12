@@ -144,7 +144,7 @@ def depends_on_classic(env,depends):
 
    
     #map up rpath with this.. ( need to fix up the Mac)
-    if env['HOST_PLATFORM']!='win32' and env['HOST_PLATFORM'] != 'darwin':
+    if env['TARGET_PLATFORM']!='win32' and env['TARGET_PLATFORM'] != 'darwin':
         def_env=glb.engine
         glb.engine.add_preprocess_logic_queue(functors.map_rpath_part(env))
         glb.engine.add_preprocess_logic_queue(functors.map_rpath_link_part(env,pobj.DefiningSection))

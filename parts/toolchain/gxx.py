@@ -1,7 +1,9 @@
 
 def gxx_setup(env,ver):
-    env['GXX_VERSION']=ver
-    env['GCC_VERSION']=ver
+    if env.get('GXX_VERSION') is None:
+        env['GXX_VERSION']=ver
+    if env.get('GCC_VERSION') is None:
+        env['GCC_VERSION']=ver
 
 def resolve(env,version):
     func=lambda x : gxx_setup(x,version)
@@ -13,7 +15,8 @@ def resolve(env,version):
                 ('gcc',func),
                 ('ar',None),
                 ('gas',None),
-                ('applelink',None)
+                ('applelink',None),
+                ('lipo',None)
             ]
 
     else:        

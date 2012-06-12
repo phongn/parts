@@ -35,9 +35,8 @@ def MatchVersionNumbers(verStr1, verStr2):
 
 class GnuInfo(ToolInfo):
     def __init__(self,install_scanner,opt_dirs,script,subst_vars,shell_vars,test_file,opt_pattern=None):
-        ToolInfo.__init__(self,None,install_scanner,script,subst_vars,shell_vars,test_file)
+        ToolInfo.__init__(self,"*",install_scanner,script,subst_vars,shell_vars,test_file)
         self.opt_paths=parts.common.make_list(opt_dirs)
-        self.version=version_range('*')
         self.found=None
         self.opt_pattern=opt_pattern
 
@@ -183,14 +182,15 @@ class GnuInfo(ToolInfo):
                         fullpath=os.path.join(install_root,item)
                         tmp=self.get_default_ver(fullpath)
                         if tmp is not None:
-                            ret[tmp]=(install_root,item)                    
+                            ret[tmp]=(install_root,fullpath)                    
                                 
                 #see if we can find a default version in the directories provided
                 # overrides any previous finds of same version
 
                 tmp=self.get_default_ver(os.path.join(install_root,self.test_file))
                 if tmp is not None:
-                    ret[tmp]=(install_root,self.test_file) 
+                    ret[tmp]=(install_root,os.path.join(install_root,self.test_file)) 
+                    
                 self.found=ret
         
         if self.found == {}:
@@ -201,4 +201,5 @@ class GnuInfo(ToolInfo):
 
 gxx=ToolSetting('gxx')
 gcc=ToolSetting('gcc')
+binutils=ToolSetting('binutils')
 

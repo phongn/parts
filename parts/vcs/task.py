@@ -1,4 +1,5 @@
 from .. import api
+from ..reporter import PartRuntimeError as PartRuntimeError
                     
 class task(object):
     ''' 
@@ -31,19 +32,19 @@ class task(object):
     def execute(self):
         ''' this is what we call to do the checkout'''
         try:
-            if self.__vcs.UpdateOnDisk():
-                self.failed()
-        except PartRuntimeError, e:
-            buildError = SCons.Errors.convert_to_BuildError(e)
-            buildError.node = self.__vcs.CheckoutDir
-            buildError.exc_info = sys.exc_info()
-            raise buildError
-        #except:
-        #    
-        #    import traceback,StringIO
-        #    #ec_str=StringIO.StringIO()
-        #    traceback.print_exc()#file=ec_str)
-        #    raise
+            try:
+                if self.__vcs.UpdateOnDisk():
+                    self.failed()
+            except PartRuntimeError, e:
+                buildError = SCons.Errors.convert_to_BuildError(e)
+                buildError.node = self.__vcs.CheckoutDir
+                buildError.exc_info = sys.exc_info()
+                raise buildError
+        except:    
+            import traceback,StringIO
+            #ec_str=StringIO.StringIO()
+            traceback.print_exc()#file=ec_str)
+            raise
         
     def exception_set(self,exception=None):
         self.__failed=True

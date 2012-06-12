@@ -165,6 +165,7 @@ class ToolSetting(object):
                 return
         except:
             pass
+        api.output.verbose_msgf(['toolsettings'],"query for known")
         # don't have it, so we setup to get it added to cache
         self.found[key]=[]
         self.not_found[key]=None # set this to fully queried
@@ -192,8 +193,7 @@ class ToolSetting(object):
             for k,vl in self.tools[_target].iteritems():
                 swap=False
                 for v in vl:
-                    tmp=v.query(env,self.name,root_path,use_script)
-                        
+                    tmp=v.query(env,self.name,root_path,use_script)   
                     # if we find anything
                     if tmp is not None:
                         #go through all items and store needed information
@@ -221,7 +221,6 @@ class ToolSetting(object):
         #test for any-any
         if self.tools.has_key(t3):
             query_logic(t3)
-        
         self.found[key].sort(reverse=True,cmp=_cmp_)
         
         
@@ -234,7 +233,6 @@ class ToolSetting(object):
         This should not be an issue as the scripts and environment should not
         change during the build. scripts should have a unique path
         '''
-        
         # see if we have tested for it
         try:
             if self.not_found[key] is None:
@@ -242,6 +240,7 @@ class ToolSetting(object):
                 return
         except:
             pass
+        api.output.verbose_msgf(['toolsettings'],"query for Exact version '{0}'",version)
         # don't have it, so we setup to get it added to cache
         if not self.found.has_key(key):
             self.found[key]=[]
@@ -361,6 +360,7 @@ class ToolSetting(object):
         # based on best match. 
         #Platform is given priority to architecture
         ret=None
+        
         if self.tools.has_key(target):
             for k,vl in self.tools[target].iteritems():
                 for v in vl:
@@ -473,7 +473,6 @@ class ToolSetting(object):
                 # map version to best known value found
                 best_version=self.best_ver_map(key,version)
             # see if we know if the give version exists
-            
             if self.is_version_known(best_version,key):
                 tinfo=self.GetInfo(_env,best_version,target,root_path,use_script)
             else:
@@ -489,7 +488,7 @@ class ToolSetting(object):
                 raise ToolSetupError("Version of %s of %s not found for target %s. Found version are %s"%(version,self.name,target,self.found[key]))
 
             if tinfo is None:
-                raise ToolSetupError('ToolSettings failed to load infomation about tool with version: %s and target: %s'%(version,target))
+                raise ToolSetupError('ToolSettings failed to load infomation about tool {0} with version: {1} and target: {2}'.format(self.name,version,target))
             ##got the tool info now get the data
                                         
             #get the shell environment

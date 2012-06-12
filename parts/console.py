@@ -129,7 +129,7 @@ class Console(object):
     
     def ShutDown(self):
         sys.stdout=sys.__stdout__
-        sys.stdout=sys.__stderr__
+        sys.stderr=sys.__stderr__
         
 
     def _set_color(self,val):

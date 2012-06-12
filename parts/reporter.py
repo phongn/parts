@@ -18,12 +18,12 @@ import common
 import console
 import errors
 
-#if 'stacktrace' in SCons.Script.GetOption('debug'):
-class PartRuntimeError(SCons.Errors.StopError):
-    pass
-#else:
- #   class PartRuntimeError(SCons.Errors.UserError):
-  #      pass
+if 'stacktrace' in SCons.Script.GetOption('debug'):
+    class PartRuntimeError(SCons.Errors.StopError):
+        pass
+else:
+    class PartRuntimeError(SCons.Errors.UserError):
+        pass
     
 class streamer(object):
     def __init__(self,outfunc):
@@ -37,11 +37,11 @@ test_search=0
 test_match=1
 
 warning_tests = [
-    (test_search,re.compile('((\s|\W)warnings?(\W\s|\s))|(warnings?\s?:)',re.IGNORECASE))
+    (test_search,re.compile('((\s|\W)warnings?(\D|\W\s|\s))|(warnings?\s\D)',re.IGNORECASE))
     ]
 
 error_tests =[
-    (test_search,re.compile('((\s|\W)errors?(\W\s|\s))|(errors?\s?:)',re.IGNORECASE)),
+    (test_search,re.compile('((\s|\W)errors?(\D|\W\s|\s))|(errors?\s?\D)',re.IGNORECASE)),
     (test_match,re.compile('fail$',re.IGNORECASE))
     ]
 

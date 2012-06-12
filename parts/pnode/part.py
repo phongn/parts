@@ -18,7 +18,7 @@ from .. import functors
 from .. import datacache
 
 # these imports add stuff we will need to export to the parts file.
-from .. import platform_info 
+from .. import platform_info
 from .. import version
 from .. import dependson
 from .. import node_helpers
@@ -29,7 +29,7 @@ import copy
 import pprint
 import os
 import time
-#import SCons.Script 
+#import SCons.Script
 import SCons.Node
 import types
 import hashlib
@@ -39,7 +39,7 @@ class part_compatiblity(object):
     @property
     def version(self):
         return self.Version
-    
+
     @property
     def alias(self):
         return self.Alias
@@ -47,13 +47,13 @@ class part_compatiblity(object):
 
 class part(pnode.pnode,part_compatiblity):
     """description of class"""
-    
+
     __slots__=[
     # calling params
     '__append',     # This is stuff we want to append to the environment
     '__prepend',    # this is stuff we would want to prepend
-    '__kw',         # this is stuff we want to replace        
-        
+    '__kw',         # this is stuff we want to replace
+
     # basic attibutes
     '__ID',
     '__file',         # the Parts file
@@ -65,30 +65,30 @@ class part(pnode.pnode,part_compatiblity):
     '__short_alias',  # the short name of this parts (goo0)
     '__parent',       # the parent part object, else None
     '__root',         # the root part object, might be self
-    '__subparts',      # dictionary of sub-parts 
-    
+    '__subparts',      # dictionary of sub-parts
+
     '__mode',          # special build values
     '__uses',      # list of Parts that this we want to map to first
     '__settings',       # The setting object used to create the enviornment
     '__env',            # the prime SCons Environment
     '__platform_match', # this is how we can depend on this object
-    
+
     '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
     '__env_diff_sig', # The MD5 value of this difference
-    
-    '__build_context_files', 
+
+    '__build_context_files',
     '__config_context_files',
-    
+
     '__sections', # the section the part contains
     '__classic_section', # the classic format case
-    
-    
-    # sdk data 
+
+
+    # sdk data
     '__create_sdk',     # create the SDK
     '__create_sdk_data', # This is the data for the SDK file we will want to make
     '__sdk_files',      # the file that are copied in to the SDK
     '__sdk_file',       # the name of the SDK file we will make.. if any
-    
+
     # some state stuff
     '__force_load', # tells us that this Parts should be loaded
     '__format',     #The format of the part file
@@ -96,13 +96,13 @@ class part(pnode.pnode,part_compatiblity):
     '__is_default_target', # do we set this as a default build target
     '__defining_section', # current section we are defining
     '__read_state',
-    
+
     #packaging stuff
     '__package_group', # the package group this maps to
-    
+
     #VCS stuff
     '__vcs', #The information on how to check out this Part, None to use as file as local path.
-    
+
     #compatiblity stuff
     '__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
     '__order_value', # use to help with ordering in a compatible way between classic and new formats
@@ -114,14 +114,14 @@ class part(pnode.pnode,part_compatiblity):
             append={},prepend={},create_sdk=True,package_group=None,alias=None,name=None,
             Settings=None,
             **kw):
-        
+
         self.__ID=kw.get('ID')
         if self.__ID: del kw['ID']
-        ## stuff for creating an environment 
+        ## stuff for creating an environment
         # need to store this so we can pass to an sub-part
         self.__append=append #This is stuff we want to append to the environment
         self.__prepend=prepend # this is stuff we would want to prepend
-        self.__kw=kw # this is stuff we want to replace        
+        self.__kw=kw # this is stuff we want to replace
         self.__mode=common.make_list(mode)
         self.__settings=Settings
         #version number.. ideally this maps to root version only
@@ -131,28 +131,28 @@ class part(pnode.pnode,part_compatiblity):
         # do we want to create the sdk or skip it
         self.__create_sdk=create_sdk
         # This is the data for the SDK file we will want to make
-        self.__create_sdk_data=[] 
+        self.__create_sdk_data=[]
         # the file that are copied in to the SDK
-        self.__sdk_files=[] 
+        self.__sdk_files=[]
         # the name of the SDK file we will make.. if any
-        self.__sdk_file=None 
-        
+        self.__sdk_file=None
+
         ##packaging stuff
         # what package group to add this to
         self.__package_group=package_group
-        
+
         ## state stuff
         self.__is_default_target=default # do we set this as a default build target
-        
+
         # the part has been fully processed or not
         #self.__Processed=False
-        
+
         # this is the style/format the part file used
         self.__format=None
-        
-        # everything we dependon, implict and explict, 
+
+        # everything we dependon, implict and explict,
         # contain component objects.. change to part and component mix latter??
-#        self.__full_dependson=[] 
+#        self.__full_dependson=[]
 #        self.__dependson=[] # has to be a list as the order matters for linking
         # these are Parts that this Part uses, but may not depend on.
         # we will make sure these are processed before this Part is processed
@@ -164,16 +164,16 @@ class part(pnode.pnode,part_compatiblity):
         # ideally stored only on root_parts
         if self.__kw.get('parent_part',None) is None:
             self.__uses=common.make_list(kw.get("requires",[]))
-        
+
         # data we will cache later
         self.__cache={}
         # the sections we can define in a part
         self.__sections={}
         # the environment object for the Part
-        self.__env=None 
-        
+        self.__env=None
+
         ##basic data
-        # the alias.. such as 
+        # the alias.. such as
         self.__alias=alias
         self.__short_alias=alias
         #The part name.. parent.name+.+short_name
@@ -189,20 +189,20 @@ class part(pnode.pnode,part_compatiblity):
         self.__root=None
         # any subparts to this Part
         self.__subparts={}
-        
-        
+
+
         self.__defining_section=None
         self.__classic_section=None
-        
+
         ## collection of data we make during the build
-        
-        # files that effect the possible good state of this build context 
+
+        # files that effect the possible good state of this build context
         # of anything this Part might fix
-        self.__build_context_files=set() 
+        self.__build_context_files=set()
         self.__config_context_files={}
-        
+
         # how we can get the source, None is local
-        self.__vcs=vcs_t 
+        self.__vcs=vcs_t
         # the file for this part, if any
         self.__file=file
         # the src_path we need to make sure SCons as no issues when loading the Part file
@@ -210,16 +210,16 @@ class part(pnode.pnode,part_compatiblity):
         # this is how we can depend on this object
         self.__platform_match=None
         self.__is_setup=False
-        
+
         # use to help with ordering in a compatible way between classic and new formats
         self.__order_value=0
-        
+
         # this is to help with issues with unit tests sub parts in classic format
         self.__sdk_or_installed_called=False
-        
+
         # this to force loading .. bypassing caching features
         self.__force_load=kw.get('force_load',False)
-        
+
         # some state stuff
         try:
             self.__read_state=self.__read_state
@@ -227,7 +227,7 @@ class part(pnode.pnode,part_compatiblity):
             self.__read_state=glb.load_none
         super(part, self).__init__()
 
-    
+
     @staticmethod
     def _process_arg(**kw):
         id = kw.get('ID')
@@ -245,7 +245,7 @@ class part(pnode.pnode,part_compatiblity):
     @property
     def _prepend(self):
         return self.__prepend
-    
+
     @property
     def _kw(self):
         return self.__kw
@@ -254,74 +254,74 @@ class part(pnode.pnode,part_compatiblity):
     @property #readonly non-mutable
     def File(self):
         return self.__file
-    
+
     @property # readonly non-mutable
     def SourcePath(self):
         """Get the current parent Part source path."""
         return self.__src_path
-    
+
     @SourcePath.setter
     def SourcePath(self,path):
         """Get the current parent Part source path."""
         self.__env['SRC_DIR']=self.__env['PART_DIR']=self.__src_path=path
         return self.__src_path
-    
+
     @property
     def Version(self): # mutable
         """Get the current version."""
         if self.isRoot:
             return self.__version
         return self.__root.Version
-    
+
     @Version.setter
     def Version(self,version):
         if self.isRoot:
             self.__version = version
         else:
             self.__root.Version=version
-    
+
     @property # readonly as it based on full version
     def ShortVersion(self):
         """Get the current short version."""
         return self.__root.__version[0:2]
-    
+
     @property #readonly non-mutable
-    def Alias(self): 
+    def Alias(self):
         """Get the current alias."""
         if self.__alias is None:
             self.__alias=self.__ID
         return self.__alias
-    
+
     @pnode.pnode.ID.getter
     def ID(self):
         if self.__ID is None:
             self.__ID=self.__alias
         return self.__ID
-    
+
     @property #readonly non-mutable
     def ShortAlias(self):
         """Get the current alias."""
         return self.__short_alias
-    
+
     @property
     def Name(self): #read only non-mutable as it based on short name and parent
         """Get the current parent Part name."""
         if self.__name is None:
             return self.__alias
         return self.__name
-    
-    @property # readonly 
+
+    @property # readonly
     def ShortName(self):
         """Get the current parent Part name."""
         if self.__short_name is None:
             return self.__short_alias
-        return self.__short_name    
-    
+        return self.__short_name
+
     @ShortName.setter
     def ShortName(self, val):
         self._set_name(val)
-    
-    #For backward compatibility    
+
+    #For backward compatibility
     def _set_name(self,name,force_parent=None):
         if force_parent is not None:
             self.__name=force_parent+'.'+name
@@ -331,7 +331,7 @@ class part(pnode.pnode,part_compatiblity):
             self.__name=name
         self.__short_name=name
         glb.engine._part_manager.add_name_alias(self.__name,self.__alias)
-    
+
     @property #readonly mutable
     def Parent(self):
         """Get the current parent Part, or None if there is no parent"""
@@ -357,7 +357,7 @@ class part(pnode.pnode,part_compatiblity):
     @property #readonly non-mutable
     def SubParts(self):
         return self.__subparts.values()
-    
+
     @SubParts.setter
     def SubParts(self,obj):
         try:
@@ -365,11 +365,11 @@ class part(pnode.pnode,part_compatiblity):
                 api.output.error_msg("%s is already defined"%obj.Alias)
         except KeyError:
             self.__subparts[obj.ID]=obj
-       
+
     @property
     def Mode(self): #readonly non-mutable
         return self.__mode # may want to return a copy
-        
+
     @property #readonly non-mutabale
     def Uses(self):
         if self.isRoot:
@@ -394,108 +394,108 @@ class part(pnode.pnode,part_compatiblity):
             return self.__cache['uses']
         else:
             return self.__root.Uses
-    
+
     def usesPart(self,obj):
         ''' return True if the part passed in is used by this parts'''
         if self.isRoot:
             # need to test that this works as expected
             return obj in self.Uses
         return self.__root.usesPart(obj)
-        
+
     @property
     def Settings(self): #readonly mutable
         return self.__settings
-        
+
     @property
     def Env(self):
         """get the default environment used with this Part"""
         return self.__env
-    
+
     @property
-    def PlatformMatch(self): #readonly 
+    def PlatformMatch(self): #readonly
         ''' Returns the SystemPlatform this part will match on for dependancies
         '''
         return self.__platform_match
-    
+
     @property
     def _env_diff(self): #readonly
         return self.__env_diff
-    
+
     @property
     def _env_diff_sig(self): #readonly
         return self.__env_diff
-        
+
     @property
     def _build_context_files(self):
-        ''' 
-        
+        '''
+
         '''
         if self.isRoot:
             return self.__build_context_files
         else:
             return self.__root._build_context_files
-    
+
     @property
     def _config_context_files(self):
-        ''' 
-        
+        '''
+
         '''
         if self.isRoot:
             return self.__config_context_files
         else:
             return self.__root._config_context_files
-    
+
     #sdk stuff (finish SDK stuff)
     @property
     def SdkFile(self):
         return self.__sdk_file
-    
+
     @property
     def _sdk_files(self):
         return self.__sdk_files
-    
+
     @property
     def _create_sdk_data(self):
         return self.__create_sdk_data
-    
+
     @property
     def CreateSdk(self):
         return self.__create_sdk
-    
+
     #State
     @property
     def ForceLoad(self):
         return self.__force_load
-    
+
     @property
     def Format(self):
         return self.__format
-    
+
     @Format.setter
     def Format(self,s):
         '''
         currently set to new or classic.. need to clean up latter to something better
         '''
         self.__format=s
-        
+
     @property
     def isClassicFormat(self):
         return self.__format=='classic' or self.__format is None
-    
+
     @property
     def isRoot(self):
         return self.__alias == self.__root.Alias
-    
+
     @property
     def isSetup(self):
         '''returns if we have setup the environment for basic usage'''
         return self.__is_setup
-    
+
     @property
     def isDefaultTarget(self):
         '''Returns true is this Part is set as a default Target to be built'''
         return self.__is_default_target
-    
+
     @property
     def isVisited(self):
         return self.LoadState==glb.load_file
@@ -503,13 +503,13 @@ class part(pnode.pnode,part_compatiblity):
     @isVisited.setter
     def _set_isVisited(self,value):
         pass
-        
+
     #packaging stuff
     @property
     def PackageGroup(self):
         '''the Package group this Part is mapped to'''
         return self.__package_group
-    
+
     #vcs stuff
     @property
     def Vcs(self):
@@ -518,29 +518,29 @@ class part(pnode.pnode,part_compatiblity):
             return self.__vcs
         from ..vcs import null
         return null.null
-    
-    
+
+
     # some compatibility stuff
     @property
     def _sdk_or_installed_called(self):
         return self.__sdk_or_installed_called
-        
+
     @_sdk_or_installed_called.setter
     def _sdk_or_installed_called(self,value):
         self.__sdk_or_installed_called=value
-        
+
     @property
     def _order_value(self):
         return self.__order_value
-    
+
     @_order_value.setter
     def _order_value(self,x):
         self.__order_value=x
-    
+
     @property
     def _cache(self):
         return self.__cache
-      
+
 
     # section forwarding API
     # given that we can only define one section at a time
@@ -554,28 +554,28 @@ class part(pnode.pnode,part_compatiblity):
         except KeyError:
             pass
         return self.__classic_section
-    
+
     @DefiningSection.setter
     def DefiningSection(self,sec):
         self.__defining_section=sec
-    
-    
+
+
     def Section(self,case):
         try:
             tmp=self.__sections[case]
             return tmp
         except:
             return self.__classic_section
-    
+
     # hack till we get new format stuff working...
     def _AddSection(self,name,obj):
         self.__sections[name]=obj
-        
+
     def SectionName(self):
         return None
-        
-    
-    # re look at this function when we add new format 
+
+
+    # re look at this function when we add new format
     def _hasTargetFiles(self):
         return self.__classic_section.Targets != set([])
 
@@ -588,31 +588,31 @@ class part(pnode.pnode,part_compatiblity):
         if glb.engine._build_mode=='help':
             return
 
-        # this value allows us a work around to the 
+        # this value allows us a work around to the
         # issue of generating an ID vs a full setup
         genid=kw.get('gen_ID')
-        
+
         ss=time.time()
         # is this core like the iapat object?
-        
+
         if _env is None:
             # if none have been setup, use the default Settings object
             if self.__settings==None:
                 self.__settings=settings.DefaultSettings()
-                
-            self.__env=self.__settings.Environment(                
+
+            self.__env=self.__settings.Environment(
                         prepend=self.__prepend.copy(),
                         append=self.__append.copy(),
                         **self.__kw.copy()
                         )
-            
+
         else:
             self.__env=_env
-        
-        
+
+
         ###basic data
         # create diff with default environment
-        base_env=self.__settings.Environment()
+        base_env=self.__settings._env_const_ref()
         #check to see if the big three are different config, target_platform, toolchain
         #if so we want to diff off of that case, as these can item can make a mass set
         # of changes we really want to ignore, or don't care about as much as the
@@ -629,12 +629,16 @@ class part(pnode.pnode,part_compatiblity):
                 diff['toolchain']=self.__env['toolchain']
             if base_env.subst('$CONFIG')!= self.__env.subst('$CONFIG'):
                 diff['CONFIG']=self.__env.subst('$CONFIG')
-            base_env=self.__settings.Environment(TARGET_PLATFORM=self.__env['TARGET_PLATFORM'],CONFIG=self.__env.subst('$CONFIG'),toolchain=self.__env['TOOLCHAIN'])
-        
-        diff.update(diff_env(base_env,self.__env))
+            base_env=self.__settings._env_const_ref(
+                                                 TARGET_PLATFORM=self.__env['TARGET_PLATFORM'],
+                                                 CONFIG=self.__env.subst('$CONFIG'),
+                                                 toolchain=self.__env['TOOLCHAIN']
+                                                 )
+
+        diff.update(diff_env(base_env,self.__env,['SKIP_CONCEPT_DEFINITION']))
         if diff !={}:
             import hashlib
-            md5=hashlib.md5()  
+            md5=hashlib.md5()
             md5.update(common.get_content(diff))
             self.__env_diff=diff
             #print diff
@@ -642,29 +646,29 @@ class part(pnode.pnode,part_compatiblity):
         else:
             self.__env_diff={}
             self.__env_diff_sig=''
-        
+
         #We need to set to the alias value as this is the unique ID used to map data internally
-        if self.__alias is None:                
+        if self.__alias is None:
             # we don't have a user provided alias.. make it off the file name
             tmp=self.__env.subst(self.__file)
             tmp=os.path.splitext(os.path.split(tmp)[1])[0] # we only want the file name
             tmp="%s%s"%(tmp,self.__env_diff_sig)
             self.__alias=tmp
             self.__short_alias=tmp
-        ##we need to check if this is a sub Parts 
-        
+        ##we need to check if this is a sub Parts
+
         if self.__parent is None:
             # this is the parent so we apply the global Prefix add Postfix values
-            self.__alias=self.__env.subst('${ALIAS_PREFIX}%s${ALIAS_POSTFIX}'%self.__short_alias)    
+            self.__alias=self.__env.subst('${ALIAS_PREFIX}%s${ALIAS_POSTFIX}'%self.__short_alias)
             self.__root=self
             self.__version=version.version('0.0.0')
-        else:            
+        else:
             #we have a parent
             self.__alias=self.__parent.Alias+'.'+self.__short_alias
             self.__root=self.__parent.Root
             if not genid:
                 self.__parent.SubParts=self
-        if genid: return 
+        if genid: return
         ## resolve the File name for the Part we will load latter
         self.__make_part_env()
         if self.__parent is None:
@@ -678,14 +682,14 @@ class part(pnode.pnode,part_compatiblity):
             # we have a vcs object.. ask vcs object for resolved file name
             self.__vcs._setup_(self) # update env with vcs level defines
             self.__file=dir_tmp.File(self.__vcs.PartFileName)
-        
+
         # the src_path we need to make sure SCons as no issues when loading the Part file
-        self.__src_path=os.path.split(self.__file.srcnode().abspath)[0]        
-        
+        self.__src_path=os.path.split(self.__file.srcnode().abspath)[0]
+
         ## file info
         self.__env['PART_FILE']=self.__file
         self.__env['SRC_DIR']=self.__env['PART_DIR']=self.__src_path
-        
+
         ## add information on how to map this Parts
         ## allow us to make a part platform independent in some way
         self.__platform_match=copy.copy(self.__env['TARGET_PLATFORM'])
@@ -701,61 +705,61 @@ class part(pnode.pnode,part_compatiblity):
             self.__platform_match.ARCH='any'
             if self.__kw.get('architecture_indepenent'):
                 api.output.warning_msg('use of "architecture_indepenent" is depreciated. Please use "architecture_independent" instead.')
-        
+
         self.__classic_section=glb.pnodes.Create(section.build_section,self)
         self.__is_setup=True
-        
+
     def _merge(self,otherobj):
         #turn other object in to this guy the best we can
-        otherobj.__dict__=self.__dict__    
-            
+        otherobj.__dict__=self.__dict__
+
     def _set_full_depends(self,val):
         """Get the return all(indirect and direct) Parts that this part depends on."""
         self.__full_dependson=val
-            
+
     def __make_part_env(self):
-        
+
         # set alias
-        
+
         self.__env['ALIAS']=self.__alias
         self.__env['PART_ALIAS']=self.__alias
         # The Alias Parent
         #part_info['PARENT_ALIAS']=parent_alias
-        
+
         # The Alias Short Form
         self.__env['SHORT_ALIAS']=self.__short_alias
-        
+
         ## logger and task spawners
         spawn=self.__env['PART_SPAWNER']
         self.__env['PART_LOG_MAPPER']=part_logger.part_logger(self.__env,glb.rpter.console)
         self.__env['SPAWN']=spawn(self.__env)
-        
-        
+
+
         ## package logic ( as it is currently)
         self.__env['PARTS_PACKAGE_GROUPS']=self.__package_group
-        if self.__package_group is not None: 
+        if self.__package_group is not None:
             packaging.PackageGroup(self.__package_group,self.__alias)
-        
+
 
         ## Setup the enviroment BUILD_DIR in the LIBPATH
         # might need more.. to add as needed
         libpath=['$BUILD_DIR']
         self.__env.Append(LIBPATH=libpath)
-        
+
         # setup the mode
         self.__mode.extend(self.__env['mode'])
         self.__env['MODE']=self.__mode
-        
+
         ##alias info
         self.__env['PART_ROOT_ALIAS']=self.__root.Alias
         if self.__parent:
             self.__env['PART_PARENT_ALIAS']=self.__parent.Alias
         else:
             self.__env['PART_PARENT_ALIAS']=None
-        
+
         ## name info
         self.__env['PART_NAME']="${PARTNAME('"+self.__alias+"')}"
-        self.__env['PART_SHORT_NAME']="${PARTSHORTNAME('"+self.__alias+"')}"    
+        self.__env['PART_SHORT_NAME']="${PARTSHORTNAME('"+self.__alias+"')}"
         self.__env['PART_ROOT_NAME']="${PARTS('"+self.__root.__alias+"','Name')}"
         self.__env['PART_ROOT_SIG']=self.__root.__env_diff_sig
         if self.__parent is None:
@@ -769,8 +773,8 @@ class part(pnode.pnode,part_compatiblity):
         self.__env['PART_SHORT_VERSION']="${PartVersion()[0:2]}"
         self.__env['PART_MAJOR_VERSION']="${PartVersion()[0]}"
         self.__env['PART_MINOR_VERSION']="${PartVersion()[1]}"
-        
-        
+
+
         if "__DEBUG__POBJ__" in self.__env["MODE"]:
             self.__env['POBJ']=self
 
@@ -778,13 +782,13 @@ class part(pnode.pnode,part_compatiblity):
 ##        # some data we will use for our own DB file
 ##        if glb.name_alias_map.has_key(alias) == False:
 ##            glb.name_alias_map[alias]=set()
-            
-    
+
+
     #def __str__(self):
         #pp = pprint.PrettyPrinter(indent=4)
         #return pp.pformat(self.__dict__)
 
-        
+
     def _map_alias(self):
         ''' This function maps two different of Core Aliases
         One form is to map the given component to all components that it dependson
@@ -792,7 +796,7 @@ class part(pnode.pnode,part_compatiblity):
         '''
         pass
         #vfile=self.__env._MapUnknowns([],self.__file)
-        
+
         # This is the base Alias for a given Part
         #build_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}'.format(self.__alias)
         #build_alias_r='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.__alias)
@@ -809,7 +813,7 @@ class part(pnode.pnode,part_compatiblity):
         #else:
         #    # build::alias::foo -> build::alias::foo:: -> build::
         #    self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
-        #    
+        #
         ##add to queue the delayed mapping of high level Alias to other high level alias
         #def_env=SCons.Script.DefaultEnvironment()
         #glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
@@ -821,14 +825,14 @@ class part(pnode.pnode,part_compatiblity):
         create_sdk=True
         if (self.__env['CREATE_SDK'] == False and self.__create_sdk == True):
             create_sdk=False;
-        
+
         if create_sdk==True:
             #set up the builder for the SDK file
             v=self.__env.__CreateSDKBuilder__([],self.__file)
             self.__sdk_file=v[0]
             #self.__env.Alias('${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
             self.__env.Alias('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__alias,v)
-            
+
             if self.__parent!=None:
                 sdkname="%s_%s.sdk.parts"%(self.__name,self.Version)
                 args={'alias':self.__short_alias,'parts_file':sdkname,
@@ -836,25 +840,25 @@ class part(pnode.pnode,part_compatiblity):
                 'vcs_type':None,'default':self.__set_as_default_target,'append':self.__append,'prepend':self.__prepend,
                 'create_sdk':False}
                 self.__parent._create_sdk_data.append(('Part',[common.named_parms(args),
-                common.named_parms(self.__kw)])) 
+                common.named_parms(self.__kw)]))
 
     def _map_targets(self):
-        ''' 
-        Here we map all known target files that happen in this component 
+        '''
+        Here we map all known target files that happen in this component
         to the alias value, to ensure that it is built in case there are actions
         that are no mapped correctly to some action that is mapped to the alias
         such as and sdk or install action
         '''
         self.__classic_section._map_targets()
         return
-  
-        
-        
+
+
+
     def ReadFile(self):
         # we process the file
         # and check at the end if we processed a new format or an old format
         # error on mixed formats??
-        
+
         if self.LoadState == glb.load_file:
             print "\033[1;32m %s was already read"%self.__alias
             return
@@ -864,12 +868,12 @@ class part(pnode.pnode,part_compatiblity):
                 glb.pnodes.Create(part,**self._cache['init_state'])
             except:
                 pass
-                
-                
+
+
         if self.LoadState < glb.load_file:
             # final set up for environment
-            
-            env=self.__classic_section.Env            
+
+            env=self.__classic_section.Env
             ## setup what we want to export
             # global objects
             export_map=glb.parts_objs
@@ -881,7 +885,7 @@ class part(pnode.pnode,part_compatiblity):
             #for s in glb.sections:
             #    self.__sections[s.name]=s.Type()(env)
             #export_map.update(self.__sections)
-            
+
             # add the environment
             export_map['env']=env
             env._log_keys=True
@@ -895,18 +899,18 @@ class part(pnode.pnode,part_compatiblity):
             sdir=env.Dir(self.__src_path)
             bk_path=sys.path[:]
             sys.path=[sdir.abspath]+bk_path
-            
+
             if (glb.engine._build_mode=='build') or (os.path.exists(self.__file.srcnode().abspath)==True):
                 if os.path.exists(self.__file.srcnode().abspath)==False:
                     api.output.error_msg('Parts file '+self.__file.srcnode().abspath+" was not found.")
-                
-                # Call the part file        
+
+                # Call the part file
                 if SCons.Script.GetOption('keep_going'):
                     # don't error is the Parts file has bad data
                     # we just report it and go on
                     # will mostly fail if one needs to build everything
-                    # however if i was to build on a component this 
-                    # probally will allow me to continue without waiting for the 
+                    # however if i was to build on a component this
+                    # probally will allow me to continue without waiting for the
                     # one bad component to get fixes
                     try:
                         errors.ResetPartStackFrameInfo()
@@ -925,11 +929,11 @@ class part(pnode.pnode,part_compatiblity):
                         traceback.print_exc(file=ec_str)
                         api.output.warning_msg("Exception thrown while processing "+self.__file.srcnode().abspath+"\n"+ec_str.getvalue())
                         api.output.print_msg("Will try to continue...")
-                        
+
                 else:
-                    
+
                     errors.ResetPartStackFrameInfo()
-                    
+
                     ret=self.__env.SConscript(
                             self.__file,
                             src_dir=sdir,
@@ -945,16 +949,16 @@ class part(pnode.pnode,part_compatiblity):
             #pp.pprint(bdir.__dict__)
             env._log_keys=False
             #common.tag_node_ownership(self.__env,bdir)
-            
+
             # set file as read
-            
+
             self.__classic_section.LoadState = glb.load_file
-            
+
             sys.path=bk_path
-            
+
     ## sections based API's
     def _has_section_defined(self,name):
-        ''' 
+        '''
         tests to see if a certain section is defined
         return None if the file has not been read (ie this is unknown)
         otherwise it returns True or False
@@ -962,7 +966,7 @@ class part(pnode.pnode,part_compatiblity):
         if self.LoadState == glb.load_none:
             return name in self.__sections
         return None
-    
+
     def _has_valid_sections(self):
         '''
         This will function will do two things
@@ -975,7 +979,7 @@ class part(pnode.pnode,part_compatiblity):
         for name,obj in self.__sections.iteritems():
             # see if the section was even called
             if obj.isSet():
-                # if so is it valid() in that non optional phases 
+                # if so is it valid() in that non optional phases
                 # have been called
                 if not obj.isValid():
                 #We have an error
@@ -986,12 +990,12 @@ class part(pnode.pnode,part_compatiblity):
                 # in this case remove it
                 del self.__sections[name]
         return self.__sections != {}
-    
+
     def _has_section_phase_been_called(self,section,phase):
         '''
         Tells us if this section and phase has been called already
         Returns True or False
-        
+
         This allow the processfunc of a section to see if it needs to call this
         section phase or not to prevent wasted time in processing known items
         '''
@@ -1000,7 +1004,7 @@ class part(pnode.pnode,part_compatiblity):
                 return True
         except KeyError:
             return False
-        
+
     def _call_section(self,section,phase):
         '''
         Call the section function defined for a given phase.
@@ -1017,7 +1021,7 @@ class part(pnode.pnode,part_compatiblity):
             except OSError:
                 self.__env.fs.chdir(self.__env.Dir(self.__env.subst("$BUILD_DIR")))
                 os.chdir(self.__env.Dir(self.__env.subst("$BUILD_DIR")).srcnode().abspath)
-            
+
             lst=getattr(self.__sections[section],'func_'+phase)
             if lst ==[]:
                 api.output.warning_msg("No phase function callbacks for %s.%s in Part %s"%(section,phase,self.__name))
@@ -1029,8 +1033,8 @@ class part(pnode.pnode,part_compatiblity):
 
     def hasFileChanged(self):
         '''
-        Has the file changed in some way. 
-        
+        Has the file changed in some way.
+
         The is considered changed if it was modified or the parent was modify.
         '''
         try:
@@ -1063,17 +1067,17 @@ class part(pnode.pnode,part_compatiblity):
                 pass
             self.__cache['hasFileChanged']=False
             return False
-    
+
     def UpdateReadState(self,state):
         if self.__read_state < state:
             self.__read_state = state
-            
+
     @property
     def ReadState(self):
         substate=self.SubPartReadState
         self.UpdateReadState(substate)
         return self.__read_state
-    
+
     @property
     def SubPartReadState(self):
         # check that stored data is exits
@@ -1085,14 +1089,14 @@ class part(pnode.pnode,part_compatiblity):
             #sub=glb.pnodes.GetPNode(sub)
             if sub:
                 if sub.ReadState > state:
-                    state=sub.ReadState 
+                    state=sub.ReadState
                 if state >= glb.load_file:
                     break
             else:
                 api.output.verbose_msg(['loading'],"SubPart {0} is None in cache of {1}... Trying to set ReadState".format(name,self.ID))
         return state
-    
-    
+
+
     ###
     def LoadStoredInfo(self):
         return glb.pnodes.GetStoredPNodeInfo(self)
@@ -1100,13 +1104,13 @@ class part(pnode.pnode,part_compatiblity):
         #md5.update(self.ID)
         #stored_data=datacache.GetCache("pnode-{0}".format(md5.hexdigest()))
         #return stored_data
-        
+
     def StoreStoredInfo(self):
         info=self.GenerateStoredInfo()
         md5=hashlib.md5()
         md5.update(self.ID)
         datacache.StoreData("pnode-{0}".format(md5.hexdigest()),info)
-        
+
     def GenerateStoredInfo(self):
         info=part_info.part_info()
         info.name=self.__name
@@ -1118,14 +1122,14 @@ class part(pnode.pnode,part_compatiblity):
         info.target_platform=str(self.__env['TARGET_PLATFORM'])
         info.config=str(self.__env['CONFIG'])
         info.platform_match=str(self.__platform_match)
-        info.package_group=str(self.__package_group) 
+        info.package_group=str(self.__package_group)
         info.mode=self.__mode
         info.force_load=self.ForceLoad
-        
+
         #store any subparts aliases
-        
+
         info.subparts=self.__subparts
-        
+
         tmp=[]
         i=self.__parent
         info.parent=i
@@ -1135,9 +1139,9 @@ class part(pnode.pnode,part_compatiblity):
         info.parents=tmp
         tmp={'build':self.__classic_section}
         tmp.update(self.__sections)
-        
+
         info.sections=tmp
-        
+
         tmp={}
         if self.__file is None:
             pass
@@ -1156,11 +1160,11 @@ class part(pnode.pnode,part_compatiblity):
         #    file['name']=self.Parent._sdk_file.srcnode().path# check this
         #    file['csig']=self.Parent._sdk_file.get_csig()
         #    file['timestamp']=self.Parent._sdk_file.get_timestamp()
-        #    
+        #
         #else:
         #    file['name']=self.__sdk_file.srcnode().path# check this
         #    file['csig']=self.__sdk_file.get_csig()
-        #    file['timestamp']=self.__sdk_file.get_timestamp()            
+        #    file['timestamp']=self.__sdk_file.get_timestamp()
         #data['sdkfile']=copy.copy(file)
         #info.sdk_file={} #???
         tmp=[]
@@ -1168,7 +1172,7 @@ class part(pnode.pnode,part_compatiblity):
             if i is None:
                 continue
             i=self.__env.File(i)
-            # see if node time stamp matches            
+            # see if node time stamp matches
             tmp.append(
                     {
                     'name':i.abspath,
@@ -1176,29 +1180,30 @@ class part(pnode.pnode,part_compatiblity):
                     'timestamp':i.get_timestamp()
                     }
                 )
-                       
+
         info.build_context=tmp
-        
+
         # this is config context ( like build but for the config files)
-        tmp={}            
-        for k,v in self.__config_context_files.iteritems():            
+        tmp={}
+        for k,v in self.__config_context_files.iteritems():
             tmp[k]=[]
             for f in v:
                 i=self.__env.File(f)
-                # see if node time stamp matches            
+                # see if node time stamp matches
                 tmp[k].append({
                         'name':i.abspath,
                         'csig':i.get_csig(),
                         'timestamp':i.get_timestamp()
                         })
         info.config_context=tmp
+        info.kw = common.wrap_to_string(self.__kw)
         return info
 
-   
-    
+
+
     # Depends API
     def map_component_info(self,comp_part):
-    
+
         cpppath=[]
         libpath=[]
         libs=[]
@@ -1207,7 +1212,7 @@ class part(pnode.pnode,part_compatiblity):
         ccflags=[]
         cflags=[]
         cxxflags=[]
-        
+
         # map stuff we dependon
         if (comp_part.requires & requirement.REQ._CPPPATH_IMPORT):
             cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
@@ -1233,7 +1238,7 @@ class part(pnode.pnode,part_compatiblity):
             CPPPATH=cpppath,LIBPATH=libpath,LIBS=libs,CPPDEFINES=cppdefines,
             LINKFLAGS=linkflags,CCFLAGS=ccflags,CFLAGS=cflags,CXXFLAGS=cxxflags
             )
-    #    api.output.verbose_msg("Duplicate",env.subst($CPPDEFINES))            
+    #    api.output.verbose_msg("Duplicate",env.subst($CPPDEFINES))
         cpppath=[]
         libpath=[]
         libs=[]
@@ -1242,7 +1247,7 @@ class part(pnode.pnode,part_compatiblity):
         ccflags=[]
         cflags=[]
         cxxflags=[]
-        
+
         # map what we need to export
         if (comp_part.requires & requirement.REQ._CPPPATH_EXPORT):
             cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
@@ -1284,24 +1289,24 @@ class part(pnode.pnode,part_compatiblity):
             if 'CPPDEFINES' not in self.__exports:
                 self.__exports['CPPDEFINES']=[]
             self.__exports['CPPDEFINES']=common.extend_unique(self.__exports['CPPDEFINES'],cppdefines)
-            
+
         #map up rpath with this.. ( need to fix up the Mac)
         #if self.env['HOST_PLATFORM']!='win32' and self.env['HOST_PLATFORM'] != 'darwin':
-            
+
             #map_rpath_part(part,comp_part)
             #map_rpath_link_part(part,comp_part)
 
-  
-    
+
+
     def LoadFromCache(self):
-        
+
         info=self.Stored
         # check that stored data is exits
         #if info is None:
             #self.ReadFile()
             #return
-            
-       
+
+
         self.__alias=info.alias # should be handled by _setup_
         self.__short_alias=info.short_alias # should be handled by _setup_
         self.__root=info.root # should be handled by _setup_
@@ -1314,11 +1319,11 @@ class part(pnode.pnode,part_compatiblity):
 
         if self.Version == '0.0.0':
             self.Version=version.version(info.version)
-        
+
         self.__platform_match=info.platform_match # should be handled by _setup_
         self.__package_group=info.package_group # should be handled by _setup_
         self.__mode=info.mode #?? # should be handled by _setup_
-        
+
         self.__subparts=info.subparts
         self.__parent=info.parent # should be handled by _setup_
         # how to deal with this???
@@ -1327,30 +1332,30 @@ class part(pnode.pnode,part_compatiblity):
         #self.__file=info.file # should be handled by _setup_
         #self.__src_path=info.src_path # should be handled by _setup_
         #self.__sdk_file=info.sdk_file # should be handled by _setup_
-        
+
         #info.build_context
         #info.config_context
-        
+
         if not self.isSetup:
             # we don't have a environment created
             # copy the one from the root. it should be good enough
             # for anything we need for part loaded via cache
             self.__env=self.__root.Env.Clone()
             self.__is_setup=True
-        
+
         self._map_alias()
-        
-                
-        
+
+
+
     def _setup_from_cache_data(self,data):
         '''
         This will setup this part based on data in the cache
         The Part manager will call and create sub part as needed
         The part object should have been created and setup already for this call.
-        This function should only have to setup stuff that this component would 
+        This function should only have to setup stuff that this component would
         have exported or outputed that needs to be shared with dependent components
         '''
-        
+
         if self.__is_setup ==False:
             api.output.error_msg("Part object setup from cache data requires part_t object to have been created and setup()")
         # map values that would normally be define in a "new" format
@@ -1359,39 +1364,41 @@ class part(pnode.pnode,part_compatiblity):
         self.Version(version.version(data['version']))
         #How to match this component in a dependon call by dependent components
         self.__platform_match=platform_info.SystemPlatform(data['platform_match'])
-        
+
         ## might not need this one....
         # map what the part would depend on
         depends_list=[]
         for d in data['dependson']:
-            depends_list.append(dependson.ComponentRef(**d))        
+            depends_list.append(dependson.ComponentRef(**d))
         self._set_depends(depends_list)
-            
+
         #map exports of this component
         self.__exports=data['exports']
         # think this is for backward compatibility only at the moment
         # however might need to expand on this
         self.__env.Replace(**data['env_exports'])
-        
+
         # need to add sdk file
         tmp=data.get('sdkfile',{}).get('name',None)
         self.__sdk_file=self.__env.File(tmp)
-        
+
         # load some data that might be touched
         self.__full_dependson=data['full_depends']
         self.__cache['root_depends']=data['root_depends']
         if self.isRoot:
             self.__cache['root_depends_full']=data['full_root_depends']
-            
-        
+
+
 
 
 
 ## some util function
 
 def complex_compare(v1,v2):
-    
-    if type(v1) != type(v2):
+
+    if id(v1) == id(v2): # Equal pointer point to equal objects
+        return False
+    elif type(v1) != type(v2):
         return True
     elif isinstance(v1,SCons.Action.ActionBase):
         return SCons.Action._object_contents(v1) != SCons.Action._object_contents(v2)
@@ -1417,33 +1424,28 @@ def complex_compare(v1,v2):
     elif  v1!=v2:
         return True
     return False
-    
 
-def diff_env(env,env2):
+
+def diff_env(env,env2,ignore_keys=[]):
     '''returns set of kv that are different in env2'''
-    skip=frozenset(['BUILDERS','ARCHITECTURE','config','CONFIG','PREPROCESS_LOGIC_QUEUE']) # stuff to skip testing
+    skip=frozenset(['BUILDERS','ARCHITECTURE','config','CONFIG','PREPROCESS_LOGIC_QUEUE']+ignore_keys) # stuff to skip testing
     d1=env.Dictionary()
     d2=env2.Dictionary()
-    
+
     s1=set(d1.keys())
     s2=set(d2.keys())
-    
+
     ret={}
-    diff_keys=s1^s2 # what key are not in the common set
+    diff_keys=(s1^s2)-skip # what key are not in the common set
     for k in diff_keys:
-        if k in skip:
-            pass 
-        else:
-            ret[k]=d1.get(k,d2.get(k,"Not defined in Both environments"))
-    common_keys=s1&s2 # what keys both env have
-    
+        ret[k]=d1.get(k,d2.get(k,"Not defined in Both environments"))
+    common_keys=(s1&s2)-skip # what keys both env have
+
     d1.fromkeys(common_keys)
     d2.fromkeys(common_keys)
-    
+
     for k in common_keys:
-        if k in skip:
-            pass
-        elif complex_compare(d1[k],d2[k]):
+        if complex_compare(d1[k],d2[k]):
             ret[k]=d2[k]
     return ret
 

@@ -132,6 +132,7 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                     ret=[s]
                 
                 installed_files.extend(env.Install(dest_dir, ret,tags=tags,**kw))
+                
                 src_lst.append(env.File(ret[0]))
             elif isinstance(s,SCons.Node.Node) or common.is_string(s):
                 if s not in sdk.g_sdked_files:
@@ -425,7 +426,7 @@ def InstallTopLevel(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw
 def PkgNoInstall(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
 
     installed_files = InstallItem(env, '$PKG_NO_INSTALL', src_files,
-        sub_dir=sub_dir,sdk_dir='$SDK_NO_INSTALL',no_pkg=no_pkg,create_sdk=create_sdk,
+        sub_dir=sub_dir,sdk_dir='$SDK_NO_PKG',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('NO_INSTALL',**kw))
     env.MetaTag(installed_files, PACKAGING_TYPE = 'NO_INSTALL')
     env.ExportItem('INSTALLPKGNO',installed_files,create_sdk,True)

@@ -1,5 +1,0 @@
-Import('*')
-
-#Simple part that is does nothing
-
-

@@ -1,5 +1,5 @@
 ######################################
-### g++ compiler configurations pat_debug
+### g++ compiler configurations debug
 ######################################
 
 import sys

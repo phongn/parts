@@ -25,7 +25,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -34,9 +35,9 @@ Intelc.Register(
         ]
     )   
 
-# 64-bit 12.0 64-bit 
+# 64-bit 12.1 64-bit 
 Intelc.Register(
-    hosts=[SystemPlatform('win32','any')],
+    hosts=[SystemPlatform('win32','x86')],
     targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
@@ -46,12 +47,13 @@ Intelc.Register(
                 r'Software\Intel\Suites\2.1'],
                 r'\Defaults\C++\EM64T',
                 'ICPP_COMPOSER2011'),
-            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/compilervars.bat'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32_intel64/compilervars.bat'),
             subst_vars={
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -61,7 +63,7 @@ Intelc.Register(
     )
 
 # Composer XE
-# 32-bit 12.0 
+# 32-bit 12.1 
 Intelc.Register(
     hosts=[SystemPlatform('win32','any')],
     targets=[SystemPlatform('win32','x86')],
@@ -78,7 +80,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -87,9 +90,9 @@ Intelc.Register(
         ]
     )   
 
-# 64-bit 12.0 64-bit-cross
+# 32-bit 12.1 64-bit-cross
 Intelc.Register(
-    hosts=[SystemPlatform('win32','any')],
+    hosts=[SystemPlatform('win32','x86')],
     targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
@@ -99,12 +102,13 @@ Intelc.Register(
                 r'Software\Intel\Suites\12.1'],
                 r'\Defaults\C++\EM64T',
                 'ICPP_COMPILER12'),
-            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/compilervars.bat'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32_intel64/compilervars.bat'),
             subst_vars={
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -113,24 +117,25 @@ Intelc.Register(
         ]
     )
 
-# 64-bit 12.0 64-bit 
+# 64-bit 12.1 64-bit 
 Intelc.Register(
     hosts=[SystemPlatform('win32','x86_64')],
     targets=[SystemPlatform('win32','x86_64')],
     info=[
         IntelcInfo(
-            version='12.*',
+            version='12.1.*',
             install_scanner=regscanner.reg_scanner_v12(
                 [r'Software\Wow6432Node\Intel\Suites\12.1',
                 r'Software\Intel\Suites\12.1'],
                 r'\Defaults\C++\EM64T',
                 'ICPP_COMPILER12'),
-            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/compilervars.bat'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/intel64/compilervars.bat'),
             subst_vars={
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },

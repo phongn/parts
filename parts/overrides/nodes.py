@@ -13,6 +13,7 @@ import itertools
 import os
 import hashlib
 import pprint
+import stat
 
 Node=SCons.Node.Node
 File=SCons.Node.FS.File
@@ -22,7 +23,7 @@ FSBase=SCons.Node.FS.Base
 Value=SCons.Node.Python.Value
 Alias=SCons.Node.Alias.Alias
 
-    
+
 class wrapper(object):
     def __init__(self,binfo,ninfo=None):
         self.binfo=binfo
@@ -31,9 +32,9 @@ class wrapper(object):
 #
 #def env_set(self,env,safe=False):
 #    ''' This function allows use to map which Part/Component should be assigned a given Node
-#    
-#    It shoudl be noted that this API is a only called by the Builder. So ever Node that has an 
-#    Environment as a builder and as such is a Target of some build action. Everything else is a 
+#
+#    It shoudl be noted that this API is a only called by the Builder. So ever Node that has an
+#    Environment as a builder and as such is a Target of some build action. Everything else is a
 #    Source node that is on disk.
 #    '''
 #    self.orig_env_set(env,safe)
@@ -44,7 +45,7 @@ class wrapper(object):
 #    #        pobj=self.__part_manager.parts[alias]
 #    #        if self.has_builder():
 #    #            add_builder_context_files(pobj,self.builder)
-#    #        # add node to set of known nodes for this component    
+#    #        # add node to set of known nodes for this component
 #    #        pobj._part_nodes.add(v)
 #    #1/0
 #
@@ -67,11 +68,11 @@ class fake_ninfo(object):
 Node.make_ninfo_from_dict=lambda self,dict:fake_ninfo(dict.get('timestamp',0),dict.get('csig',0))
 
 #def _node_up_to_date(node,ninfo):
-#    ''' 
-#    Expects a Scons node objects, will test aginst stored info 
+#    '''
+#    Expects a Scons node objects, will test aginst stored info
 #    to see if it is uptodate
 #    '''
-#        
+#
 #    try:
 #        class fake_ninfo(object):
 #            #__slots__=['timestamp','csig']
@@ -125,7 +126,7 @@ File.changed_since_last_build = File.changed_timestamp_then_content
 total=0
 
 def _part_isUpToDate(self):
-    ''' 
+    '''
     '''
     global total
     total+=1
@@ -142,39 +143,39 @@ def _part_isUpToDate(self):
                 if common.is_string(k):
                     # this is a string.. we want to make it a SCons Node
                     # look it up in our DB
-                    i=glb.pnodes.GetNode(k) 
+                    i=glb.pnodes.GetNode(k)
                     #i=j.str_to_node(k)
                     # not found... possible the path was stored with bad "/" values
-                    if i is None: 
+                    if i is None and '\\' in k:
                         # try again
                         i=glb.pnodes.GetNode(make_path_ID(k))
-                        if i is None: 
-                            #This might be a source node, with some builder that
-                            # that output in a "wrong" place.
-                            # see if it exists
-                            if os.path.exists(k):
-                                #it exists.. make a entry node
-                                i=glb.pnodes.Create(Entry,k)
-                            else:
-                                api.output.verbose_msgf("update_check",'{0} out-of-date! {1} is not known',self.ID,k)
-                                return False
-                            
+                    if i is None:
+                        #This might be a source node, with some builder that
+                        # that output in a "wrong" place.
+                        # see if it exists
+                        if os.path.exists(k):
+                            #it exists.. make a entry node
+                            i=glb.pnodes.Create(Entry,k)
+                        else:
+                            api.output.verbose_msgf("update_check",'{0} out-of-date! {1} is not known',self.ID,k)
+                            return False
+
                     i.disambiguate()
-                    
+
                     if isinstance(i,SCons.Node.FS.Base):
-                        
+
                         st_info=i.get_stored_info()
                         #Scons is  not storing information on source node
                         # this tends to be an issue with Directories used as sources
                         if st_info is None and isinstance(i,SCons.Node.FS.Dir):
                             # we skip this at the moment
                             continue
-                        nbinfo=i.get_stored_info().binfo
-                            
+                        nbinfo=st_info.binfo
+
                         if not os.path.exists(i.path) and not os.path.exists(i.srcnode().path) and \
                             nbinfo.bsourcesigs == [] and \
                             nbinfo.bdependsigs == [] and \
-                            nbinfo.bimplicitsigs ==[] :  
+                            nbinfo.bimplicitsigs ==[] :
                             # we need to figure out the real source file and check it
                             # load from our cache information as SCons does not store this
                             # relationship. It assume the file are read in fully
@@ -187,7 +188,7 @@ def _part_isUpToDate(self):
                                 i.clear()
                                 i=n
                 else:
-                    i=k     
+                    i=k
                     try:
                         j=k.get_stored_info().ninfo
                     except AttributeError:
@@ -199,23 +200,22 @@ def _part_isUpToDate(self):
                                 j=k.get_stored_info().ninfo
                             except AttributeError:
                                 j=k.get_ninfo()
-                            
-                        
-                        
+
+
+
                 nodelist.append((i,j))
             #########
             # sort list
-            nodelist.sort(key=hash)
+            #nodelist.sort(key=hash)
             ##########
             #process the list of nodes
-            md5=hashlib.md5()
             for i in nodelist:
                 api.output.verbose_msgf("update_check_extra",'{0} checking for changes in node {0}',self.ID,i[0])
                 # test to see if it thinks it is out of date
                 if not i[0].pisUpToDate:
                     api.output.verbose_msgf("update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date',self.ID,i[0])
                     return False
-                
+
                 # we test if this is out of date from the local point of view
                 if isinstance(i[0],FSBase):
                     if not i[0].exists():
@@ -229,53 +229,54 @@ def _part_isUpToDate(self):
                         return False
                     else:
                         api.output.verbose_msgf("update_check_extra",'{0} -- "{1}" does not look like it changed',self.ID,i[0])
-                
+
             return True
-        
+        # End of check_nodes procedure
+
         try:
             binfo=self.get_stored_info().binfo
         except AttributeError:
             # this is probally an Value I was loading from my parts DB
-            binfo=self.get_binfo() 
-            
+            binfo=self.get_binfo()
+
         # see if anything this node depends on is out of date, if so we are out of date
         nodes=itertools.izip(binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs,
             getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]))
-        
+
         if not check_nodes(nodes):
             self._memo['_part_isUpToDate'] = False
-            return self._memo['_part_isUpToDate'] 
-                
-        
+            return self._memo['_part_isUpToDate']
+
+
         if self.Stored:
             # check for AlwaysBuild State
             if self.Stored.always_build:
                 api.output.verbose_msgf("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node',self.ID)
                 self._memo['_part_isUpToDate'] = False
-                return self._memo['_part_isUpToDate'] 
+                return self._memo['_part_isUpToDate']
             # check any side effect nodes
             side_effects=self.Stored.side_effects
             for node in side_effects:
                 if not node.pisUpToDate:
                     api.output.verbose_msgf("update_check",'{0} out-of-date! Side effect target {1} is out of date',self.ID,node.ID)
                     self._memo['_part_isUpToDate'] = False
-                    return self._memo['_part_isUpToDate'] 
-                    
+                    return self._memo['_part_isUpToDate']
+
                 #if self.changed_since_last_build(self,ninfo):#_node_up_to_date(self,ninfo):
                     #api.output.verbose_msg("node_update_check",'{0} out-of-date! out of date with itself'.format(self.ID))
                     #self._memo['_part_isUpToDate'] = False
-                    #return self._memo['_part_isUpToDate'] 
+                    #return self._memo['_part_isUpToDate']
 
         # are we out of date
         #if isinstance(self,FSBase):
         #    if not self.exists():
         #        api.output.verbose_msg("update_check",'{0} out-of-date! Does not exist!'.format(self.ID))
         #        self._memo['_part_isUpToDate'] = False
-        #        return self._memo['_part_isUpToDate'] 
-            
+        #        return self._memo['_part_isUpToDate']
+
         #api.output.verbose_msg("node_update_check",'{0} is up to date!'.format(self.ID))
         self._memo['_part_isUpToDate'] = True
-        return self._memo['_part_isUpToDate'] 
+        return self._memo['_part_isUpToDate']
 
 
 SCons.Node.Node.pisUpToDate=property(_part_isUpToDate)
@@ -286,7 +287,7 @@ def parts_built(self):
     self._orig_built()
     #say this built Parts know to update this nodes info
     self.isBuilt=True
-    
+
 
 Node._orig_built=Node.built
 Node.built=parts_built
@@ -305,8 +306,8 @@ SCons.Node.Node.isBuilt=property(_get_isbuilt,_set_isbuilt)
 
 
 # visited replacement
-def parts_visited(self):      
-    self.get_csig()   
+def parts_visited(self):
+    self.get_csig()
     #if self.isVisited:
         #return
 
@@ -314,7 +315,7 @@ def parts_visited(self):
     self._orig_visited()
     #say this built Parts know to update this nodes info
     self.isVisited=True
-    
+
 Node._orig_visited=Node.visited
 Node.visited=parts_visited
 File._orig_visited=File.visited
@@ -323,21 +324,21 @@ File.visited=parts_visited
 #Dir.visited=parts_visited
 
 def part_stat(self):
-    ''' 
+    '''
     This function replaces the built in SCons stat function to allow me an ability to deal with Symlinks better
     This function is set after the init call of the Node to work around an ugly issue.
     '''
-    try: 
+    try:
         return self._memo['stat']
-    except KeyError: 
+    except KeyError:
         try:
-            if glb.engine.isSconstructLoaded and\
-                glb.engine._build_mode=='build' and\
-                (metatag.MetaTagValue(self,'SymLink',default=False) or getattr(self.Stored,'issymlink',False)):
-                result = os.lstat(self.abspath)
-            else:
+            result = os.lstat(self.abspath)
+            if stat.S_ISLNK(result.st_mode) and (\
+                not glb.engine.isSconstructLoaded or\
+                glb.engine._build_mode!='build' or\
+                (not metatag.MetaTagValue(self,'SymLink',default=False) and not getattr(self.Stored,'issymlink',False))):
                 result = os.stat(self.abspath)
-        except os.error: 
+        except os.error:
             result = None
         self._memo['stat'] = result
     return result
@@ -356,12 +357,15 @@ def _set_isVisited(self,value):
 SCons.Node.Node.isVisited=property(_get_isVisited,_set_isVisited)
 
 def _get_FSID(self):
-    t=self.path
-    return t.replace(os.sep, '/')
+    try:
+        return self.__FSID
+    except AttributeError:
+        self.__FSID = self.path.replace(os.sep, '/')
+        return self.__FSID
 
 def _get_ValueID(self):
     return "{0}".format(self.value)
-    
+
 def _get_AliasID(self):
     return self.name
 
@@ -408,7 +412,7 @@ def _my_init(self,name):
     # may not be the best way.. but works for the moment
     glb.pnodes.AddAlias(self)
     glb.pnodes.AddNodeToKnown(self)
-    
+
     if glb.engine.isSconstructLoaded:
         map_alias_stored(self)
     else:
@@ -420,7 +424,7 @@ SCons.Node.Alias.Alias.__init__=_my_init
 
 def parts_node_hash(self):
     return hash(self.ID)
-    
+
 SCons.Node.Node.__hash__=parts_node_hash
 
 def get_stored_info_alias(self):
@@ -429,7 +433,7 @@ def get_stored_info_alias(self):
 SCons.Node.Alias.Alias.get_stored_info=get_stored_info_alias
 
 def Stored(self):
-    
+
     try:
         return self.__stored
     except AttributeError:
@@ -437,11 +441,11 @@ def Stored(self):
             self.__stored=self.LoadStoredInfo()
         except errors.LoadStoredError:
                 self.__stored=None
-    
+
     return self.__stored
-    
+
 SCons.Node.Node.Stored=property(Stored)
-    
+
 def LoadStoredInfo(self):
     return glb.pnodes.GetStoredNodeInfo(self)
     #md5=hashlib.md5()
@@ -450,17 +454,17 @@ def LoadStoredInfo(self):
     #return stored_data
 
 SCons.Node.Node.LoadStoredInfo=LoadStoredInfo
-        
+
 def StoreStoredInfo(self):
     pass
     #info=self.GenerateStoredInfo()
     #md5=hashlib.md5()
     #md5.update(self.ID)
     #datacache.StoreData("snode-{0}".format(md5.hexdigest()),info)
-    
+
 SCons.Node.Node.StoreStoredInfo=StoreStoredInfo
-        
-    
+
+
 def GenerateStoredInfo(self):
     info = scons_node_info.scons_node_info()
     info.type=self.__class__
@@ -488,7 +492,7 @@ def Scons_node_factory(func,ID=None,*lst,**kw):
         return func(ID)
     else:
         return func(ID,*lst,**kw)
-    
+
 def Scons_alias_node_factory(func,ID=None,*lst,**kw):
 
     if ID:
@@ -498,7 +502,7 @@ def Scons_alias_node_factory(func,ID=None,*lst,**kw):
     #binfo=glb.pnodes.GetAliasStoredInfo(tmp.ID)
     #if binfo:
         #tmp._memo['get_stored_info']=wrapper(binfo)
-    
+
     return tmp
 
 pnode_manager.manager.RegisterNodeType(File, lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))

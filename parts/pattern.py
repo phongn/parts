@@ -13,7 +13,7 @@ import SCons.Script
 import os
 
 def pattern(env,sub_dir='' ,src_dir  = '', includes = ['*'], excludes = [],recursive=True):
-	return Pattern(sub_dir,src_dir, includes, excludes,recursive)
+    return Pattern(sub_dir,src_dir, includes, excludes,recursive)
 
 g_db={}
 

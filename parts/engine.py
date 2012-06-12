@@ -1,3 +1,4 @@
+import gc
 import sys
 import os
 import stat
@@ -320,43 +321,34 @@ class parts_addon(object):
         if self._exit_up_to_date:
             return
         
-        #get what went wrong if anything
-        bf_lst=SCons.Script.GetBuildFailures()
-        
+        gc.collect()
         # write out data cache files..given nothing went wrong and 
         # we had something to build
-        
-        # store our data
-        targets=SCons.Script.BUILD_TARGETS
         # check to see that we even have targets to process, and that there are no error conditions
-        if targets != [] and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__build_mode=='build' and self.__use_cache == True:
+        if SCons.Script.BUILD_TARGETS and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__build_mode=='build' and self.__use_cache == True:
             # this event if for saving data that we only want saved, given a good build
             self.store_db_data(True) 
         else:
             self.store_db_data(False) 
+        gc.collect()
         
+        #get what went wrong if anything
+        bf_lst=SCons.Script.GetBuildFailures()
         
         #report what went wrong if anything
-        if len(bf_lst) > 0:
+        if bf_lst:
+            bf_lst_len = len(bf_lst)
             msg=''
-            for bf in bf_lst:
+            while bf_lst:
+                bf = bf_lst.pop()
                 if common.is_list(bf.command):
                     cmd=' '.join(bf.command)
                 else:
                     cmd=bf.command
                 msg+=' Node: "%s"\n ' %(bf.node)
-                #api.output.print_msg('Failed node: "%s"\n file: "%s" command: "%s"\n action: "%s"\n status: "%s"\n errstr: "%s"' %
-                 #(bf.node,bf.filename,cmd,bf.action,bf.status,bf.errstr))
-                #print bf.node.__dict__.keys()
-##                tmp=''
-##                for d in bf.node.sources:
-##                    tmp+='    '+str(d)+"\n"
-##                api.output.verbose_msg("error_summary","Source file for %s:\n%s"%(bf.node,tmp))
-##                tmp=''
-##                for d in bf.node.implicit:
-##                    tmp+='    '+str(d)+"\n"
-##                api.output.verbose_msg("error_summary","dependents file for %s:\n%s"%(bf.node,tmp))
-            api.output.print_msg("Summary: %s build failure detected during build\n%s"%(len(bf_lst),msg))
+                del bf
+            api.output.print_msg("Summary: {0} build failure detected during build\n{0}".format(bf_lst_len,msg))
+            del bf_lst
         glb.rpter.ShutDown()
         
     def UpToDateExit(self):
@@ -915,7 +907,8 @@ Use -H or --help-options for a list of scons options
             'file',
             'mode',
             'repository',
-            'site_dir'
+            'site_dir',
+            'section_suppression',
             #'tool_chain', # we use the different value to get a better match for this
             #'target_platform' # we get this from the def_env
         ]
@@ -944,9 +937,12 @@ Use -H or --help-options for a list of scons options
         # as each concept would ideally define a different section, and different sections 
         # define different set of actions and nodes we need to know about
         targets=SCons.Script.BUILD_TARGETS
+        tmp_lst=set()
         for t in targets:
             tmp=target_type.target_type(t)
-            md5.update(tmp.Section)
+            if tmp.Section not in tmp_lst:
+                tmp_lst.add(tmp.Section)
+                md5.update(tmp.Section)
 
         # we add information about that parts we have defined.
         # a different set gets a different key
@@ -1009,8 +1005,8 @@ Use -H or --help-options for a list of scons options
         
                 
 
-api.register.add_variable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
-api.register.add_bool_variable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
+#api.register.add_variable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
+#api.register.add_bool_variable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
 
 api.register.add_bool_variable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 api.register.add_bool_variable('duplicate_build',False,'Controls if the src files are copied to the build area for building')

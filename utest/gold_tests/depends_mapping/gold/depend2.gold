@@ -1,3 +1,0 @@
-Verbose: [gtest] ${PARTIDEXPORTS('name::part1@platform_match:win32-x86_64@version:*','build','foo',3)} False
-Verbose: [gtest] ${PARTIDEXPORTS('name::part1@platform_match:win32-x86_64@version:*','build','foo_list',3)} False
-Verbose: [gtest] ${PARTIDEXPORTS('name::part1@platform_match:win32-x86_64@version:*','build','dict_test',3)} False

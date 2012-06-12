@@ -21,12 +21,16 @@ def PackageGroup(name,parts=[]):
     don't know where we want to put the files in the package.
     '''
     
+    if name == "" or name is None:
+        return []
+    
     tmp=[]
     name=SCons.Script.DefaultEnvironment().subst(name)
     parts=common.make_list(parts)
+
     if g_package_groups.has_key(name) == False:
         g_package_groups[name]=[]
-    if parts != [] and name is not None:
+    if parts != []:
         for p in parts:
             #if isinstance(p,Part_t) or isinstance(p,Component):
             #    common.append_unique(tmp,p)

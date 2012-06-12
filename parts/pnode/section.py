@@ -319,7 +319,11 @@ class section(pnode.pnode):
         # need to map these items as Aliases
         self.__export_as_depends=info.exported_requirements 
         for export in self.__export_as_depends:
-            self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),self.__exports[export])
+            try:
+                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),self.__exports[export])
+            except KeyError:
+                api.output.verbose_msgf(['cache_load_warning'],"{0} was not found in the exports dictionary. Mapping value of []",export)
+                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),[])
             
     def hasPartFileChanged(self):
         '''Has the Part File defining this section changed in some way

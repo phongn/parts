@@ -1,4 +1,5 @@
 import gxx
 import gcc
-from common import gxx,gcc
+import binutils
+from common import gxx,gcc,binutils
 

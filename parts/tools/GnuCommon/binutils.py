@@ -1,0 +1,292 @@
+from common import binutils, GnuInfo
+from parts.tools.Common.Finders import PathFinder,ScriptFinder
+from parts.platform_info import SystemPlatform
+from parts.tools.Common.ToolInfo import ToolInfo
+import SCons.Util
+import android
+
+class BinutilInfo(GnuInfo):
+    """
+    We need this class be implemented because:
+        a) Binutils tool info object does not modify env['ENV']['PATH'] variable value
+        b) binutils tool info object has to force Parts to use binutils from the location
+           explicitly specified by user via env['BINUTILS_INSTALL_ROOT '] value.
+    """
+    def __init__(self,install_scanner,opt_dirs,script,subst_vars,shell_vars,test_file,opt_pattern=None):
+        super(self.__class__, self).__init__(install_scanner,opt_dirs,script,subst_vars,shell_vars,test_file,opt_pattern)
+
+    def query(self,env,namespace,root_path,use_script):
+        if env.has_key('BINUTILS_INSTALL_ROOT'):
+            return super(self.__class__, self).query(env, namespace, env['BINUTILS_INSTALL_ROOT'], use_script)
+        return super(self.__class__, self).query(env, namespace, root_path, use_script)
+
+    def exists(self,env,namespace,version,root_path,use_script,tool=None):
+        if root_path is None and env.has_key('BINUTILS_INSTALL_ROOT'):
+            root_path = env['BINUTILS_INSTALL_ROOT']
+        shell_env = self.get_shell_env(env, namespace, version, root_path, use_script, tool)
+        try:
+            if SCons.Util.WhereIs(env.subst('${BINUTILS.TOOL}'), path = [root_path] if root_path else None):
+                return shell_env
+        except KeyError:
+            pass
+
+        return None
+
+class BinutilsSetupWrapper(object):
+    def __init__(self, binutils):
+        self.__binutils = binutils
+
+    def __call__(self, env):
+        if env.has_key('BINUTILS_VERSION') or env.has_key('BINUTILS_INSTALL_ROOT') or env.get('HOST_OS') != env.get('TARGET_OS'):
+            # We call it MergeShellEnv but don't be confused by its name because binutils ToolSetting objects do not
+            # modify sehll environment but only initialize BINUTILS namespace
+            self.__binutils.MergeShellEnv(env)
+            return True
+        return False
+
+binutils.setup = BinutilsSetupWrapper(binutils)
+
+# We expect binutils be found in the dirs of form /opt/gcc/bin, /opt/gcc-4.1.1/bin
+# /opt/binutils/bin, /opt/binutils-2.19.1/bin.
+binutils_pattern = r'(binutils|gcc)(-\d+(\.\d+)*)?'
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','ia64')],
+    targets=[SystemPlatform('posix','ia64')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add theh extra check for the stuff the need
+    hosts=[SystemPlatform('cygwin','x86'),SystemPlatform('cygwin','x86_64')],
+    targets=[SystemPlatform('cygwin','x86'),SystemPlatform('cygwin','x86_64')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('cygwin','ia64')],
+    targets=[SystemPlatform('cygwin','ia64')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+#sunos
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('sunos','any')],
+    targets=[SystemPlatform('sunos','any')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/sfw/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+#mac
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('darwin','any')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/bin'])
+            ],
+        opt_dirs=[
+                '/opt/'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+#android
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-', 'ld.exe'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-x86"',
+                'OBJCOPY':'i686-android-linux-objcopy',
+                'CHMODVALUE':None,
+                'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                '__RPATH':'$_RPATH',
+                'RPATHPREFIX':'-Wl,-rpath=',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin'},
+            test_file='i686-android-linux-ld.exe'
+            )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-', 'ld.exe'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-arm"',
+                'OBJCOPY':'arm-linux-androideabi-objcopy.exe',
+                'CHMODVALUE':None,
+                'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                '__RPATH':'$_RPATH',
+                'RPATHPREFIX':'-Wl,-rpath=',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin'},
+            test_file='arm-linux-androideabi-ld.exe'
+            )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-', 'ld'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
+            test_file='i686-android-linux-ld'
+            )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-', 'ld'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-arm"',
+                'OBJCOPY':'arm-linux-androideabi-objcopy'
+                },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
+            test_file='arm-linux-androideabi-ld'
+            )
+    ]
+)
+

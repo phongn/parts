@@ -421,6 +421,11 @@ SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             action='store',
             help='Level of concurrent VCS checkouts/updates that can happen at once. Defaults to -j value if not set') 
            
+SCons.Script.AddOption("--disable-section-suppression",
+            dest="section_suppression",
+            default=True,
+            action="store_false",
+            help='Disable process suppression of any sections defined in a Part via the SUPPRESS_SECTION variable')
 
 # move to end as work around to a bug in SCons            
 SCons.Script.AddOption("--cfg-file","--config-file",
@@ -438,9 +443,10 @@ SCons.Script.AddOption("--vcs-policy",
             default='update',
             nargs=1,
             type='choice',
-            choices=['warning','error','update'],
+            choices=['warning','error','message-update','update'],
             action='store',
-            help='Policy in how Parts should react if the automatic vcs check find that it is out of date. The policy values can be warning, error, update')         
+            help='Policy in how Parts should react if the automatic vcs check find that it is out of date.\
+ The policy values can be warning, error, message_update, update')         
             
 
 
@@ -458,6 +464,24 @@ def post_option_setup():
             help='Sets the default TARGET_PLATFORM use for cross builds')
 
    
-            
+
+
+SCons.Script.SConsOptions.SConsValues.settable.extend(
+    [
+     'vcs_logic',
+     'vcs_policy',
+     'vcs_jobs',
+     'vcs_retry',
+     'vcs_clean',
+     'update',
+     'ccopy_logic',
+     'use_color',
+     'show_progress',
+     'mode',
+     'build_config',
+     'tool_chain'
+     ])            
 
 api.register.add_global_object('SetOptionDefault',SetOptionDefault)
+api.register.add_list_variable('SUPPRESS_SECTION',[],'Tells Parts to not define any sections of this type')
+

@@ -29,15 +29,15 @@ def ZipPackage_wrapper(env,target,sources,**kw):
     if len(target) > 1:
         raise SCons.Errors.UserError('Only one target is allowed.')
     
+    if str(target[0]).endswith('.zip'):
+        target=[env.Dir(".").File(target[0])]
+    else:
+        target=[env.Dir(".").File(target[0]+".zip")]
+    
     sources=[env.subst(s) for s in sources]
         
     glb.engine.add_preprocess_logic_queue(map_zip_builder(env,target[0],sources,**kw))    
-    
-    if str(target[0]).endswith('.zip'):
-        out_target=[env.File(target[0])]
-    else:
-        out_target=[env.File(target[0]+".zip")]
-    return out_target
+    return target
         
 
 # This is what we want to be setup in parts
@@ -45,9 +45,6 @@ from SCons.Script.SConscript import SConsEnvironment
 
 SConsEnvironment.ZipPackage=ZipPackage_wrapper
 
-
-
-SConsEnvironment.ZipPackage=ZipPackage_wrapper
 
 
     

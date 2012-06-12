@@ -75,10 +75,12 @@ arch_map = {
 'x86_64':'x86_64',
 'IA64':'ia64',
 'ia64':'ia64',
+'arm':'arm',
 'any':'any'
 }
 
 os_map = {
+'android':'android',
 'win32':'win32',
 'win64':'win32',
 'xp':'win32',

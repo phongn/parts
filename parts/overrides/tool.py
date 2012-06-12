@@ -119,10 +119,13 @@ class Parts_Tool(object):
             self.options(opts)
             opts.Update(env)
 
-        apply(self.generate, ( env, ) + args, kw)
+        self.generate(env, *args, **kw)
 
     def __str__(self):
         return self.name
+
+    def Exists(self,env, *args, **kw):
+        return self.exists( env, *args, **kw)
 
 
 SCons.Tool.Tool=Parts_Tool

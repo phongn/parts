@@ -82,6 +82,15 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         
     #to help with user errors
     errors.SetPartStackFrameInfo()
+
+    if ("utest::" in env["SUPPRESS_SECTION"] or 
+        "utest" in env["SUPPRESS_SECTION"] or 
+        "run_utest::" in env["SUPPRESS_SECTION"] or 
+        "run_utest" in env["SUPPRESS_SECTION"]) and \
+        SCons.Script.GetOption('section_suppression'):
+        api.output.verbose_msgf("warning",'Skipping the processing of Part section "utest" in Part {0}',env.PartName())
+        return []
+
     targets=SCons.Script.BUILD_TARGETS
     for t in targets:
         tmp=target_type(t)
@@ -250,6 +259,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     sec.Env.AlwaysBuild(r)
     parent_obj.DefiningSection=curr_sec
     errors.ResetPartStackFrameInfo()
+    sec.LoadState=glb.load_file
     return ret
        
   
@@ -280,21 +290,21 @@ api.register.add_variable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to ru
 
 api.register.add_variable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
 api.register.add_variable('UNIT_TEST_DIR',
-			'$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET/',
-			'Full directory used for a given unit test run'
-			)
+            '$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET/',
+            'Full directory used for a given unit test run'
+            )
 api.register.add_variable('UNIT_TEST_ENV',
-			{'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
-			'Default values add to default environment when running unit tests')
+            {'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
+            'Default values add to default environment when running unit tests')
 api.register.add_variable('UNIT_TEST_TARGET_NAME',
-			'${PART_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
-			'Default value of a given unit test executable')
+            '${PART_NAME}-${UNIT_TEST_TARGET}_${PART_VERSION}',
+            'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_SCRIPT_NAME',
-			'${UNIT_TEST_TARGET}',
-			'Default value of a given unit test executable')
+            '${UNIT_TEST_TARGET}',
+            'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
-			'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_SCRIPT_NAME}',
-			'Command action used to run a unit test script in SCons run_utest::')
+            'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_SCRIPT_NAME}',
+            'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
-		'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
-		'Command action used to run a unit test in the script')
+        'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
+        'Command action used to run a unit test in the script')
