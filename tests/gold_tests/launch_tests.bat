@@ -1,3 +1,6 @@
-pushd %~dp0
-python ..\gtest\gtest.py 
-popd
+@pushd %~dp0
+@pushd ..\..
+@set PYTHONPATH=%CD%;%PYTHONPATH%
+@popd
+@python ..\gtest\gtest.py 
+@popd
