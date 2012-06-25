@@ -479,7 +479,7 @@ SConsEnvironment.InstallItem=InstallItem
 
 api.register.add_variable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
 
-api.register.add_variable('INSTALL_ROOT','#install/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}','')
+api.register.add_variable('INSTALL_ROOT','#_install/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}','')
 
 #these are the replacements
 api.register.add_variable('INSTALL_LIB','${INSTALL_ROOT}/lib','')

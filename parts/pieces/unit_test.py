@@ -43,7 +43,12 @@ def unit_test_script_bf(target, source, env):
     # update the value
     for k,v in command_env.iteritems():
         command_env[k]=env.subst(v)
-        
+
+    silent = SCons.Script.GetOption('silent')
+    if silent:
+      printcmd = ""
+    else:
+      printcmd = "print cmd"
     command='''#! /usr/bin/env python
 import os,sys
 import string
@@ -55,13 +60,13 @@ cmd=r"'''+cmd+'''"
 args=r"'''+env.subst(env['UTEST_CMDARGS'])+'''"
 if len(sys.argv) > 1:
     cmd = cmd+" "+string.join(sys.argv[1:],' ')
-    print cmd
+    '''+printcmd+'''
     env=os.environ
     proc = subprocess.Popen (cmd, env= env,shell=True)
     proc.wait()
 else:    
     cmd=cmd+args
-    print cmd
+    '''+printcmd+'''
     proc = subprocess.Popen (cmd, env= env,shell=True)
     proc.wait()
 '''    
@@ -74,7 +79,6 @@ else:
     st = os.stat(str(target[1]))
     os.chmod(str(target[1]), stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IEXEC)
     
-    print "PARTS: Writing Test Scripts -- Done"
     
 
 from parts.target_type import target_type
@@ -288,7 +292,7 @@ api.register.add_variable('UTEST_PREFIX','utest-','prefix used by UnitTest to pr
 api.register.add_variable('UTEST_ALL','$BUILD_UTEST_CONCEPT','Alias used to build all defined unit tests')
 api.register.add_variable('RUN_UTEST_ALL','$RUN_UTEST_CONCEPT','Alias used to run all defined unit tests')
 
-api.register.add_variable('UNIT_TEST_ROOT','#unit_tests','Root path used as sandbox for unit test runs')
+api.register.add_variable('UNIT_TEST_ROOT','#_unit_tests','Root path used as sandbox for unit test runs')
 api.register.add_variable('UNIT_TEST_DIR',
             '$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET/',
             'Full directory used for a given unit test run'

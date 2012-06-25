@@ -2,6 +2,7 @@
 import SCons.Environment
 import SCons.Util
 from .. import events
+from .. import api
 
 import types
 

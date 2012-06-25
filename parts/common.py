@@ -279,7 +279,7 @@ def make_unique_str(obj):
 # For class returns its name followed by wrapped __dict__
 # For others returns str(obj)
 def wrap_to_string(obj):
-    return _wrap_to_string(obj, set([id(obj)]))
+    return _wrap_to_string(obj, set())
 
 def _wrap_to_string(obj, knownObjIds):
     if id(obj) in knownObjIds:
@@ -287,20 +287,20 @@ def _wrap_to_string(obj, knownObjIds):
 
     knownObjIds.add(id(obj))
     if is_dictionary(obj):
-        return dict([[_wrap_to_string(k, initialObj, currRecursionDepth),
-            _wrap_to_string(v, initialObj, currRecursionDepth)] for k, v in obj.iteritems()])
+        return dict([[_wrap_to_string(k, knownObjIds),
+            _wrap_to_string(v, knownObjIds)] for k, v in obj.iteritems()])
     elif is_list(obj):
-        return [_wrap_to_string(i, initialObj, currRecursionDepth) for i in obj]
+        return [_wrap_to_string(i, knownObjIds) for i in obj]
     elif isinstance(obj, tuple):
-        return tuple([_wrap_to_string(i, initialObj, currRecursionDepth) for i in obj])
+        return tuple([_wrap_to_string(i, knownObjIds) for i in obj])
     elif isinstance(obj, types.FunctionType):
         return 'function %s (%s)' % (str(obj.__name__),
-            ','.join(_wrap_to_string(obj.func_code.co_varnames, initialObj, currRecursionDepth)))
+            ','.join(_wrap_to_string(obj.func_code.co_varnames, knownObjIds)))
     elif isinstance(obj, types.InstanceType):
         return 'instance of %s with %s' % (str(obj.__class__.__name__),
-            _wrap_to_string(obj.__dict__, initialObj, currRecursionDepth))
+            _wrap_to_string(obj.__dict__, knownObjIds))
     elif isinstance(obj, types.ClassType):
-        return 'class %s %s' % (str(obj.__name__), _wrap_to_string(obj.__dict__, initialObj, currRecursionDepth))
+        return 'class %s %s' % (str(obj.__name__), _wrap_to_string(obj.__dict__, knownObjIds))
     else:
         return str(obj)
 

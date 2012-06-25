@@ -415,6 +415,6 @@ class base(object):
 # add configuartion varaible needed for part
 
 api.register.add_bool_variable('UPDATE_ALL',False,'Controls if Parts will update source from servers')
-api.register.add_variable('CHECK_OUT_ROOT','#vcs','Root directory to place checked out data')
+api.register.add_variable('CHECK_OUT_ROOT','#_vcs','Root directory to place checked out data')
 api.register.add_variable('CHECK_OUT_DIR','$VCS_DIR','Full path used for any given checked out item')
 api.register.add_variable('VCS_DIR','$VCS.CHECKOUT_DIR','')

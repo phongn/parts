@@ -491,10 +491,10 @@ api.register.add_variable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%
 api.register.add_variable('PART_SDK_CONCEPT','sdk${ALIAS_SEPARTATOR}','')
 
 #common.add_config_var('SDK_ROOT','#sdks/${PART_ROOT_NAME}_${PART_VERSION}${SVN_REVISION==None and DATE_TIME_STAMP or SVN_REVISION}_${ARCHITECTURE}')
-api.register.add_variable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}/${PART_ROOT_NAME}_${PART_VERSION}${"_%s"%PART_ROOT_SIG if PART_ROOT_SIG!="" else ""}',
-					'Root Directory used for copy SDKs to')
+api.register.add_variable('SDK_ROOT','#_sdks/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}/${PART_ROOT_NAME}_${PART_VERSION}${"_%s"%PART_ROOT_SIG if PART_ROOT_SIG!="" else ""}',
+                    'Root Directory used for copy SDKs to')
 #api.register.add_variable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_PLATFORM}/${PART_ROOT_NAME}_${PART_VERSION}',
-					#'Root Directory used for copy SDKs to')                    
+                    #'Root Directory used for copy SDKs to')                    
 api.register.add_variable('SDK_LIB_ROOT','$SDK_ROOT/lib','Full SDK directory for the lib concept')
 api.register.add_variable('SDK_BIN_ROOT','$SDK_ROOT/bin','Full SDK directory for the bin concept')
 api.register.add_variable('SDK_INCLUDE_ROOT','$SDK_ROOT/include','Full SDK directory for the include or header concept')

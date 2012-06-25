@@ -65,6 +65,9 @@ if sys.platform=='win32':
         # this is sort of ugly
         # open the file with better shared flags
         
+        if not (set(['a', 'w', 'r']) & set(mode)):
+            mode = 'r' + mode
+
         fd=ctypes.windll.kernel32.CreateFileW(
                     unicode(filename), # the file 
                     get_win32_desired_access(mode),# read, write modes

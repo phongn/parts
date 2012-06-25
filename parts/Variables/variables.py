@@ -244,6 +244,7 @@ class Variables(dict,object):
 
         # at this point the values should be up to date
         # put the variables in the environment:
+        to_remove = []
         for k,v in values.iteritems():
             # There is a possiblility that unkown values have been read by the cfg file
             # This code will try to get the option and if that fails adds it to the unknowns
@@ -252,7 +253,10 @@ class Variables(dict,object):
                 env[k]=v
             else:
                 self._unknowns[k] = v
-                del values[k]
+                to_remove.append (k)
+        for k in to_remove:
+           if k in values:
+             del values[k]
         if add_unknown:
             env.Replace(**self._unknowns)
         # this loop allow the convertion and validation
