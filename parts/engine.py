@@ -345,9 +345,9 @@ class parts_addon(object):
                     cmd=' '.join(bf.command)
                 else:
                     cmd=bf.command
-                msg+=' Node: "%s"\n ' %(bf.node)
+                msg+=' Node: "{0}"\n'.format(bf.node)
                 del bf
-            api.output.print_msg("Summary: {0} build failure detected during build\n{0}".format(bf_lst_len,msg))
+            api.output.print_msg("Summary: {0} build failure detected during build\n{1}".format(bf_lst_len,msg))
             del bf_lst
         glb.rpter.ShutDown()
         

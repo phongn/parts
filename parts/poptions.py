@@ -259,8 +259,8 @@ SCons.Script.AddOption("--disable-global-parts-site",
 SCons.Script.AddOption("--verbose",
             dest='verbose',
             default=[],
-            callback=lambda option, opt, value, parser:opt_list(option, opt, value, parser,'verbose'),
-            nargs=1, type='string',
+            callback=lambda option, opt, value, parser:opt_list(option, opt, value if value is not None else 'all', parser,'verbose'),
+            nargs="?", type='string',
             action='callback',
             help='Control the level of detailed verbose information printed')
             
@@ -306,26 +306,6 @@ SCons.Script.AddOption("--mode",
             type='string',
             action='callback',
             help='Values used to control different build mode for a given part')  
-        
-SCons.Script.AddOption("--show-progress",
-            dest='show_progress',
-            nargs='?',
-            callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'show_progress'),
-            type='string',
-            action='callback',
-            help='Controls if progress state is shown')
-            
-SCons.Script.AddOption("--hide-progress",
-            dest='show_progress',
-            default=True,
-            action="store_false",
-            help='Controls if progress state is shown')
-
-SCons.Script.AddOption("--enable-parts-cache",
-            dest="parts_cache",
-            default=True,
-            action="store_true",
-            help='Enable Parts data to be used cache')
             
 SCons.Script.AddOption("--disable-parts-cache",
             dest="parts_cache",
@@ -342,16 +322,16 @@ SCons.Script.AddOption("--load-logic","--ll",
             action='store',
             help='Tells Parts what logic to use when loading files. Options are "all", "target", "min", "unsafe", "default"')     
 
-SCons.Script.AddOption("--enable-color","--use-color","--color",
-            dest='use_color',            
-            nargs='?',
-            callback=opt_color,
+SCons.Script.AddOption("--disable-color",
+            dest='use_color',           
+            callback=lambda option, opt, value, parser:opt_color(option,opt,False,parser),
             type='string',
             action='callback',
             help='Controls if console color support is used')
             
-SCons.Script.AddOption("--disable-color",
+SCons.Script.AddOption("--enable-color","--use-color","--color",
             dest='use_color',
+            nargs="?",
             default={
             'console':color.ConsoleColor(color.BrightMagenta),
             'stdout':color.ConsoleColor(color.Dim),
@@ -362,7 +342,7 @@ SCons.Script.AddOption("--disable-color",
             'stdtrace':color.ConsoleColor(color.BrightBlue),
             'defaults':True
             },
-            callback=lambda option, opt, value, parser:opt_color(option,opt,False,parser),
+            callback=opt_color,
             type='string',
             action='callback',
             help='Controls if console color support is used')

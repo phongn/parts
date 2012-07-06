@@ -20,6 +20,41 @@ SCons.Script.AddOption("--console-stream",
             action='store',
             help='Control how Parts maps the console stream. Values can be none, tty, con:, stdout, stderr') 
 
+## refactor these calls to a different file to avoid C&P
+opt_true_values  = set(['y', 'yes', 'true', 't', '1', 'on' , 'all' ])
+opt_false_values = set(['n', 'no', 'false', 'f', '0', 'off', 'none'])
+
+def opt_bool(option, opt, value, parser,var,negate=False):
+    if negate: 
+        TrueValue=False
+    else:
+        TrueValue=True
+    if value is None:
+        parser.values.__dict__[var]=TrueValue
+        return
+    tmp=value.lower()
+    if tmp in opt_true_values:
+        parser.values.__dict__[var]= TrueValue
+    elif tmp in opt_false_values:
+        parser.values.__dict__[var]= not TrueValue
+    else:
+        raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' % 
+                (var.replace('-','_'),value,opt_true_values|opt_false_values))
+
+SCons.Script.AddOption("--show-progress",
+            dest='show_progress',
+            nargs='?',
+            callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'show_progress'),
+            type='string',
+            action='callback',
+            help='Controls if progress state is shown')
+            
+SCons.Script.AddOption("--hide-progress",
+            dest='show_progress',
+            default=True,
+            action="store_false",
+            help='Controls if progress state is shown')
+
 class NullStream(object):
 
     def __init__(self):
@@ -72,6 +107,9 @@ class Console(object):
             elif map_console in ['stderr']:
                 conio=sys.__stderr__
             else:
+                conio=NullStream()
+            
+            if SCons.Script.GetOption('show_progress')==False:
                 conio=NullStream()
         except Exception,ec:
             conio=NullStream()        

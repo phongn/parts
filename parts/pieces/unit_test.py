@@ -37,6 +37,7 @@ def unit_test_script_bfe(target, source, env):
 def unit_test_script_bf(target, source, env):
     f = open(str(target[0]), 'wb')
     
+    test_dir=env.subst('${ABSPATH("UNIT_TEST_DIR")}')
     cmd=env.subst("$UNIT_TEST_RUN_COMMAND")
     command_env=env.get('UNIT_TEST_ENV',{})
     
@@ -53,7 +54,10 @@ def unit_test_script_bf(target, source, env):
 import os,sys
 import string
 import subprocess
+import time
 
+curr_path=os.path.split(os.path.abspath(sys.argv[0]))[0]
+os.chdir(curr_path)
 env=os.environ   
 env.update('''+str(command_env)+''')
 cmd=r"'''+cmd+'''"
@@ -62,17 +66,32 @@ if len(sys.argv) > 1:
     cmd = cmd+" "+string.join(sys.argv[1:],' ')
     '''+printcmd+'''
     env=os.environ
-    proc = subprocess.Popen (cmd, env= env,shell=True)
-    proc.wait()
+    proc = subprocess.Popen (cmd, env= env,shell=False)
 else:    
     cmd=cmd+args
     '''+printcmd+'''
-    proc = subprocess.Popen (cmd, env= env,shell=True)
-    proc.wait()
+    proc = subprocess.Popen (cmd, env= env,shell=False)
+
+timeout=250
+running = True
+start_time=time.time()
+last_event_time=start_time
+running=proc.poll() is None
+while running:
+    curr_time=time.time()
+    if curr_time-last_event_time > timeout:
+        # known bug in some python versions with kill() on win32 systems
+        if sys.platform == 'win32':
+            os.system("TASKKILL /F /PID {0}".format(proc.pid))
+        else:
+            proc.kill()
+    running=proc.poll() is None
+sys.exit(proc.returncode)
+
 '''    
     f.write(command)
     f = open(str(target[1]), 'wb')
-    f.write("@ECHO OFF\npython "+target[0].abspath+" %*")
+    f.write("@pushd %~dp0\r\n@python "+target[0].name+" %*\r\n@popd")
     f.close()
     st = os.stat(str(target[0]))
     os.chmod(str(target[0]), stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IEXEC)
@@ -226,7 +245,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
 
     
     ##make command args string
-    cmdargs=" "+string.join(command_args,' ')
+    if command_args:
+        cmdargs=" "+' '.join(command_args)
+    else:
+        cmdargs=''
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
@@ -307,8 +329,8 @@ api.register.add_variable('UNIT_TEST_SCRIPT_NAME',
             '${UNIT_TEST_TARGET}',
             'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
-            'cd ${ABSPATH("UNIT_TEST_DIR")} && python ${UNIT_TEST_SCRIPT_NAME}',
+            'python ${NORMPATH("$UNIT_TEST_DIR/$UNIT_TEST_SCRIPT_NAME")}',
             'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
-        'cd ${ABSPATH("UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
+        '${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
         'Command action used to run a unit test in the script')

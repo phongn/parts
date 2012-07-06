@@ -659,6 +659,18 @@ class abspath_mapper(mapper):
             return env.Entry(env.subst(self.value)).abspath
         return env.Entry(env.subst("${"+self.value+"}")).abspath
 
+class normpath_mapper(mapper):
+    ''' Allows for an easy expanding value as directory or files'''
+    name='NORMPATH'
+    def __init__(self,value):
+        mapper.__init__(self)
+        self.value = value
+
+    def __call__(self, target, source, env, for_signature):
+        if self.value[0] == '$':
+            return env.Entry(env.subst(self.value)).path
+        return env.Entry(env.subst("${"+self.value+"}")).path
+
 class relpath_mapper(mapper):
     ''' allows one to define a relative path'''
     name='RELPATH'
@@ -795,6 +807,7 @@ api.register.add_mapper(part_subst_mapper)
 api.register.add_mapper(part_name_mapper)
 api.register.add_mapper(part_shortname_mapper)
 api.register.add_mapper(abspath_mapper)
+api.register.add_mapper(normpath_mapper)
 api.register.add_mapper(relpath_mapper)
 api.register.add_mapper(part_lib_mapper)
 api.register.add_mapper(TempFileMunge)
