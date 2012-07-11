@@ -732,7 +732,8 @@ class part(pnode.pnode,part_compatiblity):
         ## logger and task spawners
         spawn=self.__env['PART_SPAWNER']
         self.__env['PART_LOG_MAPPER']=part_logger.part_logger(self.__env,glb.rpter.console)
-        self.__env['SPAWN']=spawn(self.__env)
+        self.__env['SPAWN']=spawn()
+        
 
 
         ## package logic ( as it is currently)

@@ -52,7 +52,11 @@ import SCons.Util
 # this class allows us to add object varible that get a reference to the env
 # that holds it
 class bindable(object):
-    pass
+    def _bind(self,env,key):
+        raise NotImplementedError 
+        
+    def _rebind(self,env,key):
+        raise NotImplementedError
 
 class DelayVariable(object):
     ''' This class defines a varable that will not be evaluted until it is requested
@@ -298,7 +302,7 @@ def _wrap_to_string(obj, knownObjIds):
             ','.join(_wrap_to_string(obj.func_code.co_varnames, knownObjIds)))
     elif isinstance(obj, types.InstanceType):
         return 'instance of %s with %s' % (str(obj.__class__.__name__),
-            _wrap_to_string(obj.__dict__, knownObjIds))
+            str(_wrap_to_string(obj.__dict__, knownObjIds)))
     elif isinstance(obj, types.ClassType):
         return 'class %s %s' % (str(obj.__name__), _wrap_to_string(obj.__dict__, knownObjIds))
     else:

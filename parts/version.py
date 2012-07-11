@@ -98,8 +98,13 @@ class version(object):
         'dev': -1100,
         'alpha': -1000,
         'beta': -900,
+        'ctp': -900,
         'rc': -800,
+        'pc': -800,
         'rtm': -700,
+        'gold': -700,
+        'release': -700,
+        'final': -700,
     }
     
     __slots__ = ["ver", "parts", "matches"]

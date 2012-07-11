@@ -296,6 +296,7 @@
     <Compile Include="configurations\release\gcc_any-any_android-x86.py" />
     <Compile Include="configurations\release\wdk_win32-any_win32-x86.py" />
     <Compile Include="configurations\release\wdk_win32-any_win32-x86_64.py" />
+    <Compile Include="overrides\override_env.py" />
     <Compile Include="overrides\tool.py" />
     <Compile Include="tools\GnuCommon\android.py" />
   </ItemGroup>

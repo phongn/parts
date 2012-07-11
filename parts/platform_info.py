@@ -285,12 +285,12 @@ api.register.add_variable(['TARGET_PLATFORM','target_platform','target'],SystemP
         'Value of what to type of system to target build for, used to control cross builds',
         converter=target_convert)
 
-api.register.add_global_parts_object('ChipArchitecture',ChipArchitecture)
-api.register.add_global_parts_object('OSBit',OSBit)
+api.register.add_global_parts_object('ChipArchitecture',ChipArchitecture) #obsolete
+api.register.add_global_parts_object('OSBit',OSBit) #obsolete
 #api.register.add_global_parts_object('Host_Platform',HostSystem)
 
-api.register.add_global_object('ChipArchitecture',ChipArchitecture)
-api.register.add_global_object('OSBit',OSBit)
+api.register.add_global_object('ChipArchitecture',ChipArchitecture) #obsolete
+api.register.add_global_object('OSBit',OSBit) #obsolete
 api.register.add_global_object('HostPlatform',HostSystem)
 api.register.add_global_object('SystemPlatform',SystemPlatform)
 #api.register.add_global_object('ValidatePlatform',ValidatePlatform)

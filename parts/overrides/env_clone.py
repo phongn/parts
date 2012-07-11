@@ -8,7 +8,7 @@ def PartsClone(self, tools=[], toolpath=None, parse_flags = None, **kw):
     if hasattr(self, '_bindable_vars'):
         for i in self._bindable_vars:
             clone_env._bindable_vars.add(i)
-            clone_env[i]=clone_env[i]._rebind(clone_env,i)
+            clone_env[i]._rebind(clone_env,i)
     return clone_env
 
 # this code is to fix a clone bug, that has been fixed in newer drop fo SCons

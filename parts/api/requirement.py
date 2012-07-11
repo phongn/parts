@@ -105,5 +105,5 @@ DefineRequirementSet('C_DEFAULTS',['LIBS','HEADERS'],weight=-9000)
 # defaults
 DefineRequirementSet('DEFAULT',['CPP_DEFAULTS','C_DEFAULTS','INSTALLFILES','SDKLIB','SDKBIN'],weight=-10000)
 
-# stuff to remove
+# stuff to remove don't use this.. really don't use it.
 DefineRequirementSet('ALL_DEFAULT',['LIBS','HEADERS','CCFLAGS','CFLAGS','CXXFLAGS'],policy.ReportingPolicy.warning,weight=-999999)

@@ -71,21 +71,7 @@ else:
     cmd=cmd+args
     '''+printcmd+'''
     proc = subprocess.Popen (cmd, env= env,shell=False)
-
-timeout=250
-running = True
-start_time=time.time()
-last_event_time=start_time
-running=proc.poll() is None
-while running:
-    curr_time=time.time()
-    if curr_time-last_event_time > timeout:
-        # known bug in some python versions with kill() on win32 systems
-        if sys.platform == 'win32':
-            os.system("TASKKILL /F /PID {0}".format(proc.pid))
-        else:
-            proc.kill()
-    running=proc.poll() is None
+    proc.wait()
 sys.exit(proc.returncode)
 
 '''    
@@ -259,7 +245,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     ## the command action to Run this stuff
     cmd='$UNIT_TEST_RUN_SCRIPT_COMMAND'
     # map top level run alias... first one maps to build based 'base_alias'
-    core_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',core_alias,sec.Env.Action(cmd))
+    core_run_alias=sec.Env.Override({'TIME_OUT':sec.Env.get("RUN_UTEST_TIME_OUT",sec.Env.get('TIME_OUT'))}).Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',core_alias,sec.Env.Action(cmd))
     sec.Env.AlwaysBuild(core_run_alias)
     #add to queue the delayed mapping of any dependent stuff
     glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(sec.Env))
@@ -329,7 +315,7 @@ api.register.add_variable('UNIT_TEST_SCRIPT_NAME',
             '${UNIT_TEST_TARGET}',
             'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
-            'python ${NORMPATH("$UNIT_TEST_DIR/$UNIT_TEST_SCRIPT_NAME")}',
+            'cd ${NORMPATH("$UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
             'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
         '${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',

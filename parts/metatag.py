@@ -11,6 +11,8 @@ def MetaTag(nodes,ns='meta',**metakv):
             #if not add it
             setattr(n,ns,common.namespace())
         for k,v in metakv.iteritems():
+            if k in set(['SymLink','SymLinkMakeDummyFile']):
+               api.output.warning_msg('{0} meta-tag usage is deprecated. Consider using SymLink() function'.format(k))
             getattr(n,ns)[k]=v
             
 def MetaTagValue(node,key,ns='meta',default=None):

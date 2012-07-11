@@ -4,11 +4,11 @@ import console
 import api.output
 import version
 
-import subprocess,sys,string,os
-import thread,threading
-
 import SCons.Script
 
+import subprocess,sys,string,os
+import thread,threading
+import time
 import platform
 
 pyver=version.version(platform.python_version())
@@ -36,17 +36,25 @@ class pipeRedirector(object):
         self.thread = None
         self.writer = None
 
-class part_spawner(object):
-    def __init__(self,env):
-        self.env=env   
+class part_spawner(common.bindable):
+    def __init__(self):
+        self.env=None   
+
+    def _bind(self,env,key):
+        self.env=env
+        
+    def _rebind(self,env,key):
+        tmp=part_spawner() # make a copy (no state to pass here)
+        tmp._bind(env,key) # bind
+        return tmp # return new value
 
     def __call__(self,shell, escape, cmd, args, Env):
-        # setup the call        
-        
+        # setup the call
         ENV={}
         for k,v in Env.iteritems():
             ENV[k]=str(v)
         # get the part_logger
+        print self.env
         output=self.env["PART_LOG_MAPPER"]
         
         # we ignore the escape function as it breaks linux, 
@@ -74,11 +82,26 @@ class part_spawner(object):
         p1 = pipeRedirector(proc.stdout, lambda x: output.WriteOut(id, x))
         p2 = pipeRedirector(proc.stderr, lambda x: output.WriteErr(id, x))
         
-        try:
-            proc.wait()
-        except OSError, e:
-            if e.errno != 10:
-                raise e
+
+        timeout=self.env.get('TIME_OUT')
+        if timeout is not None:
+            timeout =int(timeout) # might be passed in on the command line, so it would be a string value
+            start_time=time.time()
+            running=proc.poll() is None
+            while running:
+                if time.time()-start_time > timeout:
+                    # known bug in some python versions with kill() on win32 systems
+                    if sys.platform == 'win32':
+                        os.system("TASKKILL /F /T /PID {0}".format(proc.pid))
+                    else:
+                        proc.kill()
+                running=proc.poll() is None
+        else:
+            try:
+                proc.wait()
+            except OSError, e:
+                if e.errno != 10:
+                    raise e
 
 
         # force pipe-redirectors to close handles

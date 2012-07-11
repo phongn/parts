@@ -821,6 +821,21 @@ class section_changed_loader(base): #task_master type
             
 
     def CheckTargets(self):
+
+        # need to do a little refactoring.
+
+        #get the set of new unknown root parts that have been added.
+        # we want to load these, so we can have the information added to the DB cache
+        # and to prevent issues with mapping if an existing Parts depends on the new value
+        
+        new_parts=self.pmgr.GetNewParts()
+        # we could try to delay load these "unknowns" if we have a unknown mapping issue.
+        # might look at that when I refactor the load logic cases.
+        # for now just load these, as this should not be common
+        for pobj in new_parts:
+            api.output.verbose_msgf("update_check",'Part "{0}" is new, forcing load',pobj.ID)
+            self.pmgr.LoadPart(pobj)
+
         #given the sections we need to two tree runs
         #1) run is to see what has context changes (file, builder and config files changes)
         #2) see what targets/source file and exported items are different
@@ -968,6 +983,7 @@ class part_manager(object):
         self.__root_part_count=0 # number of Major parts/components we have defined.. 
         self.__loader=None
         glb.engine.CacheDataEvent+=self.Store
+        self.__new_parts=set()
     
     @property
     def Loader(self):
@@ -1360,8 +1376,7 @@ class part_manager(object):
                 
         if processed:
             api.output.verbose_msgf(['loading'],"Loaded {0:45}[{1:.2f} secs]",pobj.ID,(time.time()-part_file_load_time))
-                
-   
+                 
     def _define_sub_part(self,env,alias,parts_file,mode=[],vcs_type=None,
             default=False,append={},prepend={},create_sdk=True,package_group=None,
             **kw):
@@ -1562,8 +1577,6 @@ class part_manager(object):
             api.output.verbose_msgf(['loading'],"Targets we skipped: {0}",skip_list)
         api.output.verbose_msgf(['loading'],"Updated BUILD_TARGETS: {0}",SCons.Script.BUILD_TARGETS)
         
-        
-    
     def ProcessParts(self):
         ''' 
         This function will process all the Parts object based on the targets
@@ -1921,10 +1934,14 @@ class part_manager(object):
                 
         else:
             full_set=tmp
+        if use_stored_info:
+            # need a copy for the stored case as we might want to return all possible matches
+            full_set_copy=full_set.copy()
         ret= self.reduce_list_from_target_stored(target,full_set) if use_stored_info else self.reduce_list_from_target(target,full_set) 
         #if user_reduce:
             #user_reduce(name,ret)
-        
+        if use_stored_info and ret == set([]):
+            return full_set_copy
         return ret
         
         
@@ -2083,8 +2100,6 @@ class part_manager(object):
         api.output.verbose_msgf("reduce_target_mapping","Final reduced list {0}",part_lst)
         return part_lst
                 
-        
-
     def _alias_list(self,name=None):
         '''
         given an a part name return a list of all parts alias that 
@@ -2227,4 +2242,25 @@ class part_manager(object):
             self.__hasStored=False
         # set the node as being checked
         node._node_info_checked=True
-            
+
+    def GetNewParts(self):
+        '''
+        Returns a set of "new" Parts that are not known based on stored data from last run
+        '''
+
+        if self.__new_parts:
+            return self.__new_parts
+        
+        stored_data=datacache.GetCache("part_map")
+        #get stored data on known Parts
+        known_parts=stored_data['known_parts']
+        print known_parts
+        # look to see if any parts we currently know about is not in the list.
+        for pobj in self.parts.itervalues():
+            if pobj.ID not in known_parts:
+                self.__new_parts.add(pobj)
+
+        return self.__new_parts
+
+
+
