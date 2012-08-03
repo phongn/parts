@@ -37,7 +37,6 @@ def unit_test_script_bfe(target, source, env):
 def unit_test_script_bf(target, source, env):
     f = open(str(target[0]), 'wb')
     
-    test_dir=env.subst('${ABSPATH("UNIT_TEST_DIR")}')
     cmd=env.subst("$UNIT_TEST_RUN_COMMAND")
     command_env=env.get('UNIT_TEST_ENV',{})
     
@@ -60,6 +59,7 @@ curr_path=os.path.split(os.path.abspath(sys.argv[0]))[0]
 os.chdir(curr_path)
 env=os.environ   
 env.update('''+str(command_env)+''')
+env['UNIT_TEST_DIR']=curr_path
 cmd=r"'''+cmd+'''"
 args=r"'''+env.subst(env['UTEST_CMDARGS'])+'''"
 if len(sys.argv) > 1:
@@ -87,7 +87,7 @@ sys.exit(proc.returncode)
     
 
 from parts.target_type import target_type
-def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,**kw):
+def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,builder="Program",builder_kw={},**kw):
         
     #to help with user errors
     errors.SetPartStackFrameInfo()
@@ -117,7 +117,6 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     short_alias=env.subst('${UTEST_PREFIX}%s'%target)
     sec=glb.pnodes.Create(pnode.section.utest_section,parent_obj,env=env.Clone(**kw))
     parent_obj._AddSection("utest",sec)
-        #sec._setup_(parent_obj,env=env.Clone(**kw))
     
     curr_sec=parent_obj.DefiningSection
     parent_obj.DefiningSection=sec
@@ -207,7 +206,10 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         sec.Env['PDB']=None
         
     ## the unit test we want to build
-    ret = sec.Env.Program(target=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'],source=src_files)
+    tmp_bld=getattr(sec.Env,builder)
+    if tmp_bld is None:
+        api.output.error_msg("Builder {0} is not found".format(builder))
+    ret = tmp_bld(target=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'],source=src_files)
     #common.tag_node_ownership(pobj.Env,pobj.Env.Dir(build_dir))
     
     #build alias
@@ -230,15 +232,15 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     #pobj._map_alias()
 
     
+
     ##make command args string
     if command_args:
-        cmdargs=" "+' '.join(command_args)
-    else:
-        cmdargs=''
+        sec.Env['UTEST_CMDARGS']=command_args
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],ret[0].abspath,UTEST_CMDARGS=cmdargs,UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
+    sec.Env['ENV'].update(env.get('UNIT_TEST_ENV',{}))
+    scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],ret[0].abspath,sec.Env.subst('$UTEST_CMDARGS'),UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
     scripts_out=sec.Env.CCopy("$UNIT_TEST_DIR",scripts_out)
     ### here we map a bunch of aliases
     core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out+ret)
@@ -305,6 +307,7 @@ api.register.add_variable('UNIT_TEST_DIR',
             '$UNIT_TEST_ROOT/${CONFIG}_${TARGET_PLATFORM}/${PART_NAME}_${PART_VERSION}/$UNIT_TEST_TARGET/',
             'Full directory used for a given unit test run'
             )
+api.register.add_list_variable('UTEST_CMDARGS',[],'')
 api.register.add_variable('UNIT_TEST_ENV',
             {'UNIT_TEST_DIR':'${ABSPATH("UNIT_TEST_DIR")}'},
             'Default values add to default environment when running unit tests')
@@ -315,7 +318,7 @@ api.register.add_variable('UNIT_TEST_SCRIPT_NAME',
             '${UNIT_TEST_TARGET}',
             'Default value of a given unit test executable')
 api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
-            'cd ${NORMPATH("$UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
+            'cd ${NORMPATH("$UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME} ${UTEST_CMDARGS}',
             'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
         '${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
