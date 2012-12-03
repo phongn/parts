@@ -5,6 +5,7 @@ import SCons.Util
 import parts.tools.MSCommon.vsx_sdk
 from parts.tools.MSCommon import vssdk
 import parts.api.output as output
+import parts.tools.Common
 
 ctc_action = SCons.Action.Action('$CTC_COM', '$CTC_COMSTR')
 ctc_builder = SCons.Builder.Builder(action=ctc_action,
@@ -15,21 +16,18 @@ ctc_builder = SCons.Builder.Builder(action=ctc_action,
 SCons.Tool.SourceFileScanner.add_scanner('.ctc', SCons.Defaults.CScan)
 
 
-def generate(env):#, version=None, abi=None, topdir=None, verbose=0):
+def generate(env):
    
     env['INCPREFIX']  = '/I'
     env['INCSUFFIX']  = ''
-    env['_CTC_INCFLAGS'] = '$( ${_concat(INCPREFIX, CTC_INCLUDES, INCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
-    env['CTC']='ctc'
-    env['CTC_INCLUDES']=SCons.Util.CLVar([])#['${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc','${VSSDK.INSTALL_ROOT}\\VisualStudioIntegration\\Common\\Inc\\office10']
-    env['CTC_FLAGS']=SCons.Util.CLVar(['-nologo','-Ccl'])
+    env['_CTC_INCFLAGS'] = '${_concat(INCPREFIX, CTC_INCLUDES, INCSUFFIX, __env__, RDirs, TARGET, SOURCE)}'
+    env['CTC'] = parts.tools.Common.toolvar('ctc')
+    env['CTC_INCLUDES']=[]
+    env['CTC_FLAGS']=['-nologo','-Ccl']
     env['CTC_COM'] = '$CTC $SOURCE $TARGET $CTC_FLAGS $_CTC_INCFLAGS'
     env['BUILDERS']['CTC'] = ctc_builder
         
     vssdk.MergeShellEnv(env)
-
-    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('vssdk',env['VSSDK']['VERSION'],env['TARGET_PLATFORM']))
-
 
 def exists (env):
     return vssdk.Exists(env)

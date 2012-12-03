@@ -170,7 +170,7 @@ class GnuInfo(ToolInfo):
                                         pathwtool=os.path.join(fullpath,fitem)
                                         tmp=self.get_default_ver(pathwtool)
                                         if tmp is not None:
-                                            ret[tmp]=(fullpath,fitem)
+                                            ret[tmp]=(fullpath,pathwtool)
 
             if install_root is not None:                               
                 # see if in this area we have any possible matches of different versions

@@ -80,27 +80,10 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
                 out.extend(env.CCopy(target=target_dir,source=s))
             #src.append(s)            
         else:
-            api.output.warning_msg('Unknown type "{0}" in process_Sdk_Copy() in sdk.p'.format(type(s)))
+            api.output.warning_msg('Unknown type "{0}" in process_Sdk_Copy() in sdk.py'.format(type(s)))
         
     #define Alias if we have a part being defined
     if create_sdk==True:
-
-        # this base alias is made as we need to have the generated sdk file
-        # build after all other possible files in the SDK are finished
-        #sdk_alias_base='_${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        #sdk_alias='${PART_SDK_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        
-        # this is the base SDK alias
-        #sdk_outs=env.Alias(sdk_alias_base,out)
-        #sdk_outs=env.Alias(sdk_alias,sdk_outs)
-        
-        # the is for the super alias
-        #sdk_all=env.Alias("${PART_SDK_CONCEPT}",sdk_outs)
-        
-        # define the clean
-        #if clean_list!=[]:
-            #env.Clean(sdk_all,clean_list)
-            #env.Clean(sdk_outs,clean_list)
         g_sdked_files.update(out)
         
             
@@ -121,15 +104,6 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
     
     pobj=glb.engine._part_manager._from_env(env)
     
-    
-    # this is a little bit of hack.. but better than nothing till I refactor
-    tmp="".join(target_dir.split("_")[1:]).upper() # SDK_TOP_LEVEL -> TOPLEVEL
-    for i in export_info:
-        if i[1] == tmp:
-            break
-    else:
-        export_info.append((Xp.EXPORT_TYPES.PATH_FILE ,tmp))
-
     # this is for classic formats and compatible behavior with 0.9
     pobj._sdk_or_installed_called=True
     
@@ -142,7 +116,7 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
         add_to_path=False
     else:
         dest_dir=os.path.join("${PARTSUB('"+pobj.Alias+"','"+target_dir+"')}",sub_dir)    
-    
+
     do_clean=True
     
     if env['CREATE_SDK'] == False and create_sdk == True:
@@ -163,7 +137,7 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
         for _type,_prop in export_info:
             # add missing properties in map
             if pobj.DefiningSection.Exports.has_key(_prop)==False:
-                pobj.DefiningSection.Exports[_prop]=[]
+                pobj.DefiningSection.Exports[_prop]=[[]]
             # might add case that allow export of all directories
             if _type==Xp.EXPORT_TYPES.PATH and add_to_path==True:
                 target_paths+=Xp.export_path(env,[dest_dir],source_dir,pobj,_prop,use_src_dir,create_sdk)
@@ -186,11 +160,10 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
                 pass
             elif len(export_info) == 1 and export_info[0][0]==Xp.EXPORT_TYPES.PATH:
                 pobj._create_sdk_data.append(('ExportItem',[export_info[0][1],common._make_reld(target_paths),False]))
-                #pinfo['CREATE_SDK'].append(('SdkItem',[target_dir,common._make_rel([targets[0]]),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))    
             else:
                 pobj._create_sdk_data.append(('SdkItem',[target_dir,common._make_rel(targets),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))
     
-    tmp=target_dir[1:].replace('_','',1)
+    tmp=target_dir[1:].replace('_','')
     if create_sdk:
         env.ExportItem(tmp,targets,create_sdk,True)
 
@@ -201,7 +174,7 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
 def SdkInclude(env,sources,sub_dir='',add_to_path=None,use_src_dir=False,create_sdk=True):
 
     if add_to_path is None:
-        add_to_path=env.get('SDK_INCLUDE_ADD_TO_PATH',True)
+        add_to_path=env.get('SDK_INCLUDE_ADD_TO_PATH',False) 
     ret=SdkItem(env,'$SDK_INCLUDE',sources,sub_dir,'',[(Xp.EXPORT_TYPES.PATH ,'CPPPATH')],
             add_to_path=add_to_path,auto_add_file=True,use_src_dir=use_src_dir,
             use_build_dir=False,create_sdk=create_sdk)
@@ -487,8 +460,6 @@ api.register.add_builder('__CreateSDKBuilder__',SCons.Builder.Builder(
 import datetime        
 # add configuartion varaible
 api.register.add_variable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%H%M'),'')
-
-api.register.add_variable('PART_SDK_CONCEPT','sdk${ALIAS_SEPARTATOR}','')
 
 #common.add_config_var('SDK_ROOT','#sdks/${PART_ROOT_NAME}_${PART_VERSION}${SVN_REVISION==None and DATE_TIME_STAMP or SVN_REVISION}_${ARCHITECTURE}')
 api.register.add_variable('SDK_ROOT','#_sdks/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}/${PART_ROOT_NAME}_${PART_VERSION}${"_%s"%PART_ROOT_SIG if PART_ROOT_SIG!="" else ""}',

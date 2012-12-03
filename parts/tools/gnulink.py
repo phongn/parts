@@ -21,6 +21,7 @@ import SCons.Tool.gnulink
 import SCons.Action
 import parts.api.output
 import parts.tools.GnuCommon
+import parts.tools.Common
 
 def _pdbEmitter(target, source, env):
     """

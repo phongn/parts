@@ -117,8 +117,7 @@ def get_properties(tlst):
                 # else this is a simple value ( non list)
                 properties[k]=v
         except ValueError:
-            print 'target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p)
-            #api.output.error_msg('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))    
+            api.output.error_msg('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))    
     return properties
 
 def get_groups(tlst): 

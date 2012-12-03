@@ -8,6 +8,7 @@ from .. import datacache
 from .. import api
 from .. import part_ref
 from .. import target_type
+from ..reporter import PartRuntimeError as PartRuntimeError
            
 def removeall(path):
     ''' 
@@ -61,7 +62,13 @@ class base(object):
     for building not the checking of sources. Check in, push or other maintainance
     logic should be done outside SCons and Parts.
     '''
-    
+    __slots__=[
+               '_repository',
+               '_server',
+               '_allow_parallel',
+               '_pobj',
+               '_env'
+               ]
     
     def __init__(self,repository,server=None):
         '''Constructor for the vcs object
@@ -156,7 +163,7 @@ class base(object):
                         api.output.warning_msgf("Skipping the update of {0} as it is not a known part to update. Is this a type-o?",i,print_once=True,show_stack=False)
                 
         return False
-                
+
     def NeedsToUpdate(self):
         '''Tell us if this Vcs object believe it need to be updated'''
         ret_val=False
@@ -181,22 +188,55 @@ class base(object):
             elif logic_type=='none':
                 ret=False
                 return ret
-            
+            mod_msg='Local modification detected in "{0}".\n Add --update to force update for merge and potential loss of local changes'.format(self.CheckOutDir)
             if ret:
                 # get policy for how to handle a positive reponse
                 pol=self._env.GetOption('vcs_policy')
                 if pol == 'warning':
+                    ret_val = False
                     # report the warning
                     api.output.warning_msg(ret,show_stack=False)
                 elif pol == 'error':
+                    ret_val = False
                     # report the error
                     api.output.error_msg(ret,show_stack=False)
+                elif pol =='checkout-warning':
+                    ret_val = False
+                    if self.do_exist_logic():
+                        api.output.verbose_msg('vcs_update',ret)
+                    else:
+                        # report the warning
+                        api.output.warning_msg(ret,show_stack=False)
+                        api.output.warning_msg("Add --update to force update for merge and potential loss of local changes",show_stack=False)
+                elif pol =='checkout-error':
+                    ret_val = False
+                    if self.do_exist_logic():
+                        api.output.verbose_msg('vcs_update',ret)
+                    else:
+                        # report the warning
+                        api.output.error_msg(ret,show_stack=False,exit=False)
+                        api.output.error_msg("Add --update to force update for merge and potential loss of local changes",show_stack=False)
                 elif pol =='message-update':
                     ret_val = True
                     api.output.print_msg(ret)
+                    if self.is_modified():
+                        api.output.error_msg(mod_msg,show_stack=False)
+                    elif os.path.exists(self.CheckOutDir):
+                        api.output.print_msg('No local modification detected in "{0}", updating...'.format(self.CheckOutDir))
+                elif pol =='warning-update':
+                    ret_val = True
+                    api.output.warning_msg(ret,show_stack=False)
+                    if self.is_modified():
+                        api.output.error_msg(mod_msg,show_stack=False)
+                    elif os.path.exists(self.CheckOutDir):
+                        api.output.warning_msg('No local modification detected in "{0}", updating...'.format(self.CheckOutDir),show_stack=False)
                 elif pol =='update':
                     ret_val = True
                     api.output.verbose_msg('vcs_update',ret)
+                    if self.is_modified():
+                        api.output.error_msg(mod_msg,show_stack=False)
+                    elif os.path.exists(self.CheckOutDir):
+                        api.output.verbose_msg('vcs_update','No local modification detected in "{0}", updating...'.format(self.CheckOutDir))
                 else:
                     ret_val = False
             else:
@@ -229,6 +269,9 @@ class base(object):
         else: api.output.verbose_msg(['vcs_update'],' %s will \033[32mnot update!\033[0m'%(self._pobj.Alias))
         return ret_val
     
+    def is_modified(self):
+        return False
+
     def do_update_check(self):
         '''Function that should be used by subclass to add to any custom update logic that should be checked'''
         
@@ -262,7 +305,10 @@ class base(object):
         
         if self.PartFileExists:
             try:
-                ret=self.Update()
+                try:
+                    ret=self.Update()
+                except PartRuntimeError, e:
+                    ret=True
             except:    
                 api.output.error_msg("Unexpected exception when doing Update actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
                 import traceback,StringIO
@@ -411,6 +457,17 @@ class base(object):
         #except:
         #    return None
 
+    # Returns name of cache file with vcs info
+    @property
+    def _cache_filename(self):
+        # Should be implemented in derived class
+        raise NotImplementedError()
+
+    @property
+    def CacheFileExists(self):
+        if self._cache_filename:
+            return os.path.exists(os.sep.join([".parts.cache",'vcs',self._cache_filename+".cache"]))
+        return True # there is no cache file.. so it can't not exists
 
 # add configuartion varaible needed for part
 

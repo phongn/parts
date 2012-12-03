@@ -37,11 +37,11 @@ test_search=0
 test_match=1
 
 warning_tests = [
-    (test_search,re.compile('((\s|\W)warnings?(\D|\W\s|\s))|(warnings?\s\D)',re.IGNORECASE))
+    (test_search,re.compile('\s?warnings?\s?(?!\.)\D',re.IGNORECASE))
     ]
 
 error_tests =[
-    (test_search,re.compile('((\s|\W)errors?(\D|\W\s|\s))|(errors?\s?\D)',re.IGNORECASE)),
+    (test_search,re.compile('\s?errors?\s?(?!\.)\D',re.IGNORECASE)),
     (test_match,re.compile('fail$',re.IGNORECASE))
     ]
 
@@ -425,6 +425,12 @@ api.register.add_global_object('PrintError',user_report_error)
 api.register.add_global_object('PrintWarning',user_report_warning)
 api.register.add_global_object('PrintMessage',user_print_msg)
 api.register.add_global_object('VerboseMessage',user_verbose)
+
+
+api.register.add_global_parts_object('PrintError',user_report_error)
+api.register.add_global_parts_object('PrintWarning',user_report_warning)
+api.register.add_global_parts_object('PrintMessage',user_print_msg)
+api.register.add_global_parts_object('VerboseMessage',user_verbose)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.PrintError=user_report_error_env

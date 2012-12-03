@@ -12,7 +12,7 @@ import parts.pnode as pnode
 
 import SCons.Script
 
-import os,stat
+import os,stat,sys
 import string
 
 
@@ -44,16 +44,10 @@ def unit_test_script_bf(target, source, env):
     for k,v in command_env.iteritems():
         command_env[k]=env.subst(v)
 
-    silent = SCons.Script.GetOption('silent')
-    if silent:
-      printcmd = ""
-    else:
-      printcmd = "print cmd"
     command='''#! /usr/bin/env python
 import os,sys
 import string
 import subprocess
-import time
 
 curr_path=os.path.split(os.path.abspath(sys.argv[0]))[0]
 os.chdir(curr_path)
@@ -61,17 +55,15 @@ env=os.environ
 env.update('''+str(command_env)+''')
 env['UNIT_TEST_DIR']=curr_path
 cmd=r"'''+cmd+'''"
-args=r"'''+env.subst(env['UTEST_CMDARGS'])+'''"
 if len(sys.argv) > 1:
-    cmd = cmd+" "+string.join(sys.argv[1:],' ')
-    '''+printcmd+'''
-    env=os.environ
-    proc = subprocess.Popen (cmd, env= env,shell=False)
+    cmd = cmd+" "+' '.join(sys.argv[1:])
 else:    
-    cmd=cmd+args
-    '''+printcmd+'''
-    proc = subprocess.Popen (cmd, env= env,shell=False)
-    proc.wait()
+    cmd=cmd
+print cmd
+proc = subprocess.Popen (cmd, env=env, shell=True)
+proc.wait()
+sys.stdout.flush()
+sys.stderr.flush()
 sys.exit(proc.returncode)
 
 '''    
@@ -87,7 +79,7 @@ sys.exit(proc.returncode)
     
 
 from parts.target_type import target_type
-def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,builder="Program",builder_kw={},**kw):
+def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb=True,depends=None,builder="Program",builder_kw={},**kw):
         
     #to help with user errors
     errors.SetPartStackFrameInfo()
@@ -99,7 +91,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         SCons.Script.GetOption('section_suppression'):
         api.output.verbose_msgf("warning",'Skipping the processing of Part section "utest" in Part {0}',env.PartName())
         return []
-
+    
     targets=SCons.Script.BUILD_TARGETS
     for t in targets:
         tmp=target_type(t)
@@ -109,26 +101,23 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     else:
         return []
     
-    
-    ## make a new Part object
+    ## get Part object of Part defining the utest call
     parent_obj=glb.engine._part_manager._from_env(env)
-    sec= parent_obj.Section("utest")
-    #if sec.Name!='utest':
-    short_alias=env.subst('${UTEST_PREFIX}%s'%target)
+    #Create a section object ( should get existing section if it already exists
     sec=glb.pnodes.Create(pnode.section.utest_section,parent_obj,env=env.Clone(**kw))
+    # add section to Part container
     parent_obj._AddSection("utest",sec)
-    
+    # Set the "current defining section" to the utest section
+    # and save current sectiond to be reset at end of function
     curr_sec=parent_obj.DefiningSection
     parent_obj.DefiningSection=sec
         
-    
-    
     # tweak Environment
     sec.Env['UNIT_TEST_TARGET']=target
     
      ## setup the varible with paths
-    curr_path=node_helpers.AbsDir(env,'.')
-    orig_src_dir=common.relpath(node_helpers.AbsDir(env,src_dir),curr_path)
+    curr_path=env.AbsDir('.')
+    rel_src_dir=common.relpath(env.AbsDir(src_dir),curr_path)
     if src_dir!='.':
         src_dir=common.relpath(env.Dir(os.path.join(curr_path,src_dir)).srcnode().abspath,env.Dir('.').abspath)
     else:
@@ -136,31 +125,80 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
 
     build_dir_leaf=sec.Env['UNIT_TEST_TARGET']
     build_dir=sec.Env.subst("{0}/{1}".format('$BUILD_DIR',build_dir_leaf))
-    
+    orig_build_dir=env.Dir('$BUILD_DIR').path
+    build_dir_node=sec.Env.Dir(build_dir)
+    ## change the build dir
+    sec.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
+    build_dir_node=sec.Env.Dir(build_dir)
     ## map autodepends stuff
-    sec.Env.DependsOn([sec.Env.Component(env.PartName(),env.PartVersion(),section='build')])
-    
+    if depends is None:
+        sec.Env.DependsOn([sec.Env.Component(env.PartName(),env.PartVersion(),section='build')])
+    else:
+        sec.Env.DependsOn(depends)
+
     ## flatten the sources
     source=sec.Env.Flatten(source)
     
     ## process the sources
+    # we have to re-path value to map to the new variant directory
     src_files=[]
     for f in source:
         if isinstance(f,pattern.Pattern):
             flst=f.files()
             for i in flst:
-                if i[:len(orig_src_dir)]==orig_src_dir:
-                    i=i[len(orig_src_dir)+1:]
-                src_files.append(os.path.join(build_dir,i))
+                if i.startswith(rel_src_dir):
+                    i=i[len(rel_src_dir)+1:]
+                elif i.startswith(curr_path):
+                    i=i[len(curr_path)+1:]
+                elif i.startswith(orig_build_dir):
+                    i=i[len(orig_build_dir)+1:]
+                src_files.append(build_dir_node.File(i))
                 
         elif isinstance(f,SCons.Node.FS.Dir):
             pass
-        elif isinstance(f,SCons.Node.FS.File) or isinstance(f,SCons.Node.Node):
-            src_files.append(f)
+        elif isinstance(f,SCons.Node.FS.File):
+            # File node will start with the orginal build directory
+            # or the start with current path ( ie full path to src)
+            # or it might be equal to some messed up value based on the build directory
+            # caused by the mix of ../ paths
+            relpath=common.relpath(f.dir.ID,orig_build_dir)            
+            if f.path.startswith(curr_path):
+                f=f.path[len(curr_path)+1:]
+            elif f.path.startswith(orig_build_dir):
+                fs=f.path[len(orig_build_dir)+1:]
+                if src_dir==curr_path:
+                    src_files.append(f)
+                else:
+                    src_files.append(build_dir_node.File(fs))
+            elif f.ID.startswith(f.Dir(relpath).ID):
+                fs=f.ID[len(f.Dir(relpath).ID)+1:]
+                src_files.append(build_dir_node.File(fs))
+        elif isinstance(f,SCons.Node.FS.Entry):
+            # Entry (like File) node will start with the orginal build directory
+            # or the start with current path ( ie full path to src)
+            # or it might be equal to some messed up value based on the build directory
+            # caused by the mix of ../ paths
+            relpath=common.relpath(f.dir.ID,orig_build_dir)            
+            if f.path.startswith(curr_path):
+                f=f.path[len(curr_path)+1:]
+            elif f.path.startswith(orig_build_dir):
+                fs=f.path[len(orig_build_dir)+1:]
+                if src_dir==curr_path:
+                    src_files.append(f)
+                else:
+                    src_files.append(build_dir_node.Entry(fs))
+            elif f.ID.startswith(f.Dir(relpath).ID):
+                fs=f.ID[len(f.Dir(relpath).ID)+1:]
+                src_files.append(build_dir_node.Entry(fs))
+
         elif common.is_string(f):
-            if f[:len(orig_src_dir)]==orig_src_dir:
-                f=f[len(orig_src_dir)+1:]
-            src_files.append(os.path.join(build_dir,f))
+            # normalize the path so we get matches on windows and posix based systems
+            f=os.path.normpath(f)
+            if f.startswith(rel_src_dir):
+                f=f[len(rel_src_dir)+1:]
+            elif f.startswith(curr_path):
+                f=f[len(curr_path)+1:]
+            src_files.append(build_dir_node.File(f))
         else:
             api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
     
@@ -186,8 +224,8 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         elif isinstance(s,SCons.Node.Node):
             out+=sec.Env.CCopy(target=dest_dir,source=s)
         elif common.is_string(s):
-            if s[:len(orig_src_dir)]==orig_src_dir:
-                s=s[len(orig_src_dir)+1:]
+            if s[:len(rel_src_dir)]==rel_src_dir:
+                s=s[len(rel_src_dir)+1:]
             out+=sec.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
         else:
             api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
@@ -195,9 +233,6 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     ## the current path
     sec.Env.Append(CPPPATH= [src_dir]) 
         
-    ## change the build dir
-    sec.Env.VariantDir(variant_dir=build_dir,src_dir=src_dir,duplicate=env['duplicate_build'])
-    
     ## the option to build with PDB or not
     # might not to do this any more... as the PDB will work correctly on non windows systems
     if make_pdb==True: 
@@ -224,33 +259,27 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
             else:#if common.is_catagory_file(env,'SDK_BIN_PATTERN',i):
                 tmp+=sec.Env.CCopy(target='$INSTALL_BIN',source=i)
     ret = tmp
-    
-     #install alias stuff
-    #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}'+sec.Alias
-    #a=env.Alias(build_alias,ret)
-    # setup basic aliases
-    #pobj._map_alias()
-
-    
-
+        
     ##make command args string
     if command_args:
         sec.Env['UTEST_CMDARGS']=command_args
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    sec.Env['ENV'].update(env.get('UNIT_TEST_ENV',{}))
-    scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],ret[0].abspath,sec.Env.subst('$UTEST_CMDARGS'),UNIT_TEST_ENV=env.get('UNIT_TEST_ENV',{}))
+    sec.Env['ENV'].update(sec.Env.get('UNIT_TEST_ENV',{}))
+    #in case a python script is being called.. it is the same version of python as we are using
+    sec.Env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
+    scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],[ret[0].abspath,sec.Env.Value(command_args),sec.Env.Value(sec.Env.subst("$UNIT_TEST_RUN_COMMAND"))],UNIT_TEST_ENV=sec.Env.get('UNIT_TEST_ENV',{}))
     scripts_out=sec.Env.CCopy("$UNIT_TEST_DIR",scripts_out)
     ### here we map a bunch of aliases
     core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out+ret)
     ## the command action to Run this stuff
     cmd='$UNIT_TEST_RUN_SCRIPT_COMMAND'
     # map top level run alias... first one maps to build based 'base_alias'
-    core_run_alias=sec.Env.Override({'TIME_OUT':sec.Env.get("RUN_UTEST_TIME_OUT",sec.Env.get('TIME_OUT'))}).Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',core_alias,sec.Env.Action(cmd))
+    core_run_alias=sec.Env.Override({'TIME_OUT':sec.Env.get("RUN_UTEST_TIME_OUT",sec.Env.get('TIME_OUT'))}).Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',
+                                                                                                                  core_alias,sec.Env.Action(cmd,exitstatfunc=sec.Env['RUN_UTEST_EXIT_FUNCTION'])
+                                                                                                                  )
     sec.Env.AlwaysBuild(core_run_alias)
-    #add to queue the delayed mapping of any dependent stuff
-    glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(sec.Env))
     
     base_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_alias)
     base_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_run_alias)
@@ -274,10 +303,12 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     parent_obj.DefiningSection=curr_sec
     errors.ResetPartStackFrameInfo()
     sec.LoadState=glb.load_file
+    sec._map_targets()
     return ret
        
   
-
+def run_utest_return_default(code):
+    return code
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
@@ -321,5 +352,8 @@ api.register.add_variable('UNIT_TEST_RUN_SCRIPT_COMMAND',
             'cd ${NORMPATH("$UNIT_TEST_DIR")} && ${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME} ${UTEST_CMDARGS}',
             'Command action used to run a unit test script in SCons run_utest::')
 api.register.add_variable('UNIT_TEST_RUN_COMMAND',
-        '${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME}',
+        '${RELPATH("INSTALL_BIN","UNIT_TEST_DIR")}${UNIT_TEST_TARGET_NAME} ${UTEST_CMDARGS}',
         'Command action used to run a unit test in the script')
+api.register.add_variable('RUN_UTEST_EXIT_FUNCTION',
+        run_utest_return_default,
+        'Function that will do custom mapping of return code')

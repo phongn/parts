@@ -10,10 +10,14 @@ class reuse_part_vcs(base):
     In Parts this will be seen as VcsReuse. The old name of VcsUsePriorPart will be mapped this.
     This class is basically a proxy class.
     """
-
+    __slots__=[
+            '_partref',
+            '_vcs'
+        ]
     def __init__(self,part):
         super(reuse_part_vcs,self).__init__("","")
         self._partref=part
+        self._vcs=None
                     
     @property
     def Server(self):
@@ -162,9 +166,11 @@ class reuse_part_vcs(base):
         self._vcs.PostProcess()
         self._env['VCS']=self._vcs._env['VCS'].clone()
     
-    
-    
-    
+    @property
+    def _cache_filename(self):
+        return self._vcs._cache_filename
+
+
     
 api.register.add_global_object('VcsReuse',reuse_part_vcs)
 api.register.add_global_object('VcsUsePriorPart',reuse_part_vcs)

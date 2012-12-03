@@ -5,7 +5,7 @@ import os
 import shutil
 import parts.common as common
 import parts.api as api
-import parts.node_helpers as node_helpers
+import parts.overrides.symlinks as symlinks
 import parts.api.output as output
 import stat
 from parts.part_logger import part_nil_logger
@@ -221,10 +221,15 @@ def CCopyFunc(target, source, env, copy_logic):
 
     for t, s in zip(target, source):
         #Get info if this should be handled as a symlink
-        symlink=env.MetaTagValue(t,'SymLink')
-        if symlink is not None:
-            # it a symlink so make a new link
-            node_helpers.make_link_bf([t],None,env)
+        if isinstance(s, symlinks.FileSymbolicLink):
+            assert s.exists() and s.linkto
+            # A symbolic link can only be a copy of another symlink.
+            # Convert a target node to FileSymbolicLink this is needed for 
+            # correct up-to-date checks during incremental builds
+            symlinks.ensure_node_is_symlink(t)
+            if t.linkto is None:
+                t.linkto = s.linkto
+            symlinks.make_link_bf([t], [t.Entry(t.linkto)], env)
         else:
             #Do normal copy stuff
             CCopyFuncWrapper(t.get_path(), s.get_path(), env,copy_logic)
@@ -283,6 +288,7 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         api.output.error_msg("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))
 
     #setup copy function
+    copy_logic_bak = copy_logic
     if copy_logic == CCopy.default:
         copy_logic=convert(
             env.get('CCOPY_LOGIC',CCopy.copy) # make fallback a safe one
@@ -301,40 +307,34 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     else:
         copy_logic=env.__CCopyBuilderC__
 
-    source=common.make_list(source)
-    sources=[]
+    sources=env.arg2nodes(source, env.fs.Entry)
 
-    # workaround to not having symlinks yet
-    for s in source:
-        tmp=env.arg2nodes(s, env.fs.Entry)
-        symlink=None
-        if isinstance(s,SCons.Node.FS.File):
-            symlink=env.MetaTagValue(s,'SymLink')
-        if symlink is not None:
-            env.MetaTag(tmp[0],SymLink=symlink)
-        sources.extend(tmp)
-
-    #sources = env.arg2nodes(source, env.fs.Entry)
     n_targets = []
     for dnode in dnodes:
         for src in sources:
             # Prepend './' so the lookup doesn't interpret an initial
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
-            symlink=env.MetaTagValue(src,'SymLink')
-            if symlink is not None:
-                e=env.fs.File('.'+os.sep+src.name, dnode)
-                env.MetaTag(e,SymLink=symlink)
-                env.MetaTag(e,SymLinkMakeDummyFile=env.MetaTagValue(src,'SymLinkMakeDummyFile',default=True))
-            else:
-                e=env.fs.Entry('.'+os.sep+src.name, dnode)
+            e = env.fs.Entry(os.sep.join(['.', src.name]), dnode)
+            if isinstance(src, symlinks.FileSymbolicLink):
+                symlinks.ensure_node_is_symlink(e)
             tmp=copy_logic(target=e,source=src,**kw)
+
             try:
                 tmp[0].attributes = src.attributes
             except (AttributeError, IndexError):
                 pass
-            n_targets.extend(tmp)
 
+            # Let source node know what copies of it are to be created.
+            # This information will be used to set up correct symbolic
+            # links in the destination directory
+            try:
+                copiedas = src.attributes.copiedas
+            except AttributeError:
+                src.attributes.copiedas = copiedas = []
+            copiedas.append(e)
+
+            n_targets.extend(tmp)
 
     return n_targets
 
@@ -404,6 +404,7 @@ api.register.add_builder('__CCopyBuilderHSC__',SCons.Builder.Builder(
         source_factory = SCons.Node.FS.Entry,
         #multi          = 1,
         emitter        = CCopyEmit,
+        source_scanner = symlinks.source_scanner,
         name='CCOPY'
         ))
 
@@ -415,6 +416,7 @@ api.register.add_builder('__CCopyBuilderSHC__',SCons.Builder.Builder(
         source_factory = SCons.Node.FS.Entry,
         #multi          = 1,
         emitter        = CCopyEmit,
+        source_scanner = symlinks.source_scanner,
         name='CCOPY'
         ))
 
@@ -426,6 +428,7 @@ api.register.add_builder('__CCopyBuilderHC__',SCons.Builder.Builder(
         source_factory = SCons.Node.FS.Entry,
         #multi          = 1,
         emitter        = CCopyEmit,
+        source_scanner = symlinks.source_scanner,
         name='CCOPY'
         ))
 api.register.add_builder('__CCopyBuilderSC__',SCons.Builder.Builder(
@@ -436,6 +439,7 @@ api.register.add_builder('__CCopyBuilderSC__',SCons.Builder.Builder(
         source_factory = SCons.Node.FS.Entry,
         #multi          = 1,
         emitter        = CCopyEmit,
+        source_scanner = symlinks.source_scanner,
         name='CCOPY'
         ))
 api.register.add_builder('__CCopyBuilderC__',SCons.Builder.Builder(
@@ -446,6 +450,7 @@ api.register.add_builder('__CCopyBuilderC__',SCons.Builder.Builder(
         source_factory = SCons.Node.FS.Entry,
         #multi          = 1,
         emitter        = CCopyEmit,
+        source_scanner = symlinks.source_scanner,
         name='CCOPY'
         ))
 

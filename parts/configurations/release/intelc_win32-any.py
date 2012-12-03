@@ -2,9 +2,7 @@
 ### Intel win32 compiler configurations release
 ######################################
 
-import sys
 from parts.config import *
-import SCons.Script
 
 def map_default_version(env):
     return env['INTELC_VERSION']

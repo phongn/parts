@@ -181,9 +181,13 @@ class TestRequirement(unittest.TestCase):
         tmp1=REQ()
         tmp1.Unserialize(s)
 
-        print
-        print str(tmp)
-        print str(tmp1)
         self.assertEqual(str(tmp),str(tmp1))
         
-                
+    def test_intersection1(self):
+        "Test that intersection return correct value"
+        tmp=REQ(REQ.CPPPATH)
+        result=tmp.intersection(REQ.DEFAULT)
+        self.assertEqual(str(tmp),str(result))
+       
+        
+                    

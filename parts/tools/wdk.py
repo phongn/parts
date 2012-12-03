@@ -9,6 +9,7 @@ import SCons.Util
 import os
 
 import parts.api.output as output
+import parts.tools.Common
 
 WDK = ToolSetting('WDK')
 
@@ -342,10 +343,12 @@ def generate(env):
     env['DDKTARGETARCH'] = r'${_ddkplatform(TARGET_ARCH)}'
     env['DDKHOSTTARGETDIR'] = r'${DDKHOSTDIR}\${DDKTARGETARCH}'
 
-    env['DDKCC'] = env.Detect([r'${DDKHOSTDIR}\cl.exe', r'${DDKHOSTTARGETDIR}\cl.exe'])
-    env['DDKLINK'] = env.Detect([r'${DDKHOSTDIR}\link.exe', r'${DDKHOSTTARGETDIR}\link.exe'])
+    env['DDKCC'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\cl.exe', r'${DDKHOSTTARGETDIR}\cl.exe']),('cl'))
+    env['DDKLINK'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\link.exe', r'${DDKHOSTTARGETDIR}\link.exe']),('link'))
     env['DDKAS'] = env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
         else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe'])
+    env['DDKLINK'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
+        else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe']),('ml','ml64'))
 
     env['_DDKLIBFLAGS'     ] = '${_concat(DDKLIBLINKPREFIX, DDKLIBS, DDKLIBLINKSUFFIX, __env__)}'
     env['_DDKLIBDIRFLAGS'  ] = '$( ${_concat(DDKLIBDIRPREFIX, DDKLIBPATH, DDKLIBDIRSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'

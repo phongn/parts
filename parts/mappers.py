@@ -8,23 +8,53 @@ import errors
 import target_type
 
 import SCons.Script.Main
-import SCons.Script 
+import SCons.Script
 import SCons.Subst
 
-import StringIO
+
 import traceback
 import thread
 import os
+import cPickle
+import base64
+import cStringIO
+
+def print_stack():
+    import sys,linecache
+    f=sys._getframe(2)
+    lineno = f.f_lineno
+    line = linecache.getline(f.f_code.co_filename, lineno)
+    print "@",f.f_code.co_filename,lineno
+    print "@",line
+
+
 
 g_complex_sub={}
+
+def pack_data(data):
+    buffout=cStringIO.StringIO()
+    pkl=cPickle.Pickler(buffout)
+    pkl.dump(data)
+    tmp= buffout.getvalue()
+    info = base64.b64encode(tmp)
+    return info
+
+def unpack_data(data):
+    if isinstance(data,SCons.Subst.CmdStringHolder):
+        data=str(data[:])
+    tmp = base64.b64decode(data)
+    buffin=cStringIO.StringIO(tmp)
+    upkl=cPickle.Unpickler(buffin)
+    info=upkl.load()
+    return info
 
 class mapper(object):
     def __init__(self):
         self.stackframe=errors.GetPartStackFrameInfo()
-        
+
     def alias_missing(self,env):
-        if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):                
-            
+        if env.get('MAPPER_BAD_ALIAS_AS_WARNING',True):
+
             api.output.warning_msg(self.name,"Alias", self.part_alias,"was not defined",
                 "\n For Part name <%s> Version <%s> for TARGET_PLATFORM <%s>"%\
                 (env.PartName(),env.PartVersion(),env['TARGET_PLATFORM']),
@@ -40,7 +70,7 @@ class mapper(object):
                 )
             #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
-            
+
     # old function to remove when it is safe
     def nvp_to_alias_failed(self,env,policy=Policy.ReportingPolicy.warning):
         found_data=''
@@ -50,7 +80,7 @@ class mapper(object):
             found_data+=" Alias=%s, version=%s, matching platforms=%s\n"%(tmp.Alias,tmp.Version,tmp._platform_match)
         if found_data=='':
             found_data=" Nothing was found"
-        
+
         api.output.policy_msg(
             Policy.ReportingPolicy.error,#policy,
             [self.name,'mappers'],
@@ -63,13 +93,13 @@ class mapper(object):
             )
         #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
-        
+
     def name_to_alias_failed(self,env,match,policy=Policy.ReportingPolicy.error):
-        
+
         if match.hasAmbiguousMatch:
             reason=match.AmbiguousMatchStr()
         else:
-            reason=match.NoMatchStr() 
+            reason=match.NoMatchStr()
         api.output.policy_msg(
             Policy.ReportingPolicy.error,
             [self.name,'mappers'],
@@ -79,9 +109,9 @@ class mapper(object):
             )
         #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
-        
+
     def unexpected_error(self,env):
-        ec_str=StringIO.StringIO()
+        ec_str=cStringIO.StringIO()
         traceback.print_exc(file=ec_str)
         api.output.error_msg(
             "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -91,31 +121,246 @@ class mapper(object):
         #because the exception thrown will not get thrown the try catch in subst()
         env.Exit(1)
 
+    def map_export_table(self,sec,prop,rvalue,value,spacer,recursed):
+        try:
 
-def sub_lst(env,lst,thread_id):
+            # set the value in the exports to prevent recusive hitting of this again latter
+            # Value might not exist as the section here did not export and values, for example
+            # a leaf component might not export any CPDEFINES, not a dependent might ask to get any
+            # value that might be exported.
+            sec.Exports[prop] # test that we even have anything to map
+            # get the index.. might not exist because this might be an internal dependancy
+            idx = None
+
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in export table")
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Before Export value: {0}".format(sec.Exports[prop]))
+            try:
+                idx=sec.Exports[self.part_prop].index([rvalue])
+            except ValueError:
+                # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"{0} was not found, trying {1}".format(rvalue,(rvalue,)))
+                try:
+                    idx=sec.Exports[prop].index([(rvalue,)])
+                except ValueError:
+                    api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value {0} not being exported in section {1}".format(rvalue,sec.ID))
+            except TypeError:
+                # this would happen because we have a string value in the export table
+                if common.is_string(value):
+                    sec.Exports[prop]=sec.Exports[prop].replace(rvalue,value)
+                else:
+                    sec.Exports[prop]=value
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"After export value: {0}".format(sec.Exports[prop]))
+                return sec.Exports[prop]
+
+            if idx is not None:
+                if value:
+                    # extend value to end removing all the previously exist cases
+                    sec.Exports[prop][0:idx+1]=common.extend_unique(sec.Exports[prop][0:idx],value)
+                else:
+                    #There is nothing to add.. remove existing entry
+                    del sec.Exports[prop][idx]
+            else:
+                def replace_sub(lst):
+                    for i in lst:
+                        if common.is_list(i):
+                            if rvalue in i:
+                                idx=i.index(rvalue)
+                                i[0:idx+1]=common.extend_unique(i[0:idx],value)
+                            else:
+                                replace_sub(i)
+                # we have a case of a list in a list that has the value we need to replace
+                replace_sub(sec.Exports[prop])
+
+
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"After export value: {0}".format(sec.Exports[prop]))
+        except KeyError:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Failed to set Export Table value because KeyError")
+        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Updated export table for {0}".format(sec.ID))
+        #if we are in recursive call
+        if recursed:
+            try:
+                # update ret to match the current export table of values
+                # after we have updated it as these values are needed by the
+                # the mapper subst-ing for this information
+                value=sec.Exports[self.part_prop]
+            except KeyError:
+                # this is not being exported So we want to make sure this
+                # data stays local
+                value=[]
+        return value
+
+    def map_global_var(self,env,prop,rvalue,value,spacer):
+        try:
+            # see if we even have a key here to map
+            env[prop] # will throw if env does not have this key mapped
+        except KeyError:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
+            return
+        try:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Before env value: {0}".format(env[prop]))
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value to set: {0}".format(value))
+
+            try:
+                idx=env[prop].index(rvalue)
+            except ValueError:
+                # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"{0} was not found, trying {1}".format(rvalue,(rvalue,)))
+                idx=env[prop].index((rvalue,))
+
+            if common.is_list(env[prop]):
+                #if ret:
+                env[prop][0:idx+1]=common.extend_unique(env[prop][0:idx],value)
+            else:
+                env[prop]=value
+        except KeyError, e:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"KeyError",e)
+        except ValueError, e:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"ValueError",e)
+        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"After env value: {0}".format(env[prop]))
+
+def _sub_lst(env,obj,thread_id):
+    ret=[]
+    if common.is_list(obj):
+        for i in obj:
+            tmp=_sub_lst(env,i,thread_id)
+            if common.is_list(tmp):
+                common.extend_unique(ret,tmp)
+            else:
+                common.append_unique(ret,tmp)
+    elif isinstance(obj,SCons.Node.FS.Base):
+            ret=[obj.ID]
+    elif isinstance(obj,SCons.Subst.Literal):
+        #Don't want to mess with these :-)
+        ret=[obj]
+    elif isinstance(obj,SCons.Subst.CmdStringHolder):
+        # this is needed as some bugs show up with str+CmdStringHolder concats
+        # should not happen I think .. probally a bug at the moment in the subst engine
+        ret=[str(obj[:])]
+    else:
+        if obj.startswith("$"):
+            #this value might be an list in the environment
+            if obj.startswith("${") and obj.endswith('}'):
+                tmpval=obj[2:-1]
+            else:
+                tmpval=obj[1:]
+            try:
+                replace_val=env[tmpval]
+            except KeyError:
+                tmp=env.subst(obj)
+            else:
+                return _sub_lst(env,replace_val,thread_id)
+        else:
+            tmp=env.subst(obj)
+        
+        #for tmp in tmp1:
+        if tmp.startswith('\1'):
+            tmp2 = unpack_data(tmp[1:])
+            ## a list came back from a single item
+            ## we need to make sure this is expanded
+            if common.is_list(tmp2) and tmp2!=[]:
+                g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
+                for j in tmp2:
+                    r=_sub_lst(env,j,thread_id)
+                    if r:
+                        if common.is_list(r[0]):
+                            common.extend_unique(ret,r)
+                        else:
+                            common.append_unique(ret,r)
+                g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
+            
+        else:
+            if isinstance(tmp,SCons.Subst.CmdStringHolder):
+            # this is needed as some bugs show up with str+CmdStringHolder concats
+            # should not happen I think .. probally a bug at the moment in the subst engine
+                tmp=[str(tmp[:])]
+            ret.append(tmp)
+    
+    return ret    
+        
+def sub_lst(env,lst,thread_id,recurse=True):
     ''' Utility function to help with returning list from env.subst() as this function
     doesn't like the returning of lists. This returns a list seperated by the binary value of 1
     which is not used as a normal printing character.'''
     ret=[]
-    g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
-    spacer="."*(g_complex_sub[thread_id]-1)
+    spacer=""
+    if recurse:
+        g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
+        spacer="."*(g_complex_sub[thread_id]-1)
     api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst getting value for",lst)
-    for i in lst:
-        root=env.Dir("#")
-        if isinstance(i,SCons.Node.FS.Base) and i.is_under(root):
-                v=[root.rel_path(i)]
+    
+    ret=[]
+    for v in lst[:]:
+        tmp = _sub_lst(env,v,thread_id)
+        if tmp and common.is_list(tmp[0]):
+            common.extend_unique(ret,tmp,)
         else:
-            v=env.subst(str(i)).split("\1")
-        #ret.extend(v)
-        ret=common.extend_unique(ret,v)
+            common.append_unique(ret,tmp)
+    
     api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst returning",ret)
-    g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
-    return ret#common.make_unique(ret)
+    if recurse:g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
+    
+    return ret
 
+def _concat(prefix, list, suffix, env, f=lambda x: x, target=None, source=None):
+    if not list:
+        return list
+    elif common.is_string(list):
+        list = [list]
+    #fully expand the list
+
+    # this does a append_unique of the items, so it should be
+    # a unique list with everything in correct order
+    tmp=sub_lst(env,list,thread.get_ident(),recurse=False)
+    list=env.Flatten(tmp)
+
+    l = f(SCons.PathList.PathList(list).subst_path(env, target, source))
+    if l is not None:
+        list = l
+    
+    return env['_concat_ixes'](prefix, list, suffix, env)
+_concat.name="_concat"
+
+def _concat_ixes(prefix, list, suffix, env):
+    """
+    Redo of the same logic in SCons...
+    The functions adds a prefix and or suffix to the string value
+    equals of the list
+    """
+    result = []
+
+    # ensure that prefix and suffix are strings
+    prefix = str(env.subst(prefix, SCons.Subst.SUBST_RAW))
+    suffix = str(env.subst(suffix, SCons.Subst.SUBST_RAW))
+
+    for x in list:
+        if isinstance(x, SCons.Node.FS.File):
+            result.append(x)
+            continue
+        x = str(x)
+        if x:
+
+            if prefix:
+                if prefix[-1] == ' ':
+                    result.append(prefix[:-1])
+                elif x[:len(prefix)] != prefix:
+                    x = prefix + x
+
+            result.append(x)
+
+            if suffix:
+                if suffix[0] == ' ':
+                    result.append(suffix[1:])
+                elif x[-len(suffix):] != suffix:
+                    result[-1] = result[-1]+suffix
+    
+    return result
+
+_concat_ixes.name="_concat_ixes"
 
 class part_mapper(mapper):
     ''' This class maps the part property in the Part object. It then returns the value
-    of the property for the requested part alias. It has to do a small hack to 
+    of the property for the requested part alias. It has to do a small hack to
     replace a the property in the actual Env else a SCons issue with subst and lists
     causes the subst to fail.
     '''
@@ -134,9 +379,9 @@ class part_mapper(mapper):
             except KeyError:
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
-            
+
             api.output.trace_msg(['parts_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}",{3})}}"'.format(self.name,self.part_alias,self.part_prop,self.ignore))
-                
+
             pobj=glb.engine._part_manager._from_alias(self.part_alias)
             if pobj is None:
                 api.output.trace_msg(['parts_mapper','mapper'],spacer,'Failed to find Part with Alias: {0}'.format(self.part_alias))
@@ -154,24 +399,24 @@ class part_mapper(mapper):
                         stackframe=self.stackframe
                         )
                 return ''
-            api.output.trace_msg(['parts_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
+            api.output.trace_msg(['parts_mapper','mapper'],spacer,'Property {0} = {1} '.format(self.part_prop,ret))
             penv=pobj.Env
             if common.is_list(ret):
                 if len(ret)>1:
                     ret=sub_lst(penv,ret,thread_id)
-                
+
                 setattr(pobj,self.part_prop,ret)
                 if g_complex_sub[thread_id]==0:
-                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                    api.output.trace_msg(['parts_mapper','mapper'],spacer," Value to set: {0}".format(ret))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(self.part_prop))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Before env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Value to set: {0}".format(ret))
                     idx=env[self.part_prop].index("${"+self.name+"('"+self.part_alias+"','"+self.part_prop+"')}")
                     if common.is_list(env[self.part_prop]):
                         if ret != []:
                             env[self.part_prop][idx:idx+1]=ret
                     else:
                         env[self.part_prop]=[ret]
-                    api.output.trace_msg(['parts_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"After env value: {0}".format(env[self.part_prop]))
                     if ret == []:
                         api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                         return ""
@@ -179,17 +424,17 @@ class part_mapper(mapper):
                         api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
-                    tmp="\1".join(ret)
-                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    tmp="\1"+pack_data(ret)
+                    api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(ret))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
                 api.output.trace_msg(['parts_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp
-            
+
         except Exception,ec:
-            
-            ec_str=StringIO.StringIO()
+
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -198,15 +443,15 @@ class part_mapper(mapper):
                 )
             #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
-            
+
         return ret
 
 #already_printed = set()
 
 class part_id_mapper(mapper):
-    ''' This class maps the part name and version range to the correct alias in 
+    ''' This class maps the part name and version range to the correct alias in
     the Default enviroment to the actual value stored the in default Env PART_INFO map.
-    It then returns the value of the property for the requested part alias. 
+    It then returns the value of the property for the requested part alias.
     It has to do a small hack to replace a the property in the actual Env else a SCons
     issue with subst and lists causes the subst to fail.
     '''
@@ -227,20 +472,20 @@ class part_id_mapper(mapper):
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
             api.output.trace_msg(['partid_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.ignore))
-            #Find matching verion pinfo
-            pobj=glb.engine._part_manager._from_nvp(
-                self.part_name,
-                self.ver_range,
-                env['TARGET_PLATFORM']
-            )
-                        
-            if pobj is None:
-                api.output.trace_msg(['partid_mapper','mapper'],spacer,'Failed to find Part that matches name: {0} version:{1}'.format(self.part_name,self.ver_range))
-                if self.ignore:
-                    return ''
-                self.nvp_to_alias_failed(env)
-            api.output.trace_msg(['partid_mapper','mapper'],spacer,' Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
             
+            #Find matching verion pinfo
+            t=target_type.target_type("name::"+self.part_name)
+            t.Properties['version']=self.ver_range
+            t.Properties['platform_match']=env['TARGET_PLATFORM']
+            match=part_ref.part_ref(t)
+            if match.hasUniqueMatch:
+                pobj=match.UniqueMatch
+            else:
+                api.output.trace_msg(['partid_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
+                self.name_to_alias_failed(env,match,policy=self.policy)
+
+            api.output.trace_msg(['partid_mapper','mapper'],spacer,'Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
+
             ret=getattr(pobj,self.part_prop,None)
             if ret is None:
                 if self.ignore==False:
@@ -249,19 +494,19 @@ class part_id_mapper(mapper):
                         stackframe=self.stackframe
                         )
                 return ''
-            api.output.trace_msg(['partid_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
-            
+            api.output.trace_msg(['partid_mapper','mapper'],spacer,'Property {0} = {1} '.format(self.part_prop,ret))
+
             penv=pobj.Env
-                
+
             if common.is_list(ret):
                 if len(ret)>1:
                     ret=sub_lst(penv,ret,thread_id)
                 #setattr(pobj,self.part_prop,ret)
                 if g_complex_sub[thread_id]==0:
-                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                    api.output.trace_msg(['partid_mapper','mapper'],spacer," Value to set: {0}".format(ret))
-                    
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(self.part_prop))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Before env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Value to set: {0}".format(ret))
+
                     if self.ignore == True:
                         idx=env[self.part_prop].index("${"+self.name+"('"+self.part_name+"','"+str(self.ver_range)+"','"+self.part_prop+"',True)}")
                     else:
@@ -271,7 +516,7 @@ class part_id_mapper(mapper):
                             env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
                     else:
                         env[self.part_prop]=[ret]
-                    api.output.trace_msg(['partid_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"After env value: {0}".format(env[self.part_prop]))
                     if ret == []:
                         api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                         return ""
@@ -279,17 +524,17 @@ class part_id_mapper(mapper):
                         api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                         return ret[0]
                 else:
-                    tmp="\1".join(ret)
-                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
+                    tmp="\1"+pack_data(ret)
+                    api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(ret))
                     return tmp
             else:
                 tmp= penv.subst(str(ret))
                 api.output.trace_msg(['partid_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
                 return tmp
-            
+
         except Exception,ec:
-            
-            ec_str=StringIO.StringIO()
+
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -298,13 +543,14 @@ class part_id_mapper(mapper):
                 )
             #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
-            
+
         return ret
 
+
 class part_id_export_mapper(mapper):
-    ''' This class maps the part name and version range to the correct alias in 
+    ''' This class maps the part name and version range to the correct alias in
     the Default enviroment to the actual value stored the in default Env PART_INFO map.
-    It then returns the value of the property for the requested part alias. 
+    It then returns the value of the property for the requested part alias.
     It has to do a small hack to replace a the property in the actual Env else a SCons
     issue with subst and lists causes the subst to fail.
     '''
@@ -325,9 +571,14 @@ class part_id_export_mapper(mapper):
             except KeyError:
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.section,self.part_prop,self.policy))
+
             pobj_org=glb.engine._part_manager._from_env(env)
             sec=pobj_org.DefiningSection
+            #if g_complex_sub[thread_id] == 0:
+             #   print "FILLING IN {0}".format(pobj_org.ID)
+            #print "local sections",sec,self.part_prop
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.section,self.part_prop,self.policy))
+
            #Find matching verion pinfo
             match=part_ref.part_ref(target_type.target_type(self.part_name),pobj_org.Uses)
             if match.hasUniqueMatch:
@@ -335,93 +586,52 @@ class part_id_export_mapper(mapper):
             else:
                 api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
                 self.name_to_alias_failed(env,match,policy=self.policy)
-                
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,' Found matching part! name: {0} -> alias: {1}'.format(pobj.Name,pobj.Alias))
-            
-            ret=pobj.Section(self.section).Exports.get(self.part_prop,[])
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
-            
+
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Found matching part! name: {0} -> alias: {1}'.format(pobj.Name,pobj.Alias))
+
             psec=pobj.Section(self.section)
             penv=psec.Env
-                            
+            
+            ret=psec.Exports.get(self.part_prop,[])
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Property {0} = {1} '.format(self.part_prop,ret))
+
+            #if we get back a list, we want to fill in the data in the list
             if common.is_list(ret):
-                if len(ret)>1:
-                    ret=sub_lst(penv,ret,thread_id)
-                #if ret:
-                    #pobj.DefiningSection.Exports[self.part_prop]=ret
-                if g_complex_sub[thread_id]==0:
-                    
-                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.section,self.part_prop,self.policy)
-                    
-                    try:
-                        # set the value in the exports to prevent recusive hitting of this again latter
-                        # value might not exist in cases of programs or components that are on the top 
-                        # of the tree.. so if we get a KeyError we can ignore it
-                        if common.is_list(sec.Exports[self.part_prop]):
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in export table")
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before Export value: {0}".format(sec.Exports[self.part_prop]))
-                            
-                            try:
-                                idx=sec.Exports[self.part_prop].index(str_val)
-                            except ValueError:
-                                # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
-                                api.output.trace_msg(['partexport_mapper','mapper'],spacer," {0} was not found, trying {0}".format(str_val,(str_val,)))
-                                idx=sec.Exports[self.part_prop].index((str_val,))
-                                str_val=(str_val,)
-                            if ret:
-                                sec.Exports[self.part_prop][0:idx+1]=common.extend_if_absent(sec.Exports[self.part_prop][0:idx],ret)
-                            else:
-                                sec.Exports[self.part_prop].remove(idx)
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," After export value: {0}".format(sec.Exports[self.part_prop]))
-                        else:
-                            sec.Exports[self.part_prop]=ret
-                    except KeyError:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
-                    except ValueError:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
-                        
-                    try:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," Value to set: {0}".format(ret))
-                        
-                        try:
-                            idx=env[self.part_prop].index(str_val)
-                        except ValueError:
-                            # index not found.. might be scons 2.1 which would have possibly mapped "foo" to ("foo",) ... only for CPPDEFINES
-                            api.output.trace_msg(['partexport_mapper','mapper'],spacer," {0} was not found, trying {0}".format(str_val,(str_val,)))
-                            idx=env[self.part_prop].index((str_val,))
-                            str_val=(str_val,)
-                            
-                        if common.is_list(env[self.part_prop]):
-                            if ret != []:
-                                env[self.part_prop][0:idx+1]=common.extend_if_absent(env[self.part_prop][0:idx],ret)
-                        else:
-                            env[self.part_prop]=[ret]
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
-                    except KeyError, e:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," KeyError",e)
-                    except ValueError, e:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer," ValueError",e)
-                    
-                    if ret == []:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (1) value of {0}".format("None"))
-                        return ''
-                    else:
-                        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
-                        return ret[0]
+                ret=sub_lst(penv,ret,thread_id)
+
+            # update the export table
+            str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.section,self.part_prop,self.policy)
+
+            # update export table
+            ret=self.map_export_table(sec,self.part_prop,str_val,ret,spacer,g_complex_sub[thread_id]!=0)
+
+            # only update the environment of the item that started the subst call.
+            if g_complex_sub[thread_id]==0:
+                # we have data.. but we need to tweak the data to not piss SCons off
+                # scons does not expect a list back or a list of lists.. only a string
+                # Here we need to flatten the list
+                ret=filter(None,env.Flatten(ret))
+                self.map_global_var(env,self.part_prop,str_val,ret,spacer)
+                if ret == []:
+                    api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
+                    return ''
                 else:
-                    tmp="\1".join(map(lambda x: "{0}".format(x),ret))
-                    api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
-                    return tmp
+                    api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
+                    return ret[0]
             else:
-                tmp= penv.subst(str(ret))
-                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
-                return tmp
-            
+                #this case we have a list of stuff. we pickle it to get it throught the SCons subst engine
+                pret="\1"+pack_data(ret)
+                api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(ret))
+                return pret
+
+            # we don't have list so we just return the whole value
+            tmp= penv.subst(str(ret))
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+            return tmp
+
         except Exception,ec:
-            
-            ec_str=StringIO.StringIO()
+
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -430,130 +640,17 @@ class part_id_export_mapper(mapper):
                 )
             #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
-            
+
         return ret
 
-class part_lib_mapper(mapper):
-    ''' This class maps the part name and version range to the correct alias in 
-    the Default enviroment to the actual value stored the in default Env PART_INFO map.
-    It then returns the value of the property for the requested part alias. 
-    It has to do a small hack to replace a the property in the actual Env else a SCons
-    issue with subst and lists causes the subst to fail.
-    '''
-    name='PARTEXPORTLIB'
-    def __init__(self,name,section,part_prop,policy=Policy.REQPolicy.warning):
-        mapper.__init__(self)
-        self.part_name = name
-        self.section= section
-        self.part_prop = part_prop
-        self.policy=policy
 
-    def __call__(self, target, source, env, for_signature):
-        try:
-            thread_id=thread.get_ident()
-            try:
-                spacer="."*g_complex_sub[thread_id]
-            except KeyError:
-                g_complex_sub[thread_id] = 0
-                spacer="."*g_complex_sub[thread_id]
-            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.section,self.part_prop,self.policy))
-            pobj_org=glb.engine._part_manager._from_env(env)
-            sec=pobj_org.DefiningSection
-           #Find matching verion pinfo
-            match=part_ref.part_ref(target_type.target_type(self.part_name),pobj_org.Uses)
-            if match.hasUniqueMatch:
-                pobj=match.UniqueMatch
-            else:
-                api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
-                self.name_to_alias_failed(env,match,policy=self.policy)
-                
-            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,' Found matching part! name: {0} -> alias: {1}'.format(pobj.Name,pobj.Alias))
-            
-            ret=pobj.DefiningSection.Exports.get(self.part_prop,[])
-            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,' Property {0} = {1} '.format(self.part_prop,ret))
-            
-            psec=pobj.Section(self.section)
-            penv=psec.Env
-                            
-            if common.is_list(ret):
-                if len(ret)>1:
-                    ret=sub_lst(penv,ret,thread_id)
-                #if ret:
-                    #pobj.DefiningSection.Exports[self.part_prop]=ret
-                if g_complex_sub[thread_id]==0:
-                    
-                    str_val="${{{0}('{1}','{2}','{3}',{4})}}".format(self.name,self.part_name,self.section,self.part_prop,self.policy)
-                    
-                    try:
-                        # set the value in the exports to prevent recusive hitting of this again latter
-                        # value might not exist in cases of programs or components that are on the top 
-                        # of the tree.. so if we get a KeyError we can ignore it
-                        if common.is_list(sec.Exports[self.part_prop]):
-                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in export table")
-                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Before Export value: {0}",sec.Exports[self.part_prop])
-                            idx=sec.Exports[self.part_prop].index(str_val)
-                            if ret:
-                                sec.Exports[self.part_prop][0:idx+1]=common.extend_unique(sec.Exports[self.part_prop][0:idx],ret)
-                            else:
-                                sec.Exports[self.part_prop].remove(idx)
-                            api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," After export value: {0}",sec.Exports[self.part_prop])
-                        else:
-                            sec.Exports[self.part_prop]=ret
-                    except KeyError:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because KeyError")
-                    except ValueError:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Failed to set Export Table value because ValueError")
-                        
-                    try:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Trying to replace value in env[{0}]".format(self.part_prop))
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Before env value: {0}".format(env[self.part_prop]))
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," Value to set: {0}".format(ret))
-                        idx=env[self.part_prop].index(str_val)
-                        if common.is_list(env[self.part_prop]):
-                            if ret != []:
-                                env[self.part_prop][0:idx+1]=common.extend_unique(env[self.part_prop][0:idx],ret)
-                        else:
-                            env[self.part_prop]=[ret]
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," After env value: {0}".format(env[self.part_prop]))
-                    except KeyError, e:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," KeyError",e)
-                    except ValueError, e:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer," ValueError",e)
-                    
-                    if ret == []:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
-                        return ""
-                    else:
-                        api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
-                        return ret[0]
-                else:
-                    tmp="\1".join(ret)
-                    api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(tmp))
-                    return tmp
-            else:
-                tmp= penv.subst(str(ret))
-                api.output.trace_msg(['partexportlib_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
-                return tmp            
-        except Exception,ec:
-            
-            ec_str=StringIO.StringIO()
-            traceback.print_exc(file=ec_str)
-            api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
-                stackframe=self.stackframe,
-                exit=False
-                )
-            #because the exception thrown will not get thrown the try catch in subst()
-            env.Exit(1)
-            
-        return ret
 
-            
+
 class part_subst_mapper(mapper):
-    ''' This class maps the part vars in the Default enviroment to the actual 
+    ''' This class maps the part vars in the Default enviroment to the actual
     value stored the in default Env PART_INFO map. It then returns the value
-    of the property for the requested part alias. This version doesn't have the 
-    small hack to fix the list subst in SCons. As such it a bit faster is is mostly 
+    of the property for the requested part alias. This version doesn't have the
+    small hack to fix the list subst in SCons. As such it a bit faster is is mostly
     used for delay substiution of more simple value such as $OUT_BIN which may contain
     values not fully filled in.
     '''
@@ -567,16 +664,16 @@ class part_subst_mapper(mapper):
     def __call__(self, target, source, env, for_signature):
         try:
             def_env=SCons.Script.DefaultEnvironment()
-            
+
             pobj = glb.engine._part_manager._from_alias(self.part_alias)
             if pobj is None:
                 self.alias_missing(env)
                 return None
             penv=pobj.Section(self.section).Env
             ret = penv.subst(self.substr)
-            
+
         except Exception,ec:
-            ec_str=StringIO.StringIO()
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -585,27 +682,29 @@ class part_subst_mapper(mapper):
                 )
             #because the exception thrown will not get thrown the try catch in subst()
             env.Exit(1)
-            
+
         return ret
-    
+
 class part_name_mapper(mapper):
     ''' Allows for an easy fallback mapping between the part alias and name'''
     name='PARTNAME'
-    def __init__(self,part_alias):
+    def __init__(self,part_alias,env_var=None):
         mapper.__init__(self)
         self.part_alias = part_alias
-        
+        self.env_var=env_var
+
     def __call__(self, target, source, env, for_signature):
         try:
             pobj=glb.engine._part_manager._from_alias(self.part_alias)
             try:
                 ret=pobj.Name
-            except AttributeError: 
+            except AttributeError:
                 self.alias_missing(env)
                 return None
-            
+            if self.env_var:
+                env[self.env_var]=ret
         except Exception,ec:
-            ec_str=StringIO.StringIO()
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -618,7 +717,7 @@ class part_name_mapper(mapper):
 
 class part_shortname_mapper(mapper):
     '''
-    Allows for an easy fallback mapping between the part short alias 
+    Allows for an easy fallback mapping between the part short alias
     and short name
     '''
     name='PARTSHORTNAME'
@@ -629,14 +728,14 @@ class part_shortname_mapper(mapper):
     def __call__(self, target, source, env, for_signature):
         try:
             pobj=glb.engine._part_manager._from_alias(self.part_alias)
-            
+
             if pobj is None:
                 self.alias_missing(env)
                 return None
-                
+
             ret=pobj.ShortName
         except Exception,ec:
-            ec_str=StringIO.StringIO()
+            ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
                 "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
@@ -706,7 +805,7 @@ class TempFileMunge(mapper):
     env["TEMPFILEPREFIX"] = '-via'      # arm tool chain
 
     This is the Parts overide of the SCons version of this class
-    to address a some complex issues with path handling when on 
+    to address a some complex issues with path handling when on
     windows and using GNU like tool chains
 
     todo.. push back into SCons
@@ -799,6 +898,8 @@ class TempFileMunge(mapper):
         return [ cmd[0], prefix + native_tmp + '\n' + rm, native_tmp ]
 
 
+api.register.add_mapper(_concat)
+api.register.add_mapper(_concat_ixes)
 
 api.register.add_mapper(part_mapper)
 api.register.add_mapper(part_id_mapper)
@@ -809,7 +910,7 @@ api.register.add_mapper(part_shortname_mapper)
 api.register.add_mapper(abspath_mapper)
 api.register.add_mapper(normpath_mapper)
 api.register.add_mapper(relpath_mapper)
-api.register.add_mapper(part_lib_mapper)
+
 api.register.add_mapper(TempFileMunge)
 
 api.register.add_bool_variable('MAPPER_BAD_ALIAS_AS_WARNING',True,'Controls if a missing alias is an error or a warning')

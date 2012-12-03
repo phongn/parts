@@ -56,5 +56,11 @@ Part(
     append = {'toolchain': 'wix_3.5'},
     )
 
+Part(
+    alias = 'wixsample5',
+    parts_file = 'wixsample5/wixsample5.parts',
+    toolchain = 'wix',
+    )
+
 # vim: set et ts=4 sw=4 ft=python :
 

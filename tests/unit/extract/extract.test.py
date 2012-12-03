@@ -43,20 +43,6 @@ class TestExtract(unittest.TestCase):
         clearTheCacheOnDisk()
         rmdir('data')
 
-    def test_getNodesFromCache(self):
-        theList = ['1','2','3']
-        def generator(unused):
-            return theList
-
-        # Make sure the cache is empty
-        self.assertEqual(None, datacache.GetCache(self.node.for_signature() + self.node.get_csig(), 'extract'))
-        self.assertEqual(theList, extract.getNodesFromCache(self.node, generator, self.env, None))
-        # Make sure call to getNodesFromCache initialized the cache
-        self.assertEqual(theList, datacache.GetCache(self.node.for_signature() + self.node.get_csig(), 'extract'))
-
-        # Read data from the cache
-        self.assertEqual(theList, extract.getNodesFromCache(self.node, generator, self.env, None))
-
     def test_zipGenerator(self):
         theList = [
             'data/1/4/5/5',
@@ -66,7 +52,7 @@ class TestExtract(unittest.TestCase):
             'data/1/2/3/5',
             'data/1/2/3/3',
             'data/1/2/2']
-        self.assertEqual(set(theList), set(extract.zipGenerator('./testdata/archives/data.zip')))
+        self.assertEqual(set(theList), set(str(x) for x in extract.zipGenerator('./testdata/archives/data.zip'))))
 
     def test_tarGenerator(self):
         theList = [
@@ -77,17 +63,17 @@ class TestExtract(unittest.TestCase):
             'data/1/2/3/5',
             'data/1/2/3/3',
             'data/1/2/2']
-        self.assertEqual(set(theList), set(extract.tarGenerator('./testdata/archives/data.tar.gz')))
+        self.assertEqual(set(theList), set(str(x) for x in extract.tarGenerator('./testdata/archives/data.tar.gz'))))
 
     def test_builder(self):
         env = DefaultEnvironment()
-        self.assertEqual(['data/1/2/4'], 
+        self.assertEqual(['data/1/2/4'],
                 [x.attributes.original_name for x in env.Extract('./testdata/archives/data.tar.gz',
                     EXTRACT_INCLUDES = ['data/1/2/4'])])
-        self.assertEqual(['data/1/2/2'], 
+        self.assertEqual(['data/1/2/2'],
                 [x.attributes.original_name for x in env.Extract('./testdata/archives/data.tar.bz2',
                     EXTRACT_INCLUDES = ['data/1/2/2'])])
-        self.assertEqual(['data/1/4/4'], 
+        self.assertEqual(['data/1/4/4'],
                 [x.attributes.original_name for x in env.Extract('./testdata/archives/data.zip',
                     EXTRACT_INCLUDES = ['data/1/4/4'])])
 

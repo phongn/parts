@@ -30,6 +30,7 @@ Tool-specific initialization for lipo (apple utility for creating universal bina
 __revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 
 import SCons.Builder
+import parts.tools.Common
 
 lipoObjectBuilder = SCons.Builder.Builder( 
         action = 'lipo $SOURCES -create -output $TARGET',

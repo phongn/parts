@@ -2,10 +2,8 @@
 ### Intel compiler configurations default-darwin
 ######################################
 
-import sys,os
+import os
 from parts.config import *
-import parts.version
-import SCons.Script
 
 def make_bool(obj):
     if obj is bool():
@@ -23,10 +21,8 @@ def post_process_func(env):
     # support given version. Compiler will complain if it can't
 
     try:
-        ver=parts.version.version(env['GCC_VERSION'])
+        ver=env.Version(env['GCC_VERSION'])
         ver=str(ver.major())+str(ver.minor())+str(ver.revision())
-        #print env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']
-        #print env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']
            
         env.AppendUnique(CCFLAGS=['-gcc-name='+os.path.join(env['GCC']['INSTALL_ROOT'],env['GCC']['TOOL']),
             '-gxx-name='+os.path.join(env['GXX']['INSTALL_ROOT'],env['GXX']['TOOL']),

@@ -15,6 +15,7 @@
                         <File Id='Wixsample1Msi' Name='wixsample1.msi' DiskId='1' Source='wixsample1.msi' />
                         <File Id='Wixsample2Msi' Name='wixsample2.msi' DiskId='1' Source='wixsample2.msi' />
                         <File Id='Wixsample3Msi' Name='wixsample3.msi' DiskId='1' Source='wixsample3.msi' />
+                        <File Id='Wixsample5Msi' Name='wixsample5.msi' DiskId='1' Source='wixsample5.msi' />
                     </Component>
                 </Directory>
             </Directory>

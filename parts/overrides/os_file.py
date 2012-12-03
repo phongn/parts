@@ -79,7 +79,7 @@ if sys.platform=='win32':
                 )
         if fd == -1:
             # we have some error, try to return it in a python compatible way
-            raise IOError,ctypes.FormatError(ctypes.GetLastError())
+            raise IOError(ctypes.GetLastError(), ctypes.FormatError(ctypes.GetLastError()), filename)
         
         # not sure if I should modify flags passed here, 
         # as the next call will get them
@@ -114,5 +114,21 @@ if sys.platform=='win32':
    
     os.remove=win32_rm
     os.unlink=win32_rm
+    
+    org_lstat=os.lstat 
+    def new_lstat(path):
+        try:
+            return org_lstat(path)
+        except WindowsError:
+            raise OSError,ctypes.FormatError(ctypes.GetLastError())
+    os.lstat=new_lstat
+
+    #org_stat=os.stat 
+    #def new_stat(path):
+    #    try:
+    #        return org_stat(path)
+    #    except WindowsError:
+    #        return None
+    #os.stat=new_stat
     
     

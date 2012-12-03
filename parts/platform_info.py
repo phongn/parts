@@ -9,6 +9,8 @@ var defined to to tell what has been targeted as the build env.
 import SCons.Platform
 import os,sys
 import re
+import platform
+import subprocess
 
 import glb
 import api.output
@@ -109,9 +111,7 @@ def OSBit():
         This is important if you have a 64-bit chip but a 32-bit OS
         in this case you often can't or don't want to compile as a 64-bit
         application.
-    '''
-    import platform
-        
+    ''' 
     # Unfortunately, python does not provide any way to tell if the OS itself
     # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
     # the value Python might return. This tell us nothing of the current system
@@ -155,10 +155,15 @@ def ChipArchitecture():
         if val=='':
             val=os.environ['PROCESSOR_ARCHITECTURE']
         return MapArchitecture(val)
-    
+    elif sys.platform.startswith("sunos") and platform.machine()=='i86pc':
+        pipe = subprocess.Popen(['isainfo','-k'],stdout = subprocess.PIPE)
+        pipe.wait()
+        if pipe.stdout.readline().startswith('i386'):
+            return MapArchitecture('i386')
+        else:
+            return MapArchitecture('x86_64')
     #else we just assume the python code will work at this time
     else:
-        import platform
         return MapArchitecture(platform.machine()) 
 
 

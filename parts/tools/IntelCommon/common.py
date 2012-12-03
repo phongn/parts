@@ -13,6 +13,10 @@ intel_11_inner='([0-9][0-9][0-9])'
 intel_12_posix='composerxe-([2][0][0-9][0-9]).([0-9]+.[0-9]+)'
 intel_12_1_posix='composer_xe_([2][0][0-9][0-9])_sp1.([0-9]+.[0-9]+)'
 
+# hopefully a stable base 
+intel_13_plus_posix='composer_xe_([2][0][0-9][0-9]).([0-9]+.[0-9]+)'
+
+
 #different layout in registry
 intel_11_1='[0-9][0-9][0-9]'
 

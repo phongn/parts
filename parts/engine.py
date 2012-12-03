@@ -83,149 +83,6 @@ def is_Sconstruct_up_to_date():
     
     return ret
 
-    
-
-###################
-import types
-
-def get_defining_file_from_object(obj):
-    
-    ret=None
-##    try:
-##        print obj.__class__
-##    except:
-##        try:
-##            print obj.__name__
-##        except:
-##            print type(obj)
-    # Is this a function?
-    if isinstance(obj,types.LambdaType) or \
-        isinstance(obj,types.MethodType  ) or \
-        isinstance(obj,types.FunctionType ):
-        ret=obj.func_code.co_filename
-      
-    elif isinstance(obj,types.InstanceType ) or \
-        isinstance(obj,types.ClassType  ) or \
-        isinstance(obj,types.FunctionType ):
-        tmp = dir(obj)    
-        for i in tmp:
-            get_defining_file_from_object(getattr(obj,i))
-            
-    # is it a code type
-    elif isinstance(obj,types.CodeType):
-        ret=obj.co_filename
-        print "code object",ret
-    elif isinstance(obj,types.DictionaryType) or\
-        isinstance(obj,types.TupleType) or\
-        isinstance(obj,types.GeneratorType ) or\
-        isinstance(obj,types.ListType):
-        #print "in iterable object"
-        for i in obj:
-            get_defining_file_from_object(i)
-    #else:
-        #print type(obj)#,dir(obj)
-            
-    return ret
-            
-
-g_mod_dict={}
-def get_import_list(mod):
-    
-    try:
-        return g_mod_dict[mod.__name__]
-    except KeyError:
-        ret=set()
-        for m in mod.__dict__.values():
-            if isinstance(m,types.ModuleType):
-                if m.__name__ not in g_mod_dict:
-                    try:
-                        tmp=m.__file__
-                        
-                        if tmp.endswith('.pyc'):
-                            #replace with py file.. as we want to check this guy
-                            tmp=tmp[:-3]+"py"
-                        ret.add(tmp)
-                        g_mod_dict[mod.__name__]=set()
-                        ret.update(get_import_list(m))
-                    except AttributeError:
-                        g_mod_dict[m.__name__]=set()
-                else:
-                    ret.update(get_import_list(m))
-        g_mod_dict[mod.__name__]=ret
-        return ret
-
-# we try to write this as if this was a method on the node objects
-#so self is the node...
-
-def get_context_files(self):
-    
-    action_obj=self.builder.action
-    ret=[]
-    if isinstance(action_obj,SCons.Action.FunctionAction):        
-        ret.append(get_defining_file_from_object(action_obj.execfunction))
-        
-        
-    elif isinstance(action_obj,SCons.Action.ListAction):
-        for l in action_obj.list:            
-            if isinstance(l,SCons.Action.FunctionAction):
-                ret.append(get_defining_file_from_object(l.execfunction))
-                
-        
-##    elif isinstance(action_obj,SCons.Action.LazyAction):
-##        #pp.pprint(action_obj.__dict__)
-##        pass
-##         
-##    elif isinstance(action_obj,SCons.Action.CommandGeneratorAction):
-##        #print action_obj.__class__,":",action_obj.get_contents(self,self.sources,self.env)
-##        pass
-##    #elif isinstance(action_obj,SCons.Action.CommandAction):
-##    #    print action_obj.__class__,":",action_obj.get_contents(self,self.sources,self.env)
-##    #    pass
-##    else:
-##        #print action_obj.__class__, '*************',self
-##        #pp.pprint(action_obj.__dict__)
-##        #print action_obj.get_contents(self,self.sources,self.env)
-##        pass
-    return ret
-        
-
-def add_builder_context_files(pobj,builder):
-    # see if this Part knows of this builder
-    
-    try:
-        ret=add_builder_context_files.cache[pobj.Root.Alias+builder.get_name(pobj.Env)]
-        pobj._add_build_context_files(ret)
-        return
-    except AttributeError:
-        add_builder_context_files.cache={}
-    except KeyError:
-        pass
-    action_obj=builder.action
-    ret=[]
-    if isinstance(action_obj,SCons.Action.FunctionAction):        
-        ret.append(get_defining_file_from_object(action_obj.execfunction))
-        
-        
-    elif isinstance(action_obj,SCons.Action.ListAction):
-        for l in action_obj.list:            
-            if isinstance(l,SCons.Action.FunctionAction):
-                tmp=get_defining_file_from_object(l.execfunction)
-                if tmp:
-                    ret.append(tmp)
-        
-    add_builder_context_files.cache[pobj.Root.Alias+builder.get_name(pobj.Env)]=ret
-    pobj._add_build_context_files(ret)
-     
-        
-
-
-
-################
-
-
-
-
-
 # would it be nice if ther was a addon base in Scons... hmmmmm
 class parts_addon(object):
     def __init__(self):
@@ -240,13 +97,14 @@ class parts_addon(object):
         self.__is_sconstruct_loaded=False
         
         self._exit_up_to_date=False
+        self._loaded_data=False
         
         #events
         self.CacheDataEvent=events.Event()
         self.CacheDataEvent+=self._store_global_data
         self.SConstructLoadedEvent=events.Event()
         self.PostProcessEvent=events.Event()
-        
+                
         # start up the reporter which controls the streams and all output
         use_color=SCons.Script.GetOption('use_color')
         # need to trace this before we set the colors else the tests break
@@ -274,10 +132,14 @@ class parts_addon(object):
             use_color=use_color
             )
             
-        glb.pnodes=pnode.pnode_manager.manager()
+        
         
     def Start(self):
         api.output.verbose_msg("init","Starting up Parts")
+        
+        # set up some globals
+        glb.pnodes=pnode.pnode_manager.manager()
+
         poptions.post_option_setup()
         # setup variable
         self._setup_variables()
@@ -289,7 +151,7 @@ class parts_addon(object):
         # turn off all default building of any items without a target, or until
         # default is called again to set one. ( ie the default by Scons is '.' which is everything)
         self.def_env.Default('')
-        self.def_env.EnsureSConsVersion(1,2,0)
+        self.def_env.EnsureSConsVersion(2,1,0)
         #self._setup_defenv()
                 
         #try to setup all logger
@@ -318,20 +180,19 @@ class parts_addon(object):
     def ShutDown(self):
         
         # if we exit because we are up-to-date... just exit
-        if self._exit_up_to_date:
+        if self._exit_up_to_date or self.__build_mode=='help' or self.__build_mode=='question':
             return
         
-        gc.collect()
         # write out data cache files..given nothing went wrong and 
         # we had something to build
         # check to see that we even have targets to process, and that there are no error conditions
-        if SCons.Script.BUILD_TARGETS and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__build_mode=='build' and self.__use_cache == True:
-            # this event if for saving data that we only want saved, given a good build
-            self.store_db_data(True) 
-        else:
-            self.store_db_data(False) 
-        gc.collect()
-        
+        if SCons.Script.BUILD_TARGETS:# and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__use_cache == True:
+            # current changed logic to say teh build is good if we loaded all the information we had to load.
+            # given this we don't realy care if there was a bad "build" as the state we care about should be OK
+            self.store_db_data(self._loaded_data,self.__build_mode) 
+        #else:
+        #    self.store_db_data(False) 
+        datacache.SaveCache()        
         #get what went wrong if anything
         bf_lst=SCons.Script.GetBuildFailures()
         
@@ -339,16 +200,22 @@ class parts_addon(object):
         if bf_lst:
             bf_lst_len = len(bf_lst)
             msg=''
-            while bf_lst:
-                bf = bf_lst.pop()
+            for bf in bf_lst:
                 if common.is_list(bf.command):
                     cmd=' '.join(bf.command)
                 else:
                     cmd=bf.command
-                msg+=' Node: "{0}"\n'.format(bf.node)
-                del bf
+                pinfo=self._part_manager._from_env(bf.node.env)
+                if pinfo:
+                    msg+='Part:"{0}" Target:"{1}" config:"{2}" Node:"{3}"\n'.format(pinfo.Name,
+                                                                              bf.node.env['TARGET_PLATFORM'],
+                                                                              bf.node.env['CONFIG'],
+                                                                              bf.node)
+                else:
+                    msg+='Node: "{0}"\n'.format(bf.node)
+            
             api.output.print_msg("Summary: {0} build failure detected during build\n{1}".format(bf_lst_len,msg))
-            del bf_lst
+            
         glb.rpter.ShutDown()
         
     def UpToDateExit(self):
@@ -374,7 +241,7 @@ class parts_addon(object):
         # set state sconstruct to loaded
         self.__is_sconstruct_loaded=True
         # call event that we are loaded
-        self.SConstructLoadedEvent()
+        self.SConstructLoadedEvent(self.__build_mode)
         try:
             targets=SCons.Script.BUILD_TARGETS
             # check to see that we even have targets to process
@@ -395,11 +262,21 @@ class parts_addon(object):
                     
             # process Queue
             self.parts_process_queue()   
-            self.PostProcessEvent()
+            self.PostProcessEvent(self.__build_mode)
 
-            #clear the datacache
-            datacache.ClearCache()
+            datacache.SaveCache()
+            self._loaded_data=True
             
+            #clear the datacache
+            # change this to clear on certain caches like the vcs
+            #datacache.ClearCache()
+
+            if sys.platform == 'win32':
+                #Allow us to prevent error dialog boxes.. useful for running programs such as tests
+                import ctypes
+                tmp=ctypes.windll.kernel32.SetErrorMode(0)
+                ctypes.windll.kernel32.SetErrorMode(tmp|0x0001|0x0002|0x0008)
+
             #reset our stack info for error reporting.. (todo. double check this again)
             #errors.ResetPartStackFrameInfo()
         except:
@@ -434,135 +311,26 @@ class parts_addon(object):
         #for p in self.__part_manager.parts.values():
             #p.Env.subst(p.Env['ENV']['INCLUDE'])
             
-    def map_known_nodes(self):# remove this function if we can
-        '''
-        This function maps all known node to the best Part object that it can.
-        In some cases depending on layout of the part and it sub part in relation
-        to the source, a node might be added to more subpart that it should.
-        However, since we only care to process a full Part ( and all it subpart)
-        this does not break anything.
-        
-        The other item we do here ( as we are here already) is test the builder
-        action for data that can be used to help detact a possible change in
-        the build state. This build state is more global and as such will be stored
-        latter in a more global data cache file.
-        '''
-        #st=time.time()
-        #cnt=0
-        #for drive in self.def_env.fs.Root.keys():
-        #    if drive == '':
-        #        continue
-        #    for k,v in self.def_env.fs.Root[drive]._lookupDict.iteritems():
-        #        v.disambiguate()
-        #        cnt+=1
-        #        if isinstance(v,SCons.Node.FS.Base):
-        #            binfo=v.get_binfo()
-        #            if not os.path.exists(v.path) and v.path != v.srcnode().path and\
-        #                 binfo.bsourcesigs == [] and \
-        #                    binfo.bdependsigs == [] and \
-        #                    binfo.bimplicitsigs ==[]:   
-        #                    # we need to store the variant directory
-        #                    # as SCon does not store this. SCons assume this
-        #                    # is fully mapped when it loads all the user data file
-        #                    # after that point all data tests are safe to do
-        #                    # we want to do this eailier than that to speed up the build
-        #                    glb.engine.record_variant_source_mapping(v)
-        #                    
-                    
-                #if isinstance(v,SCons.Node.FS.Dir) and v.env is None and getattr(v,'builder',None) is SCons.Node.FS.MkdirBuilder:
-                #    #this is most likely a Directory node that Scons would make 
-                #    # because some file would go in it
-                #    # it is not really need to map this to a Parts/Component
-                #    api.output.verbose_msg(["node_sorting"],v,"\033[1;32mSkipping directory")
-                #    pass
-                ###need check for value nodes!!!!
-                #elif v.env is None and isinstance(v,SCons.Node.FS.File):
-                #    # this is some source file or implict dependance
-                #    # which mean I need to figure out who to give it to
-                #    ##need check
-                #    tmp=v.Dir('.')
-                #    while self.def_env.hasMetaTag(tmp,'owners','parts')==False:
-                #        if tmp == tmp.Dir('..'):
-                #            break;
-                #        else:
-                #            tmp=tmp.Dir('..')    
-                #    
-                #    tlst=self.def_env.MetaTagValue(tmp,'owners','parts',[])
-                #    if tlst ==[]:
-                #        api.output.verbose_msg(["node_sorting","node_sorting_failures"],v,"\033[1;31mMapping not found")
-                #        continue
-                #    for i in tlst:
-                #        self.__part_manager.parts[i]._part_nodes.add(v)
-                #        api.output.verbose_msg("node_sorting",v,"mapped to \033[1;32m%s"%i)
-                #    
-                #    
-                #elif v.env is not None:
-                #    
-                #    
-                #    alias=v.env.get("PART_ALIAS",None)
-                #    if alias:
-                #        pobj=self.__part_manager.parts[alias]
-                #        if v.has_builder():
-                #            add_builder_context_files(pobj,v.builder)
-                #        
-                #        pobj._part_nodes.add(v)
-                #        api.output.verbose_msg("node_sorting",v,"\033[1;32m%s"%alias)
-                #    else:
-                #        api.output.verbose_msg(["node_sorting","node_sorting_failures"],v,"\033[1;31mhas no alias defined")
-                #        pass
-                #else:
-                #    api.output.verbose_msg(["node_sorting","node_sorting_failures"],v,"\033[1;31mMissed")
-                #    pass
-                    
-                # deal with the node build context
-                #if v.has_builder():
-                    #glb.build_context_files.update(get_context_files(v))
-        #print "Time for srcnode mapping", time.time() - st,cnt
        
-    def store_db_data(self,goodexit):
-        
-        # map known nodes
-        self.map_known_nodes()
+    def store_db_data(self,goodexit,build_mode):
         
         # store each part we know about information
         # call Part manager to do this
         api.output.print_msg("Storing Data Cache")
         st=time.time()
-        self.CacheDataEvent(goodexit)
+        self.CacheDataEvent(goodexit,build_mode)
         api.output.verbose_msg(['cache_save'],"Fill time=",time.time()-st)
         st=time.time()
         datacache.SaveCache()
         api.output.verbose_msg(['cache_save'],"Save time=",time.time()-st)
         api.output.print_msg("Done -- Storing Data Cache")
         
-    def _store_global_data(self,goodexit):
-        # till I get the startup code better
-        glb.pnodes.Store(goodexit)
-        
+    def _store_global_data(self,goodexit,build_mode):
+        if build_mode=='question':
+            return       
         if goodexit:
             
-            
-            
             global_data={}
-            ## get data for Parts that we need to store
-            #get previous stored information as we may need it
-            stored_data=datacache.GetCache('global_data')
-            
-        
-            #tmp={}
-            #if is_Sconstruct_up_to_date():
-            #    tmp=datacache.GetCache("global_data")
-            #    if tmp is None:
-            #        tmp={}
-            #
-            ## store global data
-            ## update known alias
-            #tmp1=tmp.get('known_aliases',set([]))
-            #tmp1.update(alias_set)
-            #global_data={
-            #    'known_aliases':tmp1,
-            #    'known_parts':common.extend_if_absent(tmp.get('known_parts',[]),alist)
-            #    }
         
             # get SConstruct file data ( maybe more than one )
             # we store a dictionary of
@@ -583,99 +351,10 @@ class parts_addon(object):
                         }
             #add to global data
             global_data['sconstruct_files']=tmp
-            
-            # store mapping info about "variant" source node.
-            # these are generally source nodes that don't exist in the 
-            # build variant directory because we told SCons to not copy them
-            #tmp=self.__variant_source_mapping
-            #global_data['variant_src_mapping']=tmp
-            
-            ### store the all know Aliases
-            ## we need to filter out nodes that have stored binfo
-            ## and did not build.. these need to stay unknown, until
-            ## we try to build them
-            #aliastostore= set() if stored_data is None else stored_data.get('aliases')
-            #if aliastostore:
-            #    tmp=filter(lambda x: x.isVisited, self.__aliases)
-            #    aliastostore.update(tmp)
-            #else:
-            #    aliastostore=self.__aliases
-            #global_data['aliases']=aliastostore  
-            #
-            #
-            #valuestostore= {} if stored_data is None else stored_data.get('known_targets')
-            #store_all=valuestostore == {}
-            #for k,v in self.__known_targets.iteritems():
-            #    if 'asdp' in k: print "&&&", k,v
-            #    if v['node'].isVisited or store_all:
-            #        del v['node']
-            #        valuestostore[k]=v
-            #        
-            #
-            #global_data['known_targets']=valuestostore
-            
+                       
             #store data in Cache
             datacache.StoreData('global_data',global_data)       
         
-        
-    #def isKnownNode(self,strval):
-    #    data=datacache.GetCache('global_data')
-    #    if data is None:
-    #        return False
-    #    
-    #    try:
-    #        type=data['known_targets'][strval]
-    #        return True
-    #    except KeyError:
-    #        return False
-    #
-    #def StoredNodeData(self,strval):
-    #    data=datacache.GetCache('global_data')
-    #    if data is None:
-    #        return None
-    #    
-    #    try:
-    #        return data['known_targets'][strval]
-    #        
-    #    except KeyError:
-    #        return None
-    #
-    #    
-    #def StringToNode(self,snode,ntype=None):
-    #    data=datacache.GetCache('global_data')
-    #    if data is None:
-    #        return None
-    #    
-    #    stored_known_nodes=data['known_targets']
-    #    
-    #    if ntype is None:
-    #        try:
-    #            type=stored_known_nodes[snode]['_type_']
-    #        except KeyError:
-    #            type='entry'
-    #            
-    #    if type == 'File':
-    #        return self.def_env.File(snode)
-    #    elif type == 'Dir':
-    #        return self.def_env.Dir(snode)
-    #    elif type == 'Entry':
-    #        return self.def_env.Entry(snode)
-    #    elif type == 'Value':
-    #        return self.def_env.Value(snode)
-    #    elif type == 'Alias':
-    #        stored_known_alias=data['aliases']
-    #        try:
-    #            info=stored_known_alias[snode]
-    #        except KeyError:
-    #            info=None
-    #        node = self.def_env.Alias(snode)[0]
-    #        if binfo:
-    #            node._memo['get_stored_info']=info
-    #        return node
-    #    return None
-    #        
-        
-
     #setup APIs
     def _setup_variables(self):
         ''' 
@@ -690,6 +369,8 @@ class parts_addon(object):
             self.__build_mode='clean'
         elif SCons.Script.GetOption('help'):
             self.__build_mode='help'
+        elif SCons.Script.GetOption('question'):
+            self.__build_mode='question'
         else:
             self.__build_mode='build'
             
@@ -699,13 +380,6 @@ class parts_addon(object):
             
     def _setup_defenv(self):
                 
-        #import settings
-        ##org_env=SCons.Defaults._default_env        
-        #env=settings.DefaultSettings().Environment().Clone()
-        ##env._CacheDir_path=None
-        ##api.output.verbose_msg("startup","Resetting Scons default environment")
-        #self.def_env=SCons.Defaults._default_env=env
-        #self.def_env['PREPROCESS_LOGIC_QUEUE']=self.__post_process_queue
         pass
 
     
@@ -797,34 +471,25 @@ class parts_addon(object):
         
     def _setup_sdk(self):
         return
-        ##api.output.verbose_msg("startup","Processing SDK options")
-##        csig,glb.depends_data=core.load_depends_data()
-##        #print glb.depends_data
-##        # first check to see if the main Sconstruct has changed
-##        if csig != 0:
-##            s=core.get_file_main_script(self.def_env)
-##            if s != '':
-##                fn=self.def_env.File(s)
-##                # the the below passes we trust the database
-##                #if fn.exists() and fn.get_csig()==csig:
-##                #    setup_buildable_parts()
-##        if self.def_env['use_source_for']!='' or self.def_env['use_sdk'] == True:
-##            self.def_env['use_sdk'] = True
-##            # get targets to build from source
-##            glb.rpter.part_message("Using prebuilt SDK's if they exist")
-##            if self.def_env['use_source_for']!='':
-##                src_targets=string.split(SCons.Script.ARGUMENTS['use_source_for'],',')
-##            else:
-##                src_targets=SCons.Script.COMMAND_LINE_TARGETS[:]
-##            # create target list
-##            setup_sdk_target_parts(src_targets)
-##            add_dirty_parts(self.def_env)
-##            reduce_target_alias_set(self.def_env)
-##            create_sdk_set(self.def_env)
-
+        
     def _setup_progress_meter(self):
         api.output.verbose_msg("startup","Setting up show-progress feature")
         if SCons.Script.GetOption('show_progress'):
+            #class ProgressCounter(object):
+            #    def __init__(self):
+            #        self._time=0
+            #        self._node=None
+            #    def __call__(self, node, *args, **kw):
+            #        if self._time:
+            #            tt=time.time() - self._time 
+            #            if time.time() - self._time > 10:
+            #                
+            #                glb.rpter.console.Warning.write( " ****** {0} is took {1} sec to process\n".format(self._node.ID,tt))
+            #        
+            #        glb.rpter.console.Trace.write("Processing {0}\n".format(node.ID))
+            #        self._time=time.time()
+            #        self._node=node
+            #SCons.Script.Progress(ProgressCounter(),1)
             SCons.Script.Progress(self.def_env['PROGRESS_STR'],1,file=glb.rpter.console,overwrite=True)
 
     def add_preprocess_logic_queue(self,funcobj):
@@ -869,7 +534,6 @@ Use -H or --help-options for a list of scons options
         
         try:
             tmp=self.__cache_key=SCons.Script.ARGUMENTS['USE_CACHE_KEY']
-            print "using key",tmp
             return tmp
         except KeyError:
             pass

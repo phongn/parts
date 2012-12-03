@@ -277,6 +277,19 @@ class REQ(object):
     def __len__(self):
         return len(self.__data)
     
+    def issubset(self,other):
+        for i in self:
+            if i not in other:
+                return False
+        return True
+
+    def intersection(self,other):
+        ret=set()
+        for i in self:
+            if i in other:
+                ret.add(i)
+        return REQ(ret)
+
     def __contains__(self,lhs):
         try:
             return lhs.key in self.__data

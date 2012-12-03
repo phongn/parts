@@ -1,7 +1,7 @@
 import glb
 import common
 import api.output
-import pickle_helpers
+#import pickle_helpers
 import errors
 
 import cPickle
@@ -22,33 +22,20 @@ def db_key(length):
     except KeyError:
         import hashlib
         md5=hashlib.md5()
-        md5.update("DB Cache Version 1.1 length %s"%(length))
+        md5.update("DB Cache Version 1.2.1 length %s"%(length))
         __db_key[length]=md5.hexdigest()
     return __db_key[length]
      
 
 
 def load_cache_data(datafile):
-    #return None
-    #if os.path.exists(datafile):
-    #        output = open(datafile, 'rb')
-    #        p= cPickle.Unpickler(output)
-    #        p.persistent_load =pickle_helpers.persistent_unpickle
-    #        tmp=p.load()
-    #        (tmp,stored_data)=tmp
-    #        output.close()
-    #        return (tmp,stored_data)
+    #print "loading data file:" , datafile
     try:
         if os.path.exists(datafile):
-            output = open(datafile, 'rb')
-            p= cPickle.Unpickler(output)
-            p.persistent_load =pickle_helpers.persistent_unpickle
-            tmp=p.load()
-            (tmp,stored_data)=tmp
-            output.close()
+            with open(datafile, 'rb') as inputfile:
+                (tmp,stored_data)=cPickle.load(inputfile)
             return (tmp,stored_data)
-    except IOError,ec:
-        pass
+
     except Exception,ec:
         api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile,print_once=True)
         global __bad_cache
@@ -57,22 +44,19 @@ def load_cache_data(datafile):
     return None
 
 def store_cache_data(datafile,data):
-    #print "storing data file",datafile
     path,filename=os.path.split(datafile)
     if not os.path.exists(path):
         os.makedirs(path)
-    output = open(datafile, 'wb')
-    try:
-        v=data.get('__version__',0)
-    except AttributeError:
-        v=0
-    p= cPickle.Pickler(output)
-    p.persistent_id=pickle_helpers.persistent_pickle
-    try:
-        p.dump(((db_key(len(data)),v),data))
-    except TypeError:
-        p.dump(((db_key(1),v),data))
-    output.close()
+    with open(datafile, 'wb') as outfile:
+        try:
+            v=data.get('__version__',0)
+        except AttributeError:
+            v=0
+        try:
+            cPickle.dump(((db_key(len(data)),v),data),outfile,2 )
+        except TypeError:
+            cPickle.dump(((db_key(1),v),data),outfile,2 )
+    
     
 
 __use_parts_cache = None
@@ -131,16 +115,22 @@ def StoreData(name,data,key=None):
         
     filename=os.path.join(".parts.cache",key,name+".cache")
     __cache[filename]=data
-    __dirty_cache.append(filename)
-    #store_cache_data(filename,data)
+    if filename not in __dirty_cache:
+        __dirty_cache.append(filename)
+    
 
 def SaveCache(name=None,key=None):
     '''
     this will save the data of all caches is Name is None
     else it will save on the data of a given item, it it exists
     '''
-    global __cache,__dirty_cache
-    
+    global __cache,__dirty_cache,__use_parts_cache
+
+    if __use_parts_cache is None:
+        __use_parts_cache = SCons.Script.GetOption('parts_cache') or False
+
+    if __use_parts_cache == False: return
+
     # store everything for a given key
     if name is None and key:
         tmp=os.path.join(".parts.cache",key,"*.cache")
@@ -160,7 +150,6 @@ def SaveCache(name=None,key=None):
     elif name and key is None:
         key=_get_default_key()
         filename=os.path.join(".parts.cache",key,name+".cache")
-        
         if filename in __dirty_cache:
             data=__cache[filename]
             store_cache_data(filename,data)
@@ -181,7 +170,6 @@ def ClearCache(name=None,key=None,save=False):
     Clear out the cache of data in memory
     '''
     global __cache,__dirty_cache
-    
     def clear_item(item):
         try:
             del __cache[item]

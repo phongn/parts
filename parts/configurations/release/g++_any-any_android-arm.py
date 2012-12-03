@@ -2,9 +2,7 @@
 ### gcc compiler configurations for android 
 ######################################
 
-import sys
 from parts.config import *
-import SCons.Script
 
 def map_default_version(env):
     return env['GXX_VERSION']
@@ -25,7 +23,7 @@ config.VersionRange("3-*",
                                 '-Wl,--fix-cortex-a8'
                                    ],
                         LIBPATH=[
-                                '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a'
+                                '${GXX.LIBRARY_PATH}'
                                 ],
                         LIBS=['gnustl_shared']
                         )

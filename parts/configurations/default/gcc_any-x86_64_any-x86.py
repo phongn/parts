@@ -1,10 +1,8 @@
 ######################################
-### gcc compiler configurations debug
+### gcc compiler configurations default
 ######################################
 
-import sys
 from parts.config import *
-import SCons.Script
 
 def map_default_version(env):
     return env['GCC_VERSION']

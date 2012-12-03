@@ -87,7 +87,10 @@ class namespace(dict,bindable):
         ''' This is ugly but because SCons does not have a good recursive subst
         code, I need to subst stuff here before SCons can try to, else it will
         try to set this object to Null string, causing an unwanted error'''
-        tmp=self[name]
+        try:
+            tmp=self[name]
+        except KeyError:
+            raise AttributeError()
         if hasattr(tmp,'__eval__'):
             tmp=tmp.__eval__()
             self[name]=tmp
@@ -202,9 +205,6 @@ def make_unique(obj):
     tmp=[]
     for i in obj:
         if not i in tmp:
-            #if type(i) == type([]):
-            #    tmp.extend(i)
-            #else:
             tmp.append(i)
     return tmp
 
@@ -232,7 +232,9 @@ def append_unique(obj,val):
     if not val in obj:
         obj.append(val)
     else:
-        obj.remove(val)
+        try:
+            while 1: obj.remove(val)
+        except ValueError: pass
         obj.append(val)
     return obj
 
@@ -241,7 +243,9 @@ def prepend_unique(obj,val):
     if not val in obj:
         obj[0:0]=[val]
     else:
-        obj.remove(val)
+        try:
+            while 1: obj.remove(val)
+        except ValueError: pass
         obj[0:0]=[val]
 
     return obj
@@ -369,7 +373,7 @@ def tag_node_ownership(env,node):
         #print "Tagged",alias, node.srcnode()
         env.MetaTag(node.srcnode(),'parts',owners=[alias]+tmp)
 
-    for k,e in node.entries.iteritems():
+    for k,e in node.entries.copy().iteritems():
         if isinstance(e,SCons.Node.FS.Dir) and k != '.' and k!='..':
             tag_node_ownership(env,e)
 
@@ -584,13 +588,14 @@ def map_alias_to_root(pobj,concept,alias_str,action=None,always_build=False):
     a=pobj.Env.Alias(basestr)
     if pobj.Parent:
         parentstr=alias_str.format(concept,pobj.Parent.Alias)
+        env = pobj.Section('build').Env
         if action:
-            anode=pobj.Env.Alias(parentstr, a, action)
+            anode=env.Alias(parentstr, a, action)
             #print anode[0], a[0]
         else:
-            anode=pobj.Env.Alias(parentstr, a)
+            anode=env.Alias(parentstr, a)
             #print anode[0], a[0]
         if always_build:
-            pobj.Env.AlwaysBuild(anode)
+            env.AlwaysBuild(anode)
         return map_alias_to_root(pobj.Parent,concept,alias_str,action,always_build)
     return a

@@ -420,13 +420,13 @@ SCons.Script.AddOption("--cfg-file","--config-file",
 ## policy values            
 SCons.Script.AddOption("--vcs-policy",
             dest='vcs_policy',
-            default='update',
+            default='message-update',
             nargs=1,
             type='choice',
-            choices=['warning','error','message-update','update'],
+            choices=['warning','error','message-update','warning-update','update','checkout-warning','checkout-error'],
             action='store',
             help='Policy in how Parts should react if the automatic vcs check find that it is out of date.\
- The policy values can be warning, error, message_update, update')         
+ The policy values can be warning, error, message_update, warning-update, update, checkout-warning, checkout-error')         
             
 
 

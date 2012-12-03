@@ -38,6 +38,8 @@ import SCons.Tool
 import SCons.Defaults
 import SCons.Util
 
+import parts.tools.Common
+
 compilers = ['CC', 'c++']
 
 CXXSuffixes = ['.cpp', '.cc', '.cxx', '.c++', '.C++', '.mm']
@@ -72,24 +74,24 @@ def generate(env):
 
     SCons.Tool.cc.add_common_cc_variables(env)
 
-    env['CXX']        = 'c++'
-    env['CXXFLAGS']   = SCons.Util.CLVar('')
+    env['CXX'] = parts.tools.Common.toolvar('c++')
+    env.SetDefault(CXXFLAGS   = SCons.Util.CLVar(''))
     #env['CXXCOM']     = '$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES'
-    env['CXXCOM']   = '${TEMPFILE("$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES")}'
-    env['SHCXX']      = '$CXX'
-    env['SHCXXFLAGS'] = SCons.Util.CLVar('$CXXFLAGS')
+    env.SetDefault(CXXCOM   = '${TEMPFILE("$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES")}')
+    env.SetDefault(SHCXX      = '$CXX')
+    env.SetDefault(SHCXXFLAGS = SCons.Util.CLVar('$CXXFLAGS'))
     #env['SHCXXCOM']   = '$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES'
-    env['SHCXXCOM']   = '${TEMPFILE("$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES")}'
+    env.SetDefault(SHCXXCOM   = '${TEMPFILE("$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES")}')
 
-    env['CPPDEFPREFIX']  = '-D'
-    env['CPPDEFSUFFIX']  = ''
-    env['INCPREFIX']  = '-I'
-    env['INCSUFFIX']  = ''
-    env['SHOBJSUFFIX'] = '.os'
-    env['OBJSUFFIX'] = '.o'
-    env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 0
+    env.SetDefault(CPPDEFPREFIX  = '-D')
+    env.SetDefault(CPPDEFSUFFIX  = '')
+    env.SetDefault(INCPREFIX  = '-I')
+    env.SetDefault(INCSUFFIX  = '')
+    env.SetDefault(SHOBJSUFFIX = '.os')
+    env.SetDefault(OBJSUFFIX = '.o')
+    env.SetDefault(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME = 0)
 
-    env['CXXFILESUFFIX'] = '.cc'
+    env.SetDefault(CXXFILESUFFIX = '.cc')
 
 def exists(env):
     return env.Detect(compilers)

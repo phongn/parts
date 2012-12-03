@@ -1,35 +1,23 @@
 import glb
 import common
 import version
-
-
-class stored_part_ref(object):
-    """description of class"""
-    def __init__(self,target,local_space=None):
-        self.__local_space=local_space
-        self.__target=target
-        self.__matches=None
-        
-    @property
-    def Matches(self):
-        #returns all matches we have for this referance
-        if self.__matches:
-            return self.__matches
-        
-        self.__matches=glb.engine._part_manager._from_target(
-                self.__target,
-                self.__local_space
-            )
-        return self.__matches
-        
-
+import target_type
+      
 class part_ref(object):
     """description of class"""
-
+    __slots__=[
+        '__local_space',
+        '__target',
+        '__matches',
+        '__stored_matches'
+    ]
     def __init__(self,target,local_space=None):
         self.__local_space=local_space
+        if common.is_string(target):
+            target=target_type.target_type(target)
         self.__target=target
         self.__matches=None
+        self.__stored_matches=None
         
     @property
     def Matches(self):
@@ -46,14 +34,14 @@ class part_ref(object):
     @property
     def StoredMatches(self):
         
-        try:
+        if self.__stored_matches:
             return self.__stored_matches
-        except AttributeError:
-            self.__stored_matches=glb.engine._part_manager._from_target(
+        else:
+            self.__stored_matches=list(glb.engine._part_manager._from_target(
                     self.__target,
                     self.__local_space,
                     use_stored_info=True
-                )
+                ))
         return self.__stored_matches
     
     def __call__(self):
@@ -72,12 +60,20 @@ class part_ref(object):
         return len(self.StoredMatches)>0
     
     @property
+    def hasStoredUniqueMatch(self):
+        return len(self.StoredMatches)==1
+
+    @property
     def hasUniqueMatch(self):
         return len(self.Matches)==1
     
     @property
     def UniqueMatch(self):
         return self.Matches[0]
+
+    @property
+    def StoredUniqueMatch(self):
+        return self.StoredMatches[0]
     
     @property
     def Target(self):

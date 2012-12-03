@@ -2,7 +2,7 @@
 
 class stored_info(object):
     """description of class"""
-
+    __slots__=[]
     def post_load_convet(self):
         '''
         This function is called to convert any data into strong types.
@@ -11,12 +11,3 @@ class stored_info(object):
         '''
         pass
         
-    #def __getstate__(self):
-    #    print "called base"
-    #    tmp={}
-    #    for k,v in self.__dict__.iteritems():
-    #        if k.startswith('__') == False:
-    #            tmp[k]=v
-    #    print tmp
-    #    return tmp
-    #

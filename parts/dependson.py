@@ -85,7 +85,9 @@ def depends_on_classic(env,depends):
             continue
         api.output.verbose_msg('dependson'," Component",comp.PartRef.Target.Name)
         import_map={}
-        
+        glb.engine.add_preprocess_logic_queue(
+                    functors.map_depends(pobj.DefiningSection.Env,comp.PartRef,comp.SectionName,comp.Requires,comp.StackFrame)
+                    )
         for r in comp.Requires:
             ## import logic
             # always map to namespace
@@ -107,9 +109,6 @@ def depends_on_classic(env,depends):
             map_val=r.value_mapper(comp.PartRef.Target,comp.SectionName)
             tmpspace[r.key]=map_val
             
-            glb.engine.add_preprocess_logic_queue(
-                    functors.map_depends(pobj.DefiningSection.Env,comp.PartRef,comp.SectionName,r.key,comp.StackFrame)
-                    )
             # if this is a list and is not private we map to global space via an append
             if r.is_public and r.is_list:
                 # map virtual depend node
@@ -130,15 +129,12 @@ def depends_on_classic(env,depends):
             if r.is_internal == False:
                 api.output.verbose_msg('dependson', "  exporting",r.key,map_val)
                 if r.key not in pobj.DefiningSection.Exports and r.is_list:
-                    pobj.DefiningSection.Exports[r.key]=[]
+                    pobj.DefiningSection.Exports[r.key]=[[]]
                     
                 if r.is_list: 
-                    pobj.DefiningSection.Exports[r.key]=common.extend_unique(pobj.DefiningSection.Exports[r.key],[map_val])
+                    pobj.DefiningSection.Exports[r.key]=common.extend_unique(pobj.DefiningSection.Exports[r.key],[[map_val]])
                 else:
-                    if pobj.DefiningSection.Exports.has_key(r.key):
-                        pobj.DefiningSection.Exports[r.key]=[map_val]
-                    else:
-                        pobj.DefiningSection.Exports[r.key]=map_val
+                    pobj.DefiningSection.Exports[r.key]=map_val
                 api.output.verbose_msg('dependson', "  Exported values",pobj.DefiningSection.Exports[r.key])
                 
 

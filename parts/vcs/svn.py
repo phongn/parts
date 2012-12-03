@@ -9,6 +9,11 @@ import os,re
 class svn(base):
     ''' This is the implmentation of the vcs SVN logic'''
     
+    __slots__=[
+            '__revision',
+            '_disk_data',
+            '__completed',
+        ]
     svnpath=None #the path to the svn program to run
     
     def __init__(self,repository,server=None,revision=None):
@@ -77,7 +82,10 @@ class svn(base):
         # this happens when we switch repro types ( should do better fix for this..)
         # what happens is that there is no SVN info to get and a possible directory
         elif self.get_svn_data()['root'] is None:
-            ret=[self._env.Action(lambda target, source, env: removeall(out_dir),"Cleaning up checkout area for {0}".format(out_dir))]+self.CheckOutAction(out_dir)
+            if self._env.GetOption('vcs_clean') == True or self._env.GetOption('vcs_retry') == True:
+                ret=[self._env.Action(lambda target, source, env: removeall(out_dir),"Cleaning up checkout area for {0}".format(out_dir))]+self.CheckOutAction(out_dir)
+            else:
+                api.platforms.output.error_msg('Directory "{0}" already exists with no .svn directory. Manually remove directory or update with --vcs-retry or --vcs-clean'.format(out_dir),show_stack=False)
         else:
             strval = '%s switch $SVN_FLAGS %s%s "%s"'%('svn',update_path,self.Revision,out_dir)
             cmd = '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)            
@@ -138,7 +146,6 @@ class svn(base):
         if self.PartFileExists and os.path.exists(os.path.join(self.CheckOutDir,'.svn')):
             return None
         api.output.verbose_msg(["vcs_update","vcs_svn"]," Existance check failed")
-        self.__completed=False
         return "%s needs to be updated on disk"%self._pobj.Alias
             
     def do_check_logic(self):
@@ -151,7 +158,6 @@ class svn(base):
         #test for existance
         tmp=self.do_exist_logic()
         if tmp:
-            self.__completed=False
             return tmp
         #get data cache and see if our paths match
         cache=datacache.GetCache(name=self._env['ALIAS'],key='vcs')
@@ -165,12 +171,10 @@ class svn(base):
                 if data:
                     if data['server'] != self.FullPath:
                         api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk version does not match")
-                        self.__completed=False
                         return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
                     else:
                         api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk version matches")
                 else:
-                    self.__completed=False
                     api.output.verbose_msg(["vcs_update","vcs_svn"]," Could not query disk version for information!")
                     return 'Disk copy seems bad... updating'
         else:
@@ -188,13 +192,11 @@ class svn(base):
         #test for existance
         tmp=self.do_exist_logic()
         if tmp:
-            self.__completed=False
             api.output.verbose_msg(["vcs_update","vcs_svn"]," Existance checked failed")
             return tmp
         data=self.get_svn_data()
         if data:
             if data['server'] != self.FullPath:
-                self.__completed=False
                 api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk checked failed")
                 return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
             else:
@@ -229,9 +231,7 @@ class svn(base):
         '''
         #Setup and store vcs data cache logic
         self.__completed=result
-
-        
-        
+     
     def PostProcess(self):
         ''' This function is called when the system is done updating the disk
         This allows the object to update any data it needs on disk, or in the environment
@@ -245,13 +245,16 @@ class svn(base):
         'server':self.FullPath,
         'completed':self.__completed
         }
-         
-        datacache.StoreData(name=self._env['ALIAS'],data=tmp,key='vcs')
         
         self._env["VCS"].REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision'])
         self._env["VCS"].MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified'])
         self._env["VCS"].PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial'])
         self._env["VCS"].SWITCHED=common.DelayVariable(lambda :self.get_svn_data()['switched'])
+
+        datacache.StoreData(name=self._cache_filename,data=tmp,key='vcs')
+
+    def is_modified(self):
+        return self.get_svn_data()['modified']
    
     def get_svn_data(self):
         # get current state
@@ -337,7 +340,11 @@ class svn(base):
                 'root':root
             }
         return self._disk_data
-           
+
+    @property
+    def _cache_filename(self):
+        return self._env['ALIAS']
+
             
 # add configuartion varaible needed for part
 api.register.add_variable('SVN_SERVER','','Value of SVN server to use')

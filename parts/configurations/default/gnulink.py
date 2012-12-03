@@ -1,7 +1,7 @@
 from parts.config import *
 
 def map_default_version(env):
-    return env['GXX_VERSION']
+    return env['GCC_VERSION']
 
 def post_process_func(env):
     try:

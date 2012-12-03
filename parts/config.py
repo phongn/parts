@@ -47,6 +47,10 @@ class configuration(object):
         }
         
     def merge(self,ver,cfg):
+        '''
+        Merge setting values with given base values passed in via the
+        cfg variable
+        '''
         
         # need range for store key later
         ver_rng=version.version_range()
@@ -134,7 +138,7 @@ class _ConfigurationSet(object):
         # may have a value of None
         return self.map.has_key(tool)
     
-    def has_tool_cfg(self,tool,host,target):
+    def has_tool_cfg(self,tool,host,target,ver=None):
         
         # first see if we have matching tool
         tool_config=self.map.get(tool,None)
@@ -153,6 +157,16 @@ class _ConfigurationSet(object):
         if target_config==None:
             #Don't have anything for this tool to configure
             return False
+
+        if ver is not None:
+            # check to see if there is a version match
+            v_rng=target_config['versions']
+            for vr in v_rng:
+                if ver in vr:
+                    return True
+            else:
+                return False
+
         return True
     
     def Dependent(self):
@@ -196,7 +210,7 @@ class _ConfigurationSet(object):
                                         "versions":{ver_rng:settings},
                                         'defining_files':files
                                     }}})
-        else:           
+        else:
             self.map[tool]={host:
                                 {
                                 target:
@@ -270,6 +284,12 @@ def DefineConfiguration(name,dependsOn='default'):
     g_configuration[name]=_ConfigurationSet(name,dependsOn)
 
 def load_cfg(name):
+    '''
+    This function loads the information from the DefineConfiguration()
+    to get the relationships of the defined configruation. This tells 
+    us what base configurations we need to load first and merge setting
+    with.
+    '''
     # stop any loop/crashes that might happen if loading a None cfg
     if name==None:
         return
@@ -420,23 +440,37 @@ def found_config_files(name,tool,host,target):
     
 
 def load_tool_config(env,name,tool,host,target):
-    
+    '''
+    Load all infomation about a given tool in to a memory cache.
+    Will load all information in file about different version.
+    A note on speed up for later tweaks is that we probally want to
+    store the merged data in a datacache, and load from there as needed
+    to help save memory and processing time.
+    '''
+    ################################################
     ## First we need to start by loading base config
-    # get dependent confg
+
+    # get dependent config, None is there is no dependent
     dep=g_configuration[name].Dependent()
     base_settings=({},{})
     base_ver_mapper=null_ver_mapper
-    # do we have this config loaded already?
-    if dep is not None:
+    if dep is not None: # we have a dependent
+        # Did we load the dependent information already?
         if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
-            # if not load it
+            # if not, we need to load it
             load_tool_config(env,dep,tool,host,target)    
+
+    ################################################
+    ## Now the base config ( if any) is loaded we need to load the current confirguation
+
     api.output.verbose_msg('configuration',"Loading configuration <%s> for tool <%s>"%(name,tool))
-    ## Load our config data, and map the version value
+    
+    # get list of possible file name forms to try load
     name_list=make_name_list(tool,host,target)
     found=True
     ver=None
     mod=None
+    # we want to try to load the first file match as this is viewed as the best match
     for k in name_list:
         try:
             api.output.verbose_msg('configuration',"trying to load file <%s.py>"%k)
@@ -448,32 +482,44 @@ def load_tool_config(env,name,tool,host,target):
                     'config'+name
                     )
             api.output.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
-            
-            #g_config_context[tool]=mod.__file__
-            if mod.__file__.endswith('.py'):
-                files=set([mod.__file__])
-            else:
-                files=set([mod.__file__[:-1]])
-            #Map version if unknown
-            ver=mod.config.map_none_version(env)
-            break
         except ImportError:
-            pass
+            continue
         except Exception,ec:
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
-            
-        
+        ## Load our config data, and map the version value
+        #g_config_context[tool]=mod.__file__
+        if mod.__file__.endswith('.py'):
+            files=set([mod.__file__])
+        else:
+            files=set([mod.__file__[:-1]])
+        #get version based on value in environment
+        ver=mod.config.map_none_version(env)
+        break
     else:
-        # store that we don't have a config file for this tool
-        #g_config_context[tool]=None
+        # we don't have any configruation files.
+        # we make note of this as we will store empty setting for this case later
+        # or setting based on dependent values
         files=set()
-        if dep == None:
-            api.output.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
+        # reports that for this configruation there was not special data defined
+        api.output.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
         found=False # nothing found
     
-    ## Last we merge settings and store
+    #############################################################
+    # At this point we want to get all information for the different versions
+    # and store this information.
+    #if found==True:
+    #    for ver_rng, settings in mod.config.ver_rng.iteritems():
+    #        # Store unmerged settings for each versions
+    #        api.output.verbose_msg('configuration',"Storing settings")
+    #        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
+
+
+
+    #        ## if we have dependent setting, get this for the current version range
+    #        if dep != None:
+
     if dep != None:
         # Get base settings
         api.output.verbose_msg(['configuration','configuration_setup'],'Getting dependent configuration settings',dep)
@@ -485,6 +531,7 @@ def load_tool_config(env,name,tool,host,target):
         # merge setting
         api.output.verbose_msg('configuration',"Merging configurtation settings")
         settings,ver_rng=mod.config.merge(ver,base_settings)
+        api.output.verbose_msg(['configuration_setup'],'Got Settings of:',settings)
         api.output.verbose_msg('configuration',"Storing settings")
         g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
     else:
@@ -492,21 +539,29 @@ def load_tool_config(env,name,tool,host,target):
         g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper,files)
 
 def get_config(env,name,tool,host,target):
-    # is "meta" config loaded
-    if g_configuration.has_key(name)==False:
-        #if not load it
-        load_cfg(name)
-        
-    config=g_configuration[name]
-    # is tool loaded?
     ver=None
+    # is "meta" config loaded. ie the data about the configuration relationships
+    # and other properties
+    if g_configuration.has_key(name)==False:
+        #if not load it this information
+        load_cfg(name)
+    # Get the information we now have stored
+    config=g_configuration[name]
+
+    # dif we load information about the tool for a given host-target combination?    
     if config.has_tool_cfg(tool,host,target)==False:    
-    #if not load it
+        #if not load all information about this tool
         ver=load_tool_config(env,name,tool,host,target)
     # if version is None get a real version
     if ver==None:
+        api.output.trace_msgf('configuration',"No version defined for tool {0}",tool)
         ver=config.resolve_version(tool,host,target,env)
+        api.output.trace_msgf('configuration',"Resolved version for tool {0} to {1}",tool,ver)
+        if config.has_tool_cfg(tool,host,target,ver)==False:    
+            #if not load all information about this tool
+            ver=load_tool_config(env,name,tool,host,target)
     files=config.defining_files(tool,host,target)
+    
     # get settings    
     settings=config.get_config_setting(env,tool,ver,host,target)
     if settings==None:

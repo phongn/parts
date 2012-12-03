@@ -4,3 +4,4 @@
 @popd
 @python ..\gtest\gtest.py 
 @popd
+@exit /B %ERRORLEVEL%

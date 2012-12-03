@@ -514,6 +514,7 @@ class TestRun(DelayedEventMapper):
 
     @Command.setter
     def Command(self,value):
+        value=value.replace('/',os.sep)
         self.__cmd=value
     
     # stuff to test

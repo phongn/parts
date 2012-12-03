@@ -52,6 +52,7 @@ import SCons.Scanner.RC
 from parts.tools.MSCommon import msvc,validate_vars
 
 import parts.api.output as output
+import parts.tools.Common
 
 CSuffixes = ['.c', '.C']
 CXXSuffixes = ['.cc', '.cpp', '.cxx', '.c++', '.C++']
@@ -196,47 +197,49 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     # Set-up ms tools paths for default version
     msvc.MergeShellEnv(env)
 
-    env['CCPDBFLAGS'] = SCons.Util.CLVar(['${"/Z7" if PDB else ""}'])
-    env['CCPCHFLAGS'] = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}'])
-    env['_MSVC_OUTPUT_FLAG'] = msvc_output_flag
-    env['_CCCOMCOM']  = '$CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS $CCPCHFLAGS $CCPDBFLAGS'
-    env['CC']         = 'cl'
-    env['CCFLAGS']    = SCons.Util.CLVar('')
-    env['CFLAGS']     = SCons.Util.CLVar('')
-    env['CCCOM']      = '${TEMPFILE("$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM")}'
-    env['SHCC']       = '$CC'
-    env['SHCCFLAGS']  = SCons.Util.CLVar('$CCFLAGS')
-    env['SHCFLAGS']   = SCons.Util.CLVar('$CFLAGS')
-    env['SHCCCOM']    = '${TEMPFILE("$SHCC /Fo$TARGET /c $SOURCES $SHCFLAGS $SHCCFLAGS $_CCCOMCOM")}'
-    env['CXX']        = '$CC'
-    env['CXXFLAGS']   = SCons.Util.CLVar('$( /TP $)')
-    env['CXXCOM']     = '${TEMPFILE("$CXX /Fo$TARGET /c $SOURCES $CXXFLAGS $CCFLAGS $_CCCOMCOM")}'
-    env['SHCXX']      = '$CXX'
-    env['SHCXXFLAGS'] = SCons.Util.CLVar('$CXXFLAGS')
-    env['SHCXXCOM']   = '${TEMPFILE("$SHCXX /Fo$TARGET /c $SOURCES $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM")}'
-    env['CPPDEFPREFIX']  = '/D'
-    env['CPPDEFSUFFIX']  = ''
-    env['INCPREFIX']  = '/I'
-    env['INCSUFFIX']  = ''
+    env.SetDefault(CCPDBFLAGS = SCons.Util.CLVar(['${"/Z7" if PDB else ""}']))
+    env.SetDefault(CCPCHFLAGS = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}']))
+    env.SetDefault(_MSVC_OUTPUT_FLAG = msvc_output_flag)
+    env.SetDefault(_CCCOMCOM  = '$CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS $CCPCHFLAGS $CCPDBFLAGS')
+    env['CC']=parts.tools.Common.toolvar('cl')
+    env.SetDefault(CCFLAGS    = SCons.Util.CLVar(''))
+    env.SetDefault(CFLAGS     = SCons.Util.CLVar(''))
+    env.SetDefault(CPPPATH     = SCons.Util.CLVar(''))
+    env.SetDefault(CCCOM      = '${TEMPFILE("$CC /Fo$TARGET /c $SOURCES $CFLAGS $CCFLAGS $_CCCOMCOM")}')
+    env.SetDefault(SHCC       = '$CC')
+    env.SetDefault(SHCCFLAGS  = SCons.Util.CLVar('$CCFLAGS'))
+    env.SetDefault(SHCFLAGS   = SCons.Util.CLVar('$CFLAGS'))
+    env.SetDefault(SHCCCOM    = '${TEMPFILE("$SHCC $(/Fo$TARGET /c $SOURCES$) $SHCFLAGS $SHCCFLAGS $_CCCOMCOM")}')
+    env.SetDefault(CXX        = '$CC')
+    env.SetDefault(CXXFLAGS   = SCons.Util.CLVar(''))
+    env.SetDefault(CXXCOM     = '${TEMPFILE("$CXX $(/Fo$TARGET /c $SOURCES$) $CXXFLAGS $CCFLAGS $_CCCOMCOM")}')
+    env.SetDefault(SHCXX      = '$CXX')
+    env.SetDefault(SHCXXFLAGS = SCons.Util.CLVar('$CXXFLAGS'))
+    env.SetDefault(SHCXXCOM   = '${TEMPFILE("$SHCXX $(/Fo$TARGET /c $SOURCES$) $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM")}')
+    env.SetDefault(CPPDEFPREFIX  = '/D')
+    env.SetDefault(CPPDEFSUFFIX  = '')
+    env.SetDefault(INCPREFIX  = '/I')
+    env.SetDefault(INCSUFFIX  = '')
+
 #    env.Append(OBJEMITTER = [static_object_emitter])
 #    env.Append(SHOBJEMITTER = [shared_object_emitter])
-    env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
+    env.SetDefault(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME = 1)
 
-    env['RC'] = 'rc'
-    env['RCFLAGS'] = SCons.Util.CLVar('')
-    env['RCSUFFIXES']=['.rc','.rc2']
-    env['RCCOM'] = "$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES"
+    env['RC']=parts.tools.Common.toolvar('rc')
+    env.SetDefault(RCFLAGS = SCons.Util.CLVar(''))
+    env.SetDefault(RCSUFFIXES=['.rc','.rc2'])
+    env.SetDefault(RCCOM = "$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES")
     env['BUILDERS']['RES'] = res_builder
-    env['OBJPREFIX']      = ''
-    env['OBJSUFFIX']      = '.obj'
-    env['SHOBJPREFIX']    = '$OBJPREFIX'
-    env['SHOBJSUFFIX']    = '$OBJSUFFIX'
+    env.SetDefault(OBJPREFIX      = '')
+    env.SetDefault(OBJSUFFIX      = '.obj')
+    env.SetDefault(SHOBJPREFIX    = '$OBJPREFIX')
+    env.SetDefault(SHOBJSUFFIX    = '$OBJSUFFIX')
 
-    env['CFILESUFFIX'] = '.c'
-    env['CXXFILESUFFIX'] = '.cc'
+    env.SetDefault(CFILESUFFIX = '.c')
+    env.SetDefault(CXXFILESUFFIX = '.cc')
 
-    env['PCHPDBFLAGS'] = SCons.Util.CLVar(['${(PDB and "/Yd") or ""}'])
-    env['PCHCOM'] = '${TEMPFILE("$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS")}'
+    env.SetDefault(PCHPDBFLAGS = SCons.Util.CLVar(['${(PDB and "/Yd") or ""}']))
+    env.SetDefault(PCHCOM = '${TEMPFILE("$CXX /Fo${TARGETS[1]} $CXXFLAGS $CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c $SOURCES /Yc$PCHSTOP /Fp${TARGETS[0]} $CCPDBFLAGS $PCHPDBFLAGS")}')
     env['BUILDERS']['PCH'] = pch_builder
 
     # fix this up so we can control its printing to screen better.

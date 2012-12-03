@@ -2,7 +2,7 @@
 import SCons.Util
 import SCons.Tool.cc
 import parts.tools.GnuCommon
-
+import parts.tools.Common
 import parts.api.output as output
 
 def generate(env):
@@ -11,7 +11,7 @@ def generate(env):
     
     # set up shell env for running compiler
     parts.tools.GnuCommon.gcc.MergeShellEnv(env)
-    env['CC'] = env['GCC']['TOOL']
+    env['CC'] = parts.tools.Common.toolvar(env['GCC']['TOOL'],('gcc','gnu'))
 
    # this setting is what SCons has.. It seem odd, I thought cygwin handled -fpic fine
     if env['PLATFORM'] in ['cygwin', 'win32']:
@@ -24,14 +24,6 @@ def generate(env):
         
     env['SHOBJSUFFIX'] = '.pic.o'
     env['OBJSUFFIX'] = '.o'
-
-    # this is a hack to deal with some migration issues with cross builds and existing parts files
-    # this is to work around broken linux installs that can break cross building
-    # with autoconfig via a Command() call.. or at least this helps
-    if env['HOST_ARCH'] == 'x86' and env['TARGET_ARCH'] == 'x86_64':
-        env['CC']=env['CC']+' -m64'
-    elif env['HOST_ARCH'] == 'x86_64' and env['TARGET_ARCH'] == 'x86':
-        env['CC']=env['CC']+' -m32'
 
  # fix this up so we can control its printing to screen better.
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))

@@ -4,13 +4,21 @@ from .. import errors
 
 class pnode(object):
     """description of class"""  
-        
+    __slots__=[
+        '__load_state',
+        '_remove_cache',
+        '__is_loading',
+        '__stored',
+        '_isVisited'
+    ]    
     def __init__(self):
         self.__load_state=glb.load_none
         self._remove_cache=False
         # state
         self.__is_loading=False
-        
+        self.__stored=False
+        self._isVisited=False
+
     @property
     def LoadState(self):
         ''' This get the LoadState, or the state in which this node has been loaded so far
@@ -39,9 +47,9 @@ class pnode(object):
         
     @property
     def Stored(self):
-        try:
+        if self.__stored is not False:
             return self.__stored
-        except AttributeError:
+        else:
             try:
                 self.__stored=self.LoadStoredInfo()
             except errors.LoadStoredError:
@@ -64,7 +72,7 @@ class pnode(object):
         
     @property
     def isVisited(self):
-        return getattr(self,'_isVisited',False)
+        return self._isVisited
 
     @isVisited.setter
     def _set_isVisited(self,value):

@@ -6,6 +6,58 @@ from parts.platform_info import SystemPlatform
 import os
 
 
+# 32-bit 13.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
+    info=[
+        IntelcInfo(
+            version='13.0.*,2013.0.*-2013.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_13_plus_posix,
+                'ia32',
+                'ICPP_COMPILER13'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
+    
+# 64-bit 13.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    info=[
+        IntelcInfo(
+            version='13.0.*,2013.0.*-2013.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_13_plus_posix,
+                'intel64',
+                'ICPP_COMPILER13'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'),
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64'                     
+                        },
+            test_file='icc'
+            )
+        ]
+    )
+
 # 32-bit 12.1
 Intelc.Register(
     hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],

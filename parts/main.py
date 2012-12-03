@@ -17,7 +17,7 @@ import engine # get engine
 glb.engine=engine.parts_addon()
 
 # load rest of the code
-import pickle_helpers
+import pickle_helpers # set a global function for pickling of functions
 import config
 import tool_mapping
 import pattern
@@ -38,6 +38,10 @@ if not sys._getframe(2).f_code.co_filename.endswith(".py"):
 
     # start up logic ... runs during import of the code
     glb.engine.Start() # sets up everything
+
+else:
+    import pnode.pnode_manager
+    glb.pnodes=pnode.pnode_manager.manager()
 
 
 # import extra funcion 

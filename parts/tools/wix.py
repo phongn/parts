@@ -4,13 +4,22 @@ from parts.api import output
 from parts.tools.MSCommon.wix import wix
 from parts.tools.MSCommon.wix import createWixObjectBuilder
 from parts.tools.MSCommon.wix import createMsiBuilder
+import parts.tools.Common
 
 def generate(env):
 
     wixObject = createWixObjectBuilder(env)
     msi = createMsiBuilder(env)
 
-    env['WIXCLCOM'] = '$WIXCL $WIXCLFLAGS -o $TARGET $SOURCE'
+    env['WIXPPPATH'] = []
+    env['WIXPPPATHPREFIX'] = '-I'
+    env['WIXPPPATHSUFFIX'] = ''
+    env['_WIXPPFLAGS'] = '$( ${_concat(WIXPPPATHPREFIX, WIXPPPATH, WIXPPPATHSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+    env['WIXPPDEFINES'] = []
+    env['WIXPPDEFPREFIX'] = '-d'
+    env['WIXPPDEFSUFFIX'] = ''
+    env['_WIXPPDEFFLAGS'] = '${_defines(WIXPPDEFPREFIX, WIXPPDEFINES, WIXPPDEFSUFFIX, __env__)}'
+    env['WIXCLCOM'] = '$WIXCL $_WIXPPFLAGS $WIXCLFLAGS $_WIXPPDEFFLAGS -o $TARGET $SOURCE'
 
     env['WIXOBJPREFIX'] = ''
     env['WIXOBJSUFFIX'] = '.wixobj'
@@ -30,8 +39,8 @@ def generate(env):
     env['MSISUFFIX'] = '.msi'
 
     wix.MergeShellEnv(env)
-    env['WIXCL'] = env.Detect('candle')
-    env['WIXLINK'] = env.Detect('light')
+    env['WIXCL']=parts.tools.Common.toolvar('candle')
+    env['WIXLINK']=parts.tools.Common.toolvar('light')
 
     output.print_msg(env.subst('Configured WiX tools of version ${WIX.VERSION} for target ${TARGET_PLATFORM}'))
 

@@ -154,3 +154,17 @@ setup(name="parts",
         console=['main.py']
         )
 
+setup(name="parts_util",
+        description="Utility API for Parts (extension module to SCons build system)",
+        author="Andrey Kryachko, Jason Kenny",
+        author_email="andrey.kryachko@intel.com, jason.l.kenny@intel.com",
+        version=parts_version._PARTS_VERSION,
+        packages=['parts_util']+get_packages('./parts_util'),
+        # NB: We do not install _parts_util_setup_.py because it is needed only when
+        # scripts are invoked from local instance of Parts.
+        scripts=[
+            'scripts/parts_dump_cache.py',
+            'scripts/parts_dump_dependency.py',
+            'scripts/parts_process_nodes.py'],
+        cmdclass={'install':custom_install}
+        )

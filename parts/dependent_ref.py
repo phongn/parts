@@ -8,16 +8,35 @@ import hashlib
 
         
 class dependent_ref(object):
-    """description of class"""
+    """This Class allows us to map a dependancy between two different components
+    A dependancy allows certain data items, to be defined by the requirements, to
+    be shared between the two environments defining each section
+    """
+    __slots__=[
+        '__part_ref',
+        '__sectionname',
+        '__requires',
+        '__stackframe',
+        #'__rsig',
+        '__rsigs',
+        '__section',
+        '__part',
+        '__stored_matches'
+    ]
     def __init__(self,part_ref,section,requires):
         errors.SetPartStackFrameInfo()
         self.__part_ref=part_ref
         self.__sectionname=section
+        
         self.__requires=requirement.REQ()|requires
         self.__stackframe=errors.GetPartStackFrameInfo()
         errors.ResetPartStackFrameInfo()
-        self.__rsig=None
+
+        
         self.__rsigs=None
+        self.__section=None
+        self.__part=None
+        self.__stored_matches=None
     
     @property
     def StackFrame(self):    
@@ -37,9 +56,9 @@ class dependent_ref(object):
     
     @property
     def Part(self):
-        try:
+        if self.__part:
             return self.__part
-        except AttributeError:            
+        else:            
             if self.__part_ref.hasUniqueMatch:
                 self.__part=self.__part_ref.UniqueMatch
             elif self.__part_ref.hasMatch ==False:
@@ -51,48 +70,72 @@ class dependent_ref(object):
     @property
     def StoredMatchingSections(self):
         
-        self.__stored_matches=[]
-        matches=self.__part_ref.StoredMatches
-        # try to turn matches in to sections
-        for m in matches:
-            if m.Stored:
-                self.__stored_matches.append(m.Stored.sections[self.__sectionname])
-            else:
-                self.__stored_matches.append(m.Section(self.__sectionname))
+        if self.__stored_matches is None:
+            self.__stored_matches=[]
+            matches=self.__part_ref.StoredMatches
+            # try to turn matches in to sections
+            for m in matches:
+                if m.Stored:
+                    tmp=glb.pnodes.GetPNode(m.Stored.SectionIDs[self.__sectionname])
+                    self.__stored_matches.append(tmp)
+                else:
+                    self.__stored_matches.append(m.Section(self.__sectionname))
         return self.__stored_matches
     
+
+    @property
+    def hasAmbiguousMatch(self):
+        return self.__part_ref.hasAmbiguousMatch
+    
+    @property
+    def hasMatch(self):
+        return self.__part_ref.hasMatch
+    
+    @property
+    def hasStoredMatch(self):
+        return self.__part_ref.hasStoredMatch
+    
+    @property
+    def hasUniqueMatch(self):
+        return self.__part_ref.hasUniqueMatch
+
+    @property
+    def hasStoredUniqueMatch(self):
+        return self.__part_ref.hasStoredUniqueMatch
+    
+    @property
+    def UniqueMatch(self):
+        return self.__part_ref.UniqueMatch
+
+    @property
+    def StoredUniqueMatch(self):
+        return self.__part_ref.StoredUniqueMatch
+    
+    @property
+    def StoredUniqueMatchSection(self):
+        return self.StoredMatchingSections[0]
+
     # clean up the below functions... so we only have one case 
     @property
     def Section(self):
-        try:
+        if self.__section:
             return self.__section
-        except AttributeError:
+        else:
             self.__section=self.Part.Section(self.SectionName)
         return self.__section
-    
-    @property
-    def PartSection(self):
-        try:
-            return self.__part_section
-        except AttributeError:
-            try:
-                self.__part_section=self.Part.Section[self.__section]
-            except KeyError:
-                api.output.error_msg('Part has no section')
-        return self.__part_section
-    
+        
     def NoMatchStr(self):
         return "Failed to map dependency because:\n {0}".format(self.__part_ref.NoMatchStr())
     
     def AmbiguousMatchStr(self):
         return "Failed to map dependency because:\n {0}".format(self.__part_ref.AmbiguousMatchStr())
 
-    def rsig(self):
-        if self.__rsig is None:
-            self._gen_rsigs()
-        return self.__rsig        
+    #def rsig(self):
+    #    if self.__rsig is None:
+    #        self._gen_rsigs()
+    #    return self.__rsig        
         
-    def rsigs(self):
+    def RSigs(self):
         if self.__rsigs is None:
             self._gen_rsigs()
         return self.__rsigs
@@ -100,7 +143,7 @@ class dependent_ref(object):
     def _gen_rsigs(self):
         md5_rsig=hashlib.md5()
         rsigs={}
-        esigs=self.Section.esigs()
+        esigs=self.Section.ESigs()
         for req in self.__requires:
             try:
                 esig=esigs[req.key]
@@ -109,5 +152,7 @@ class dependent_ref(object):
             except KeyError:
                 pass
         
-        self.__rsig=md5_rsig.hexdigest()
+        #self.__rsig=md5_rsig.hexdigest()
         self.__rsigs=rsigs
+
+

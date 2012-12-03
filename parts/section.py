@@ -32,21 +32,21 @@ class section_t(object):
         self._kw=kw
 
 def default_test_func(self,*lst,**kw):
-	for l in lst:
-		if callable(l):
-			if l(self.env) == False:
-				return False
-		else:
-			#error.. must be a callable type
-			pass
-			
-	for k,v in kw.iteritems():
-		try:
-			if not (self.env[k]==v):
-				return False
-		except KeyError:
-			return False
-	return True
+    for l in lst:
+        if callable(l):
+            if l(self.env) == False:
+                return False
+        else:
+            #error.. must be a callable type
+            pass
+            
+    for k,v in kw.iteritems():
+        try:
+            if not (self.env[k]==v):
+                return False
+        except KeyError:
+            return False
+    return True
 
 
 class section(object):

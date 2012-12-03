@@ -23,7 +23,7 @@ def export_path(env,target_dirs,source_dirs,pobj,prop,use_src=False,create_sdk=T
     # 2) is the build path for the file
     # 3) is the source pasth of the file
     ret=[]
-    tmp=pobj.DefiningSection.Exports[prop]
+    tmp=pobj.DefiningSection.Exports[prop][0] # we assume that this is only used in cases of list
     if use_src: # ie use Raw Source Directories
         for s in source_dirs:
             # setting up the libpaths
@@ -81,8 +81,7 @@ def export_file(env,targets,pobj,prop):
             continue
         elif getattr(t.attributes,'FilterAs',None):
             continue
-        
-        pobj.DefiningSection.Exports[prop]=[file]+pobj.DefiningSection.Exports[prop]
+        pobj.DefiningSection.Exports[prop][0]+=[file]
         
     return ret
 
@@ -126,12 +125,8 @@ def ExportLINKFLAGS(env,values,create_sdk=True):
 def ExportLIBS(env,values,create_sdk=True):
     return ExportItem(env,'LIBS',values,create_sdk)
 
-#def _map_group(x,group):
-#    import metatag
-#    if isinstance(x,SCons.Node.Node):
-#        tmp=metatag.MetaTagValue(x,'dependgroup','parts',[])
-#        tmp.append(group)
-#        metatag.MetaTag(x,ns='parts',dependgroup=tmp)
+#def ExportValue(env,key,value,create_sdk=True):
+#    return ExportItem(env,key,env.Value(value),create_sdk)
 
 def ExportItem(env,variable,values,create_sdk=True,map_as_depenance=False):#, public=False):
     '''
@@ -140,7 +135,7 @@ def ExportItem(env,variable,values,create_sdk=True,map_as_depenance=False):#, pu
     @param variable The variable name we want to export
     @param values The values to map to the variable. Can be an picklable item, including self contained functions, and SCons node objects
     @param create_sdk map this information in to the auto generated SDK parts file
-    ##@param public Maps variable 'foo' to env['foo'] if False, else maps data only to a private namespace object of the form env[<component name>]['foo']
+    
     
     This function adds to the export table of a given part the variable and it values. If the variable exists in the environment already and is a list or is the values is 
     a list type then the values will be made into a list, flatten and appended all unique items to the list. Otherwise the data will replace any existing data. If data does 
@@ -157,14 +152,14 @@ def ExportItem(env,variable,values,create_sdk=True,map_as_depenance=False):#, pu
         values=common.make_list(values)
         #map(lambda x:  _map_group(x,variable),values)
         if pobj.DefiningSection.Exports.has_key(variable)==False:
-            pobj.DefiningSection.Exports[variable]=[]
+            pobj.DefiningSection.Exports[variable]=[[]]
         # this is not a list already.. make it one
         if common.is_list(pobj.DefiningSection.Exports[variable]) == False:
-            pobj.DefiningSection.Exports[variable]=common.make_list(pobj.DefiningSection.Exports[variable])
+            pobj.DefiningSection.Exports[variable]=[common.make_list(pobj.DefiningSection.Exports[variable])]
         
         # add our values
         #common.extend_unique(pobj.DefiningSection.Exports[variable],values)
-        pobj.DefiningSection.Exports[variable]+=values
+        pobj.DefiningSection.Exports[variable][0]+=values
         
     else:
         if pobj.DefiningSection.Exports.has_key(variable):
@@ -174,6 +169,7 @@ def ExportItem(env,variable,values,create_sdk=True,map_as_depenance=False):#, pu
     if map_as_depenance:
         pobj.DefiningSection.ExportAsDepends.add(variable)
         aa=env.Alias("{0}::alias::{1}::{2}".format(env['PART_SECTION'],env['ALIAS'],variable),values)
+        
         
     # set the create SDK value
     if env['CREATE_SDK'] == False and create_sdk == True:

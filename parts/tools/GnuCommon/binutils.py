@@ -203,6 +203,7 @@ binutils.Register(
 )
 
 #android
+#pre r8
 binutils.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
@@ -227,6 +228,32 @@ binutils.Register(
             )
     ]
 )
+#post r8
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld.exe'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-x86"',
+                'OBJCOPY':'i686-android-linux-objcopy',
+                'CHMODVALUE':None,
+                'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                '__RPATH':'$_RPATH',
+                'RPATHPREFIX':'-Wl,-rpath=',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin'},
+            test_file='i686-linux-android-ld.exe'
+            )
+    ]
+)
+
 
 binutils.Register(
     # we assume that the system has the correct libraies installed to do a cross build
@@ -253,6 +280,7 @@ binutils.Register(
     ]
 )
 
+#pre r8
 binutils.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
@@ -269,6 +297,25 @@ binutils.Register(
             )
     ]
 )
+
+#post r8
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
+            test_file='i686-linux-android-ld'
+            )
+    ]
+)
+
 
 binutils.Register(
     # we assume that the system has the correct libraies installed to do a cross build

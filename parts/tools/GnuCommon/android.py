@@ -50,13 +50,10 @@ class win_scanner(object):
                                 if item1.startswith(self.arch):
                                     version=item1.split("-")[-1]
                                     archpath=item1
-                                    break
-                        # we found a version
-                        if version:
-                            toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt\windows\bin',self.tool_prefix+self.tool)
-                            if os.path.isfile(toolpath):
-                                # we have a hit. store important data
-                                ret[version]=ndk_path
+                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt\windows\bin',self.tool_prefix+self.tool)
+                                    if os.path.isfile(toolpath):
+                                        # we have a hit. store important data
+                                        ret[version]=ndk_path
 
             self.cache=ret
         return self.cache
@@ -125,9 +122,7 @@ class posix_scanner(object):
                             ndk_path=os.path.join(path,item0)
                         temp=os.path.join(ndk_path,'toolchains')
                             
-                        # we check to get the version of the compiler
-                        # we assume that a given NDK comes with one version of the toolchain
-                        # not two versions
+                        # we check to get the version of the compilers
                         if os.path.exists(temp) == False:
                             continue
                         version=None
@@ -139,13 +134,10 @@ class posix_scanner(object):
                                 if item1.startswith(self.arch):
                                     version=item1.split("-")[-1]
                                     archpath=item1
-                                    break
-                        # we found a version
-                        if version:
-                            toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/linux-x86/bin',self.tool_prefix+self.tool)
-                            if os.path.isfile(toolpath):
-                                # we have a hit. store important data
-                                ret[version]=ndk_path
+                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/linux-x86/bin',self.tool_prefix+self.tool)
+                                    if os.path.isfile(toolpath):
+                                        # we have a hit. store important data
+                                        ret[version]=ndk_path
             self.cache=ret
         return self.cache
 

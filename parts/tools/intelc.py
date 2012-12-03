@@ -11,18 +11,18 @@ def generate(env):
     
     is_windows=env['TARGET_PLATFORM'].OS=='win32'
     if is_windows:
-        env['CC']        = 'icl'
-        env['CXX']       = 'icl'
-        env['LINK']      = 'xilink'
-        env['AR']        = 'xilib'
+        env['CC']        = parts.tools.Common.toolvar('icl',('icc','intelc'))
+        env['CXX']       = parts.tools.Common.toolvar('icl',('icpc','icl','icc','intelc'))
+        env['LINK']      = parts.tools.Common.toolvar('xilink')
+        env['AR']        = parts.tools.Common.toolvar('xilib')
     else:
-        env['CC']        = 'icc'
-        env['CXX']       = 'icpc'
+        env['CC']        = parts.tools.Common.toolvar('icc',('icl','intelc'))
+        env['CXX']       = parts.tools.Common.toolvar('icpc',('icpc','icl','icc','intelc'))
         # Don't reset LINK here;
         # use smart_link which should already be here from link.py.
         #env['LINK']      = '$CC'
-        env['AR']        = 'xiar'
-        env['LD']        = 'xild' # not used by default
+        env['AR']        = parts.tools.Common.toolvar('xiar')
+        env['LD']        = parts.tools.Common.toolvar('xild') # not used by default
 
     
     if is_windows:

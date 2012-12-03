@@ -1,4 +1,9 @@
 #!/bin/bash
 pushd $(dirname $0)
-python ../gtest/gtest.py 
+pushd ../..
+export PYTHONPATH=$(pwd):$PYTHONPATH
 popd
+python ../gtest/gtest.py 
+ret=$?
+popd
+exit $ret

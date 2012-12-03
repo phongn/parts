@@ -36,6 +36,28 @@ class pipeRedirector(object):
         self.thread = None
         self.writer = None
 
+class process_wait(object):
+    ''' ugly hack to work around that we have a good way to wait with timeout till python 3.3'''
+    def __init__(self,proc):
+        self.__finished=threading.Event()
+        self.__proc=proc
+        self.thread = threading.Thread(target=self._do_wait,
+                args=())
+        self.thread.start()
+        
+    def _do_wait(self):
+        
+        try:
+            self.__proc.wait()
+        except OSError, e:
+            self.__finished.set()
+            if e.errno != 10:
+                raise e
+        self.__finished.set()
+
+    def finished(self,timeout=None):
+        self.__finished.wait(timeout)
+
 class part_spawner(common.bindable):
     def __init__(self):
         self.env=None   
@@ -54,7 +76,6 @@ class part_spawner(common.bindable):
         for k,v in Env.iteritems():
             ENV[k]=str(v)
         # get the part_logger
-        print self.env
         output=self.env["PART_LOG_MAPPER"]
         
         # we ignore the escape function as it breaks linux, 
@@ -75,35 +96,27 @@ class part_spawner(common.bindable):
             executable=shell,
             env=ENV,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)#,
-            #universal_newlines=True)
+            stderr=subprocess.PIPE)
 
         # get the output and redirect to logger
         p1 = pipeRedirector(proc.stdout, lambda x: output.WriteOut(id, x))
         p2 = pipeRedirector(proc.stderr, lambda x: output.WriteErr(id, x))
-        
+        #DO wait hack until we get a python 3.3 setup as base ( first need python 3 support :-) )
+        pproc=process_wait(proc)
 
-        timeout=self.env.get('TIME_OUT')
-        if timeout is not None:
+        timeout=self.env.get('TIME_OUT',None)
+        if timeout:
             timeout =int(timeout) # might be passed in on the command line, so it would be a string value
-            start_time=time.time()
-            running=proc.poll() is None
-            while running:
-                if time.time()-start_time > timeout:
-                    # known bug in some python versions with kill() on win32 systems
-                    if sys.platform == 'win32':
-                        os.system("TASKKILL /F /T /PID {0}".format(proc.pid))
-                    else:
-                        proc.kill()
-                running=proc.poll() is None
-        else:
-            try:
-                proc.wait()
-            except OSError, e:
-                if e.errno != 10:
-                    raise e
-
-
+        pproc.finished(timeout)
+        if proc.poll() is None:
+            # known bug in some python versions with kill() on win32 systems
+            # we do this because terminate process get complex witha shell involed
+            if sys.platform == 'win32':
+                # kill full process tree
+                subprocess.call("TASKKILL /F /T /PID {0}".format(proc.pid))
+            else:
+                proc.kill()
+                
         # force pipe-redirectors to close handles
         p1.close()
         p2.close()
@@ -263,16 +276,25 @@ class parts_text_logger(object):
     def create_file(self,env):
         #The lock is needed here to prevent more than one thread creating this file
         # at the same time
-        self.m_lock.acquire()
-        if self.m_file is None:
-            dr=env.Dir(env.subst("$LOG_PART_DIR")).abspath
-            fn=env.subst("$LOG_PART_FILE_NAME")
-            if os.path.exists(dr) == False:
-                os.makedirs(dr)
-            self.fname=os.path.join(dr,fn)
-            self.m_file=open(os.path.join(dr,fn),"w") 
-            self.m_file.close() # part of quick "to many file handle" fix
-        self.m_lock.release()
+        with self.m_lock:
+            if self.m_file is None:
+                dr=env.Dir(env.subst("$LOG_PART_DIR")).abspath
+                fn=env.subst("$LOG_PART_FILE_NAME")
+                cnt=0
+                while os.path.exists(dr) == False and cnt<10:
+                    try:
+                        os.makedirs(dr)
+                        break
+                    except:
+                        pass
+                    cnt+=1
+                else:
+                    if not os.path.exists(dr):
+                        api.output.error_msgf('Cannot create log directory "{0}"',dr)
+                self.fname=os.path.join(dr,fn)
+                self.m_file=open(os.path.join(dr,fn),"w") 
+                self.m_file.close() # part of quick "to many file handle" fix
+        
         
     def Start(self,env,id,cmd):
         self.create_file(env)

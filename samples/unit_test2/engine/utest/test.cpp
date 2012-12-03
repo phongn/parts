@@ -7,7 +7,7 @@ int main()
 	core();
 	common("hello in test");
 	std::cout<<"test passed"<<std::endl;
-	return 1;
+	return 0;
 }
 
 

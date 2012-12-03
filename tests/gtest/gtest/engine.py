@@ -23,9 +23,6 @@ class Engine(object):
             raise RuntimeError("Only one engine can be created at a time")
         glb.Engine=self
        
-    #def __del__(self):
-        #glb.Engine=None
-
     def Start(self):
         if os.path.exists(self.__run_dir):
             host.WriteVerbose("engine","The Sandbox directory exists, will try to remove")
@@ -103,6 +100,7 @@ class Engine(object):
         # fix this up to use an report object
         had_issue=0
         skipped=0
+        passed=0
         def print_run_result(i):
             if i.Result == testers.ResultType.Passed:
                 host.WriteMessage("  Test: {0} - {1}".format(i.Description,testers.ResultType.to_string(i.Result)))
@@ -140,12 +138,14 @@ class Engine(object):
                         host.WriteMessage("\n {0} - Unknown?".format(tr.Name))
                         for i in tr.get_testers():
                             print_run_result(i)
+            else:
+                passed+=1
 
         host.WriteMessage("")
         if not had_issue:
-            host.WriteMessage("All tests passed!\n Warnings: 0\n Skipped: {0}".format(skipped))
+            host.WriteMessage("All tests passed!\n Warnings: 0\n Skipped: {0}\n Passed: {1}".format(skipped,passed))
         else:
-            host.WriteMessage("Test run had Failures\n Errors: {0}\n Warnings: 0\n Skipped: {1}".format(had_issue,skipped))
+            host.WriteMessage("Test run had Failures\n Errors: {0}\n Warnings: 0\n Skipped: {1}\n Passed: {2}".format(had_issue,skipped,passed))
 
         if had_issue:
             return 1

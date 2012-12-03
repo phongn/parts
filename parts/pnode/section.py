@@ -4,14 +4,18 @@ from .. import datacache
 from .. import api
 from .. import target_type
 from .. import functors
+from .. import mappers
+
 import pnode
 import pnode_manager
 import section_info
+import dependent_info
 
 import SCons.Node
 
 import hashlib
 import itertools
+import thread
 
 import pprint
 
@@ -70,6 +74,20 @@ class section(pnode.pnode):
             self.__env=self.__pobj.Env.Clone()
         self.__env['PART_SECTION']=self.Name
         
+    def Reset(self):
+        ''' reset cached state of section'''
+        self.__depends=[]
+        self.__full_depends=[]
+        
+        self.__exports={}
+        self.__export_as_depends=set([]) 
+        
+        self.__source_nodes = set()
+        self.__target_nodes = set()
+        self.__installed_files=set()
+        self.__user_env_diff={}
+        self._cache={}
+
     @property
     def Name(self):
         raise NotImplementedError
@@ -81,7 +99,7 @@ class section(pnode.pnode):
     @property
     def ExportAsDepends(self):
         return self.__export_as_depends
-    
+        
     @property
     def Targets(self):
         return self.__target_nodes
@@ -126,6 +144,17 @@ class section(pnode.pnode):
     def UserEnvDiff(self):
         return self.__user_env_diff
     
+    def map_group(self,key,nodes):
+        '''
+        map a sub group of node to the core sections alias
+        '''
+        
+        alias_str=self.ID
+        alias_group_str="{0}::{1}".format(alias_str,key)
+
+        a_group=self.__env.Alias(alias_group_str,nodes)
+        a=self.__env.Alias(alias_str,a_group)
+
     
     def _map_targets(self):
         ''' 
@@ -134,46 +163,39 @@ class section(pnode.pnode):
         that are no mapped correctly to some action that is mapped to the alias
         such as and sdk or install action
         '''
-        
-        ## An issue for compatibility.. that I feel should change, but I was out ranked on this.
-        #utest_call=False
-        #targets=SCons.Script.BUILD_TARGETS
-        #for t in targets:
-        #    tmp=target_type.target_type(t)
-        #    sep_len=len(self.__env.subst("$ALIAS_SEPARTATOR"))
-        #    if tmp.concept == self.__env.subst('$BUILD_UTEST_CONCEPT')[:-sep_len] or tmp.concept == self.__env.subst('$RUN_UTEST_CONCEPT')[:-sep_len]:
-        #        utest_call=True
-        #        break
-        ## if we are not building unit tests
-        ## and this is a classic format
-        ## and this part did not call any SdkXXX or InstallXXX
-        ## then we don't want to define any build actions it may have
-        #if utest_call==False and self._sdk_or_installed_called==False and self._is_classic_format:
-        #    alias_str=self.Env.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}'+self.__pobj.Alias)
-        #    self.Env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and str(x).startswith(alias_str) ,self.Targets))
-        #else:
+      
         # This is the base Alias for a given Part
-        alias_str=self.Env.subst('{0}::${{PART_ALIAS_CONCEPT}}{1}'.format(self.Name,self.__pobj.Alias))
-        alias_str_r=self.Env.subst('{0}::${{PART_ALIAS_CONCEPT}}{1}::'.format(self.Name,self.__pobj.Alias))
+        alias_str='{0}::alias::{1}'.format(self.Name,self.__pobj.Alias)
+        alias_str_r='{0}::'.format(alias_str)
         
-        # note that InstallXXX and SdkXXX map to this value
-        # new formats will make all targets to this value as well.
+        # This magic here find all Alias targets that got defined, and if there are in a certain format,
+        # they get mapped as a dependancy to the primary alias. This allows us to make "groups" aliases
+        # so we can depend on a set of node, such as all the include file, or lib files of a part without
+        # depending on every piece it would build.
         # build::alias::foo
-        a=self.__env.Alias(alias_str,filter(lambda x: isinstance(x,SCons.Node.Alias.Alias) and x.ID.startswith(alias_str) ,self.Targets))
-                
+        def map_alias(obj):
+            # needs to be an alias node
+            # and it should start with the alias_str
+            # but it should not equal the alias_str or alias_str_r
+             return isinstance(obj,SCons.Node.Alias.Alias) and\
+                obj.ID.startswith(alias_str) and\
+                obj.ID != alias_str and\
+                obj.ID != alias_str_r
+
+        a=self.__env.Alias(alias_str,filter(map_alias ,self.Targets))
+                        
         # build::alias::foo -> build::alias::foo::
         a1=self.__env.Alias(alias_str_r,a)
         # map build::alias::foo.sub1:: -> build::alias::foo::
-        if not self.Part.isRoot:
+        if not self.Part.isRoot: # ie we have a parent
             # build::alias::foo.sub:: -> build::alias::foo::
             self.__env.Alias('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.Part.Parent.Alias),a1)
         #else:
         # build::alias::foo -> build::alias::foo:: -> build::
         self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
-        #add to queue the delayed mapping of high level Alias to other high level alias
-        glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
         # add call back for latter full mapping of build context
-        glb.engine.add_preprocess_logic_queue(functors.map_build_context(self.Part))
+        #glb.engine.add_preprocess_logic_queue(functors.map_build_context(self.Part))
+        functors.map_build_context(self.Part)()
 
     def _gen_full_parts_depends(self):
         '''a dictionary of everything we dependon (order is lost)
@@ -212,35 +234,42 @@ class section(pnode.pnode):
                 sec=pobj.Section(d.SectionName)
                 sec._add_full_parts_depends(data)
         
-    def esigs(self):
+    def ESigs(self):
         
+        def replace_nodes(lst):
+            newval=[]
+            for i in lst:
+                if isinstance(i,SCons.Node.FS.Base):
+                    newval.append(i.ID)
+                elif common.is_list(i):
+                    newval.append(replace_nodes(i))
+                elif i is None or i == [] or i =='':
+                    pass
+                else:
+                    newval.append(i)
+            return newval
+
         try:
             return self._cache['esigs']
         except KeyError:
-            
+            esig=hashlib.md5()    
             # we expand the values here to reduce processing needs latter
             # the the reason we would store this is to speed up build latter
             # ideally this only needs to be expanded in cases of the classic format
             # or cases in which the user added such value to be exported
+            
             export_csig={}
             for k,v in self.__exports.copy().iteritems():
                 if common.is_list(v):
-                    for i in v[:]:
-                        if common.is_string(i) and '$' in i:
-                            self.__env.subst(i)
-                            
-                    new_vals=[]
-                    for i in self.__exports[k]:
-                        if common.is_string(i) and ('$' in i or i == ''):
-                            pass
-                        elif isinstance(i,SCons.Node.FS.Base):
-                            new_vals.append(i.path)
-                        else:
-                            new_vals.append(i)
-                    if new_vals:
-                        self.__exports[k]=new_vals
+                    mappers.sub_lst(self.__env,v,thread.get_ident(),recurse=False)
+                    tmp=filter(None,self.__exports[k])
+                    if tmp:
+                        kk=replace_nodes(tmp)
+                        self.__exports[k]=kk
                     else:
                         del self.__exports[k]
+                     
+
                 else:
                     if common.is_string(v) and '$' in v:
                         tmp=self.__env.subst(v)
@@ -253,77 +282,77 @@ class section(pnode.pnode):
                     
                     md5=hashlib.md5()
                     md5.update(common.get_content(self.__exports[k]))
-                    export_csig[k]=md5.hexdigest()  
+                    tmp=md5.hexdigest()
+                    esig.update(tmp)
+                    export_csig[k]=tmp
                 except KeyError:
                     pass
                 
             self._cache['esigs']=export_csig
+            self._cache['esig']=esig.hexdigest()
         
         return self._cache['esigs']
 
+    def ESig(self):
+        try:
+            return self._cache['esig']
+        except KeyError:
+            self.ESigs()
+        return self._cache['esig']
+
     def LoadStoredInfo(self):
         tmp=glb.pnodes.GetStoredPNodeInfo(self)
-        if tmp.part: # quick sanity check that this is good data
+        if tmp.PartID: # quick sanity check that this is good data
             return tmp
         return None
-                
-    #def StoreStoredInfo(self):
-    #    info=self.GenerateStoredInfo()
-    #    md5=hashlib.md5()
-    #    md5.update(self.ID)
-    #    datacache.StoreData("pnode-{0}".format(md5.hexdigest()),info)
-
+    
     def GenerateStoredInfo(self):
         info=section_info.section_info()
                
-        info.part=self.Part
-        info.name=self.Name
+        info.PartID=self.Part.ID
+        info.Name=self.Name
         
-        info.esigs=self.esigs()
-        info.exports=self.__exports        
+        info.ESigs=self.ESigs()
+        info.ESig=self.ESig()
+        info.Exports=self.__exports
         
         ## data about what this depends on we want the direct depend here
         ## as this will allow us to speed up incremential build latter
         tmp=[]
         # to get the dependance sig
         for d in self.__depends:
-            tmp.append({
-                'PartRef':str(d.PartRef.Target),
-                'SectionName':d.SectionName,
-                'Part':d.Part,
-                'Requires':d.Requires,
-                'rsigs':d.rsigs(),
-                'rsig':d.rsig(),
-                'Section':d.Section,
-            })
+            tmp.append(
+                       dependent_info.dependent_info(d)
+                       )
             
-        info.user_env_diff=self.__user_env_diff
-        info.dependson=tmp
+        info.UserEnvDiff=self.__user_env_diff
+        info.DependsOn=tmp
         # these are items that are exported, and noted as a map_as_depends in ExportItem()
-        info.exported_requirements=self.ExportAsDepends
+        info.ExportedRequirements=self.ExportAsDepends
+
         return info
     
     def LoadFromCache(self):
         info = self.Stored
         # get out owning part
-        self.__part=info.part
-        self.__env=self.__part.Env.Clone()
+        self.__pobj=info.Part
+        self.__env=self.__pobj.Env.Clone()
         self.__env['PART_SECTION']=self.Name
-        self.__user_env_diff=info.user_env_diff
+        self.__user_env_diff=info.UserEnvDiff
         self.__env.Replace(**self.__user_env_diff)
         # import the values we export
         # We assume these are fully resolved so we don't need to get any data from anything this
         # section would have depended on
-        self.__exports=info.exports 
-        
+        self.__exports=info.Exports
+
         # need to map these items as Aliases
-        self.__export_as_depends=info.exported_requirements 
+        self.__export_as_depends=info.ExportedRequirements 
         for export in self.__export_as_depends:
             try:
-                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),self.__exports[export])
+                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__pobj.Alias,export),self.__exports[export])
             except KeyError:
                 api.output.verbose_msgf(['cache_load_warning'],"{0} was not found in the exports dictionary. Mapping value of []",export)
-                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__part.Alias,export),[])
+                self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__pobj.Alias,export),[])
             
     def hasPartFileChanged(self):
         '''Has the Part File defining this section changed in some way
@@ -331,7 +360,7 @@ class section(pnode.pnode):
         This can include if the Parent Parts file changed, as this could change 
         what the children Part files would define.
         '''
-        return self.Stored.part.hasFileChanged()
+        return glb.pnodes.GetPNode(self.Stored.PartID).hasFileChanged()
     
     def TagDirectDependAsLoad(self,load_manager):
         try:
@@ -347,18 +376,20 @@ class section(pnode.pnode):
             # set our state
             self.ReadState=glb.load_file
                             
-            for dep in stored_data.dependson:
-                sec=dep['Section']
+            for dep in stored_data.DependsOn:
+                sec=glb.pnodes.GetPNode(dep.SectionID)
                 if not sec.TagDirectDependAsLoad(load_manager):
                     self._cache['TagDirectDependAsLoad']=False
                     return False
             self._cache['TagDirectDependAsLoad']=True
             # set our root parts
+            pobj=glb.pnodes.GetPNode(stored_data.PartID)
+            parent=pobj.Parent
             try:
                 try:
-                    tmp=stored_data.part.Stored.parent.Stored.sections[self.Name]
+                    tmp=glb.pnodes.GetPNode(parent.Stored.SectionIDs[self.Name])
                 except KeyError:
-                    tmp=stored_data.part.Stored.parent.Stored.sections['build']
+                    tmp=glb.pnodes.GetPNode(parent.Stored.SectionIDs['build'])
                 if not tmp.TagDirectDependAsLoad(load_manager):
                     self._cache['TagDirectDependAsLoad']=False
                     return False
@@ -370,118 +401,19 @@ class section(pnode.pnode):
     @property
     def ReadState(self):
         if self.__pobj is None:
-            return self.Stored.part.ReadState
+            return glb.pnodes.GetPNode(self.Stored.PartID).ReadState
         return self.__pobj.ReadState
     
     @ReadState.setter
     def ReadState(self,state):
         if self.__pobj is None:
-            self.Stored.part.UpdateReadState(state)
+            glb.pnodes.GetPNode(self.Stored.PartID).UpdateReadState(state)
         else:
             self.Part.UpdateReadState(state)
     
-    #
-    #def Serialize(self):
-    #    # store what we export
-    #    data={}
-    #    
-    #    data['exports']=self.__exports
-    #    #
-    #    ## this is for recreating a part from cache as these values are
-    #    ## set by the user and don't exist by default
-    #    #data['env_exports']=self._user_env_diff
-    #    ## data about what this depends on we want the direct depend here
-    #    ## as this will allow us to speed up incremential build latter
-    #    tmp=[]
-    #    for d in self.__depends:
-    #        tmp.append({
-    #            'PartRef':str(d.PartRef.Target),
-    #            'Section':d.SectionName,
-    #            'requires':d.Requires.Serialize()               
-    #        })
-    #    data['dependson']=tmp
-    #    # data about what this depends on used to help with startup time
-    #    # this contains the full set of direct dependancies needed for 
-    #    # this section to be processed. It does not contain 
-    #    # any subparts that might be needed on the side to load correct.
-    #    data['full_depends']=self._gen_full_parts_depends()
-    #    
-    #    
-    #    
-    #    #store all known "group" Alias that are part of this section
-    #    tmp=set()
-    #    temp=[self.Env.subst('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{ALIAS}}::{0}'.format(l)) for l in self.ExportAsDepends]
-    #    for i in filter(lambda x: isinstance(x,SCons.Node.Alias.Alias),self.__target_nodes):
-    #        if i.name in temp:
-    #            tmp.add(i)
-    #    data['aliases']=tmp
-    #    
-    #    #store all known node that are mapped to this component as
-    #    #a list of strings. we use the SCons DB to store the important data
-    #    tmp=[]
-    #    for i in filter(lambda x: not isinstance(x,SCons.Node.Alias.Alias),self.__target_nodes):
-    #        i.disambiguate()
-    #        ## see if node time stamp matches
-    #        #dbentry=i.get_stored_info()
-    #        #
-    #        ##import pprint
-    #        ##pp = pprint.PrettyPrinter()
-    #        #
-    #        #
-    #        #if getattr(dbentry,'ninfo',None) is None:
-    #        #    # if here this was not built yet
-    #        #    tmpd=i.path # use path if we want to use SCons DB
-    #        #    #tmpd={'name':i.path}
-    #        #    tmp.append(tmpd)
-    #        #else:
-    #        #    ninfo=dbentry.ninfo
-    #        #    #print pp.pprint(dbentry.binfo.__dict__)
-    #        #    #tmpd=i.path # use path if we want to use SCons DB
-    #        #    tmpd={
-    #        #    'name':i.path
-    #        #    }
-    #        #    tmpd.update(ninfo.__dict__)
-    #        #    tmp.append(tmpd)
-    #        tmp.append(i.path)
-    #    data['targets']=tmp
-    #    tmp=[]
-    #    for i in filter(lambda x: not isinstance(x,SCons.Node.Alias.Alias),self.__source_nodes):
-    #        i.disambiguate()
-    #        # see if node time stamp matches
-    #        dbentry=i.get_stored_info()
-    #        if i.has_builder()==False or getattr(dbentry,'ninfo',None) is None:
-    #            # this should be some source node
-    #            # it might have been a target node as well, but since it has no builder
-    #            # it should be source only
-    #            
-    #            if isinstance(i,SCons.Node.FS.Base):
-    #                tmp.append(
-    #                        #{
-    #                        #'name':i.path,
-    #                        #'csig':i.get_csig(),
-    #                        #'timestamp':i.get_timestamp()
-    #                        #}
-    #                        i.path
-    #                    )
-    #            elif isinstance(i,SCons.Node.Python.Value):
-    #                tmp.append(
-    #                        i.value
-    #                        #{
-    #                        #'type':'Value',
-    #                        #'name':i.value,
-    #                        #'csig':i.get_csig(),
-    #                        #}
-    #                    )
-    #            
-    #        
-    #    data['sources']=tmp
-    #    return data
-    
-
-
-
+   
 class build_section(section):
-    
+    __slots__=[]
     def __init__(self,pobj=None,ID=None):
         super(build_section, self).__init__(pobj,ID)
         
@@ -509,7 +441,7 @@ class build_section(section):
     
 
 class utest_section(section):
-    
+    __slots__=[]
     def __init__(self,pobj=None,ID=None,env=None):
         super(utest_section, self).__init__(pobj,ID)
         
@@ -536,8 +468,12 @@ class utest_section(section):
         return "utest"
 
 
-
 pnode_manager.manager.RegisterNodeType(build_section)
 pnode_manager.manager.RegisterNodeType(utest_section)
 
-#glb.pnodes.AddFactory(build_section,lambda id:buildsectionfactory(ID=id))
+#util functions
+
+def scmp(x,y):
+    xp=glb.pnodes.GetPNode(glb.pnodes.GetPNode(x.Stored.PartID).Stored.RootID)
+    yp=glb.pnodes.GetPNode(glb.pnodes.GetPNode(y.Stored.PartID).Stored.RootID)
+    return cmp(xp._order_value,yp._order_value)

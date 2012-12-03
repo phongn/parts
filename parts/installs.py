@@ -41,7 +41,7 @@ def get_args(cat,**kw):
     
 #############################
 
-def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='',no_pkg=False,**kw):
+def ProcessInstall(env,target,sources,sub_dir,create_sdk,sdk_dir='',no_pkg=False,**kw):
     
     # list of file we installed (dest)
     installed_files=[]
@@ -116,7 +116,6 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
                     ret=s
                 out=env.Install(dest_dir, ret,tags=tags,**kw)
                 installed_files.extend(out)
-                #env.Clean(env.Alias(install_alias), out)
                 src_lst.append(env.Dir(ret[0]))
             elif isinstance(s,SCons.Node.FS.File):
                 if s not in sdk.g_sdked_files:
@@ -164,7 +163,6 @@ def ProcessInstall(env,target,sources,sub_dir,install_alias,create_sdk,sdk_dir='
             elif isinstance(s,SCons.Node.FS.Dir):
                 out=env.Install(dest_dir, s,tags=tags,**kw)
                 installed_files+=out
-                #env.Clean(env.Alias(install_alias), out)
                 src_lst.append(env.Dir(s))
             else:
                 installed_files+=env.Install(dest_dir, s,tags=tags,**kw)
@@ -195,12 +193,16 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     # this is for classic formats and compatible behavior with 0.9
     pobj._sdk_or_installed_called=True
  
-    #install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-    install_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-    installed_files,src_files = ProcessInstall(env,target,source,sub_dir,install_alias,create_sdk,sdk_dir,no_pkg,**kw)
     
-    # assign to install alias
-    #env.Alias(install_alias,installed_files)
+    installed_files,src_files = ProcessInstall(env,target,source,sub_dir,create_sdk,sdk_dir,no_pkg,**kw)
+    
+    # assign to install alias to sdk alias.. if create sdk is true
+    if create_sdk and sdk_dir:
+        install_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{PART_ALIAS}}::{0}'.format(target[1:].replace('_',''))
+        sdk_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{PART_ALIAS}}::{0}'.format(sdk_dir[1:].replace('_',''))
+        sdk_a=env.Alias(sdk_alias)
+        env.Alias(install_alias,sdk_a)
+        
     # add installed file to Part object
     pobj.DefiningSection.InstalledFiles.update(installed_files)
     
@@ -234,7 +236,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     src_files=SCons.Script.Flatten(src_files)
 
     installed_files = []
-
+    sdk_mapping_set=set([])
     for i in src_files:
         # We have an individual item
         if isinstance(i,SCons.Node.FS.File) or isinstance(i,SCons.Node.FS.Dir) or isinstance(i,SCons.Node.Node) or common.is_string(i):
@@ -248,12 +250,12 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                 top_dir = '$INSTALL_LIB'
                 category= 'LIB'
                 expottype='INSTALLLIB'
-                #SDK_dir = '$SDK_LIB'
+                sdk_mapping_set.add((expottype,'SDKLIB'))
             elif common.is_catagory_file(env, 'INSTALL_BIN_PATTERN', i):
                 top_dir = '$INSTALL_BIN'
                 category= 'BIN'
                 expottype='INSTALLBIN'
-                #SDK_dir = '$SDK_BIN'
+                sdk_mapping_set.add((expottype,'SDKBIN'))
             else:
                 continue
             itmp=InstallItem(env, top_dir, ret,sub_dir,
@@ -282,6 +284,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
                         env.ExportItem('INSTALLLIB',itmp,create_sdk,True)
                         installed_files+=itmp
+                        sdk_mapping_set.add(('INSTALLLIB','SDKLIB'))
                     elif common.is_catagory_file(env,'INSTALL_BIN_PATTERN',d):
                         top_dir = '$INSTALL_BIN'
                         itmp=InstallItem(env, top_dir,ret,new_sub_dir,
@@ -289,6 +292,7 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
                         env.Tag(itmp, PACKAGING_TYPE = top_dir[1:])
                         env.ExportItem('INSTALLBIN',itmp,create_sdk,True)
                         installed_files+=itmp
+                        sdk_mapping_set.add(('INSTALLBIN','SDKBIN'))
                     else:
                         pass
         # Unless is_bin_file gets smarter, this will be a problem on Linux
@@ -297,6 +301,13 @@ def InstallTarget(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
         else:
             #print 'Told to InstallTarget', i, '...what should I do?'
             continue
+    if create_sdk:
+        for igroup,sgroup in sdk_mapping_set:
+            install_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{PART_ALIAS}}::{0}'.format(igroup)
+            sdk_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}${{PART_ALIAS}}::{0}'.format(sgroup)
+            sdk_a=env.Alias(sdk_alias)
+            env.Alias(install_alias,sdk_a)
+
     errors.ResetPartStackFrameInfo()
     #env.ExportItem('INSTALLTARGET',installed_files,create_sdk,True)
     return installed_files

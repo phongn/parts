@@ -14,7 +14,7 @@ Note this "Tool" is more of a library. it just adds paths, no builders
 import parts.tools.MSCommon.sdk
 from parts.tools.MSCommon import mssdk
 import parts.api.output as output
-
+import parts.tools.Common
 
 def generate(env):
     """Add construction variables for an MS SDK to an Environment."""

@@ -43,7 +43,7 @@ depends_data={}
 mappers={}
 # these are the global functions we define to the SConstruct
 globals={}
-# these are all teh sections that have been defined
+# these are all the sections that have been defined
 sections=set()
 
 # path to where Parts is installed
@@ -67,6 +67,7 @@ arch_map = {
 'i486':'x86',
 'i586':'x86',
 'i686':'x86',
+'i86pc':'x86',
 'x64':'x86_64',
 'AMD64':'x86_64',
 'amd64':'x86_64',

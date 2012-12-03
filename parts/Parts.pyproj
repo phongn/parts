@@ -7,12 +7,12 @@
     <ProjectHome>.</ProjectHome>
     <StartupFile>C:\Python27\Scripts\scons-2.1.0.py</StartupFile>
     <SearchPath>C:\Python27\scons-2.1.0</SearchPath>
-    <WorkingDirectory>C:\Users\jlkenny\code\phase2\confhe4</WorkingDirectory>
+    <WorkingDirectory>C:\Users\jlkenny\code\parts</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
     <InterpreterPath />
-    <CommandLineArguments>all --verbose=loading</CommandLineArguments>
+    <CommandLineArguments>all </CommandLineArguments>
     <IsWindowsApplication>False</IsWindowsApplication>
     <DebugStdLib>False</DebugStdLib>
     <InterpreterId>9a7a9026-48c1-4688-9d5d-e5699d47d074</InterpreterId>
@@ -61,6 +61,9 @@
     <Folder Include="configurations\release" />
     <Folder Include="loggers" />
     <Folder Include="events" />
+    <Folder Include="loadlogic" />
+    <Folder Include="platformspecific\" />
+    <Folder Include="platformspecific\win32\" />
     <Folder Include="pnode" />
     <Folder Include="overrides" />
     <Folder Include="tools\GnuCommon\" />
@@ -227,7 +230,6 @@
     <None Include="tools\MSCommon\vc_old.py" />
     <None Include="tools\MSCommon\vsx_sdk.py" />
     <None Include="tools\MSCommon\__init__.py" />
-    <None Include="tools\mscsc.py" />
     <None Include="tools\mslib.py" />
     <None Include="tools\mslink.py" />
     <None Include="tools\mssdk.py" />
@@ -284,10 +286,15 @@
     <Compile Include="configurations\debug\gcc_any-any_android-x86.py" />
     <Compile Include="configurations\debug\wdk_win32-any_win32-x86.py" />
     <Compile Include="configurations\debug\wdk_win32-any_win32-x86_64.py" />
+    <Compile Include="configurations\default\as_any-x86_64_any-x86.py" />
+    <Compile Include="configurations\default\as_any-x86_any-x86_64.py" />
     <Compile Include="configurations\default\g++_any-x86_64_any-x86.py" />
     <Compile Include="configurations\default\g++_any-x86_any-x86_64.py" />
+    <Compile Include="configurations\default\gas_any-x86_64_any-x86.py" />
+    <Compile Include="configurations\default\gas_any-x86_any-x86_64.py" />
     <Compile Include="configurations\default\gcc_any-x86_64_any-x86.py" />
     <Compile Include="configurations\default\gcc_any-x86_any-x86_64.py" />
+    <Compile Include="configurations\default\gnulink.py" />
     <Compile Include="configurations\default\gnulink_any-x86_64_any-x86.py" />
     <Compile Include="configurations\default\gnulink_any-x86_any-x86_64.py" />
     <Compile Include="configurations\release\g++_any-any_android-arm.py" />
@@ -296,8 +303,27 @@
     <Compile Include="configurations\release\gcc_any-any_android-x86.py" />
     <Compile Include="configurations\release\wdk_win32-any_win32-x86.py" />
     <Compile Include="configurations\release\wdk_win32-any_win32-x86_64.py" />
+    <Compile Include="loadlogic\all.py" />
+    <Compile Include="loadlogic\base.py" />
+    <Compile Include="loadlogic\changed.py" />
+    <Compile Include="loadlogic\nodepends.py" />
+    <Compile Include="loadlogic\target.py" />
+    <Compile Include="loadlogic\__init__.py" />
+    <Compile Include="overrides\executor.py" />
     <Compile Include="overrides\override_env.py" />
+    <Compile Include="overrides\symlinks.py" />
     <Compile Include="overrides\tool.py" />
+    <Compile Include="platformspecific\win32\msi.py" />
+    <Compile Include="platformspecific\win32\__init__.py" />
+    <Compile Include="platformspecific\__init__.py" />
+    <Compile Include="pnode\dependent_info.py" />
+    <Compile Include="tools\ar.py" />
+    <Compile Include="tools\as.py" />
     <Compile Include="tools\GnuCommon\android.py" />
+    <Compile Include="tools\GnuCommon\binutils.py" />
+    <Compile Include="tools\ld.py" />
+    <Compile Include="tools\lipo.py" />
+    <Compile Include="tools\MSCommon\vc11.py" />
+    <Compile Include="tools\wix.py" />
   </ItemGroup>
 </Project>

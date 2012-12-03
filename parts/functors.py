@@ -7,73 +7,6 @@ import SCons.Script
 
 import thread
 
-class map_parts_alias(object):
-    '''
-    This class maps the high level alias with other high level alias. This is a very important function 
-    used to make sure that SCONS knows that subparts and part relations. Scons only sees these relations
-    as the mapping of high level Aliases. Scons doesn't have a concept of a part or component. Without
-    this the "idea" that a dependent part should full build will not happen, only stuff that SCons sees
-    as being needed will build. Scons is fully correct in its actions, but many user find this behavor
-    subjectivly non-obvious when we add the parts/component idea. This allow us to gain a better sense
-    of order by tell scons that you need to do the other stuff as well, while letting Scons do what it
-    knows is best, in the order if thinks is best. Note there there is a part 2 to this. In the file
-    version mapping ie pieces/version_mapping.py we have something simular to this to allow for tell
-    Scons to correctly clean this mess off the disk.
-    '''
-    def __init__(self,env):
-        self.env=env
-        #self.value=value
-    def __call__(self):
-        pass
-        #pobj=glb.engine._part_manager._from_env(self.env)
-        #dlst=pobj.Depends
-        #flist=[]
-        #flist2=[]
-        #for d in dlst:
-        #    #get unknown alias
-        #    val=d.resolve_alias(self.env)
-        #    if val == "" or val is None:
-        #        api.output.warning_msg('Part "{0}" depends on "{1}", however this Parts was not defined.'.format(self.env.subst('$PART_NAME'),d.name),stackframe=d.stackframe)
-        #        continue
-        #    denv=pobj.Env
-        #    flist.append(denv.subst('${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
-        #    #flist2.append(denv.subst('${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}')+val)
-        ##the build alias
-        #build_alias='${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        ### this one might help SCons scale better with larger -j values
-        ##the install alias
-        ##install_alias='${PART_INSTALL_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'
-        ## we map the build alias to the dependent SDK aliases
-        #self.env.Alias(build_alias,flist)
-        ## we map the install alias to the dependent INSTALL aliases
-        ## self.env.Alias(install_alias,flist2)
-
-
-#def full_parts_depends_list(env):
-#    ''' make a full depends list ( internal and non internal) for the given Env
-#    We will probally want to refactor some of this into state in def_env later
-#    '''
-#    
-#    pobj=glb.engine._part_manager._from_env(env)
-#    
-#    cache_tmp=pobj.FullDepends
-#    if cache_tmp is None:
-#        dlst=pobj.Depends
-#        flst=[]
-#        for d in dlst:
-#            val=d.resolve_alias(env)
-#            if val == "":
-#                continue
-#            flst.append(val)
-#            
-#            tmp_env=glb.engine._part_manager._from_alias(val).env
-#            tmp=full_parts_depends_list(tmp_env)
-#            flst.extend(tmp)
-#            pobj.set_full_depends(flst)
-#    else:
-#        flst=cache_tmp
-#    return flst
-
 
 def gen_rpath_link(sec):
     '''
@@ -91,7 +24,8 @@ def gen_rpath_link(sec):
     # not what it dependents depend on which is what we need for the 
     # rpath-link case
     # get the libpath for this component
-    plist=mappers.sub_lst(env,env.get('LIBPATH',[]),thread.get_ident())
+    plist=mappers.sub_lst(env,env.get('LIBPATH',[]),thread.get_ident(),recurse=False)
+    plist=env.Flatten(plist)
     for p in plist:
         rp='-Wl,-rpath-link='+env.Dir(p).path
         common.append_unique(rplst,rp)
@@ -164,15 +98,14 @@ class map_build_context(object):
         
         
 class map_depends(object):
-    def __init__(self,env,partref,tsection,key,stack):
+    def __init__(self,env,partref,tsection,requiements,stack):
         self.env=env
         self.partref=partref
         self.tsection=tsection
-        self.key=key
+        self.requiements=requiements
         self.stack=stack
         
-    def __call__(self):
-               
+    def __call__(self):       
         if self.partref.hasUniqueMatch:
             dep_pobj=self.partref.Matches[0]
             dep_sec=dep_pobj.Section(self.tsection)
@@ -180,16 +113,21 @@ class map_depends(object):
             api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.NoMatchStr()),stackframe=self.stack)
         elif self.partref.hasAmbiguousMatch:
             api.output.error_msg("Failed to map dependency for {0} because:\n {1}".format(self.env.subst('$PART_NAME'),self.partref.AmbiguousMatchStr()),stackframe=self.stack)
-        
-        dep_sec.esigs()
-        if ("INSTALL" in self.key or "SDK" in self.key):# and dep_sec.Exports.get(self.key):
-            alias="{0}::alias::{1}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'])
-            alias1="{0}::alias::{1}::{2}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'],self.key)
-            alias2="{0}::alias::{1}::{2}".format(self.tsection,dep_pobj.Alias,self.key)
-            #print "mapping",alias, "->",alias1
-            #print "mapping",alias1, "->",alias2
-            self.env.Alias(alias,self.env.Alias(alias1))
-            self.env.Alias(alias1,self.env.Alias(alias2))
+        #print "filling in","{0}::alias::{1}".format(self.env['PART_SECTION'],self.env['PART_ALIAS']),"\t",dep_sec.ID
+        #print " ",dep_sec.Exports.keys()
+        #dep_sec.esigs()
+        alias="{0}::alias::{1}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'])
+        for r in self.requiements:
+            key=r.key
+            if "INSTALL" in key or "SDK" in key: #dep_sec.Exports.get(key):
+                alias1="{0}::alias::{1}::{2}".format(self.env['PART_SECTION'],self.env['PART_ALIAS'],key)
+                alias2="{0}::alias::{1}::{2}".format(self.tsection,dep_pobj.Alias,key)
+                #print "mapping",alias, "->",alias1
+                #print "mapping",alias1, "->",alias2
+                # this mapping may not exist as the component does not export this type of value
+                # ideally it is handled by the _target_map() api called after the section is defined
+                self.env.Alias(alias,self.env.Alias(alias1))
+                self.env.Alias(alias1,self.env.Alias(alias2))
           
         
 # add configuartion varaible

@@ -45,6 +45,7 @@ import SCons.Util
 import parts.api.output as output
 import parts.common as common
 from parts.tools.MSCommon import msvc, validate_vars
+import parts.tools.Common
 
 def pdbGenerator(env, target, source, for_signature):
     try:
@@ -324,13 +325,13 @@ def generate(env):
     SCons.Tool.createSharedLibBuilder(env)
     SCons.Tool.createProgBuilder(env)
 
-    env['SHLINK'] = '$LINK'
+    env['SHLINK'] = parts.tools.Common.toolvar('link')
     env['SHLINKFLAGS'] = SCons.Util.CLVar('$LINKFLAGS /dll')
     env['_SHLINK_TARGETS'] = windowsShlinkTargets
     env['_SHLINK_SOURCES'] = windowsShlinkSources
     env['SHLINKCOM'] = compositeShLinkAction
     env.Append(SHLIBEMITTER = [windowsLibEmitter])
-    env['LINK'] = 'link'
+    env['LINK'] = parts.tools.Common.toolvar('link')
     env['LINKFLAGS'] = SCons.Util.CLVar()
     env['_PDB'] = pdbGenerator
     env['LINKCOM'] = compositelinkcomAction
@@ -363,7 +364,7 @@ def generate(env):
     env['REGSVRCOM'] = '$REGSVR $REGSVRFLAGS ${TARGET.windows}'
     env['REGISTEREXECOM'] = '${TARGET.windows} /regserver'
 
-    env['MT'] = 'mt'
+    env['MT'] = parts.tools.Common.toolvar('mt')
     env['MTFLAGS'] = ''
     env['EMBEDMANIFESTDLLCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};2 -manifest ${TARGET}.manifest'
     env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
@@ -372,7 +373,7 @@ def generate(env):
     env['MAKECERTFLAGS'] = '-sk "$SIGNING.STORAGE.PRIVATE" -ss "$SIGNING.STORAGE.PUBLIC" -n "$SIGNING.NAME"'
     env['MAKECERTCOM'] = '$MAKECERT $MAKECERTFLAGS'
 
-    env['SIGNTOOL'] = 'signtool'
+    env['SIGNTOOL'] = parts.tools.Common.toolvar('signtool')
     env['SIGNTOOLFLAGS'] = ''
 
     env['SIGN'] = '$SIGNTOOL sign'

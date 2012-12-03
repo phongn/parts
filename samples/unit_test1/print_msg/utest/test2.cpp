@@ -5,7 +5,7 @@ int main()
 {
 	print_msg();
 	std::cout<<"test passed"<<std::endl;
-	return 1;
+	return 0;
 }
 
 

@@ -307,14 +307,14 @@ class part(pnode.pnode,part_compatiblity):
     def Name(self): #read only non-mutable as it based on short name and parent
         """Get the current parent Part name."""
         if self.__name is None:
-            return self.__alias
+            self.ShortName=self.__short_alias
         return self.__name
 
     @property # readonly
     def ShortName(self):
         """Get the current parent Part name."""
         if self.__short_name is None:
-            return self.__short_alias
+            self.ShortName=self.__short_alias
         return self.__short_name
 
     @ShortName.setter
@@ -323,14 +323,19 @@ class part(pnode.pnode,part_compatiblity):
 
     #For backward compatibility
     def _set_name(self,name,force_parent=None):
+        oldname=self.__name
         if force_parent is not None:
-            self.__name=force_parent+'.'+name
+            self.__name="{0}.{1}".format(force_parent,name)
         elif self.__parent is not None:
-            self.__name=self.__parent.Name+'.'+name
+            self.__name="{0}.{1}".format(self.Parent.Name,name)
         elif self.__parent is None:
             self.__name=name
         self.__short_name=name
-        glb.engine._part_manager.add_name_alias(self.__name,self.__alias)
+        if oldname != self.__name and oldname:
+            api.output.warning_msg("Name changed: {0} to {1}".format(oldname,self.__name))
+            glb.engine._part_manager.add_name_alias(self.__name,self.__alias,oldname)
+        else:
+            glb.engine._part_manager.add_name_alias(self.__name,self.__alias)
 
     @property #readonly mutable
     def Parent(self):
@@ -779,48 +784,11 @@ class part(pnode.pnode,part_compatiblity):
         if "__DEBUG__POBJ__" in self.__env["MODE"]:
             self.__env['POBJ']=self
 
-        #self.__env['PART_SECTION']='build'
-##        # some data we will use for our own DB file
-##        if glb.name_alias_map.has_key(alias) == False:
-##            glb.name_alias_map[alias]=set()
-
-
     #def __str__(self):
         #pp = pprint.PrettyPrinter(indent=4)
         #return pp.pformat(self.__dict__)
 
 
-    def _map_alias(self):
-        ''' This function maps two different of Core Aliases
-        One form is to map the given component to all components that it dependson
-        The second form is to add all sub-Parts of this component
-        '''
-        pass
-        #vfile=self.__env._MapUnknowns([],self.__file)
-
-        # This is the base Alias for a given Part
-        #build_alias='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}'.format(self.__alias)
-        #build_alias_r='${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.__alias)
-        ## note that InstallXXX and SdkXXX map to this value
-        ## new formats will make all targets to this value as well.
-        ## build::alias::foo
-        #a=self.__env.Alias(build_alias)
-        ## build::alias::foo -> build::alias::foo::
-        #a1=self.__env.Alias(build_alias_r,a)
-        ## map build::alias::foo.sub1:: -> build::alias::foo::
-        #if not self.isRoot:
-        #    # build::alias::foo.sub:: -> build::alias::foo::
-        #    self.__env.Alias('${{PART_BUILD_CONCEPT}}${{PART_ALIAS_CONCEPT}}{0}::'.format(self.Parent.Alias),a1)
-        #else:
-        #    # build::alias::foo -> build::alias::foo:: -> build::
-        #    self.__env.Alias("${PART_BUILD_CONCEPT}",a1)
-        #
-        ##add to queue the delayed mapping of high level Alias to other high level alias
-        #def_env=SCons.Script.DefaultEnvironment()
-        #glb.engine.add_preprocess_logic_queue(functors.map_parts_alias(self.__env))
-        ## add call back for latter full mapping of build context
-        #glb.engine.add_preprocess_logic_queue(functors.map_build_context(self))
-        #
     def _setup_sdk(self):
         return
         create_sdk=True
@@ -873,7 +841,9 @@ class part(pnode.pnode,part_compatiblity):
 
         if self.LoadState < glb.load_file:
             # final set up for environment
-
+            self.__classic_section.Reset()
+            for s in self.__sections.itervalues():
+                s.Reset()
             env=self.__classic_section.Env
             ## setup what we want to export
             # global objects
@@ -942,18 +912,19 @@ class part(pnode.pnode,part_compatiblity):
                             duplicate=self.__env['duplicate_build'],
                             exports=export_map
                             )
-            #print bdir
-            #print "*",bdir.srcnode()
+            
             api.output.verbose_msg(['part_read'],'Parts file {0} read time: {1}'.format(self.__file.srcnode().abspath,time.time()-st))
             # we tag the Directory nodes so we can latter sort unknown items faster, by checking the directory ownership
-            #pp=pprint.PrettyPrinter()
-            #pp.pprint(bdir.__dict__)
             env._log_keys=False
             #common.tag_node_ownership(self.__env,bdir)
 
             # set file as read
-
             self.__classic_section.LoadState = glb.load_file
+
+            # hack to help with compatibility issues as we fixed up the mapping table.
+            if self.__classic_section.Env.get('PART_REVERSE_EXPORTS_LIBS') == True:
+                self.__classic_section.Exports['LIBS'][0].reverse()
+                
 
             sys.path=bk_path
 
@@ -1048,19 +1019,19 @@ class part(pnode.pnode,part_compatiblity):
                 self.UpdateReadState(glb.load_file)
                 return True
             # Get File Node
-            tmp=glb.pnodes.GetNode(data.file['name'],SCons.Node.FS.File)
+            tmp=glb.pnodes.GetNode(data.File['name'],SCons.Node.FS.File)
             if tmp is None:
                 self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.load_file)
                 return True
             # does this node look different
-            if tmp.changed_since_last_build(tmp,tmp.make_ninfo_from_dict(data.file)):
+            if tmp.changed_since_last_build(tmp,tmp.make_ninfo_from_dict(data.File)):
                 self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.load_file)
                 return True
             # does the parent look different
             try:
-                if not data.parent.isFileUpToDate():
+                if not data.Parent.isFileUpToDate():
                     self.__cache['hasFileChanged']=True
                     self.UpdateReadState(glb.load_file)
                     return True
@@ -1086,8 +1057,8 @@ class part(pnode.pnode,part_compatiblity):
         if data is None:
             return glb.load_file
         state=glb.load_none
-        for name,sub in data.subparts.iteritems():
-            #sub=glb.pnodes.GetPNode(sub)
+        for name in data.SubPartIDs:
+            sub=glb.pnodes.GetPNode(name)
             if sub:
                 if sub.ReadState > state:
                     state=sub.ReadState
@@ -1113,48 +1084,55 @@ class part(pnode.pnode,part_compatiblity):
         datacache.StoreData("pnode-{0}".format(md5.hexdigest()),info)
 
     def GenerateStoredInfo(self):
+
+        # make new object
         info=part_info.part_info()
-        info.name=self.__name
-        info.short_name=self.__short_name
-        info.alias=self.__alias
-        info.short_alias=self.__short_alias
-        info.version=str(self.Version)
-        info.root=self.__root
-        info.target_platform=str(self.__env['TARGET_PLATFORM'])
-        info.config=str(self.__env['CONFIG'])
-        info.platform_match=str(self.__platform_match)
-        info.package_group=str(self.__package_group)
-        info.mode=self.__mode
-        info.force_load=self.ForceLoad
 
-        #store any subparts aliases
+        ## fill in object with data
+        info.Name=self.__name
+        info.ShortName=self.__short_name
+        info.ID=self.ID
+        info.ShortID=self.__short_alias
+        info.Version=str(self.Version)
+        info.RootID=self.__root.ID
+        info.TargetPlatform=str(self.__env['TARGET_PLATFORM'])
+        info.Config=str(self.__env['CONFIG'])
+        info.PlatformMatch=str(self.__platform_match)
+        info.PackageGroup=str(self.__package_group)
+        info.Mode=self.__mode
+        info.ForceLoad=self.ForceLoad
 
-        info.subparts=self.__subparts
+        #store subpart ID values
+        info.SubPartIDs=set([i.ID for i in self.__subparts.itervalues()])
 
         tmp=[]
         i=self.__parent
-        info.parent=i
+        if i is not None:
+            info.ParentID=i.ID
+        else:
+            info.ParentID=None
+
         while i is not None:
-            tmp.append(i)
+            tmp.append(i.ID)
             i=i.Parent
-        info.parents=tmp
+        info.ParentIDs=tmp
+
         tmp={'build':self.__classic_section}
         tmp.update(self.__sections)
 
-        info.sections=tmp
+        for k in tmp.iterkeys():
+            tmp[k]=tmp[k].ID
+        info.SectionIDs=tmp
 
         tmp={}
         if self.__file is None:
             pass
-            #file['name']=self.Parent._file.srcnode().path# check this
-            #file['csig']=self.Parent._file.get_csig()
-            #file['timestamp']=self.Parent._file.get_timestamp()
         else:
             tmp['name']=self.__file.srcnode().ID# check this
             tmp['csig']=self.__file.get_csig()
             tmp['timestamp']=self.__file.get_timestamp()
-        info.file=tmp
-        info.src_path=self.__env.Dir(self.__src_path)
+        info.File=tmp
+        info.SrcPath=self.__src_path
         ##direct sdk file data
         #file={}
         #if self.__sdk_file is None:
@@ -1182,7 +1160,7 @@ class part(pnode.pnode,part_compatiblity):
                     }
                 )
 
-        info.build_context=tmp
+        info.BuildContext=tmp
 
         # this is config context ( like build but for the config files)
         tmp={}
@@ -1196,106 +1174,21 @@ class part(pnode.pnode,part_compatiblity):
                         'csig':i.get_csig(),
                         'timestamp':i.get_timestamp()
                         })
-        info.config_context=tmp
+        info.ConfigContext=tmp
         info.kw = common.wrap_to_string(self.__kw)
+        try:
+            vcs_obj = self.__vcs if self.__vcs else self.__root.__vcs
+            info.vcs_cache_filename = vcs_obj._cache_filename
+        except:
+            pass
         return info
 
 
 
     # Depends API
     def map_component_info(self,comp_part):
-
-        cpppath=[]
-        libpath=[]
-        libs=[]
-        cppdefines=[]
-        linkflags=[]
-        ccflags=[]
-        cflags=[]
-        cxxflags=[]
-
-        # map stuff we dependon
-        if (comp_part.requires & requirement.REQ._CPPPATH_IMPORT):
-            cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
-        if (comp_part.requires & requirement.REQ._LIBPATH_IMPORT):
-            libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
-        if (comp_part.requires & requirement.REQ._LIBS_IMPORT):
-            libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
-        if (comp_part.requires & requirement.REQ._LINKFLAGS_IMPORT):
-            linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
-        if (comp_part.requires & requirement.REQ._CCFLAGS_IMPORT):
-            ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
-        if (comp_part.requires & requirement.REQ._CFLAGS_IMPORT):
-            cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
-        if (comp_part.requires & requirement.REQ._CXXFLAGS_IMPORT):
-            cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
-        if (comp_part.requires & requirement.REQ._CPPDEFINES_IMPORT):
-            cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
-
-        #common.append_if_absent( self.__dependson,comp_part)
-        #add the dependent info
-
-        self.__env.Append(
-            CPPPATH=cpppath,LIBPATH=libpath,LIBS=libs,CPPDEFINES=cppdefines,
-            LINKFLAGS=linkflags,CCFLAGS=ccflags,CFLAGS=cflags,CXXFLAGS=cxxflags
-            )
-    #    api.output.verbose_msg("Duplicate",env.subst($CPPDEFINES))
-        cpppath=[]
-        libpath=[]
-        libs=[]
-        cppdefines=[]
-        libflags=[]
-        ccflags=[]
-        cflags=[]
-        cxxflags=[]
-
-        # map what we need to export
-        if (comp_part.requires & requirement.REQ._CPPPATH_EXPORT):
-            cpppath=common.extend_unique(cpppath,comp_part.part._exports.get('CPPPATH',''))
-            if 'CPPPATH' not in self.__exports:
-                self.__exports['CPPPATH']=[]
-            self.__exports['CPPPATH']=common.extend_unique(self.__exports['CPPPATH'],cpppath)
-        if (comp_part.requires & requirement.REQ._LIBPATH_EXPORT):
-            libpath=common.extend_unique(libpath,comp_part.part._exports.get('LIBPATH',''))
-            if 'LIBPATH' not in self.__exports:
-                self.__exports['LIBPATH']=[]
-            self.__exports['LIBPATH']=common.extend_unique(self.__exports['LIBPATH'],libpath)
-        if (comp_part.requires & requirement.REQ._LIBS_EXPORT):
-            libs=common.extend_unique(libs,comp_part.part._exports.get('LIBS',''))
-            if 'LIBS' not in self.__exports:
-                self.__exports['LIBS']=[]
-            self.__exports['LIBS']=common.extend_unique(self.__exports['LIBS'],libs)
-        if (comp_part.requires & requirement.REQ._LINKFLAGS_EXPORT):
-            linkflags=common.extend_unique(linkflags,comp_part.part._exports.get('LINKFLAGS',''))
-            if 'LINKFLAGS' not in self.__exports:
-                self.__exports['LINKFLAGS']=[]
-            self.__exports['LINKFLAGS']=common.extend_unique(self.__exports['LINKFLAGS'],linkflags)
-        if (comp_part.requires & requirement.REQ._CCFLAGS_EXPORT):
-            ccflags=common.extend_unique(ccflags,comp_part.part._exports.get('CCFLAGS',''))
-            if 'CCFLAGS' not in self.__exports:
-                self.__exports['CCFLAGS']=[]
-            self.__exports['CCFLAGS']=common.extend_unique(self.__exports['CCFLAGS'],ccflags)
-        if (comp_part.requires & requirement.REQ._CFLAGS_EXPORT):
-            cflags=common.extend_unique(cflags,comp_part.part._exports.get('CFLAGS',''))
-            if 'CFLAGS' not in self.__exports:
-                self.__exports['CFLAGS']=[]
-            self.__exports['CFLAGS']=common.extend_unique(self.__exports['CFLAGS'],cflags)
-        if (comp_part.requires & requirement.REQ._CXXFLAGS_EXPORT):
-            cxxflags=common.extend_unique(cxxflags,comp_part.part._exports.get('CXXFLAGS',''))
-            if 'CXXFLAGS' not in self.__exports:
-                self.__exports['CXXFLAGS']=[]
-            self.__exports['CXXFLAGS']=common.extend_unique(self.__exports['CXXFLAGS'],cxxflags)
-        if (comp_part.requires & requirement.REQ._CPPDEFINES_EXPORT):
-            cppdefines=common.extend_unique(cppdefines,comp_part.part._exports.get('CPPDEFINES',''))
-            if 'CPPDEFINES' not in self.__exports:
-                self.__exports['CPPDEFINES']=[]
-            self.__exports['CPPDEFINES']=common.extend_unique(self.__exports['CPPDEFINES'],cppdefines)
-
-        #map up rpath with this.. ( need to fix up the Mac)
-        #if self.env['HOST_PLATFORM']!='win32' and self.env['HOST_PLATFORM'] != 'darwin':
-
-            #map_rpath_part(part,comp_part)
-            #map_rpath_link_part(part,comp_part)
+        pass
+      
 
 
 
@@ -1308,34 +1201,36 @@ class part(pnode.pnode,part_compatiblity):
             #return
 
 
-        self.__alias=info.alias # should be handled by _setup_
-        self.__short_alias=info.short_alias # should be handled by _setup_
-        self.__root=info.root # should be handled by _setup_
-        self.__force_load=info.force_load
-        if info.parent:
+        self.__alias=info.ID # should be handled by _setup_
+        self.__short_alias=info.ShortID # should be handled by _setup_
+        self.__root=info.Root # should be handled by _setup_
+        self.__force_load=info.ForceLoad
+        if info.ParentID:
             # we might not be loading the parent.... so we for set the parent name from cache
-            self._set_name(info.short_name,info.parent.Stored.name)
+            self._set_name(info.ShortName,info.Parent.Stored.Name)
         else:
-            self._set_name(info.short_name)
+            self._set_name(info.ShortName)
 
         if self.Version == '0.0.0':
-            self.Version=version.version(info.version)
+            self.Version=version.version(info.Version)
 
-        self.__platform_match=info.platform_match # should be handled by _setup_
-        self.__package_group=info.package_group # should be handled by _setup_
-        self.__mode=info.mode #?? # should be handled by _setup_
+        self.__platform_match=info.PlatformMatch # should be handled by _setup_
+        self.__package_group=info.PackageGroup # should be handled by _setup_
+        self.__mode=info.Mode #?? # should be handled by _setup_
 
-        self.__subparts=info.subparts
-        self.__parent=info.parent # should be handled by _setup_
+        tmp={}
+        for name in info.SubPartIDs:
+            tmp[name]=glb.pnodes.GetPNode(name)
+        for i in info.SubPartIDs:
+            self.__subparts[i]=glb.pnodes.GetPNode(i)
+        self.__parent=info.Parent # should be handled by _setup_
         # how to deal with this???
         ## need to double check logic for this when full new formats section are working
-        self.__sections=info.sections
-        #self.__file=info.file # should be handled by _setup_
-        #self.__src_path=info.src_path # should be handled by _setup_
-        #self.__sdk_file=info.sdk_file # should be handled by _setup_
-
-        #info.build_context
-        #info.config_context
+        self.__sections=info.SectionIDs
+        tmp={}
+        for k,v in info.SectionIDs.iteritems():
+            tmp[k]=glb.pnodes.GetPNode(v)
+        self.__sections=tmp
 
         if not self.isSetup:
             # we don't have a environment created
@@ -1344,56 +1239,11 @@ class part(pnode.pnode,part_compatiblity):
             self.__env=self.__root.Env.Clone()
             self.__is_setup=True
 
-        self._map_alias()
-
-
-
-    def _setup_from_cache_data(self,data):
-        '''
-        This will setup this part based on data in the cache
-        The Part manager will call and create sub part as needed
-        The part object should have been created and setup already for this call.
-        This function should only have to setup stuff that this component would
-        have exported or outputed that needs to be shared with dependent components
-        '''
-
-        if self.__is_setup ==False:
-            api.output.error_msg("Part object setup from cache data requires part_t object to have been created and setup()")
-        # map values that would normally be define in a "new" format
-        # such as name and version
-        self.ShortName(data['short_name'])
-        self.Version(version.version(data['version']))
-        #How to match this component in a dependon call by dependent components
-        self.__platform_match=platform_info.SystemPlatform(data['platform_match'])
-
-        ## might not need this one....
-        # map what the part would depend on
-        depends_list=[]
-        for d in data['dependson']:
-            depends_list.append(dependson.ComponentRef(**d))
-        self._set_depends(depends_list)
-
-        #map exports of this component
-        self.__exports=data['exports']
-        # think this is for backward compatibility only at the moment
-        # however might need to expand on this
-        self.__env.Replace(**data['env_exports'])
-
-        # need to add sdk file
-        tmp=data.get('sdkfile',{}).get('name',None)
-        self.__sdk_file=self.__env.File(tmp)
-
-        # load some data that might be touched
-        self.__full_dependson=data['full_depends']
-        self.__cache['root_depends']=data['root_depends']
-        if self.isRoot:
-            self.__cache['root_depends_full']=data['full_root_depends']
-
-
-
-
-
+   
 ## some util function
+
+def pcmp(x,y):            
+    return cmp(x._order_value,y._order_value)
 
 def complex_compare(v1,v2):
 

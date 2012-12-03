@@ -50,6 +50,7 @@ import SCons.Util
 import SCons.Warnings
 
 from parts.tools.MSCommon import msvc
+import parts.tools.Common
 
 ##############################################################################
 # Below here are the classes and functions for generation of

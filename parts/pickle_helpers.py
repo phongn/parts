@@ -185,7 +185,7 @@ def persistent_load(persid):
 
 ## this code allow use to handle the pickle of byte code
 ## the other way we can do this is to use a libray
-## to grab the source code, given that we woudl always have
+## to grab the source code, given that we would always have
 ## source at run time this might be a better solution.
 
 def unpickle_code(*data):
@@ -215,6 +215,5 @@ def pickle_code(co):
 # register with pickle the logic for handling
 # code objects in pickle.
 copy_reg.pickle(types.CodeType,pickle_code)
-
 
 

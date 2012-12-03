@@ -2,9 +2,7 @@
 ### gcc compiler configurations for android 
 ######################################
 
-import sys
 from parts.config import *
-import SCons.Script
 
 def map_default_version(env):
     return env['GXX_VERSION']
@@ -14,7 +12,7 @@ config=configuration(map_default_version)
 config.VersionRange("3-*",
                     append=ConfigValues(
                         CCFLAGS=[
-                                '-O2',
+                                '-O0',
                                 '--sysroot=${GXX.SYS_ROOT}'
                             ],
                         CPPDEFINES=['DEBUG'],
@@ -22,7 +20,7 @@ config.VersionRange("3-*",
                                 '--sysroot=${GXX.SYS_ROOT}'
                                 ],
                         LIBPATH=[
-                                '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86'
+                                '${GXX.LIBRARY_PATH}'
                                 ],
                         LIBS=['gnustl_shared']
                         )

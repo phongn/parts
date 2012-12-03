@@ -6,6 +6,7 @@ from .. import datacache
 from ..pnode import scons_node_info
 from ..pnode import pnode_manager
 from .. import metatag
+from .. import node_helpers
 
 import SCons.Node
 
@@ -15,10 +16,15 @@ import hashlib
 import pprint
 import stat
 
+# Import symlinks to make sure it patches SCons.Node.FS and SCons.Environment before
+# we refer it
+import symlinks
+
 Node=SCons.Node.Node
 File=SCons.Node.FS.File
 Dir=SCons.Node.FS.Dir
 Entry=SCons.Node.FS.Entry
+FileSymbolicLink=SCons.Node.FS.FileSymbolicLink
 FSBase=SCons.Node.FS.Base
 Value=SCons.Node.Python.Value
 Alias=SCons.Node.Alias.Alias
@@ -28,31 +34,6 @@ class wrapper(object):
     def __init__(self,binfo,ninfo=None):
         self.binfo=binfo
         self.ninfo=ninfo
-
-#
-#def env_set(self,env,safe=False):
-#    ''' This function allows use to map which Part/Component should be assigned a given Node
-#
-#    It shoudl be noted that this API is a only called by the Builder. So ever Node that has an
-#    Environment as a builder and as such is a Target of some build action. Everything else is a
-#    Source node that is on disk.
-#    '''
-#    self.orig_env_set(env,safe)
-#    #if env.hasMetaTag(self,'owners','parts') ==False:# and\
-#    #    #(isinstance(self,SCons.Node.FS.File) or isinstance(self,SCons.Node.FS.Dir)):
-#    #    alias=env.get("PART_ALIAS",None)
-#    #    if alias:
-#    #        pobj=self.__part_manager.parts[alias]
-#    #        if self.has_builder():
-#    #            add_builder_context_files(pobj,self.builder)
-#    #        # add node to set of known nodes for this component
-#    #        pobj._part_nodes.add(v)
-#    #1/0
-#
-#
-#SCons.Node.Node.orig_env_set=SCons.Node.Node.env_set
-#SCons.Node.Node.env_set=env_set
-#
 
 def make_path_ID(path):
     t=path
@@ -167,12 +148,12 @@ def _part_isUpToDate(self):
                         st_info=i.get_stored_info()
                         #Scons is  not storing information on source node
                         # this tends to be an issue with Directories used as sources
-                        if st_info is None and isinstance(i,SCons.Node.FS.Dir):
+                        if st_info is None and isinstance(i,Dir):
                             # we skip this at the moment
                             continue
                         nbinfo=st_info.binfo
 
-                        if not os.path.exists(i.path) and not os.path.exists(i.srcnode().path) and \
+                        if not i.exists() and not i.srcnode().exists() and \
                             nbinfo.bsourcesigs == [] and \
                             nbinfo.bdependsigs == [] and \
                             nbinfo.bimplicitsigs ==[] :
@@ -183,7 +164,7 @@ def _part_isUpToDate(self):
                             storedpinfo=i.Stored
                             if storedpinfo:
                                 n=storedpinfo.SrcNode(i)
-                                #api.output.verbose_msg("update_check",'getting src node for {0}\n {1} '.format(i.ID,n.ID))
+                                api.output.verbose_msg("update_check",'Getting src node for {0}\n {1} '.format(i.ID,n.ID))
                                 n._memo['get_stored_info']=i._memo['get_stored_info']
                                 i.clear()
                                 i=n
@@ -250,13 +231,14 @@ def _part_isUpToDate(self):
 
         if self.Stored:
             # check for AlwaysBuild State
-            if self.Stored.always_build:
+            if self.Stored.AlwaysBuild:
                 api.output.verbose_msgf("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node',self.ID)
                 self._memo['_part_isUpToDate'] = False
                 return self._memo['_part_isUpToDate']
             # check any side effect nodes
-            side_effects=self.Stored.side_effects
-            for node in side_effects:
+            side_effects=self.Stored.SideEffectIDs
+            for nodeid in side_effects:
+                node=glb.pnodes.GetNode(nodeid)
                 if not node.pisUpToDate:
                     api.output.verbose_msgf("update_check",'{0} out-of-date! Side effect target {1} is out of date',self.ID,node.ID)
                     self._memo['_part_isUpToDate'] = False
@@ -288,7 +270,6 @@ def parts_built(self):
     #say this built Parts know to update this nodes info
     self.isBuilt=True
 
-
 Node._orig_built=Node.built
 Node.built=parts_built
 #File._orig_built=File.built
@@ -307,14 +288,34 @@ SCons.Node.Node.isBuilt=property(_get_isbuilt,_set_isbuilt)
 
 # visited replacement
 def parts_visited(self):
-    self.get_csig()
-    #if self.isVisited:
-        #return
-
+    #self.get_csig()
+    
     #self.clear_memoized_values()
     self._orig_visited()
-    #say this built Parts know to update this nodes info
+    
+    if not self.isVisited: 
+        # this is target node we just built
+        # store the information
+        glb.pnodes.StoreNode(self)
+        try:
+            # might be a custom node type that does not have am
+            # srcnode concept
+            tmp=self.srcnode()
+            tmp.isVisited=True
+            if tmp!=self:
+                glb.pnodes.StoreNode(tmp)
+        except AttributeError:
+            pass
+        
     self.isVisited=True
+    
+    
+def parts_alias_visited(self):
+    # Visited get called twice in current Scon logic
+    if not self.isVisited:
+        glb.pnodes.StoreAlias(self)
+    self._orig_alias_visited()
+    
 
 Node._orig_visited=Node.visited
 Node.visited=parts_visited
@@ -322,28 +323,8 @@ File._orig_visited=File.visited
 File.visited=parts_visited
 #Dir._orig_visited=Dir.visited
 #Dir.visited=parts_visited
-
-def part_stat(self):
-    '''
-    This function replaces the built in SCons stat function to allow me an ability to deal with Symlinks better
-    This function is set after the init call of the Node to work around an ugly issue.
-    '''
-    try:
-        return self._memo['stat']
-    except KeyError:
-        try:
-            result = os.lstat(self.abspath)
-            if stat.S_ISLNK(result.st_mode) and (\
-                not glb.engine.isSconstructLoaded or\
-                glb.engine._build_mode!='build' or\
-                (not metatag.MetaTagValue(self,'SymLink',default=False) and not getattr(self.Stored,'issymlink',False))):
-                result = os.stat(self.abspath)
-        except os.error:
-            result = None
-        self._memo['stat'] = result
-    return result
-
-FSBase.pstat=part_stat
+Alias._orig_alias_visited=Alias.visited
+Alias.visited=parts_alias_visited
 
 #############################################
 ## these are pnode addition
@@ -378,12 +359,6 @@ def _my_init(self,name, directory, fs):
     self.orig_init(name, directory, fs)
     # may not be the best way.. but works for the moment
     glb.pnodes.AddNodeToKnown(self)
-    self.stat=self.pstat
-    # just in case the state was set we want to remove it and force it to be recached
-    try :
-        del self._memo['stat']
-    except:
-        pass
 
 SCons.Node.FS.Base.orig_init=SCons.Node.FS.Base.__init__
 SCons.Node.FS.Base.__init__=_my_init
@@ -416,13 +391,17 @@ def _my_init(self,name):
     if glb.engine.isSconstructLoaded:
         map_alias_stored(self)
     else:
-        glb.engine.SConstructLoadedEvent+=lambda : map_alias_stored(self)
+        glb.engine.SConstructLoadedEvent+=lambda build_mode : map_alias_stored(self)
 
 SCons.Node.Alias.Alias.orig_init=SCons.Node.Alias.Alias.__init__
 SCons.Node.Alias.Alias.__init__=_my_init
 
 
 def parts_node_hash(self):
+    try:
+        return self._hash
+    except AttributeError:
+        self._hash = hash(self.ID)
     return hash(self.ID)
 
 SCons.Node.Node.__hash__=parts_node_hash
@@ -448,33 +427,61 @@ SCons.Node.Node.Stored=property(Stored)
 
 def LoadStoredInfo(self):
     return glb.pnodes.GetStoredNodeInfo(self)
-    #md5=hashlib.md5()
-    #md5.update(self.ID)
-    #stored_data=datacache.GetCache("snode-{0}".format(md5.hexdigest()))
-    #return stored_data
 
 SCons.Node.Node.LoadStoredInfo=LoadStoredInfo
 
 def StoreStoredInfo(self):
     pass
-    #info=self.GenerateStoredInfo()
-    #md5=hashlib.md5()
-    #md5.update(self.ID)
-    #datacache.StoreData("snode-{0}".format(md5.hexdigest()),info)
 
 SCons.Node.Node.StoreStoredInfo=StoreStoredInfo
 
 
 def GenerateStoredInfo(self):
     info = scons_node_info.scons_node_info()
-    info.type=self.__class__
-    info.components=metatag.MetaTagValue(self,'components',ns='partinfo',default={})
-    info.side_effects=self.side_effects # these are nodes that need to be checked for
-    info.issymlink=metatag.MetaTagValue(self,'SymLink',default=False)
-    info.always_build=self.always_build
+    info.Type=self.__class__
+    info.Components=metatag.MetaTagValue(self,'components',ns='partinfo',default={}).copy()
+    for partid,sections in info.Components.iteritems():
+        tmp=set([sec.ID for sec in sections])
+        info.Components[partid]=tmp
+    
+    info.SideEffectIDs=[i.ID for i in self.side_effects] # these are nodes that need to be checked for
+
+    info.AlwaysBuild=self.always_build==True
     if isinstance(self,FSBase):
         if self.ID != self.srcnode().ID:
-            info.srcnode=self.srcnode()
+            info.SrcNodeID=self.srcnode().ID
+
+    binfo=self.get_binfo()
+    nodes=itertools.izip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),
+                            binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs)
+    new_binfo={}
+
+    for node,ninfo in nodes:
+        # some time the node info is a string not a Node object
+        try:
+            key=node.ID
+        except:
+            # for some reason SCons will store the Alias "children" values as strings
+            # not Nodes. This mean that the children of File nodes may not be normalized to
+            # the expected value
+            # if the node is not known.. we probally want to swap the 
+            # os.sep value to a posix forms
+            if not glb.pnodes.isKnownNode(node):
+                key=node.replace(os.sep, '/')
+            else:
+                key=node
+            node=glb.pnodes.GetNode(key)
+        
+        if isinstance(self,Alias) and isinstance(node,FSBase):
+            ninfo=node.get_ninfo()          
+        
+        new_binfo[key]={
+                        'timestamp':getattr(ninfo,'timestamp',0),
+                        'csig':getattr(ninfo,'csig',0)
+                        }
+
+    info.SourceInfo=new_binfo
+    
     return info
 
 SCons.Node.Node.GenerateStoredInfo=GenerateStoredInfo
@@ -505,9 +512,10 @@ def Scons_alias_node_factory(func,ID=None,*lst,**kw):
 
     return tmp
 
-pnode_manager.manager.RegisterNodeType(File, lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Dir,  lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Dir,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Entry,lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Entry,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Value,lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().Value,*lst,**kw))
-pnode_manager.manager.RegisterNodeType(Alias,lambda x,*lst,**kw: Scons_alias_node_factory(SCons.Script.DefaultEnvironment().Alias,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(File,         lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Dir,          lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Dir,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Entry,        lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().Entry,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(FileSymbolicLink,        lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().FileSymbolicLink,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Value,        lambda x,*lst,**kw: Scons_node_factory(SCons.Script.DefaultEnvironment().Value,*lst,**kw))
+pnode_manager.manager.RegisterNodeType(Alias,        lambda x,*lst,**kw: Scons_alias_node_factory(SCons.Script.DefaultEnvironment().Alias,*lst,**kw))
 

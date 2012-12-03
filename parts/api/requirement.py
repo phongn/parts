@@ -97,7 +97,7 @@ DefineRequirementSet('LINKFLAGS',[requirement('LINKFLAGS',public=True,policy=REQ
 DefineRequirementSet('LIBPATH',[requirement('LIBPATH',public=True,policy=REQ.Policy.ignore)])
 
 DefineRequirementSet('HEADERS',['CPPPATH','CPPDEFINES','SDKINCLUDE'],weight=-5000)
-DefineRequirementSet('LIBS',['LIBPATH',requirement('LIBS',public=True,policy=REQ.Policy.ignore,mapper='PARTEXPORTLIB',listtype=True)],weight=-5000)
+DefineRequirementSet('LIBS',['LIBPATH',requirement('LIBS',public=True,policy=REQ.Policy.ignore,listtype=True)],weight=-5000)
 
 DefineRequirementSet('CPP_DEFAULTS',['LIBS','HEADERS'],weight=-9000)
 DefineRequirementSet('C_DEFAULTS',['LIBS','HEADERS'],weight=-9000)

@@ -9,6 +9,7 @@ class file_system(base):
     
     Mapped as VcsFileSystem and VcsPreBuilds
     """
+    __slots=[]
 
     @base.Server.getter
     def Server(self):
@@ -88,6 +89,15 @@ class file_system(base):
         returns None if it passes, returns a string to possible print tell why it failed
         '''
         return self.do_exist_logic()
+
+    @property
+    def _cache_filename(self):
+        return None # No cache file is stored for file system object
+
+    @base.CacheFileExists.getter
+    def CacheFileExists(self):
+        return True
+
 
 api.register.add_variable('VCS_FILESYSTEM_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
 api.register.add_variable('VCS_PREBUILDS_DIR','${VCS_FILESYSTEM_DIR}','') #compatibility

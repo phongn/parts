@@ -1,5 +1,8 @@
+import sys
 from .. import api
 from ..reporter import PartRuntimeError as PartRuntimeError
+
+import SCons.Errors
                     
 class task(object):
     ''' 
@@ -36,10 +39,11 @@ class task(object):
                 if self.__vcs.UpdateOnDisk():
                     self.failed()
             except PartRuntimeError, e:
-                buildError = SCons.Errors.convert_to_BuildError(e)
-                buildError.node = self.__vcs.CheckoutDir
-                buildError.exc_info = sys.exc_info()
-                raise buildError
+                self.failed()
+                #buildError = SCons.Errors.convert_to_BuildError(e)
+                #buildError.node = self.__vcs.CheckOutDir
+                #buildError.exc_info = sys.exc_info()
+                #raise buildError
         except:    
             import traceback,StringIO
             #ec_str=StringIO.StringIO()

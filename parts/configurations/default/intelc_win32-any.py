@@ -2,9 +2,7 @@
 ### Intel compiler configurations default
 ######################################
 
-import sys
 from parts.config import *
-import SCons.Script
 
 def make_bool(obj):
     if obj is bool():
@@ -24,7 +22,9 @@ def post_process_func(env):
         ver=float(env['MSVC_VERSION'])
     except:
         raise RuntimeError("You need to define mstools or compatible tool chain with Intel tool chain")
-    if ver >=10:
+    if ver >=11:
+        env.AppendUnique(CCFLAGS=['/Qvc11'])
+    elif ver >=10:
         env.AppendUnique(CCFLAGS=['/Qvc10'])
     elif ver >=9:
         env.AppendUnique(CCFLAGS=['/Qvc9'])

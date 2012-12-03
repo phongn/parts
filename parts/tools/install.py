@@ -47,12 +47,11 @@ from SCons.Util import make_path_relative
 
 #
 # We keep track of *all* installed files.
-import SCons.Tool.install #import _INSTALLED_FILES
-import SCons.Tool.install #import _UNIQUE_INSTALLED_FILES 
+import SCons.Tool.install 
 from parts.glb import _INSTALLED_PACKAGING_GROUPS
 from parts.glb import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
-import parts.node_helpers as node_helpers
+import parts.overrides.symlinks as symlinks
 from parts.part_logger import part_nil_logger
 
 
@@ -79,18 +78,18 @@ def copyFunc(dest, source, env):
             if ret==0:
                 raise ctypes.WinError()
         else:
-            
+
             shutil.copy2(source, dest)
             st = os.stat(source)
             os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-        
+
     return 0
 
 
 def installFunc(target, source, env):
     """Install a source file into a target using the function specified
     as the INSTALL construction variable."""
-    
+
     try:
         install = env['INSTALL']
     except KeyError:
@@ -103,12 +102,22 @@ def installFunc(target, source, env):
     output=env.get("PART_LOG_MAPPER",part_nil_logger())
     # tell it we are starting a task
     id=output.TaskStart(stringFunc(target,source,env)+"\n")
-    
+
     for t,s in zip(target,source):
-        symlink=env.MetaTagValue(t,'SymLink')
-        if symlink is not None:
-            node_helpers.make_link_bf([t],None,env)
-        elif install(t.get_path(),s.get_path(),env):
+        if isinstance(s, symlinks.FileSymbolicLink):
+            assert s.exists() and s.linkto
+            # A symbolic link can only be a copy of another symlink.
+            # Convert a source node to SymLink this is needed for
+            # correct up-to-date checks during incremental builds
+            symlinks.ensure_node_is_symlink(t)
+            if t.linkto is None:
+                t.linkto = s.linkto
+            if symlinks.make_link_bf([t], [t.Entry(t.linkto)], env):
+                output.TaskEnd(id, 1)
+                return 1
+            continue
+
+        if install(t.get_path(),s.get_path(),env):
             output.TaskEnd(id,1)
             #report error to logger
             return 1
@@ -137,7 +146,7 @@ def auto_tag(env,node):
             for pattern in pl:
                 if fnmatch.fnmatchcase(str(node),pattern):
                     env.MetaTag(node,'package',**tag[1])
-                    
+
 
 #
 # Emitter functions
@@ -162,7 +171,7 @@ def add_targets_to_INSTALLED_FILES(target, source, env):
             #global _INSTALLED_FILES, _UNIQUE_INSTALLED_FILES
             SCons.Tool.install._INSTALLED_FILES.append(t)
             #SCons.Tool.install._UNIQUE_INSTALLED_FILES = None
-    
+
     return (target, source)
 
 class DESTDIR_factory(object):
@@ -190,56 +199,31 @@ installas_action = SCons.Action.Action(installFunc, stringFunc)
 BaseInstallBuilder               = None
 
 def InstallBuilderWrapper(env, target=None, source=None, dir=None, **kw):
-    #print target,source[0],kw
     if target and dir:
         import SCons.Errors
         raise SCons.Errors.UserError, "Both target and dir defined for Install(), only one may be defined."
     if not dir:
         dir=target
 
-    import SCons.Script
-    #install_sandbox = SCons.Script.GetOption('install_sandbox')
-    #if install_sandbox:
-    #    target_factory = DESTDIR_factory(env, install_sandbox)
-    #else:
     target_factory = env.fs
 
     try:
         dnodes = env.arg2nodes(dir, target_factory.Dir)
     except TypeError:
         raise SCons.Errors.UserError, "Target `%s' of Install() is a file, but should be a directory.  Perhaps you have the Install() arguments backwards?" % str(dir)
-    #sources = env.arg2nodes(source, env.fs.Entry)
-    source=make_list(source)
-    sources=[]
-    # workaround to not having symlinks yet
-    for s in source:
-        tmp=env.arg2nodes(s, env.fs.Entry)
-        symlink=None
-        if isinstance(s,SCons.Node.FS.File):
-            symlink=env.MetaTagValue(s,'SymLink')
-        if symlink is not None:
-            env.MetaTag(tmp[0],SymLink=symlink)
-            env.MetaTag(tmp[0],SymLinkMakeDummyFile=env.MetaTagValue(s,'SymLinkMakeDummyFile',default=True))
-        sources.extend(tmp)
-        
+    sources = env.arg2nodes(source, env.fs.Entry)
+
     tgt = []
     for dnode in dnodes:
         for src in sources:
             # Prepend './' so the lookup doesn't interpret an initial
             # '#' on the file name portion as meaning the Node should
             # be relative to the top-level SConstruct directory.
-            symlink=env.MetaTagValue(src,'SymLink')
-            if symlink is not None:
-                target=env.fs.File('.'+os.sep+src.name, dnode)
-                env.MetaTag(target,SymLink=symlink)
-            else:
-                target=env.fs.Entry('.'+os.sep+src.name, dnode)
-            #target = env.fs.Entry('.'+os.sep+src.name, dnode)
-            tmp=BaseInstallBuilder(env, target, src, **kw)
-            tgt.extend(tmp)
-            #tgt.extend(BaseInstallBuilder(env, target, src, **kw))
-            #tgt.extend(apply(BaseInstallBuilder, (env, target, src), kw))
-            
+            target = env.fs.Entry(os.sep.join(['.', src.name]), dnode)
+            if isinstance(src, symlinks.FileSymbolicLink):
+                symlinks.ensure_node_is_symlink(target)
+            tgt.extend(BaseInstallBuilder(env, target, src, **kw))
+
     return tgt
 
 def InstallAsBuilderWrapper(env, target=None, source=None, **kw):
@@ -257,18 +241,9 @@ def generate(env):
     global added
     if not added:
         added = 1
-#        AddOption('--install-sandbox',
-#                  dest='install_sandbox',
-#                  type="string",
-#                  action="store",
-#                  help='A directory under which all installed files will be placed.')
 
     global BaseInstallBuilder
     if BaseInstallBuilder is None:
-#        install_sandbox = GetOption('install_sandbox')
-#        if install_sandbox:
-#            target_factory = DESTDIR_factory(env, install_sandbox)
-#        else:
         target_factory = env.fs
 
         BaseInstallBuilder = SCons.Builder.Builder(
@@ -288,11 +263,6 @@ def generate(env):
     # installed.  For now we punt by not initializing it, and letting
     # the stringFunc() that we put in the action fall back to the
     # hand-crafted default string if it's not set.
-    #
-    #try:
-    #    env['INSTALLSTR']
-    #except KeyError:
-    #    env['INSTALLSTR'] = 'Install ${SOURCE.type}: "$SOURCES" as "$TARGETS"'
 
     try:
         env['INSTALL']
@@ -301,3 +271,6 @@ def generate(env):
 
 def exists(env):
     return 1
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

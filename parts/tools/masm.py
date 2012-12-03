@@ -39,6 +39,7 @@ import SCons.Util
 
 import parts.api.output as output
 from parts.tools.MSCommon import msvc,is_win64
+import parts.tools.Common
 
 ASSuffixes = ['.s', '.asm', '.ASM']
 ASPPSuffixes = ['.spp', '.SPP', '.sx']
@@ -64,9 +65,9 @@ def generate(env):
         shared_obj.add_emitter(suffix, SCons.Defaults.SharedObjectEmitter)
         
     if env['TARGET_PLATFORM']=='x86_64':
-        env['AS']        = 'ml64'
+        env['AS']        = parts.tools.Common.toolvar('ml64')
     else:
-        env['AS']        = 'ml'
+        env['AS']        = parts.tools.Common.toolvar('ml')
     env['ASFLAGS']   = SCons.Util.CLVar('/nologo')
     env['ASPPFLAGS'] = '$ASFLAGS'
     env['ASCOM']     = '$AS $ASFLAGS /c /Fo$TARGET $SOURCES'

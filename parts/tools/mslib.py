@@ -41,6 +41,7 @@ import SCons.Util
 
 import parts.api.output as output
 from parts.tools.MSCommon import msvc
+import parts.tools.Common
 
 def generate(env):
     """Add Builders and construction variables for lib to an Environment."""
@@ -49,7 +50,7 @@ def generate(env):
     # Set-up ms tools paths for default version
     msvc.MergeShellEnv(env)
 
-    env['AR']          = 'lib'
+    env['AR']          = parts.tools.Common.toolvar('lib')
     env['ARFLAGS']     = SCons.Util.CLVar('/nologo')
     env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
     env['LIBPREFIX']   = ''
