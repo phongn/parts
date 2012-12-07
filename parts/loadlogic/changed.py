@@ -61,11 +61,11 @@ class Changed(base.Base):
             # so we avoid issues with custom data passing form 
             # dependent Parts
             self.sections_to_load.sort(section.scmp)
-            total = len(self.sections_to_load) * 1.0
+            total = len(self.sections_to_load)
             cnt=0
             for s in self.sections_to_load:
                 #print s.ID,s.ReadState
-                api.output.console_msg("Loading {0:.1%} ({1}/{2} sections) \033[K".format(cnt/total,cnt,total))
+                api.output.console_msg("Loading {0:.1%} ({1}/{2} sections) \033[K".format((cnt*1.0)/total,cnt,total))
                 self.pmgr.LoadSection(s)
                 cnt+=1
         
@@ -153,7 +153,8 @@ class Changed(base.Base):
         cnt=0
         st=time.time()
         for secID in sectionIDs:
-            api.output.console_msg("Checking node groups {0:.1%} ({1}/{2} ) \033[K".format(cnt/total,cnt,total))
+            api.output.console_msg("Checking node groups {0:.1%} ({1}/{2}) \033[K".format((cnt*1.0)/total,cnt,total))
+            cnt+=1
             nodeIDs=[]
             try:
                 requirements=self._section_info[secID]['requirements']
@@ -185,8 +186,8 @@ class Changed(base.Base):
                 if self.isNodeChanged(sec,nodeID):
                     self.SetToLoad(sec,"Node defined in this or dependent section is out of date")
                     break
-            cnt+=1
-        api.output.console_msg("Checking node groups {0:.1%} ({1}/{2} ) \033[K".format(cnt/total,cnt,total))
+            
+        api.output.console_msg("Checking node groups 100% ({0}/{1}) \033[K".format(cnt,total))
         api.output.verbose_msg(['update_check'],"Finished - Nodes checked in {0} sec".format(time.time()-st))
         
     def CheckTargets(self):
@@ -301,9 +302,9 @@ class Changed(base.Base):
             tmp=self.ProcessSection(sec)
             if tmp:
                 self._up_to_date=False
-            api.output.console_msg("Checking build context {0:.1%} ({1}/{2} ) \033[K".format(cnt/total,cnt,total))
+            api.output.console_msg("Checking build context {0:.1%} ({1}/{2} ) \033[K".format((cnt*1.0)/total,cnt,total))
             cnt+=1
-        api.output.console_msg("Checking build context {0:.1%} ({1}/{2} ) \033[K".format(cnt/total,cnt,total))
+        api.output.console_msg("Checking build context 100% ({0}/{1} ) \033[K".format(cnt,total))
 
     def ProcessSection(self,sec,requirements=None):
         

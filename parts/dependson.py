@@ -39,12 +39,13 @@ def Component(env,name,version_range=None,requires=REQ.DEFAULT,section="build"):
         t.Properties['version']=version_range
     elif t.Properties.has_key('version') == False:
         t.Properties['version']='*'
-    # set the target version value
+    # set the target value
     if t.Properties.has_key('target') == False: #['target','target-platform','target_platform']
         t.Properties['platform_match']=env['TARGET_PLATFORM']
-    ##section data
-    #if section is None:
-    #    section=pobj.DefiningSection
+
+    # Set the configuration to try to match 
+    if t.Properties.has_key('config') == False: 
+        t.Properties['config']=str(env['CONFIG'])
             
     return dependent_ref.dependent_ref(part_ref.part_ref(t,localspace),section,requires)
 

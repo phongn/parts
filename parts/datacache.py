@@ -22,7 +22,7 @@ def db_key(length):
     except KeyError:
         import hashlib
         md5=hashlib.md5()
-        md5.update("DB Cache Version 1.2.1 length %s"%(length))
+        md5.update("DB Cache Version 1.2.2 length %s"%(length))
         __db_key[length]=md5.hexdigest()
     return __db_key[length]
      

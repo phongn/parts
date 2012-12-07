@@ -998,10 +998,11 @@ class part_manager(object):
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
                     # weak... make better code for this case
-                    api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
-                    if not pobj.Stored.Config != v:# pobj.Env.isConfigBasedOn(v):
-                        api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
-                        part_lst.remove(pobj)
+                    if pobj.Stored.ConfigMatch:
+                        api.output.verbose_msgf("stored_reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
+                        if pobj.Stored.Config != v:# pobj.Env.isConfigBasedOn(v):
+                            api.output.verbose_msgf("stored_reduce_target_mapping","  Removing Part {0}",pobj.ID)
+                            part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
                     for v in mv:
@@ -1042,10 +1043,11 @@ class part_manager(object):
                         api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                         part_lst.remove(pobj)
                 elif k in ['cfg','config','build-config','build_config']:
-                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
-                    if not pobj.Env.isConfigBasedOn(v):
-                        api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
-                        part_lst.remove(pobj)
+                    if pobj.ConfigMatch:
+                        api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1}",k,v)
+                        if not pobj.Env.isConfigBasedOn(v):
+                            api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
+                            part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
                     api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj._mode)
@@ -1151,23 +1153,7 @@ class part_manager(object):
             data["hasClassic"]=has_old
             
             datacache.StoreData("part_map",data)
-
-            ## for each known part get the file mapped to it
-            #for pobj in self.parts.iteritems():
-            #    
-            ## for each part file we get an MD5
-            #    data[pobj.File.srcnode().path]={}
-            #    fdata['csig']=pobj.File.get_csig()
-            ## get the known alias and names mapped to the given part ( ie can have more of one for each)
-            #    [
-            #     {'alias':pobj.Alias,
-            #      'names':pobj.Name,
-            #        'ver':pobj.Version
-            #        }
-            #     ]
-            #     
-
-            
+           
             
     def add_stored_node_info(self,node,nlist):
         ''' this function tries to figure out if the given node depends on any parts
@@ -1289,9 +1275,11 @@ class part_manager(object):
     def hasInputChanged(self,pobj):
         # currently we only check mode at the moment
         if pobj.Stored is None:
+            api.output.verbose_msgf(["update_check"],"No stored data found for {0}, forcing load over everything",pobj.ID)
             self.__hasStored=False
             return False
         if pobj.Root.Mode != pobj.Stored.Root.Mode:
+            api.output.verbose_msgf(["update_check"],"Input to the Part call for {0} has changed",pobj.ID)
             return True
         # need to fix the **KW
         # ie we want to pickle **kw in a part call, get a sig value for it, and know if all object are safe to 

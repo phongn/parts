@@ -26,7 +26,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -53,7 +53,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -81,7 +81,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -108,7 +108,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -135,7 +135,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -297,7 +297,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -324,7 +324,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -352,7 +352,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\ia32\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -379,7 +379,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -406,7 +406,7 @@ Intelc.Register(
             },
             shell_vars={
                         'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/'+os.pathsep+
-                        r'C:\Program Files${" (x86)" if HOST_OS=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -434,7 +434,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -460,7 +461,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -487,7 +489,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
                         },
@@ -513,7 +516,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32_intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },
@@ -539,7 +543,8 @@ Intelc.Register(
             
             },
             shell_vars={
-                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/'+os.pathsep+
+                        r'C:\Program Files${" (x86)" if HOST_ARCH=="x86_64" else ""}\Common Files\Intel\Shared Libraries\redist\intel64\compiler',
                         'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
                         'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64/'                      
                         },

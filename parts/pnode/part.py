@@ -72,6 +72,7 @@ class part(pnode.pnode,part_compatiblity):
     '__settings',       # The setting object used to create the enviornment
     '__env',            # the prime SCons Environment
     '__platform_match', # this is how we can depend on this object
+    '__config_match',
 
     '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
     '__env_diff_sig', # The MD5 value of this difference
@@ -421,7 +422,11 @@ class part(pnode.pnode,part_compatiblity):
         ''' Returns the SystemPlatform this part will match on for dependancies
         '''
         return self.__platform_match
-
+    @property
+    def ConfigMatch(self): #readonly
+        ''' Returns the SystemPlatform this part will match on for dependancies
+        '''
+        return self.__config_match
     @property
     def _env_diff(self): #readonly
         return self.__env_diff
@@ -710,6 +715,9 @@ class part(pnode.pnode,part_compatiblity):
             self.__platform_match.ARCH='any'
             if self.__kw.get('architecture_indepenent'):
                 api.output.warning_msg('use of "architecture_indepenent" is depreciated. Please use "architecture_independent" instead.')
+        
+        self.__config_match=not self.__kw.get('config_independent',False)
+        
 
         self.__classic_section=glb.pnodes.Create(section.build_section,self)
         self.__is_setup=True
@@ -1098,6 +1106,7 @@ class part(pnode.pnode,part_compatiblity):
         info.TargetPlatform=str(self.__env['TARGET_PLATFORM'])
         info.Config=str(self.__env['CONFIG'])
         info.PlatformMatch=str(self.__platform_match)
+        info.ConfigMatch=self.__config_match
         info.PackageGroup=str(self.__package_group)
         info.Mode=self.__mode
         info.ForceLoad=self.ForceLoad
@@ -1214,7 +1223,8 @@ class part(pnode.pnode,part_compatiblity):
         if self.Version == '0.0.0':
             self.Version=version.version(info.Version)
 
-        self.__platform_match=info.PlatformMatch # should be handled by _setup_
+        self.__platform_match=info.PlatformMatch # should be hanlded by _setup_
+        self.__config_match=info.ConfigMatch
         self.__package_group=info.PackageGroup # should be handled by _setup_
         self.__mode=info.Mode #?? # should be handled by _setup_
 
@@ -1223,7 +1233,7 @@ class part(pnode.pnode,part_compatiblity):
             tmp[name]=glb.pnodes.GetPNode(name)
         for i in info.SubPartIDs:
             self.__subparts[i]=glb.pnodes.GetPNode(i)
-        self.__parent=info.Parent # should be handled by _setup_
+        self.__parent=info.Parent # should be hanlded by _setup_
         # how to deal with this???
         ## need to double check logic for this when full new formats section are working
         self.__sections=info.SectionIDs

@@ -14,6 +14,7 @@ class part_info(stored_info.stored_info):
         '__target_platform',    # the target platform we are building for - good after file read
         '__config',         # the configuration ( debug, release, etc) - good after file read
         '__platform_match', # any special matching requirments set by this part - good after file read
+        '__config_match',
         '__package_group',  # the package group this was mapped to - good after file read
         '__mode',           # any mode information - good after file read
         '__subpartIDs',     # IDs of the subparts if any - good after file read
@@ -39,6 +40,7 @@ class part_info(stored_info.stored_info):
         self.__target_platform=''
         self.__config=''
         self.__platform_match=''
+        self.__config_match=True
         self.__package_group='' 
         self.__mode=[]
         self.__subpartIDs=set()
@@ -116,6 +118,13 @@ class part_info(stored_info.stored_info):
     @PlatformMatch.setter
     def PlatformMatch(self,val):
         self.__platform_match=val
+
+    @property
+    def ConfigMatch(self):
+        return self.__config_match
+    @ConfigMatch.setter
+    def ConfigMatch(self,val):
+        self.__config_match=val
 
     @property
     def PackageGroup(self):

@@ -224,9 +224,13 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         elif isinstance(s,SCons.Node.Node):
             out+=sec.Env.CCopy(target=dest_dir,source=s)
         elif common.is_string(s):
-            if s[:len(rel_src_dir)]==rel_src_dir:
-                s=s[len(rel_src_dir)+1:]
-            out+=sec.Env.CCopy(target=dest_dir,source=os.path.join(build_dir,s))
+            f=env.subst(s)
+            if f.startswith(rel_src_dir):
+                f=f[len(rel_src_dir)+1:]
+            elif f.startswith(curr_path):
+                f=f[len(curr_path)+1:]
+            f=build_dir_node.File(f)
+            out+=sec.Env.CCopy(target=dest_dir,source=f)
         else:
             api.output.warning_msg("Unknown type in unit_test() in unit_test.py in Part",env.subst('$PART_NAME'))
 
