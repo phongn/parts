@@ -8,7 +8,11 @@ from ..pnode import pnode_manager
 from .. import metatag
 from .. import node_helpers
 
+from SCons.Debug import logInstanceCreation
+
 import SCons.Node
+import SCons.Util
+SCons.Node.NodeList = SCons.Util.NodeList
 
 import itertools
 import os
@@ -32,6 +36,7 @@ Alias=SCons.Node.Alias.Alias
 
 class wrapper(object):
     def __init__(self,binfo,ninfo=None):
+        if __debug__: logInstanceCreation(self)
         self.binfo=binfo
         self.ninfo=ninfo
 
@@ -41,8 +46,9 @@ def make_path_ID(path):
     return t
 
 class fake_ninfo(object):
-    __slots__=['timestamp','csig']
+    __slots__=['timestamp','csig','__weakref__']
     def __init__(self,timestamp,csig):
+        if __debug__: logInstanceCreation(self)
         self.timestamp=timestamp
         self.csig=csig
 
@@ -289,11 +295,11 @@ SCons.Node.Node.isBuilt=property(_get_isbuilt,_set_isbuilt)
 # visited replacement
 def parts_visited(self):
     #self.get_csig()
-    
+
     #self.clear_memoized_values()
     self._orig_visited()
-    
-    if not self.isVisited: 
+
+    if not self.isVisited:
         # this is target node we just built
         # store the information
         glb.pnodes.StoreNode(self)
@@ -306,16 +312,16 @@ def parts_visited(self):
                 glb.pnodes.StoreNode(tmp)
         except AttributeError:
             pass
-        
+
     self.isVisited=True
-    
-    
+
+
 def parts_alias_visited(self):
     # Visited get called twice in current Scon logic
     if not self.isVisited:
         glb.pnodes.StoreAlias(self)
     self._orig_alias_visited()
-    
+
 
 Node._orig_visited=Node.visited
 Node.visited=parts_visited
@@ -366,10 +372,16 @@ SCons.Node.FS.Base.__init__=_my_init
 #SCons.Node.FS.Dir.orig_init=SCons.Node.Node.__init__
 #SCons.Node.FS.Dir.__init__=_my_init
 
-#SCons.Node.FS.Entry.orig_init=SCons.Node.Node.__init__
-#SCons.Node.FS.Entry.__init__=_my_init
+def def_FS_Entry___init__(klass):
+    orig = klass.__init__
+    def __init__(self, name, directory, fs):
+        if __debug__: logInstanceCreation(self, 'Node.FS.Entry')
+        orig(self, name, directory, fs)
+    klass.__init__ = __init__
+def_FS_Entry___init__(SCons.Node.FS.Entry)
 
 def _my_init(self, value, built_value=None):
+    if __debug__: logInstanceCreation(self, 'Node.Python.Value')
     self.orig_init( value, built_value)
     # may not be the best way.. but works for the moment
     glb.pnodes.AddNodeToKnown(self)
@@ -383,6 +395,7 @@ def map_alias_stored(obj):
         obj._memo['get_stored_info']=wrapper(binfo)
 
 def _my_init(self,name):
+    if __debug__: logInstanceCreation(self, 'Node.Alias.Alias')
     self.orig_init(name)
     # may not be the best way.. but works for the moment
     glb.pnodes.AddAlias(self)
@@ -443,7 +456,7 @@ def GenerateStoredInfo(self):
     for partid,sections in info.Components.iteritems():
         tmp=set([sec.ID for sec in sections])
         info.Components[partid]=tmp
-    
+
     info.SideEffectIDs=[i.ID for i in self.side_effects] # these are nodes that need to be checked for
 
     info.AlwaysBuild=self.always_build==True
@@ -464,24 +477,24 @@ def GenerateStoredInfo(self):
             # for some reason SCons will store the Alias "children" values as strings
             # not Nodes. This mean that the children of File nodes may not be normalized to
             # the expected value
-            # if the node is not known.. we probally want to swap the 
+            # if the node is not known.. we probally want to swap the
             # os.sep value to a posix forms
             if not glb.pnodes.isKnownNode(node):
                 key=node.replace(os.sep, '/')
             else:
                 key=node
             node=glb.pnodes.GetNode(key)
-        
+
         if isinstance(self,Alias) and isinstance(node,FSBase):
-            ninfo=node.get_ninfo()          
-        
+            ninfo=node.get_ninfo()
+
         new_binfo[key]={
                         'timestamp':getattr(ninfo,'timestamp',0),
                         'csig':getattr(ninfo,'csig',0)
                         }
 
     info.SourceInfo=new_binfo
-    
+
     return info
 
 SCons.Node.Node.GenerateStoredInfo=GenerateStoredInfo

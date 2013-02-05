@@ -4,6 +4,8 @@ import SCons.Util
 from .. import events
 from .. import api
 
+from SCons.Debug import logInstanceCreation
+
 import types
 
 # remove to use common version once we clean up code a bit more
@@ -18,7 +20,7 @@ def make_list(obj):
 
 class Variable(object):
     def __init__(self, name, help=None,  default=None, validator=None, converter=None, value=None, help_group=None):
-        
+        if __debug__: logInstanceCreation(self)
         if SCons.Util.is_List(name) or SCons.Util.is_Tuple(name):
             for k in name:
                 if not SCons.Util.is_String(k) or \

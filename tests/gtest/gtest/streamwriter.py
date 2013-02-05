@@ -48,11 +48,11 @@ debug_tests =[
     ]
 
 warning_tests = [
-    (test_search,re.compile('\s?warnings?\s?(?!\.)\D',re.IGNORECASE))
+    (test_search,re.compile('(\A|\s)warning?\s?(([?!: ])|(\.\s))\D',re.IGNORECASE))
     ]
 
 error_tests =[
-    (test_search,re.compile('\s?errors?\s?(?!\.)\D',re.IGNORECASE)),
+    (test_search,re.compile('(\A|\s)error?\s?(([?!: ])|(\.\s))\D',re.IGNORECASE)),
     (test_match,re.compile('fail$',re.IGNORECASE))
     ]
 

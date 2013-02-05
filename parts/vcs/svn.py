@@ -12,10 +12,11 @@ class svn(base):
     __slots__=[
             '__revision',
             '_disk_data',
-            '__completed',
+            '_completed',
         ]
     svnpath=None #the path to the svn program to run
-    
+    svnver=None # the path the svnversion program
+
     def __init__(self,repository,server=None,revision=None):
         '''Constructor call for the SVN object
         @param repository The repository or path from server under the server to get our data from
@@ -24,7 +25,7 @@ class svn(base):
         '''
         self.__revision = revision
         self._disk_data=None
-        self.__completed=None
+        self._completed=None
         if repository.endswith('/'):
             repository=repository[:-1]
         if server and server.endswith('/'):
@@ -70,18 +71,18 @@ class svn(base):
         #if the server is different we need to relocate
         update_path=self.FullPath
         
-        if self.get_svn_data()['root'] != self.Server and self.get_svn_data()['root'] is not None:
-            strval1 ='%s switch --relocate $SVN_FLAGS %s %s "%s"'%('svn',self.get_svn_data()['root'],self.Server,out_dir)
+        if self.get_svn_data()['server'] != self.Server and self.get_svn_data()['server'] is not None:
+            strval1 ='%s switch --relocate $SVN_FLAGS %s %s "%s"'%('svn',self.get_svn_data()['server'],self.Server,out_dir)
             strval2 ='%s switch $SVN_FLAGS %s%s "%s"'%('svn',update_path,self.Revision,out_dir)
             
-            cmd1= '"%s" switch --relocate $SVN_FLAGS %s %s "%s"'%(svn.svnpath,self.get_svn_data()['root'],self.Server,out_dir)
+            cmd1= '"%s" switch --relocate $SVN_FLAGS %s %s "%s"'%(svn.svnpath,self.get_svn_data()['server'],self.Server,out_dir)
             cmd2= '"%s" switch $SVN_FLAGS %s%s "%s"'%(svn.svnpath,update_path,self.Revision,out_dir)        
             ret = [self._env.Action(cmd1,strval1),self._env.Action(cmd2,strval2)]
             if self._env.GetOption('vcs_clean') == True: 
                 ret = clean_actions + ret
         # this happens when we switch repro types ( should do better fix for this..)
         # what happens is that there is no SVN info to get and a possible directory
-        elif self.get_svn_data()['root'] is None:
+        elif self.get_svn_data()['server'] is None:
             if self._env.GetOption('vcs_clean') == True or self._env.GetOption('vcs_retry') == True:
                 ret=[self._env.Action(lambda target, source, env: removeall(out_dir),"Cleaning up checkout area for {0}".format(out_dir))]+self.CheckOutAction(out_dir)
             else:
@@ -132,9 +133,6 @@ class svn(base):
                 
     def do_update_check(self):
         '''Function that should be used by subclass to add to any custom update logic that should be checked'''
-        # this is all backward compatibility that will be removed
-        if self._env.get('UPDATE_FROM_SVN',False):
-            return True
         return False
     
     def do_exist_logic(self):
@@ -169,7 +167,7 @@ class svn(base):
                 # hard check to verify it is really bad
                 data=self.get_svn_data()
                 if data:
-                    if data['server'] != self.FullPath:
+                    if data['url'] != self.FullPath:
                         api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk version does not match")
                         return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
                     else:
@@ -196,7 +194,7 @@ class svn(base):
             return tmp
         data=self.get_svn_data()
         if data:
-            if data['server'] != self.FullPath:
+            if data['url'] != self.FullPath:
                 api.output.verbose_msg(["vcs_update","vcs_svn"]," Disk checked failed")
                 return 'Server on disk is different than the one requested for Parts "%s\n On disk: %s\n requested: %s"'%(self._pobj.Alias,data['server'],self.FullPath)
             else:
@@ -209,20 +207,20 @@ class svn(base):
         Update the with information about the current VCS object
         '''
         if svn.svnpath is None:
-            #svn.svnpath=self._env.WhereIs('svn')
             svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
-            if svn.svnpath is None:
-                svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
                 
         self._env['VCS']=common.namespace(
                 TYPE='svn',
                 CHECKOUT_DIR='$VCS_SVN_DIR',
                 TOOL=svn.svnpath,
-                REVISION=None,
+                REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision']),
                 SERVER_PATH=self.FullPath,
-                MODIFIED=None,
+                MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified']),
+                PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial']),
+                SWITCHED=common.DelayVariable(lambda :self.get_svn_data()['switched']),
                 FLAGS=self._env['SVN_FLAGS']
             )
+
     def ProcessResult(self,result):
         ''' Handle SVN logic we want need to handle
         
@@ -230,27 +228,22 @@ class svn(base):
         
         '''
         #Setup and store vcs data cache logic
-        self.__completed=result
+        self._completed=result
      
     def PostProcess(self):
         ''' This function is called when the system is done updating the disk
         This allows the object to update any data it needs on disk, or in the environment
         '''
-        if self.__completed is None:
-            self.__completed=True
+        if self._completed is None:
+            self._completed=True
         
         tmp={
         '__version__':1.0,
         'type':'svn',
         'server':self.FullPath,
-        'completed':self.__completed
+        'completed':self._completed
         }
         
-        self._env["VCS"].REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision'])
-        self._env["VCS"].MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified'])
-        self._env["VCS"].PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial'])
-        self._env["VCS"].SWITCHED=common.DelayVariable(lambda :self.get_svn_data()['switched'])
-
         datacache.StoreData(name=self._cache_filename,data=tmp,key='vcs')
 
     def is_modified(self):
@@ -259,99 +252,80 @@ class svn(base):
     def get_svn_data(self):
         # get current state
         if self._disk_data is None:
-            server=None
-            root=None
-            modified=None
-            switched=None
-            partial=None
-            rev_lst=[]
-            
-            svnver=self._env.WhereIs('svnversion',os.environ['PATH'])                        
-            #svnver=self._env.WhereIs('svnversion')
-            if svnver is None:
-                svnver=self._env.WhereIs('svnversion',os.environ['PATH'])
-            
-            ret,data=self.command_output('"{0}" {1}'.format(svnver,self.CheckOutDir))
-            if not ret and not data.startswith('Unversioned'):
-                data=data.strip('\n\r\t ')
-                tmp=data.split(':')
-                if data =='exported':
-                    pass
-                elif len(tmp)==1:
-                    try:
-                        rev_lst.append(int(tmp[0]))
-                    except ValueError:
-                        try:
-                            rev_lst.append(int(tmp[0][:-1]))
-                            if tmp[0][-1]=='M':
-                                modified=True
-                            elif tmp[0][-1]=='S':
-                                switched=True
-                            elif tmp[0][-1]=='P':
-                                partial=True
-                        except ValueError:
-                            rev_lst.append(int(tmp[0][:-2]))
-                            if tmp[0][-1]=='M' or tmp[0][-2]=='M':
-                                modified=True
-                            elif tmp[0][-1]=='S' or tmp[0][-2]=='S':
-                                switched=True
-                            elif tmp[0][-1]=='P' or tmp[0][-2]=='P':
-                                partial=True
-                else:
-                    for i in tmp:
-                        try:
-                            rev_lst.append(int(i))
-                        except ValueError:
-                            try:
-                                rev_lst.append(int(i[:-1]))
-                                if i[0][-1]=='M':
-                                    modified=True
-                                elif i[0][-1]=='S':
-                                    switched=True
-                                elif i[0][-1]=='P':
-                                    partial=True
-                            except ValueError:
-                                rev_lst.append(int(i[:-2]))
-                                if i[-1]=='M' or i[-2]=='M':
-                                    modified=True
-                                elif i[-1]=='S' or i[-2]=='S':
-                                    switched=True
-                                elif i[-1]=='P' or i[-2]=='P':
-                                    partial=True
-                    
-       
-            #get the path
-            ret,data=self.command_output('"{0}" info {1}'.format(svn.svnpath,self.CheckOutDir))
-            if not ret:
-                data=data.replace('\r\n','\n')
-                tmp=data.split('\n')
-                for i in tmp:
-                    if i.startswith('URL: '):
-                        server=i[5:]
-                    elif i.startswith('Repository Root: '):
-                        root=i[len('Repository Root: '):]
-                        
-            self._disk_data={
-                'revision':rev_lst,
-                'modified':modified,
-                'switched':switched,
-                'partial':partial,
-                'server':server,
-                'root':root
-            }
+            self._disk_data=GetSvnData(self._env,self.CheckOutDir)
         return self._disk_data
 
     @property
     def _cache_filename(self):
         return self._env['ALIAS']
 
+def GetSvnData(env,checkoutdir='.'):
+
+    server=None
+    url=None
+    modified=False
+    switched=False
+    partial=False
+    rev_lst=[]
+            
+    if svn.svnver is None:
+        svn.svnver=env.WhereIs('svnversion',os.environ['PATH'])
+    if svn.svnpath is None:
+        svn.svnpath=env.WhereIs('svn',os.environ['PATH'])
+                        
+    ret,data=base.command_output('"{0}" {1}'.format(svn.svnver,checkoutdir))
+    if not ret and not data.startswith('Unversioned'):
+        data=data.strip('\n\r\t ')
+        tmp=data.split(':')
+        if data =='exported':
+            pass
+        else:
+            for i in tmp:
+                try:
+                    rev_lst.append(int(i))
+                except ValueError:
+                    indx=0
+                    if 'M' in i:
+                        modified=True
+                        indx-=1
+                    if 'S' in i:
+                        switched=True
+                        indx-=1
+                    if 'P' in i:
+                        partial=True
+                        indx-=1
+                    rev_lst.append(int(i[:indx]))
+                    
+       
+    #get the path
+    ret,data=base.command_output('"{0}" info {1}'.format(svn.svnpath,checkoutdir))
+    if not ret:
+        data=data.replace('\r\n','\n')
+        tmp=data.split('\n')
+        for i in tmp:
+            if i.startswith('URL: '):
+                url=i[5:]
+            elif i.startswith('Repository Root: '):
+                server=i[len('Repository Root: '):]
+        
+    ret={
+        'revision':rev_lst,
+        'modified':modified,
+        'switched':switched,
+        'partial':partial,
+        'url':url,
+        'server':server
+    }
+    return ret
             
 # add configuartion varaible needed for part
 api.register.add_variable('SVN_SERVER','','Value of SVN server to use')
 api.register.add_list_variable('SVN_FLAGS',['--non-interactive'],'Flags to use for the svn call')
-api.register.add_bool_variable('UPDATE_FROM_SVN',False,'Controls is Part will only update from SVN servers')
 #api.register.add_variable('SVN_REVISION',None,'Value of SVN revision to checkout, None mean latest' )
 api.register.add_variable('VCS_SVN_DIR','${CHECK_OUT_ROOT}/${ALIAS}','Full path used for any given checked out item')
 
-
 api.register.add_global_object('VcsSvn',svn)
+
+# This is what we want to be setup in parts
+from SCons.Script.SConscript import SConsEnvironment
+SConsEnvironment.SvnInfo=GetSvnData

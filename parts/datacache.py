@@ -1,7 +1,7 @@
 import glb
 import common
 import api.output
-#import pickle_helpers
+import pickle_helpers
 import errors
 
 import cPickle
@@ -22,7 +22,7 @@ def db_key(length):
     except KeyError:
         import hashlib
         md5=hashlib.md5()
-        md5.update("DB Cache Version 1.2.2 length %s"%(length))
+        md5.update("DB Cache Version 1.2.3 length %s"%(length))
         __db_key[length]=md5.hexdigest()
     return __db_key[length]
      
@@ -33,7 +33,9 @@ def load_cache_data(datafile):
     try:
         if os.path.exists(datafile):
             with open(datafile, 'rb') as inputfile:
-                (tmp,stored_data)=cPickle.load(inputfile)
+                p= cPickle.Unpickler(inputfile)
+                p.persistent_load =pickle_helpers.persistent_unpickle
+                (tmp,stored_data)=p.load()
             return (tmp,stored_data)
 
     except Exception,ec:
@@ -52,10 +54,12 @@ def store_cache_data(datafile,data):
             v=data.get('__version__',0)
         except AttributeError:
             v=0
+        p= cPickle.Pickler(outfile,2)
+        p.persistent_id=pickle_helpers.persistent_pickle
         try:
-            cPickle.dump(((db_key(len(data)),v),data),outfile,2 )
+            p.dump(((db_key(len(data)),v),data))
         except TypeError:
-            cPickle.dump(((db_key(1),v),data),outfile,2 )
+            p.dump(((db_key(1),v),data))
     
     
 

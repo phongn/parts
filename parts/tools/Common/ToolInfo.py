@@ -1,47 +1,50 @@
 
-import SCons.Util 
-import parts.common 
+import SCons.Util
+import parts.common
 import Finders
 import os
-import parts.api as api       
+import parts.api as api
 from parts.version import version_range
-   
-    
+
+from SCons.Debug import logInstanceCreation
+
+
 class ToolInfo(object):
     def __init__(self,version,install_scanner,script,subst_vars,shell_vars,test_file):
+        if __debug__: logInstanceCreation(self)
         # version of the tools this object refers to
         if '*' in version:
             self.version=version_range(version)
         else:
             self.version=version
-        
+
         # list of objects or a scanner object that test for finding the root path
         self.install_root=install_scanner
-        
+
         # list of objects that test and handle script processing
         self.script=script
-        
-        # the dictionary of value we need to add for correct subsitution of 
+
+        # the dictionary of value we need to add for correct subsitution of
         # final value for the enviroment.. ignored in cases of script handling
         self.subst_vars=subst_vars
-        
+
         #The dictionary of values we want to add to the running environment
         # keys() used for script handling
         self.shell_vars=shell_vars
-        
+
         #The file we use to test for a correctly setup envionrment
         self.test_file=test_file
-        
+
         self.shell_cache={}
-        
+
         #state value for when we add data to the tool setting object
         # this allow use to make sure we overide certain toolinfo objects
         # when the host they are bound to is native over item that are not
         self.is_native=False
-        
-    
+
+
     def version_set(self):
-        
+
         ret=[]
         try:
             tmp=self.version.split('.')
@@ -51,14 +54,14 @@ class ToolInfo(object):
             # add path data
             ret.append(".".join(tmp[:i+1]))
         return ret
-        
+
 
     def resolve_version(self,version):
         try:
             return self.install_root.resolve_version(version)
         except AttributeError:
             return self.version
-    
+
     def make_ver_shell_env_set(self,ver,env):
         ret={}
         tmp=ver.split('.')
@@ -82,7 +85,7 @@ class ToolInfo(object):
                     return os.path.normpath(ret)
         else:
             return self.install_root.resolve(version)
-        # no root was found 
+        # no root was found
         # this is probally an error
         return None
 
@@ -105,25 +108,25 @@ class ToolInfo(object):
                 if os.path.exists(script):
                     ret=env.GetScriptVariables(scripts)
                 else:
-                    # error as no file exits   
+                    # error as no file exits
                     pass
             elif script==True:
-                
+
                 #get the default script if one exists and use it
                 if self.script is not None:
                     script_data=self.script.get_script(env)
                     if script_data is None:
-                    # we have an error as script was not found                    
+                    # we have an error as script was not found
                         return {}
                     ret=env.GetScriptVariables(script_data[0],script_data[1])
                 else:
                     return {}
-                
+
             else: # script is False
                 # subst data
                 for k, v in self.shell_vars.iteritems():
                     ret[k]=os.path.normpath(env.subst(v))
-                    
+
         self.shell_cache[str(version)+str(install_root)+str(script)]=ret
         return ret
 
@@ -134,7 +137,7 @@ class ToolInfo(object):
     def query(self,env,namespace,root_path,use_script):
         if SCons.Util.is_List(self.install_root):
             api.output.trace_msg("toolinfo","Query based on finders")
-            found={self.version:root_path}        
+            found={self.version:root_path}
         elif SCons.Util.is_String(use_script):
             api.output.trace_msg("toolinfo","Query based on script")
             found={'0.0.0':None}
@@ -175,7 +178,7 @@ class ToolInfo(object):
 
 
 
-    
-    
-    
-    
+
+
+
+

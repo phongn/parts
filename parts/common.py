@@ -8,6 +8,7 @@ import os
 import imp
 import sys
 import types
+import getpass
 
 import glb
 
@@ -17,36 +18,11 @@ import SCons.Errors
 import SCons.Tool
 import SCons.Util
 
+from SCons.Debug import logInstanceCreation
 
-
-#def try_load_part_component(env,comp):
-#    curr_define_part=get_part(env)
-#    name_list=comp.name.split('.')[0]
-#    root_name=name_list[0]
-#    ver_range=comp.version
-#
-#    # try to see if we can resolve the component
-#
-#    # Check DB for match
-#
-#    # If that failed try manual laoding of Parts till we get a hit
-#    # or detact deadlock
-#
-#    # first we try to find something that looks likes it
-#
-#    # check to see if we are laoding a sub part
-#
-#    # here we try to find the best match root part
-#
-#
-#
-#    # then we just start load stuff till we get a hit
-#
-#    # if that fails return None to have calling code
-#    # add a mapper to resolve latter or error out
-#
-
-
+def GetUserName(env):
+    '''get the current username on the system'''
+    return env.get('PART_USER',getpass.getuser())
 
 ###############
 # this class allows us to add object varible that get a reference to the env
@@ -64,15 +40,21 @@ class DelayVariable(object):
     The class will reset the value in the SCons Environment with the delayed value
     once it is evaluated
     '''
+    __slots__=['__func','__weakref__']
     def __init__(self,func):
+        if __debug__: logInstanceCreation(self)
         self.__func=func
     def __eval__(self):
         return self.__func()
     def __str__(self):
         return str(self.__eval__())
+    def __repr__(self):
+        return str(self.__eval__())
+
 
 class dformat(DelayVariable):
     def __init__(self,sfmt,*lst,**kw):
+        if __debug__: logInstanceCreation(self)
         tmp=lambda : sfmt.format(*lst,**kw)
         super(dformat, self).__init__(tmp)
 
@@ -81,6 +63,7 @@ class namespace(dict,bindable):
     form of $a.b
     '''
     def __init__(self,**kw):
+        if __debug__: logInstanceCreation(self)
         dict.__init__(self,kw)
 
     def __getattr__(self,name):
@@ -499,6 +482,7 @@ def get_version_from_list(v, vlist):
 ## help objects
 class _make_rel(object):
     def __init__(self,lst):
+        if __debug__: logInstanceCreation(self)
         self.lst=lst
 
     def string_it(self,env,path):
@@ -528,6 +512,7 @@ class _make_rel(object):
 
 class _make_reld(object):
     def __init__(self,lst):
+        if __debug__: logInstanceCreation(self)
         self.lst=lst
 
     def string_it(self,env,path):
@@ -541,6 +526,7 @@ class _make_reld(object):
 
 class named_parms(object):
     def __init__(self,_kw):
+        if __debug__: logInstanceCreation(self)
         self.kw=_kw
 
     def string_it(self,env,path):

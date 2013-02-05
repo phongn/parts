@@ -3,7 +3,7 @@ import color
 import sys
 win32=sys.platform == 'win32'
 
-
+from SCons.Debug import logInstanceCreation
 
 class ColorTextStream(object):
     '''Basically is an object that wraps a stream and process color ansi 
@@ -11,6 +11,7 @@ class ColorTextStream(object):
     '''
 
     def __init__(self,console,stream):
+        if __debug__: logInstanceCreation(self)
         self.__console=console
         #the stream object
         self.__stream=stream

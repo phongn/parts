@@ -1,4 +1,4 @@
-# this override fixes some issue with tools being reloaded 
+# this override fixes some issue with tools being reloaded
 # and imporve report handling when a tools fails
 import imp
 import sys
@@ -7,8 +7,11 @@ import traceback
 import SCons.Tool
 from .. import api
 
+from SCons.Debug import logInstanceCreation
+
 class Parts_Tool(object):
     def __init__(self, name, toolpath=[], **kw):
+        if __debug__: logInstanceCreation(self)
         self.name = name
         self.toolpath = toolpath + SCons.Tool.DefaultToolpath
         # remember these so we can merge them into the call
@@ -24,7 +27,7 @@ class Parts_Tool(object):
         # TODO: Interchange zipimport with normal initilization for better error reporting
         oldpythonpath = sys.path
         sys.path = self.toolpath + sys.path
-        
+
         try:
             try:
                 file, path, desc = imp.find_module(self.name, self.toolpath)

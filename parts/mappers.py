@@ -19,6 +19,8 @@ import cPickle
 import base64
 import cStringIO
 
+from SCons.Debug import logInstanceCreation
+
 def print_stack():
     import sys,linecache
     f=sys._getframe(2)
@@ -50,6 +52,7 @@ def unpack_data(data):
 
 class mapper(object):
     def __init__(self):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.Base')
         self.stackframe=errors.GetPartStackFrameInfo()
 
     def alias_missing(self,env):
@@ -252,7 +255,7 @@ def _sub_lst(env,obj,thread_id):
                 return _sub_lst(env,replace_val,thread_id)
         else:
             tmp=env.subst(obj)
-        
+
         #for tmp in tmp1:
         if tmp.startswith('\1'):
             tmp2 = unpack_data(tmp[1:])
@@ -268,16 +271,16 @@ def _sub_lst(env,obj,thread_id):
                         else:
                             common.append_unique(ret,r)
                 g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
-            
+
         else:
             if isinstance(tmp,SCons.Subst.CmdStringHolder):
             # this is needed as some bugs show up with str+CmdStringHolder concats
             # should not happen I think .. probally a bug at the moment in the subst engine
                 tmp=[str(tmp[:])]
             ret.append(tmp)
-    
-    return ret    
-        
+
+    return ret
+
 def sub_lst(env,lst,thread_id,recurse=True):
     ''' Utility function to help with returning list from env.subst() as this function
     doesn't like the returning of lists. This returns a list seperated by the binary value of 1
@@ -288,7 +291,7 @@ def sub_lst(env,lst,thread_id,recurse=True):
         g_complex_sub[thread_id]=g_complex_sub.get(thread_id,0)+1
         spacer="."*(g_complex_sub[thread_id]-1)
     api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst getting value for",lst)
-    
+
     ret=[]
     for v in lst[:]:
         tmp = _sub_lst(env,v,thread_id)
@@ -296,10 +299,10 @@ def sub_lst(env,lst,thread_id,recurse=True):
             common.extend_unique(ret,tmp,)
         else:
             common.append_unique(ret,tmp)
-    
+
     api.output.trace_msg(['sub_lst','mapper'],spacer,"sub_lst returning",ret)
     if recurse:g_complex_sub[thread_id]=g_complex_sub[thread_id]-1
-    
+
     return ret
 
 def _concat(prefix, list, suffix, env, f=lambda x: x, target=None, source=None):
@@ -317,7 +320,7 @@ def _concat(prefix, list, suffix, env, f=lambda x: x, target=None, source=None):
     l = f(SCons.PathList.PathList(list).subst_path(env, target, source))
     if l is not None:
         list = l
-    
+
     return env['_concat_ixes'](prefix, list, suffix, env)
 _concat.name="_concat"
 
@@ -353,7 +356,7 @@ def _concat_ixes(prefix, list, suffix, env):
                     result.append(suffix[1:])
                 elif x[-len(suffix):] != suffix:
                     result[-1] = result[-1]+suffix
-    
+
     return result
 
 _concat_ixes.name="_concat_ixes"
@@ -366,6 +369,7 @@ class part_mapper(mapper):
     '''
     name='PARTS'
     def __init__(self,alias,prop,ignore=False):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_mapper')
         mapper.__init__(self)
         self.part_alias = alias
         self.part_prop = prop
@@ -457,6 +461,7 @@ class part_id_mapper(mapper):
     '''
     name='PARTID'
     def __init__(self,id,ver_range,part_prop,ignore=False):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_id_mapper')
         mapper.__init__(self)
         self.part_name = id
         self.ver_range = version.version_range(ver_range)
@@ -472,7 +477,7 @@ class part_id_mapper(mapper):
                 g_complex_sub[thread_id] = 0
                 spacer="."*g_complex_sub[thread_id]
             api.output.trace_msg(['partid_mapper','mapper'],spacer,'Expanding value "${{{0}("{1}","{2}","{3}",{4})}}"'.format(self.name,self.part_name,self.ver_range,self.part_prop,self.ignore))
-            
+
             #Find matching verion pinfo
             t=target_type.target_type("name::"+self.part_name)
             t.Properties['version']=self.ver_range
@@ -556,6 +561,7 @@ class part_id_export_mapper(mapper):
     '''
     name='PARTIDEXPORTS'
     def __init__(self,name,section,part_prop,policy=Policy.REQPolicy.warning):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_id_export_mapper')
         mapper.__init__(self)
         self.part_name = name
         #self.ver_range = version.version_range(ver_range)
@@ -591,7 +597,7 @@ class part_id_export_mapper(mapper):
 
             psec=pobj.Section(self.section)
             penv=psec.Env
-            
+
             ret=psec.Exports.get(self.part_prop,[])
             api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Property {0} = {1} '.format(self.part_prop,ret))
 
@@ -656,6 +662,7 @@ class part_subst_mapper(mapper):
     '''
     name='PARTSUB'
     def __init__(self,part_alias,substr,section='build'):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_subst_mapper')
         mapper.__init__(self)
         self.part_alias = part_alias
         self.substr = substr
@@ -689,6 +696,7 @@ class part_name_mapper(mapper):
     ''' Allows for an easy fallback mapping between the part alias and name'''
     name='PARTNAME'
     def __init__(self,part_alias,env_var=None):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_name_mapper')
         mapper.__init__(self)
         self.part_alias = part_alias
         self.env_var=env_var
@@ -722,6 +730,8 @@ class part_shortname_mapper(mapper):
     '''
     name='PARTSHORTNAME'
     def __init__(self,part_alias):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.part_shortname_mapper')
+
         mapper.__init__(self)
         self.part_alias = part_alias
 
@@ -750,6 +760,7 @@ class abspath_mapper(mapper):
     ''' Allows for an easy expanding value as directory or files'''
     name='ABSPATH'
     def __init__(self,value):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.abspath_mapper')
         mapper.__init__(self)
         self.value = value
 
@@ -762,6 +773,7 @@ class normpath_mapper(mapper):
     ''' Allows for an easy expanding value as directory or files'''
     name='NORMPATH'
     def __init__(self,value):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.normpath_mapper')
         mapper.__init__(self)
         self.value = value
 
@@ -774,6 +786,7 @@ class relpath_mapper(mapper):
     ''' allows one to define a relative path'''
     name='RELPATH'
     def __init__(self,_to,_from):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.relpath_mapper')
         mapper.__init__(self)
         self._to = _to
         self._from = _from
@@ -813,6 +826,7 @@ class TempFileMunge(mapper):
     """
     name='TEMPFILE'
     def __init__(self, cmd, force_posix_paths = False):
+        if __debug__: logInstanceCreation(self, 'parts.mappers.TempFileMunge')
         self.cmd = cmd
         self.force_posix_paths=force_posix_paths
 

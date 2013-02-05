@@ -19,18 +19,18 @@ from .. import common
 #SConsEnvironment._orig_Alias=SConsEnvironment.Alias
 #SConsEnvironment.Alias=Parts_Alias
 
-               
+
 def alias_source_node(name, **kw):
-    
+
     if isinstance(name, SCons.Node.Node):
         return name
-    
+
     if glb.pnodes.isKnownNode(name):
         return glb.pnodes.GetNode(name)
-    
+
     return glb.pnodes.Create(SCons.Node.FS.Entry,name, kw)
-        
-    
+
+
 import SCons.Environment
 import SCons.Node
 
@@ -40,5 +40,6 @@ SCons.Environment.AliasBuilder = SCons.Builder.Builder(action = SCons.Environmen
                                      multi = 1,
                                      is_explicit = None,
                                      name='AliasBuilder')
+
 
 

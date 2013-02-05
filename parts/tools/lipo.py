@@ -32,17 +32,17 @@ __revision__ = "__FILE__ __REVISION__ __DATE__ __DEVELOPER__"
 import SCons.Builder
 import parts.tools.Common
 
-lipoObjectBuilder = SCons.Builder.Builder( 
+lipoObjectBuilder = SCons.Builder.Builder(
         action = 'lipo $SOURCES -create -output $TARGET',
         suffix = "$OBJSUFFIX",
         src_suffix = "$OBJSUFFIX",
         src_builder = "Object"
         )
-lipoProgramBuilder = SCons.Builder.Builder( 
+lipoProgramBuilder = SCons.Builder.Builder(
         action = 'lipo $SOURCES -create -output $TARGET',
         src_builder = "Program"
         )
-lipoDylibBuilder = SCons.Builder.Builder( 
+lipoDylibBuilder = SCons.Builder.Builder(
         action = 'lipo $SOURCES -create -output $TARGET',
         suffix = "$SHLIBSUFFIX",
         src_suffix = "$SHLIBPREFIX",
@@ -69,7 +69,7 @@ def generate(env):
         bld = lipoDylibBuilder
     env['BUILDERS']['UniversalSharedLibrary'] = bld
 
-    return 
+    return
 
 def exists(env):
     return env.Detect('lipo')

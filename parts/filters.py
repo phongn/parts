@@ -2,8 +2,11 @@ import fnmatch
 import api
 import metatag
 
+from SCons.Debug import logInstanceCreation
+
 class hasFileExtension(object):
     def __init__(self,extlist):
+        if __debug__: logInstanceCreation(self)
         self.extlist=extlist
 
     def __call__(self,node):
@@ -14,6 +17,7 @@ class hasFileExtension(object):
 
 class HasPackageCatagory(object):
     def __init__(self, catagory):
+        if __debug__: logInstanceCreation(self)
         self.catagory=catagory
 
     def __call__(self,node):

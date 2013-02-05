@@ -1,6 +1,6 @@
-''' 
+'''
 this file contains pattern which is used to select file on disk based on simple
-matching expressions. Scons just add a Glob function.. need to consider using that 
+matching expressions. Scons just add a Glob function.. need to consider using that
 internal here instead, and then possiblely removing pattern 100%
 '''
 
@@ -9,6 +9,8 @@ import common
 import api
 
 import SCons.Script
+
+from SCons.Debug import logInstanceCreation
 
 import os
 
@@ -19,9 +21,10 @@ g_db={}
 
 class Pattern(object):
     def __init__(self,sub_dir='' ,src_dir  = '', includes = ['*'], excludes = [],recursive=True):
+        if __debug__: logInstanceCreation(self)
         self.sub_dir=sub_dir
         self.src_dir=SCons.Script.Dir(SCons.Script.Dir('.').srcnode().Dir(src_dir).abspath)
-        
+
         #print "Pattern src_dir (srcnode):",self.src_dir.srcnode().abspath
         #print "Pattern src_dir path     :",self.src_dir.abspath
         self.includes=[]
@@ -55,27 +58,27 @@ class Pattern(object):
                 for f in v:
                     s=common.relpath(os.path.join(k,f),root_path)
                     fl.append(s)
-            
+
             return fl
-        
+
         return self.map[directory]
 
     def target_source(self,root_target):
-        
+
         src_list=[]
         trg_list=[]
         if self.map is None:
             self.generate()
         for k,v in self.map.iteritems():
-            final_path=os.path.join(root_target,k)            
+            final_path=os.path.join(root_target,k)
             for f in v:
                 trg_list.append(os.path.join(final_path,os.path.split(f)[1]))
                 src_list.append(f)
-        
+
         return (trg_list,src_list)
-        
+
     ### code that originally updated the install tree,
-    ### but refactored to be more python like. 
+    ### but refactored to be more python like.
     ### made a matches function that is used in the logic below
     def generate(self,exclude_path=''):
         global g_db
@@ -86,7 +89,7 @@ class Pattern(object):
         # make list of paths to search
         paths=[base_path]
         for path in paths:
-            
+
             #for this path get the list of item in it
 ##            try:
 ##                # try to see if we had scanned this already
@@ -95,10 +98,10 @@ class Pattern(object):
 ##                for f in files:
 ##                    if common.is_list(f):
 ##                        currpath = os.path.join(path,f[0])
-##                        paths.append(currpath) 
+##                        paths.append(currpath)
 ##                        continue
 ##                    currpath = os.path.join(path,f)
-##                    
+##
 ##                    if common.matches(currpath[l+1:], self.includes, self.excludes):
 ##                        key=os.path.join(self.sub_dir,path[l+1:])
 ##                        try:
@@ -106,15 +109,15 @@ class Pattern(object):
 ##                        except KeyError:
 ##                            m[key]=[currpath]
 ##            except KeyError:
-                
+
                 g_db[path]=[]
                 # don't have it.. so make the chache and do the search
                 for file in os.listdir(path):
                     # combine the path and the file
                     currpath = os.path.join(path,file)
-                    
+
                     key=os.path.join(self.sub_dir,path[l+1:])
-                    
+
                     # see if this is really a path
                     is_dir=os.path.isdir(currpath)
                     if is_dir and self.recursive and file[0]!='.':
@@ -125,7 +128,7 @@ class Pattern(object):
                         if currpath[:el]!=exclude_path or el==0:
                             paths.append(currpath)
                     elif is_dir == False and common.matches(currpath[l+1:], self.includes, self.excludes):
-                        # else see if it matches pattern and store if it does          
+                        # else see if it matches pattern and store if it does
                         tmp=os.path.split(currpath)
                         try:
                             m[key].append(currpath)
@@ -133,15 +136,15 @@ class Pattern(object):
                             m[key]=[currpath]
                         g_db[tmp[0]].append(tmp[1])
                     else:
-                        
+
                         tmp=os.path.split(currpath)
                         g_db[tmp[0]].append(tmp[1])
-                        
-                        
+
+
                 #else we ignore the item
         self.map=m
-        
-        
+
+
 
 
 

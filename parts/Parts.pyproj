@@ -294,7 +294,6 @@
     <Compile Include="configurations\default\gas_any-x86_any-x86_64.py" />
     <Compile Include="configurations\default\gcc_any-x86_64_any-x86.py" />
     <Compile Include="configurations\default\gcc_any-x86_any-x86_64.py" />
-    <Compile Include="configurations\default\gnulink.py" />
     <Compile Include="configurations\default\gnulink_any-x86_64_any-x86.py" />
     <Compile Include="configurations\default\gnulink_any-x86_any-x86_64.py" />
     <Compile Include="configurations\release\g++_any-any_android-arm.py" />
@@ -323,7 +322,10 @@
     <Compile Include="tools\GnuCommon\binutils.py" />
     <Compile Include="tools\ld.py" />
     <Compile Include="tools\lipo.py" />
+    <Compile Include="tools\MSCommon\MsiFinder.py" />
     <Compile Include="tools\MSCommon\vc11.py" />
+    <Compile Include="tools\MSCommon\wix.py" />
     <Compile Include="tools\wix.py" />
+    <Compile Include="vcs\smart_svn.py" />
   </ItemGroup>
 </Project>

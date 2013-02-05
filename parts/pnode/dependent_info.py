@@ -1,9 +1,10 @@
-
+from SCons.Debug import logInstanceCreation
 from .. import glb
 
 class dependent_info(object):
     ''' this class defines state we need for the section when we store dependancy information'''
     __slots__=[
+        '__weakref__',
         '__part_ref_str',
         '__section_name',
         '__requires',
@@ -16,6 +17,7 @@ class dependent_info(object):
     ]
 
     def __init__(self,dobj):
+        if __debug__: logInstanceCreation(self)
         self.__part_ref_str =str(dobj.PartRef.Target)
         self.__section_name =dobj.SectionName
         self.__requires     =dobj.Requires

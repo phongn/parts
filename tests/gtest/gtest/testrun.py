@@ -517,6 +517,13 @@ class TestRun(DelayedEventMapper):
         value=value.replace('/',os.sep)
         self.__cmd=value
     
+    @property
+    def RawCommand(self):
+        return self.__cmd
+
+    @RawCommand.setter
+    def RawCommand(self,value):
+        self.__cmd=value
     # stuff to test
     @property
     def ReturnCode(self):

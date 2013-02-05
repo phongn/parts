@@ -1,6 +1,6 @@
 import glb
 import common
-import console 
+import console
 import api.output
 import version
 
@@ -10,6 +10,8 @@ import subprocess,sys,string,os
 import thread,threading
 import time
 import platform
+
+from SCons.Debug import logInstanceCreation
 
 pyver=version.version(platform.python_version())
 
@@ -22,6 +24,7 @@ class pipeRedirector(object):
                 self.writer(l)
 
     def __init__(self,pipein,writer):
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.pipeRedirector')
         self.pipein = pipein
         self.writer = writer
         self.thread = threading.Thread(target=self._readerthread,
@@ -39,14 +42,15 @@ class pipeRedirector(object):
 class process_wait(object):
     ''' ugly hack to work around that we have a good way to wait with timeout till python 3.3'''
     def __init__(self,proc):
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.process_wait')
         self.__finished=threading.Event()
         self.__proc=proc
         self.thread = threading.Thread(target=self._do_wait,
                 args=())
         self.thread.start()
-        
+
     def _do_wait(self):
-        
+
         try:
             self.__proc.wait()
         except OSError, e:
@@ -60,11 +64,12 @@ class process_wait(object):
 
 class part_spawner(common.bindable):
     def __init__(self):
-        self.env=None   
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.part_spawner')
+        self.env=None
 
     def _bind(self,env,key):
         self.env=env
-        
+
     def _rebind(self,env,key):
         tmp=part_spawner() # make a copy (no state to pass here)
         tmp._bind(env,key) # bind
@@ -77,8 +82,8 @@ class part_spawner(common.bindable):
             ENV[k]=str(v)
         # get the part_logger
         output=self.env["PART_LOG_MAPPER"]
-        
-        # we ignore the escape function as it breaks linux, 
+
+        # we ignore the escape function as it breaks linux,
         # and was breaking on python 2.7 windows by adding extra " values
         # ie '"c:\program file\x.exe" foo bar"' -> '""c:\program file\x.exe" foo bar""'
         # we assume the command has "quotes" around it as need
@@ -86,9 +91,9 @@ class part_spawner(common.bindable):
             command_line = escape(string.join(args))
         else:
             command_line = string.join(args)
-        
-        #tell it we are starting a given action/command, get action_id        
-        id=output.TaskStart(command_line)   
+
+        #tell it we are starting a given action/command, get action_id
+        id=output.TaskStart(command_line)
         # do the call
         proc = subprocess.Popen(
             command_line,
@@ -116,11 +121,11 @@ class part_spawner(common.bindable):
                 subprocess.call("TASKKILL /F /T /PID {0}".format(proc.pid))
             else:
                 proc.kill()
-                
+
         # force pipe-redirectors to close handles
         p1.close()
         p2.close()
-        
+
         # we are done tell logger this action is done.
         ret = proc.returncode
         output.TaskEnd(id,ret)
@@ -130,6 +135,7 @@ class part_spawner(common.bindable):
 
 class part_logger(object):
     def __init__(self,env,console):
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.part_logger')
         self.env=env
         def_env=SCons.Script.DefaultEnvironment()
         self.reporter=glb.rpter
@@ -154,10 +160,10 @@ class part_logger(object):
         self.cache[id]=[]
         self.other_out.Start(self.env,id,msg)
         return id
-    
+
     def TaskEnd(self,id,exit_code):
 
-        self._empty_cache(id) 
+        self._empty_cache(id)
         self.other_out.End(self.env,id,exit_code)
         try:
             del self.cache[id]
@@ -180,10 +186,10 @@ class part_logger(object):
                 self.cache[id].append([console.Console.out_stream,msg])
             else:
                 self.cache[id].append([console.Console.out_stream,msg])
-        
-        
+
+
     def WriteErr(self,id,msg):
-        
+
         if self.block_text==False:
             self.reporter.stderr(msg)
             self.other_out.Err(self.env,id,msg)
@@ -199,7 +205,7 @@ class part_logger(object):
                 self.cache[id].append([console.Console.error_stream,msg])
             else: #full caching
                 self.cache[id].append([console.Console.error_stream,msg])
-    
+
     def _empty_cache(self,id):
         testlst=self.cache[id]
         self.cache[id]=[]
@@ -241,13 +247,14 @@ class part_logger(object):
             else:
                 # we have some error or unknown code
                 pass
-        
+
 
 class part_nil_logger(object):
     ''' the point of this class is to define the base interface for all part logger
     items. The goal is the this object is to be a empty object that can be written to
     in case that no other item is provided, or if logging is turned off'''
     def __init__(self):
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.part_nil_logger')
         pass
     def Start(self,env,id,cmd):
         pass
@@ -264,15 +271,16 @@ class part_nil_logger(object):
     def WriteOut(self,id,msg):
        pass
     def WriteErr(self,id,msg):
-       pass 
-        
+       pass
+
 class parts_text_logger(object):
     def __init__(self):
+        if __debug__: logInstanceCreation(self, 'parts.part_logger.parts_text_logger')
         self.m_file=None
         self.cache={}
         self.m_lock=thread.allocate_lock()
-        
-        
+
+
     def create_file(self,env):
         #The lock is needed here to prevent more than one thread creating this file
         # at the same time
@@ -292,10 +300,10 @@ class parts_text_logger(object):
                     if not os.path.exists(dr):
                         api.output.error_msgf('Cannot create log directory "{0}"',dr)
                 self.fname=os.path.join(dr,fn)
-                self.m_file=open(os.path.join(dr,fn),"w") 
+                self.m_file=open(os.path.join(dr,fn),"w")
                 self.m_file.close() # part of quick "to many file handle" fix
-        
-        
+
+
     def Start(self,env,id,cmd):
         self.create_file(env)
         if cmd[-1:]=='\n':
@@ -306,7 +314,7 @@ class parts_text_logger(object):
             (console.Console.out_stream,'Task:'+cmd+eol),
             (console.Console.out_stream,"Output begin ----------------------------------------------------------------\n")
             ]
-       
+
     def End(self,env,id,exit_code):
         s=""
         for text in self.cache[id]:
@@ -325,16 +333,16 @@ class parts_text_logger(object):
         self.m_file.close() # part of quick "to many file handle" fix
         self.m_lock.release()# part of quick "to many file handle" fix
         del self.cache[id]
-                
+
     def Out(self,env,id,msg):
         self.cache[id].append((console.Console.out_stream,msg))
-        
+
     def Err(self,env,id,msg):
         self.cache[id].append((console.Console.error_stream,msg))
-        
+
     def __del__(self):
         if self.__dict__.has_key('m_file') == False:
-            return 
+            return
         for id in self.cache:
             self.cache[id].append((1,"Build interupted"))
             s=''
@@ -347,15 +355,15 @@ class parts_text_logger(object):
                     # we have some error or unknown code
                     pass
             s+="] (return code = 1)\n"
-            
+
             self.m_lock.acquire()# part of quick "to many file handle" fix
             self.m_file=open(self.fname,"a+") # part of quick "to many file handle" fix
             self.m_file.write(s)
             self.m_file.close() # part of quick "to many file handle" fix
             self.m_lock.release()# part of quick "to many file handle" fix
-        
-        
-api.register.add_variable('PART_SPAWNER',part_spawner,'')        
+
+
+api.register.add_variable('PART_SPAWNER',part_spawner,'')
 api.register.add_variable('PART_LOGGER','PART_NIL_LOGGER','')
 api.register.add_variable('PART_NIL_LOGGER',part_nil_logger,'')
 api.register.add_variable('PART_TEXT_LOGGER',parts_text_logger,'')

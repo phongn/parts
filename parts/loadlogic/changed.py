@@ -14,20 +14,22 @@ from .. import part_ref
 import os
 import time
 
+from SCons.Debug import logInstanceCreation
 
 class Changed(base.Base):
     '''
     This loader will load any changed or new Part file so we can get updated information saved in our cache on what
     it would build. It then get the set of sections based on the targets provided and load any sections that define
     node that are out-of-date. Ideally we would just load the node information from cache and build it off that stored
-    state as any information about the build context would have been loaded. Currently we have no way of doing this 
-    in SCons, because of this we need to load the file that defines the nodes we need to build, so they can build. 
+    state as any information about the build context would have been loaded. Currently we have no way of doing this
+    in SCons, because of this we need to load the file that defines the nodes we need to build, so they can build.
     Since this is lesser set of file than loading everything, this should greatly increase start up times.
     '''
     def __init__(self,targets,pmanager):
+        if __debug__: logInstanceCreation(self)
         # these are the sections based on the target this is not the complete set of Sections we need to load
         # this is only the Set of node that map directly the the provides targets
-        self.targets=targets 
+        self.targets=targets
 
         # what we will load
         self.sections_to_load=[]
@@ -38,7 +40,7 @@ class Changed(base.Base):
 
         #This is the information about all known section we have to look at
         # and some state about why we are loading or stuff we may need to check for
-        # in later passes 
+        # in later passes
         #will be in the form of {sec.ID:{datatype:info}}
         self._section_info={}
         # cache of known configuration
@@ -52,13 +54,13 @@ class Changed(base.Base):
         self._up_to_date=True
 
     def __call__(self):
-        
+
         self.CheckTargets()
-        
+
         # if we are not up-to-date we need to load the sections that are out of date
         if not self._up_to_date:
             #make sure we sort the list
-            # so we avoid issues with custom data passing form 
+            # so we avoid issues with custom data passing form
             # dependent Parts
             self.sections_to_load.sort(section.scmp)
             total = len(self.sections_to_load)
@@ -68,21 +70,21 @@ class Changed(base.Base):
                 api.output.console_msg("Loading {0:.1%} ({1}/{2} sections) \033[K".format((cnt*1.0)/total,cnt,total))
                 self.pmgr.LoadSection(s)
                 cnt+=1
-        
+
 
         return self._up_to_date
-    
+
     def isNodeChanged(self,sec,nodeid):
-        # this does a recusive node check to see if 
+        # this does a recusive node check to see if
         # this node or it children are out of date
         # we go depth first as this overall allows us to
-        # reduce the number of edge checks that may need to be do.         
+        # reduce the number of edge checks that may need to be do.
         try:
             # try to return known information about the state of this node
             return self._known_nodes[nodeid]
         except KeyError:
             # we don't know about this node yet.. so figure it out
-            
+
             # get stored info
             info=glb.pnodes.GetStoredNodeIDInfo(nodeid)
             # no info.. mean this is out of date
@@ -91,7 +93,7 @@ class Changed(base.Base):
                 self._known_nodes[nodeid]=True
                 api.output.verbose_msg(['node_check'],"{0} does not have any stored info found".format(nodeid))
                 return self._known_nodes[nodeid]
-            
+
             #get sources to this target node
             src_data=info.SourceInfo
             #for each source check to see if that is out of date
@@ -131,7 +133,7 @@ class Changed(base.Base):
                 # based on it own edges
                 self._known_nodes[nodeid] = glb.pnodes.hasNodeChanged(nodeid)
         return self._known_nodes[nodeid]
-        
+
 
     def CheckNodes(self):
         # we want to get a set of section that are no out of date
@@ -147,7 +149,7 @@ class Changed(base.Base):
             except KeyError:
                 sectionIDs.append(secid)
 
-        # for each sections we want to check the nodes group of nodes that 
+        # for each sections we want to check the nodes group of nodes that
         # matter for this section object
         total=len(sectionIDs)
         cnt=0
@@ -166,15 +168,15 @@ class Changed(base.Base):
             if sec.AlwaysBuild:
                 self.SetToLoad(sec,"AlwaysBuild was called in the section, force loading.")
                 continue
-            
+
             if requirements:
-                # there are requirements we want to check for.. 
+                # there are requirements we want to check for..
                 # here we turn each requirement in to a Node
                 # which we will use, via the node logic to see if it changed or out of date.
                 for r in requirements:
                      if r.key in stored_data.ExportedRequirements:
-                        nodeIDs.append('{0}::alias::{1}::{2}'.format(stored_data.Name,stored_data.PartID,r.key))          
-            else:    
+                        nodeIDs.append('{0}::alias::{1}::{2}'.format(stored_data.Name,stored_data.PartID,r.key))
+            else:
                 # if this was None used the default requirement
                 # this is actually the general node to build this the whole section
                 # which is what we want here.
@@ -186,27 +188,27 @@ class Changed(base.Base):
                 if self.isNodeChanged(sec,nodeID):
                     self.SetToLoad(sec,"Node defined in this or dependent section is out of date")
                     break
-            
+
         api.output.console_msg("Checking node groups 100% ({0}/{1}) \033[K".format(cnt,total))
         api.output.verbose_msg(['update_check'],"Finished - Nodes checked in {0} sec".format(time.time()-st))
-        
+
     def CheckTargets(self):
         '''
-        This is the main function that figures out what we want to process or not process based on the fact we have 
+        This is the main function that figures out what we want to process or not process based on the fact we have
         new part and exsiting part file have changed
         '''
 
         ########################################################################
-        # When this is call we assume that all stored information is correct. 
-        
+        # When this is call we assume that all stored information is correct.
+
         #We have a set of Targets that we want to iterate on to get all sections we need to load
         # each target is either a tuple of a section object with group we want to build
-        # or 
+        # or
         # is a single item that we view as a SCons node of some type that we will want
         # to try to get any sections that define it. Note if there are no sections
         # we just skip it as we assume the SConsruct defined everything for it in this case
         api.output.verbose_msg(['update_check'],"Starting - Context checks")
-        
+
         st=time.time()
         for t in self.targets:
             try:
@@ -216,7 +218,7 @@ class Changed(base.Base):
                 # for being up to date when we check for nodes
                 sections,group=t
             except TypeError:
-                # obj is either a Scons node or a section object        
+                # obj is either a Scons node or a section object
                 #sections=self.pmgr.GetStoredSections(t)
                 tmp=[]
                 self.pmgr.add_stored_node_info(t,tmp)
@@ -231,29 +233,29 @@ class Changed(base.Base):
         # at this point we should have set all top level sections that are out of date based
         # on changes that effect the environment or context of what we would build
         # now we want to see if there are any nodes that are out of date in any sections
-        # that is still viewed up to date. 
-        
+        # that is still viewed up to date.
+
         self.CheckNodes()
-        
+
         # check to see if we are up-to-date
         #if not we need to fill in sections in the tree of with the other sections that have to load
         # based on what we know is out of date.
         if not self._up_to_date:
-            # we need to check that all sections that are out of date, are correctly 
+            # we need to check that all sections that are out of date, are correctly
             # reflexed by the sections that dependon the them
             for sec in self.known_sections:
                 self.DependentOutOfDate(sec)
-            
+
             # at this point we need to make sure all parent Parts ( ie build sections of parent Parts)
             # are set to load. This will allow the last step of setting dependent to load from cache
             # to work correctly if a Parent Part has to load and it need to map some custom data
-            # that we might not techincally need to build, but would need to allow the code to load 
+            # that we might not techincally need to build, but would need to allow the code to load
             # correctly
             for sec in self.sections_to_load:
                 self.SetParentToLoad(sec)
 
             # now we want to do one last pass to mark all the dependent sections
-            # that are out of date to be loaded from cache ( if not already set to 
+            # that are out of date to be loaded from cache ( if not already set to
             # to be loaded from file)
             for sec in self.sections_to_load:
                 self.SetDependsToCacheLoad(sec)
@@ -266,7 +268,7 @@ class Changed(base.Base):
             tmp_sec=glb.pnodes.GetPNode(pnode.Stored.SectionIDs['build'])
             self.AddSection(tmp_sec)
             self.SetToLoad(tmp_sec,"{0} is parent of {1}".format(tmp_sec.ID,sec.ID))
-    
+
     def DependentOutOfDate(self,sec):
         if self.isSectionMarkedChanged(sec):
             return True
@@ -290,7 +292,7 @@ class Changed(base.Base):
                 self.sections_to_load.append(dep_sec)
                 if dep_sec.ReadState==glb.load_cache:
                     api.output.verbose_msg(['update_check'],'{0} is set to be loaded from cache because it is a dependent of {1} which is out of date'.format(dep_sec.ID,sec.ID))
-        
+
     def ProcessSections(self,sections):
         ''' Process all the sections to see if the context is out of date,
         add to the known set of sections
@@ -307,7 +309,7 @@ class Changed(base.Base):
         api.output.console_msg("Checking build context 100% ({0}/{1} ) \033[K".format(cnt,total))
 
     def ProcessSection(self,sec,requirements=None):
-        
+
         # we want to test that the sections related configuration, builder and root part data
         # has not changed.
         if self.hasConfigContextChanged(sec):
@@ -317,11 +319,11 @@ class Changed(base.Base):
             self.SetToLoad(sec,"File defining a builder changed")
         elif self.hasPartContextChanged(sec):
             self.SetToLoad(sec,"Define Context file or inputs changed")
-        
+
         # we still have to continue to see if the dependancy changed
         # and add them to known sections to process
         return self.ProcessSectionDepends(sec,requirements) or not self._up_to_date
-        
+
 
     def ProcessSectionDepends(self,sec,requirements):
         '''Process the depends information for a section to see if it is out of date
@@ -333,7 +335,7 @@ class Changed(base.Base):
         1) is the dependednt section the same as the one we would have mapped
         2) given the dependent section is up-to-date ( not needed to be loaded)
             is the exports provided by the section changed
-        3) Given the above is still ok, did a pattern that was called in the 
+        3) Given the above is still ok, did a pattern that was called in the
             section have a possible change on disk that would casue a need
             for a rescan, and rebuild of stuff that the scan might have returned
         4) along the way if we see the dependent section is out of date we are out of date
@@ -342,14 +344,14 @@ class Changed(base.Base):
             a simple change may map the section relationships.
         '''
 
-        
+
         for dep_info in sec.Stored.DependsOn:
-            api.output.verbose_msg(['update_check_extra'], sec.ID,"->",dep_info.PartName)#,dep_info.Requires
+            api.output.verbose_msg(['update_check_extra'], sec.ID,"->",dep_info.PartName)
             # check to see that the if depends mapping we have is still valid
             if self.hasDependsMappingChanged(dep_info):
                 if not self._section_info[sec.ID]['depend_esig_changed']:
                     self._section_info[sec.ID]['depend_esig_changed']=True
-                
+
                 # something changed to make us look at remapping this item
                 new_depends=self.RemapDependent(dep_info)
                 if new_depends.ID != dep_info.SectionID:
@@ -359,12 +361,12 @@ class Changed(base.Base):
                     # 2) we need to modify our state to have this items in it instead
                     # of the existing information
                     dep_info.Update(new_depends)
-                        
+
             # get section object
             dep_sec=glb.pnodes.GetPNode(dep_info.SectionID)
             # add this section to know sections, as we no this is a valid section
-            # and add the needed requirements we have on this 
-            
+            # and add the needed requirements we have on this
+
             self.AddSection(dep_sec) # returns True is this was not Known yet
             if requirements is None:
                 dep_requirements=dep_info.Requires
@@ -380,10 +382,10 @@ class Changed(base.Base):
             elif self.isSectionMarkedChanged(dep_sec):
                 dep_sec_changed==True
             elif dep_info.ESig != dep_sec.Stored.ESig and req_changed:
-                #elif dependancy exports changed we want to see if the requirements we 
+                #elif dependancy exports changed we want to see if the requirements we
                 # have really changed
                 dep_sec_changed=self.hasDepedentTreeRequirementsChanged(sec,dep_info,dep_sec,dep_requirements)
-            
+
             #now we want to process this sections
             if dep_sec_changed:
                 # the depend section is viewed as out of date
@@ -461,25 +463,25 @@ class Changed(base.Base):
 
     def hasDependentExportsChanged(self,sec,depends_info,dep_sec,requirements):
         # We want to test to see if the main ESIG value is different
-        # if it is the same nothing changed, else we need to see if what is different is 
+        # if it is the same nothing changed, else we need to see if what is different is
         # important to us based on requirements
         if depends_info.ESig != dep_sec.Stored.ESig:
             # something changed.. do we care?
             # we find out by testing the esigs with our set of rsigs
-            # Which is to say we test each items we require from the 
+            # Which is to say we test each items we require from the
             # dependent with the matching esig value.
             return self.hasRequirementsChanged(sec,depends_info,dep_sec,requirements)
         return False
-            
+
     def hasRequirementsChanged(self,sec,depends_info,dep_sec,requirements):
 
         reqs=requirements
         rsigs=depends_info.RSigs
 
-        # we test each requirment signiture (rsig) we have and see if that data 
+        # we test each requirment signiture (rsig) we have and see if that data
         # in export data signiture (esig) has changed from our last run
-        
-        # for each requirement            
+
+        # for each requirement
         for req in reqs:
             # see if we require ( ie have a local need for the requirement)
             # as we might only need a sub set of the total requirements
@@ -498,7 +500,7 @@ class Changed(base.Base):
 
 
     def hasConfigContextChanged(self,sec):
-        
+
         ## test the files that define the configuration contexts
         # call method to get stored info.. also get info from "part" object is needed
         stored_cfg_data=sec.Stored.GetConfigContext()
@@ -525,7 +527,7 @@ class Changed(base.Base):
                     self._knowncfgs[key]=True
                     return True
                 # test each file
-                for file in file_list:    
+                for file in file_list:
                     if file['name'] in cfg_files:
                         #this file is in the set of previous found files
                         # check if file has changed
@@ -538,25 +540,25 @@ class Changed(base.Base):
                         "update_check",
                         '{0} is out of date because the set of files defining configuration "{1}" for tool "{2}" are different.\n The file "{3}" was not in set of: {4}',
                          sec.ID,sec.Stored.Part.Stored.Config,tool,file['name'],cfg_files
-                                
+
                             )
                         self._knowncfgs[key]=True
                         return True
         self._knowncfgs[key]=False
         return False
-                                
+
     def hasBuildContextChanged(self,sec):
-        
-        ## test the files that define the builders 
+
+        ## test the files that define the builders
         # call method to get stored info.. also get info from "part" object is needed
         stored_bld_data=sec.Stored.GetBuilderContext()
         key=str(stored_bld_data)
-        
-        
+
+
         for bld in stored_bld_data:
             try:
                 #Do we know of this item yet
-                tmp=self._knownbuilders[bld['name']]                
+                tmp=self._knownbuilders[bld['name']]
                 # yes we do
                 if tmp: # is it out of date?
                     api.output.verbose_msgf(
@@ -565,7 +567,7 @@ class Changed(base.Base):
                             sec.ID,bld['name']
                     )
                     return tmp
-            except KeyError:    
+            except KeyError:
                 # we don't know of this file as of yet
                 # next we test the build context file to see if this is good or bad
                 if node_helpers.node_up_to_date(bld) == False:
@@ -589,15 +591,15 @@ class Changed(base.Base):
         '''
 
         return False
-    
+
 
     def UpdateRequirements(self,sec,requirements):
-        if requirements is None: 
+        if requirements is None:
             requirements = requirement.Default()
         try:
             curr_req=self._section_info[sec.ID]['requirements']
             # try to set the requirements
-           
+
 
             # are requirements all existing in current requirements?
             if not requirements.issubset(curr_req):
@@ -606,14 +608,14 @@ class Changed(base.Base):
                 return True
             return False # nothing changed we need to have checked
         except KeyError:
-            self._section_info[sec.ID]['requirements']=requirements 
+            self._section_info[sec.ID]['requirements']=requirements
         return True # this is not known
 
 
     def AddSection(self,sec):
-        
+
         try:
-            self._section_info[sec.ID]            
+            self._section_info[sec.ID]
             return False
         except KeyError:
             # Not known at the moment
@@ -625,8 +627,8 @@ class Changed(base.Base):
             # based on finail read state
             self.known_sections.append(sec)
             return True
-            
-    
+
+
     def process_depends(self,pobj,depends):
         pass
 

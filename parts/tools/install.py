@@ -42,12 +42,14 @@ import stat
 import tarfile
 import fnmatch
 
+from SCons.Debug import logInstanceCreation
+
 import SCons.Action
 from SCons.Util import make_path_relative
 
 #
 # We keep track of *all* installed files.
-import SCons.Tool.install 
+import SCons.Tool.install
 from parts.glb import _INSTALLED_PACKAGING_GROUPS
 from parts.glb import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
@@ -179,6 +181,7 @@ class DESTDIR_factory(object):
     in the constructor.
     """
     def __init__(self, env, dir):
+        if __debug__: logInstanceCreation(self)
         self.env = env
         self.dir = env.arg2nodes( dir, env.fs.Dir )[0]
 

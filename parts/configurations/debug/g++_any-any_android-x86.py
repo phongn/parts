@@ -15,14 +15,16 @@ config.VersionRange("3-*",
                                 '-O0',
                                 '--sysroot=${GXX.SYS_ROOT}'
                             ],
-                        CPPDEFINES=['DEBUG'],
+                        CPPDEFINES=['DEBUG',"${_ANDROID_STL('CPPDEFINES')}"],
+                        CPPPATH=["${_ANDROID_STL('CPPPATH')}"],
+                        CXXFLAGS=["${_ANDROID_STL('CXXFLAGS')}"],
                         LINKFLAGS=[
                                 '--sysroot=${GXX.SYS_ROOT}'
                                 ],
                         LIBPATH=[
-                                '${GXX.LIBRARY_PATH}'
+                                "${_ANDROID_STL('LIBPATH')}"
                                 ],
-                        LIBS=['gnustl_shared']
+                        LIBS=["${_ANDROID_STL('LIBS')}"]
                         )
                     )
 

@@ -1,11 +1,18 @@
 
 import os
+import re
 import parts.tools.Common.Finders as Finders
 import common
+import parts.mappers as mappers
+import parts.version as version
+import parts.api as api
+
+from SCons.Debug import logInstanceCreation
 
 #android scanner for Windows
 class win_scanner(object):
     def __init__(self,env,arch,tool_prefix,tool):
+        if __debug__: logInstanceCreation(self)
         self.arch=arch
         self.env_var=Finders.EnvFinder(env)
         self.tool_prefix=tool_prefix
@@ -35,7 +42,7 @@ class win_scanner(object):
                         else:
                             ndk_path=os.path.join(path,item0)
                         temp=os.path.join(ndk_path,'toolchains')
-                            
+
                         # we check to get the version of the compiler
                         # we assume that a given NDK comes with one version of the toolchain
                         # not two versions
@@ -83,6 +90,7 @@ class win_scanner(object):
 #android scanner for posix/mac
 class posix_scanner(object):
     def __init__(self,env,arch,tool_prefix,tool):
+        if __debug__: logInstanceCreation(self)
         self.arch=arch
         self.env_var=Finders.EnvFinder(env)
         self.tool_prefix=tool_prefix
@@ -107,7 +115,7 @@ class posix_scanner(object):
                    "/",
                    "/Android",
                    "/android"]
-                   
+
             if ndk_root:
                 paths=[ndk_root]+paths
 
@@ -121,7 +129,7 @@ class posix_scanner(object):
                         else:
                             ndk_path=os.path.join(path,item0)
                         temp=os.path.join(ndk_path,'toolchains')
-                            
+
                         # we check to get the version of the compilers
                         if os.path.exists(temp) == False:
                             continue
@@ -162,3 +170,182 @@ class posix_scanner(object):
             if common.MatchVersionNumbers(version,i):
                 return tmp[i]
         return None
+
+
+## this is a mapper to get the lastest API for android in the given NDK
+class android_api(mappers.mapper):
+
+    name='GetLatestNDKAPI'
+
+
+    def __call__(self, target, source, env, for_signature):
+
+        ret=None
+        lastest=version.version(0)
+        for p in os.listdir(os.path.normpath(env.subst("${GXX.INSTALL_ROOT}/platforms"))):
+           
+            v=version.version(p.split('-')[1])
+            if lastest < v:
+                lastest=v
+        if lastest > 0:
+            ret=str(lastest)
+        
+        if ret is None:
+            return ''
+        return ret
+
+
+
+api.register.add_mapper(android_api)
+
+
+# mapping table for differnt STL types in android SDK
+android_stl_map_x86={
+    'system':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/system/include'],
+                    },
+    'gabi++_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBS':['libgabi++_static.a']},
+    'gabi++_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBS':['libgabi++_shared']},
+    'stlport_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBS':['libstlport_static.a']},
+    'stlport_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBS':['libstlport_shared']},
+    'gnustl_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86"],
+                     'LIBS':['gnustl_static.a']},
+    'gnustl_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86"],
+                     'LIBS':['gnustl_shared']
+                    }
+    }
+
+android_stl_map_x86_pre_r8={
+    'system':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/system/include'],
+                    },
+    'gabi++_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBS':['libgabi++_static.a']},
+    'gabi++_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBS':['libgabi++_shared']},
+    'stlport_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBS':['libstlport_static.a']},
+    'stlport_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBS':['libstlport_shared']},
+    'gnustl_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86"],
+                     'LIBS':['gnustl_static.a']},
+    'gnustl_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86"],
+                     'LIBS':['gnustl_shared']
+                    }
+    }
+
+android_stl_map_arm={
+    'system':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/system/include'],
+                    },
+    'gabi++_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/armeabi"],
+                     'LIBS':['libgabi++_static.a']},
+    'gabi++_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/armeabi"],
+                     'LIBS':['libgabi++_shared']},
+    'stlport_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/armeabi"],
+                     'LIBS':['libstlport_static.a']},
+    'stlport_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
+                     'CPPDEFINES':['_GNU_SOURCE'],
+                     'CXXFLAGS':['-fuse-cxa-atexit'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/armeabi"],
+                     'LIBS':['libstlport_shared']},
+    'gnustl_static':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/armeabi/include'],
+                     'LIBPATH':['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/armeabi'],
+                     'LIBS':['gnustl_static.a']},
+    'gnustl_shared':{'CPPPATH':
+                        ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/armeabi/include'],
+                     'LIBPATH':['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/armeabi'],
+                     'LIBS':['gnustl_shared']
+                    }
+    }
+ 
+#mapper for STL data
+
+class android_stl_mapper(mappers.mapper):
+    ''' This class maps Androidn path based on the user selection for which STL library to use
+    '''
+    name='_ANDROID_STL'
+    def __init__(self,key):
+        self.key=key
+
+    def __call__(self, target, source, env, for_signature):
+        stl_map=env['GXX']['STL_MAP']
+        tmp=env.get("ANDROID_STL_MAP",{})
+        stl_map.update(tmp)
+        stl_type=env.get("ANDROID_STL")
+        if stl_type in stl_map:
+            #get data to map
+            data=stl_map[stl_type].get(self.key,[''])
+            #map data in to the environment
+            self.map_global_var(env,self.key,"${{{0}('{1}')}}".format(self.name,self.key),data," ")
+            return data[0]
+        else:
+            # we have a bad key .. report it
+            pass
+        return ""
+
+api.register.add_mapper(android_stl_mapper)

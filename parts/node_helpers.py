@@ -16,9 +16,11 @@ import SCons.Node.FS
 
 import os
 
+from SCons.Debug import logInstanceCreation
 
 class ninfotmp(object):
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         self.timestamp=0
         self.csig=0
 
@@ -96,12 +98,14 @@ def node_up_to_date(node):
 
 class _AbsFile(object):
     def __init__(self,env):
+        if __debug__: logInstanceCreation(self)
         self.env=env
     def __call__(self,path):
         return self.env.File(str(path),self.env['SRC_DIR']).srcnode().abspath
 
 class _AbsDir(object):
     def __init__(self,env):
+        if __debug__: logInstanceCreation(self)
         self.env=env
     def __call__(self,path):
         return self.env.Dir(str(path),self.env['SRC_DIR']).srcnode().abspath

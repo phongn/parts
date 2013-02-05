@@ -6,6 +6,7 @@ import requirement
 
 import hashlib
 
+from SCons.Debug import logInstanceCreation
         
 class dependent_ref(object):
     """This Class allows us to map a dependancy between two different components
@@ -13,6 +14,7 @@ class dependent_ref(object):
     be shared between the two environments defining each section
     """
     __slots__=[
+        '__weakref__',
         '__part_ref',
         '__sectionname',
         '__requires',
@@ -24,6 +26,8 @@ class dependent_ref(object):
         '__stored_matches'
     ]
     def __init__(self,part_ref,section,requires):
+        if __debug__: logInstanceCreation(self)
+
         errors.SetPartStackFrameInfo()
         self.__part_ref=part_ref
         self.__sectionname=section

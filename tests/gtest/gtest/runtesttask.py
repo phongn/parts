@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 
+import glb
 import host
 from streamwriter import StreamWriter, PipeRedirector
 import events.eventinfo
@@ -43,13 +44,15 @@ class RunTestTask(object):
 
         # load the test data. this mean exec the data
         #create the locals we want to pass
-        locals={
+        locals=glb.Locals
+
+        locals.update({
                 'test':self.__test,
                 'Test':self.__test,
                 'Setup':self.__test.Setup,
                 'Condition':conditions.ConditionFactory(),
                 'Testers':testers,
-                }
+                })
 
         #get full path
         file=os.path.join(self.__test.TestDirectory,self.__test.TestFile)

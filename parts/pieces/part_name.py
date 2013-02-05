@@ -3,6 +3,8 @@ import parts.api as api
 
 import SCons.Script
 
+from SCons.Debug import logInstanceCreation
+
 def part_name(env,name=None,parent_name=None):
     '''Defines the ID or name the developer uses to name this "part".
     Many different versions of a given part can be defined during a build.
@@ -11,7 +13,7 @@ def part_name(env,name=None,parent_name=None):
     '''
     if name == None:
         return get_part_name(env)
-    
+
     pobj=glb.engine._part_manager._from_env(env)
     if pobj._cache.get('name_must_be_set')==True:
         api.output.error_msg("The Part name has to be set before any calls to Part()")
@@ -21,7 +23,7 @@ def part_name(env,name=None,parent_name=None):
     else:
         pobj.ShortName=name
     return pobj.Name
-    
+
 
 def get_part_name(env):
     return glb.engine._part_manager._from_env(env).Name
@@ -31,6 +33,7 @@ def get_part_short_name(env):
 
 class _PartName(object):
     def __init__(self,env):
+        if __debug__: logInstanceCreation(self)
         self.env=env
     def __call__(self,name=None):
         return part_name(name)
@@ -41,6 +44,6 @@ from SCons.Script.SConscript import SConsEnvironment
 # add global for new format
 api.register.add_global_parts_object('PartName',_PartName)
 
-# adding logic to Scons Enviroment object  
+# adding logic to Scons Enviroment object
 SConsEnvironment.PartName=part_name
 SConsEnvironment.PartShortName=get_part_short_name

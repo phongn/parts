@@ -345,9 +345,7 @@ def generate(env):
 
     env['DDKCC'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\cl.exe', r'${DDKHOSTTARGETDIR}\cl.exe']),('cl'))
     env['DDKLINK'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\link.exe', r'${DDKHOSTTARGETDIR}\link.exe']),('link'))
-    env['DDKAS'] = env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
-        else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe'])
-    env['DDKLINK'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
+    env['DDKAS'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
         else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe']),('ml','ml64'))
 
     env['_DDKLIBFLAGS'     ] = '${_concat(DDKLIBLINKPREFIX, DDKLIBS, DDKLIBLINKSUFFIX, __env__)}'

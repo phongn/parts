@@ -2,6 +2,8 @@ import glb
 import common
 import api.output
 
+from SCons.Debug import logInstanceCreation
+
 # move to glb once we have new formats working
 __known_concepts={
 'utest':'utest',
@@ -18,7 +20,7 @@ def map_concept(val):
 
 def get_concept(tlst):
     # see if the concept is defined
-    
+
     # special 'all' case
     if tlst[0]=='all' and len(tlst) == 1:
         return {'_section':'build','_recursive': True},tlst[1:]
@@ -33,29 +35,29 @@ def get_concept(tlst):
         #we have a concept defined
         section=map_concept(tlst[0])
         return {'_concept':tlst[0],'_section':section},tlst[1:]
-    
+
     # set default concept
     # value is hard coded at the moment
     return {'_section':'build'},tlst
-    
-        
+
+
 def get_partrefdata(tok):
-    
+
     if not tok:
-        return {},tok 
+        return {},tok
     # <concpet>::
     elif len(tok) == 1 and tok[0] == '':
         return {},tok
     # alias
-    elif tok[0] == 'alias' and len(tok) == 1: 
+    elif tok[0] == 'alias' and len(tok) == 1:
         return get_name(tok)
     #alias::??
-    elif tok[0] == 'alias': 
+    elif tok[0] == 'alias':
         return get_alias(tok[1:])
     # name or name@k,v...
-    elif tok[0].startswith('name') and len(tok) == 1: 
+    elif tok[0].startswith('name') and len(tok) == 1:
         return get_name(tok)
-    #name::xxx 
+    #name::xxx
     elif tok[0] == 'name':
         return get_name(tok[1:])
     # xxx which we assume to be a name..
@@ -66,10 +68,10 @@ def get_partrefdata(tok):
         return {},tok[1:]
     else:
         1/0 # not sure if we can get here...
-    
-    
+
+
 def get_alias(tok):
-    
+
     #<concept>::alias:: same as concept::
     if len(tok) == 1 and tok[0] == '':
         return {},tok
@@ -79,9 +81,9 @@ def get_alias(tok):
     #<concept>::alias::<alias>
     else:
         return {'_alias':tok[0]},tok[1:]
-    
+
 def get_name(tok):
-    
+
     #<concept>::name:: same as concept::
     if len(tok) == 1 and tok[0] == '':
         return {},tok
@@ -91,17 +93,17 @@ def get_name(tok):
     #name::@k,v
     elif tok[0].startswith('@'):
         tlst=tok[0].split("@")
-        prop=get_properties(tlst[0]) 
+        prop=get_properties(tlst[0])
         return {'_properties':prop},tok[1:]
     #name::XXX@k,v
     else:
         tlst=tok[0].split("@")
-        prop=get_properties(tlst[1:]) 
+        prop=get_properties(tlst[1:])
         return {'_name':tlst[0],'_properties':prop},tok[1:]
-    
-def get_properties(tlst):   
-    properties={} 
-    for p in tlst:                
+
+def get_properties(tlst):
+    properties={}
+    for p in tlst:
         try:
             # get key value
             k,v=p.split(":")
@@ -117,11 +119,11 @@ def get_properties(tlst):
                 # else this is a simple value ( non list)
                 properties[k]=v
         except ValueError:
-            api.output.error_msg('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))    
+            api.output.error_msg('target value "%s" is bad, @property "%s" not splitable by ":"'%(target,p))
     return properties
 
-def get_groups(tlst): 
-    # end of the line   
+def get_groups(tlst):
+    # end of the line
     if not tlst:
         return {},tlst
     # something like foo::::
@@ -132,12 +134,12 @@ def get_groups(tlst):
         return {},tlst
     else:
         return {'_groups':tlst[0].split(',')},tlst[1:]
-        
+
 
 def _parse_target(target):
     '''
     Parses the Target to help Parts figure out how to treat the Target
-    
+
     The current logic is to handle cases such as:
     \verbatim
         alias::<part_alias>
@@ -147,20 +149,20 @@ def _parse_target(target):
         name::<part name>@key:value@key2:val2 ...
         name::<part name>@key:vala,valb,valc@key2:val2 ...
         <concept>::<some form from above>
-        <concept>::<some form from above>:: 
+        <concept>::<some form from above>::
     \endverbatim
     '''
 
-    
+
     seperator='::'
     # split in to major catagories
-    t=target.split(seperator)   
+    t=target.split(seperator)
     ret={}
     # does this have to many breaks... This is the max given values such a
     # build::name::foo::group::
     # however a case of build:::::::: is also to many as no name is provided
     if len(t) > 5:
-        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))    
+        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))
     # get the concept
     r,t=get_concept(t)
     ret.update(r)
@@ -178,9 +180,9 @@ def _parse_target(target):
         ret['_recursive']=False
     else:
         ret['_recursive']=True
-        
+
     if len(t) > 1:
-        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))    
+        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))
     return ret
 
 _target_type_cache={}
@@ -192,11 +194,12 @@ one to see what concept, part object, and section/concept we want to process
 '''
 class target_type(object):
     def __init__(self,target):
+        if __debug__: logInstanceCreation(self)
         target=str(target)
         try:
             # this does
             self.__dict__=_target_type_cache[target].__dict__.copy()
-        except KeyError:            
+        except KeyError:
             self._concept=None
             self._section=None
             self._alias=None
@@ -209,102 +212,102 @@ class target_type(object):
             self._recursive=False
             self.__dict__.update(_parse_target(target))
             #_target_type_cache[target]=self
-  
+
     @property
     def Concept(self):
        return self._concept
-   
+
     @Concept.setter
     def Concept(self,value):
        self._concept=value
-       
+
     @property
     def hasConcept(self):
        return self._concept is not None
-   
+
     @property
     def Section(self):
        return self._section
-   
+
     @Section.setter
     def Section(self,value):
        self._section=value
-       
+
     @property
     def hasSection(self):
        return self._section is not None
-   
+
     @property
     def Alias(self):
        return self._alias
-   
+
     @Alias.setter
     def Alias(self,value):
        self._alias=value
-       
+
     @property
     def hasAlias(self):
        return self._alias is not None
-   
+
     @property
     def Name(self):
        return self._name
-   
+
     @Name.setter
     def Name(self,value):
        self._name=value
-       
+
     @property
     def hasName(self):
        return self._name is not None
-       
+
     @property
     def Properties(self):
        return self._properties
-       
+
     @property
     def hasProperties(self):
        return self._properties == {}
-   
+
     @property
     def OrignialString(self):
        return self._orginal_string
-   
+
     @property
     def RootAlias(self):
         if self.hasAlias:
             return self.Alias.split('.',1)[0]
         return None
-    
+
     @property
     def RootName(self):
         if self.hasName:
             return self.Name.split('.',1)[0]
         return None
-    
+
     @property
     def Groups(self):
        return self._groups
-          
+
     @property
     def hasGroups(self):
        return self._groups != []
-    
+
     @property
     def isRecursive(self):
        return self._recursive
-    
+
     @property
     def isAmbiguous (self):
-        return self._ambiguous 
-    
+        return self._ambiguous
+
     def setUnambiguous (self,value):
-        self._ambiguous=False 
-    
+        self._ambiguous=False
+
     def __str__(self):
         '''
-        Return a string form of target with any changed values. 
-        Use orginal_string value to get the orginal value used to Intially create this object 
+        Return a string form of target with any changed values.
+        Use orginal_string value to get the orginal value used to Intially create this object
         '''
         s=''
         if self.hasConcept:
@@ -321,7 +324,7 @@ class target_type(object):
                     s+=str(v)
         elif self.hasConcept == False:
             s+="{0}::".format(self.Section)
-        
+
         if self.hasGroups:
             s+="::"
             if len(self.Groups) > 1:

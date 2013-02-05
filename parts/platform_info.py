@@ -2,7 +2,7 @@
 Contains basic functions needed to provide bitness of OS and architecture
 These function provide information on the current running platform.
 User should not need these much, but it can be useful. With cross plaform support
-added some day this will not be needed external, but instead user will use env 
+added some day this will not be needed external, but instead user will use env
 var defined to to tell what has been targeted as the build env.
 '''
 
@@ -17,8 +17,10 @@ import api.output
 import api.register
 import common
 
+from SCons.Debug import logInstanceCreation
+
 def UpdatePlatformRegEx():
-    
+
     arch_str = ''
     os_str = ''
     for arch in glb.valid_arch:
@@ -26,16 +28,16 @@ def UpdatePlatformRegEx():
             arch_str = arch_str + arch
         else:
             arch_str = arch_str + '|' + arch
-            
+
     for os in glb.valid_os:
         if os_str == '':
             os_str = os_str + os
         else:
             os_str = os_str + '|' + os
-   
+
     glb.valid_platform_re = re.compile('(?P<os>' + os_str + ')?(?P<sep1>-)?(?P<arch>' + arch_str + ')?$',re.IGNORECASE)
 
-    
+
 def UpdateValidArchList():
     for k,v in glb.arch_map.iteritems():
         if k not in glb.valid_arch:
@@ -57,38 +59,38 @@ if glb.valid_arch is None or glb.valid_os is None:
     UpdateValidOSList()
 
 def MapArchitecture(val):
-    ''' 
+    '''
     Maps the value of lowlevel architures to high level one that
     are more generic and useful.
 
     supported currently
-        x86 -- Intel(r) line of compatible 32-bit chips 
+        x86 -- Intel(r) line of compatible 32-bit chips
         x86_64 -- The 64-bit extended memory form of x86 (AMD64 or em64t)
-        ia64 -- 
+        ia64 --
 
-        # to add other system here    
+        # to add other system here
     '''
-    return glb.arch_map.get(val,None)                
+    return glb.arch_map.get(val,None)
 
 def MapOS(val):
-    ''' 
+    '''
     Maps the value of lowlevel OS names to high level one that
     are more generic and useful to scons.
-    
+
     supported currently
         win32 -- Windows OS of all flavors, both 32bit and 64bit
         posix -- All Linux and Unix flavors
         darwin -- All Mac OS flavors
         sunos -- All Solaris flavors
-    
-        # to add other system here    
+
+        # to add other system here
     '''
     return glb.os_map.get(val,None)
-  
-    
-def ValidatePlatform(platform_str):    
+
+
+def ValidatePlatform(platform_str):
     tmp=glb.valid_platform_re.match(platform_str)
-    if tmp is not None:            
+    if tmp is not None:
         dict = tmp.groupdict()
         if (not dict.get('os') and not dict.get('arch')) or (dict.get('sep1') == '-' and (not dict.get('os') or not dict.get('arch'))):
             return False
@@ -104,14 +106,14 @@ def ValidatePlatform(platform_str):
         return False
 
 def OSBit():
-    ''' 
+    '''
         OSBit
-        
+
         returns the Scons os bit type
         This is important if you have a 64-bit chip but a 32-bit OS
         in this case you often can't or don't want to compile as a 64-bit
         application.
-    ''' 
+    '''
     # Unfortunately, python does not provide any way to tell if the OS itself
     # is 32-bit or 64-bit. What is worse is that 32-bit vs 64-bit python effects
     # the value Python might return. This tell us nothing of the current system
@@ -135,17 +137,17 @@ def OSBit():
         val=val[:-3]
     return int(val)
 
-        
+
 def ChipArchitecture():
-    ''' 
+    '''
         ChipArchitecture
-        
+
         returns the chip archecture
         Returns High level value for the archecture being used
-        which is often more useful. Knowing if you have a 
+        which is often more useful. Knowing if you have a
         ia32, x64, ia64 in general is more intertesting
         than know if it is an P3 or P4
-        
+
     '''
     #if win32
     import sys
@@ -164,12 +166,13 @@ def ChipArchitecture():
             return MapArchitecture('x86_64')
     #else we just assume the python code will work at this time
     else:
-        return MapArchitecture(platform.machine()) 
+        return MapArchitecture(platform.machine())
 
 
 class SystemPlatform(common.bindable):
     def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
-        
+        if __debug__: logInstanceCreation(self)
+
         if arch == ChipArchitecture():
             platform_str = os
         else:
@@ -178,8 +181,8 @@ class SystemPlatform(common.bindable):
         #if not lst:
             #lst = ValidatePlatform(os)
         if not lst:
-            api.output.error_msg( " " + platform_str + " is not a valid target_system value\n")            
-        
+            api.output.error_msg( " " + platform_str + " is not a valid target_system value\n")
+
         if lst[0] is not None:
             os=lst[0]
         if lst[1] is not None:
@@ -189,19 +192,19 @@ class SystemPlatform(common.bindable):
                 self.key+"_OS":os,
                 self.key+"_ARCH":arch
             }
-        
+
     def _getOS(self):
         return self._env[self.key+"_OS"]
 
     def _setOS(self, x):
         self._env[self.key+"_OS"]= x
-        
+
     def _getArch(self):
         return self._env[self.key+"_ARCH"]
 
     def _setArch(self, x):
-        self._env[self.key+"_ARCH"]= x        
-        
+        self._env[self.key+"_ARCH"]= x
+
     ARCH = property(_getArch,_setArch)
     OS = property(_getOS,_setOS)
 
@@ -213,7 +216,7 @@ class SystemPlatform(common.bindable):
             env[tkey+"_OS"]= self.OS != 'any' and self.OS or env.has_key(tkey+"_OS") and env[tkey+"_OS"] or SCons.Platform.platform_default() # getPlatform
             self.key=tkey
             self._env=env
-        
+
     def _rebind(self,env,key):
         tmp=SystemPlatform(os=self.OS,arch=self.ARCH)
         tmp._bind(env,key)
@@ -222,56 +225,56 @@ class SystemPlatform(common.bindable):
     def __eq__ (self,rhs):
         if common.is_string(rhs):
             rhs=target_convert(rhs,base=self)
-            
+
         return (self.OS==rhs.OS or\
                 'any'==rhs.OS or\
                 'any'==self.OS) and\
             (self.ARCH==rhs.ARCH or\
                 'any'==rhs.ARCH or\
                 'any'==self.ARCH)
-                
+
     def __ne__ (self,rhs):
         return (not self.__eq__(rhs))
 
     def __str__(self):
         return self.OS+"-"+self.ARCH
-    
+
     def __repr__(self):
         return self.OS+"-"+self.ARCH
-    
+
     def __hash__(self):
         return hash(str(self))
 
     def _is_native(self):
-        return 'any'!= self.OS and 'any' != self.ARCH 
-    
+        return 'any'!= self.OS and 'any' != self.ARCH
+
     #because of the mapping to ENV we have to do our own copy
     def __copy__(self):
         return SystemPlatform(self.OS,self.ARCH)
-    
+
     def __deepcopy__(self,memo=None):
         return SystemPlatform(self.OS,self.ARCH)
-    
+
     def __getitem__(self, key):
         return self.__class__.__dict__[key.upper()].fget(self)
-    
+
     def __setitem__(self, key,val):
         if self.__class__.__dict__.has_key(key.upper()) == False:
             raise KeyError('SystemPlatform has no member '+key.upper())
         self.__class__.__dict__[key.upper()].fset(self,val)
-            
+
 if glb._host_platform is None:
     glb._host_sys=SystemPlatform()
-    
+
 def HostSystem():
     return glb._host_sys
 
 def target_convert(str_val, raw_val=None,base=None,error=True):
     host_sys= base is None and glb._host_sys or base
-    lst = ValidatePlatform(str_val)    
+    lst = ValidatePlatform(str_val)
     if not lst:
         if error:
-            api.output.error_msg( " " + str_val + " is not a valid target_system value\n")        
+            api.output.error_msg( " " + str_val + " is not a valid target_system value\n")
         return None
     else:
         p=lst[0]
@@ -286,7 +289,7 @@ def target_convert(str_val, raw_val=None,base=None,error=True):
 # add configuartion varaible
 #api.register.add_variable('OSBITNESS',str(OSBit()),'to be removed??')
 
-api.register.add_variable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform(glb._host_sys.OS,glb._host_sys.ARCH), 
+api.register.add_variable(['TARGET_PLATFORM','target_platform','target'],SystemPlatform(glb._host_sys.OS,glb._host_sys.ARCH),
         'Value of what to type of system to target build for, used to control cross builds',
         converter=target_convert)
 

@@ -1,6 +1,6 @@
 import os
 from common import gcc, GnuInfo
-from parts.tools.Common.Finders import PathFinder,ScriptFinder
+from parts.tools.Common.Finders import PathFinder,ScriptFinder,MsiFinder
 from parts.platform_info import SystemPlatform
 from parts.tools.Common.ToolInfo import ToolInfo
 import android
@@ -162,7 +162,7 @@ gcc.Register(
             version='*',
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-','gcc.exe'),        
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-14\arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows\bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows\include'
@@ -182,7 +182,7 @@ gcc.Register(
             version='*',
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc.exe'),        
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-14\arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows\bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows\include'
@@ -202,7 +202,7 @@ gcc.Register(
             version='*',
             install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','gcc.exe'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-14\arch-arm"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GCC.VERSION}\prebuilt\windows\bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GCC.VERSION}\prebuilt\windows\include'
@@ -222,7 +222,7 @@ gcc.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-','gcc'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/linux-x86/bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/linux-x86/include'
@@ -242,7 +242,7 @@ gcc.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/linux-x86/bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/linux-x86/include'
@@ -262,7 +262,7 @@ gcc.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','gcc'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-14/arch-arm"'},
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"'},
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/linux-x86/bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/linux-x86/include'
@@ -271,4 +271,32 @@ gcc.Register(
             )
     ]
 )
+
+## MINGW compiler on windows
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    info=[
+    GnuInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            #MsiFinder('MingGW-*','DisplayName'),
+            PathFinder(['c:\\MinGW\\bin'])
+            ],
+        opt_dirs=[
+                'c:\\MinGW\\opt\\'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${GCC.INSTALL_ROOT}'},
+        test_file='gcc.exe'
+        )
+    ]
+)
+
 

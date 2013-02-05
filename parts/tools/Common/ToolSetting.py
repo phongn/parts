@@ -6,6 +6,8 @@ import parts.api.output as output
 import copy
 import SCons.Errors
 
+from SCons.Debug import logInstanceCreation
+
 def MatchVersionNumbers(verStr1, verStr2):
     if verStr1[-1] == '.':
         verStr1=verStr1[:-1]
@@ -20,7 +22,7 @@ def MatchVersionNumbers(verStr1, verStr2):
     major2=int(major2)
     minor2=int(minor2)
     rev2=int(rev2)
-    
+
     if major1 != major2:
         return False
     if major1 == major2 and (minor1 == -1 or minor2 == -1):
@@ -47,15 +49,15 @@ def _cmp_(verStr1, verStr2):
         rev2=int(rev2)
     except ValueError:
         return cmp(verStr1,verStr2)
-    
+
     if major1 != major2:
         return cmp(major1,major2)
     if minor1 != minor2:
-        return cmp(minor1,minor2)    
+        return cmp(minor1,minor2)
     return cmp(rev1,rev2)
 
 
-''' this class helps reports errors happen when we have some issue with setting 
+''' this class helps reports errors happen when we have some issue with setting
 up the tool for the user.
 '''
 class ToolSetupError(SCons.Errors.UserError):
@@ -63,27 +65,28 @@ class ToolSetupError(SCons.Errors.UserError):
 
 
 '''
-This class handles mangament of tool info objects based on HOST and TARGET 
+This class handles mangament of tool info objects based on HOST and TARGET
 platform support.
 
 The main logic caches data based on exist or query calls. If the request for
 a version is None, it will do a query ( check for all possible cases)
 If the version is exact, it will test for the exact version, However the tool
-info might still do a limited query. ( this happens in cases of tools that 
+info might still do a limited query. ( this happens in cases of tools that
 support many drops that are side by side installable. ie request for version 9
 means then find best match, which spawns match for all version matches)
 
-To help with speed a cache is made of found versions. 
+To help with speed a cache is made of found versions.
 a seperate items value is saved to say if the cache is a full query or not.
-This allow the ability to retest 
+This allow the ability to retest
 
 '''
 
 class ToolSetting(object):
     def __init__(self,name):
-        
+        if __debug__: logInstanceCreation(self)
+
         # used as the namespace for common values such as version and script
-        self.name=name.upper() 
+        self.name=name.upper()
         api.output.verbose_msgf("toolsettings","Creating Setting object {0}",self.name)
         # <name>_VERSION
         self.version_tag=self.name+'_VERSION'
@@ -93,19 +96,19 @@ class ToolSetting(object):
         self.rootpath_tag=self.name+'_INSTALL_ROOT'
 
         #supported tools
-        self.tools={} 
-        
+        self.tools={}
+
         # tools that we found
         self.found={}
         # tools that we have not found basic same layout given
-        #if key value is None this means a full query has been done for 
+        #if key value is None this means a full query has been done for
         #this case, else it is list of versions not found
         self.not_found={}
-        
+
         # all the requested shell env
         # cached in case we are asked again
         self.shell_cache={}
-    
+
     def best_ver_map(self,key,version):
         from parts.version import version_range as Version
         if version is None:
@@ -115,11 +118,11 @@ class ToolSetting(object):
         for i in k:
             if MatchVersionNumbers(version,i):
                 return i
-        return None 
-    
+        return None
+
     def get_cache_key(self,env):
-        ''' 
-        make a cache/hash key for use to safely store a retrieve data about 
+        '''
+        make a cache/hash key for use to safely store a retrieve data about
         what we know or don't know at this time.
         '''
         version=env.get(self.version_tag,'None')
@@ -128,8 +131,8 @@ class ToolSetting(object):
         target=env['TARGET_PLATFORM']
         #return str(version)+root_path+use_script+str(target)
         return str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
-    
-    def get_latest_known_version(self,cache_key): 
+
+    def get_latest_known_version(self,cache_key):
         try:
             # assumes presorted when added
             return self.found[cache_key][0]
@@ -138,11 +141,11 @@ class ToolSetting(object):
         except IndexError:
             pass
         return None
-        
-    def is_version_known(self,version,cache_key): 
-        ''' 
+
+    def is_version_known(self,version,cache_key):
+        '''
         see if the tool is known in our 'found' cache
-        assumes that we had called query_for_known already   
+        assumes that we had called query_for_known already
         '''
         try:
             return (version in self.found[cache_key])
@@ -151,13 +154,13 @@ class ToolSetting(object):
 
     def query_for_known(self,env,key):
         '''
-        This will query for known defaults based on enviroment value that 
+        This will query for known defaults based on enviroment value that
         could have been set by the user such as the <tool>_INSTALL_ROOT or
         <tool>_USE_SCRIPT. It will cache this data to help speed up the build.
         This should not be an issue as the scripts and environment should not
         change during the build. scripts should have a unique path
         '''
-        
+
         # see if we have tested for it
         try:
             if self.not_found[key] is None:
@@ -171,16 +174,16 @@ class ToolSetting(object):
         self.not_found[key]=None # set this to fully queried
         # setup target to test for
         target=env['TARGET_PLATFORM']
-        
+
         t1=copy.copy(target)
         t1.ARCH='any'
         t2=copy.copy(target)
         t2.OS='any'
         t3=copy.copy(t2)
-        t3.ARCH='any'            
-        
-        # test values    
-        
+        t3.ARCH='any'
+
+        # test values
+
         version=env.get(self.version_tag,None)
         root_path=env.get(self.rootpath_tag,None)
         use_script=env.get(self.script_tag,False)
@@ -193,7 +196,7 @@ class ToolSetting(object):
             for k,vl in self.tools[_target].iteritems():
                 swap=False
                 for v in vl:
-                    tmp=v.query(env,self.name,root_path,use_script)   
+                    tmp=v.query(env,self.name,root_path,use_script)
                     # if we find anything
                     if tmp is not None:
                         #go through all items and store needed information
@@ -209,7 +212,7 @@ class ToolSetting(object):
                     swap=True
             if env.has_key(self.name):
                 del env[self.name]
-        
+
         if self.tools.has_key(target):
             query_logic(target)
         #test for <OS>-any
@@ -222,12 +225,12 @@ class ToolSetting(object):
         if self.tools.has_key(t3):
             query_logic(t3)
         self.found[key].sort(reverse=True,cmp=_cmp_)
-        
-        
-        
+
+
+
     def query_for_exact(self,env,key,version):
         '''
-        This will query for known defaults based on enviroment value that 
+        This will query for known defaults based on enviroment value that
         could have been set by the user such as the <tool>_INSTALL_ROOT or
         <tool>_USE_SCRIPT. It will cache this data to help speed up the build.
         This should not be an issue as the scripts and environment should not
@@ -245,18 +248,18 @@ class ToolSetting(object):
         if not self.found.has_key(key):
             self.found[key]=[]
             self.not_found[key]=[]
-            
+
         # setup target to test for
         target=env['TARGET_PLATFORM']
-        
+
         t1=copy.copy(target)
         t1.ARCH='any'
         t2=copy.copy(target)
         t2.OS='any'
         t3=copy.copy(t2)
-        t3.ARCH='any'            
-        
-        # test values    
+        t3.ARCH='any'
+
+        # test values
         cache_key=str(version)+key
         root_path=env.get(self.rootpath_tag,None)
         use_script=env.get(self.script_tag,False)
@@ -268,7 +271,7 @@ class ToolSetting(object):
                     if version in v.version_set():
                         tmp=v.exists(env,self.name,version,root_path,use_script)
                         if tmp is not None:
-                            # remove the matching tool, and add to the front 
+                            # remove the matching tool, and add to the front
                             # as it is the matching tool found
                             if swap:
                                 vl.remove(v)
@@ -284,13 +287,13 @@ class ToolSetting(object):
                             return True
                     swap=True
             return False
-        
-        
+
+
         #test raw target
         if self.tools.has_key(target):
             if exist_logic(target):
-                return 
-                        
+                return
+
         #test for <OS>-any
         if self.tools.has_key(t1):
             if exist_logic(t1):
@@ -303,10 +306,10 @@ class ToolSetting(object):
         if self.tools.has_key(t3):
             if exist_logic(t3):
                 return
-                                     
+
         self.not_found[key].append(version)
-        
-        
+
+
     def Exists(self,env,tool=None,**kw):
         '''
         primary user function to see if what we want exists
@@ -327,26 +330,26 @@ class ToolSetting(object):
         else:
             # query for exact match
             self.query_for_exact(tenv,key,version)
-        
+
         #test to see if it was found
         found=self.is_version_known(version,key)
         if tool is not None and found == True:
             try:
                 tpath=self.get_shell_env(env)[0]['PATH']
                 tmp=SCons.Util.WhereIs(tool,path=tpath)
-                
+
                 if tmp is not None:
                     found = True
             except:
                 found=False
-                
+
         #test to see if it was found
         return found
 
     def GetInfo(self,env,version,target,root_path,use_script):
         '''
-        Get the information. It is expected that the caller has done the 
-        correct tests to validate that the can get information out of this 
+        Get the information. It is expected that the caller has done the
+        correct tests to validate that the can get information out of this
         info object correctly, or that it exists.
         '''
         import copy
@@ -355,12 +358,12 @@ class ToolSetting(object):
         t2=copy.copy(target)
         t2.OS='any'
         t3=copy.copy(t2)
-        t3.ARCH='any'  
+        t3.ARCH='any'
         # we try to get the supported information
-        # based on best match. 
+        # based on best match.
         #Platform is given priority to architecture
         ret=None
-        
+
         if self.tools.has_key(target):
             for k,vl in self.tools[target].iteritems():
                 for v in vl:
@@ -380,45 +383,45 @@ class ToolSetting(object):
             for k,vl in self.tools[t3].iteritems():
                 for v in vl:
                     if version in v.version_set() and v.exists(env,self.name,version,root_path,use_script):
-                        return v                                                
-        
+                        return v
+
         return ret
-        
+
 
     def merge_tools(self,target,tools):
-        
+
         try:
             #get the existing item in target
             items=self.tools[target]
         except KeyError:
             # not defined so we just add the set and return
             api.output.verbose_msgf("toolsettings", "For tool {0} adding info for target:{1} verions:{2}",self.name,target,[str(i) for i in tools.keys()])
-            self.tools[target]=tools       
+            self.tools[target]=tools
             return
-        
+
         for key,val in tools.iteritems():
-                        
+
             # if we have this version already
             if items.has_key(key):
                 # only add it if the key is native
                 if val[0].is_native:
                     items[key]=val+items[key]
                 else:
-                    items[key].extend(val)                    
+                    items[key].extend(val)
             else:
                 items[key]=val
-        
-        
+
+
     def Register(self,hosts,targets,info):
         '''
         Called by user to register a given set of Tool Information objects
         that support some build host and target combination
         '''
-        
+
         hosts=common.make_list(hosts)
         targets=common.make_list(targets)
         info=common.make_list(info)
-        
+
         # iterate all the hosts ignore items that are no supported on current host
         for h in hosts:
             # only need to update Hosts that match this system, ignore the rest
@@ -429,21 +432,21 @@ class ToolSetting(object):
                     i.is_native=h._is_native()
                     tmp[i.version]=[i]
                 #add info sorted in to correct target buckets
-                for t in targets: 
-                    self.merge_tools(t,tmp) 
-                
-    
+                for t in targets:
+                    self.merge_tools(t,tmp)
+
+
     def get_shell_env(self,env):
-        ''' 
-        This function returns the shell enviroment to be merged into the 
+        '''
+        This function returns the shell enviroment to be merged into the
         final SCons environment
-        
+
         The trick with this function is that it really just gets data that was
         stored with the exists call. The data cached here tell us if there is
         a match or not. The Key holds data on everything but the version
         the cache_key adds the version
         '''
-        
+
         #get cache key for this enviroment setup
         key=self.get_cache_key(env)
         _v=version=env.get(self.version_tag,None)
@@ -454,17 +457,17 @@ class ToolSetting(object):
             api.output.verbose_msgf(['toolsettings'],"Getting environment for {0}",key)
             _env=env.Clone()
             # query data
-            if version is not None:    
+            if version is not None:
                 self.query_for_exact(_env,key,version)
             else:
                 self.query_for_known(_env,key)
-            
+
             # basic info we will need
             tinfo=None
             root_path=_env.get(self.rootpath_tag,None)
             use_script=_env.get(self.script_tag,False)
             target=_env['TARGET_PLATFORM']
-            
+
             ##get the tool info for the host-target combo for the requested version
             #get latest found version if not provided
             if version is None:
@@ -479,7 +482,7 @@ class ToolSetting(object):
                 # this is an error, nothing found
                 # report that version is not found and the versions if any that
                 # have been found
-                
+
                 if self.not_found[key] is not None:
                     # make sure all version are queried so we can report correctly
                     self.query_for_known(env,key)
@@ -490,10 +493,10 @@ class ToolSetting(object):
             if tinfo is None:
                 raise ToolSetupError('ToolSettings failed to load infomation about tool {0} with version: {1} and target: {2}'.format(self.name,version,target))
             ##got the tool info now get the data
-                                        
+
             #get the shell environment
             shell_env=tinfo.get_shell_env(_env,self.name,best_version,root_path,use_script)
-            
+
             # store it in cache
             ret=(shell_env,_env[self.name]._rebind(None,None))
             self.shell_cache[cache_key]=ret
@@ -507,20 +510,20 @@ class ToolSetting(object):
                 key=str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
                 self.shell_cache[str(_v)+key]=ret
         return ret
-            
+
     def MergeShellEnv(self,env):
         import pprint
         pp = pprint.PrettyPrinter(indent=4)
 #        pp.pprint(self.__dict__)
-        
+
         version=env.get(self.version_tag,None)
         root_path=env.get(self.rootpath_tag,None)
         use_script=env.get(self.script_tag,False)
         tmp=self.get_shell_env(env)
-        
+
         if tmp is None:
             raise ValueError("No shell environment defined for %s, VERSION=%s,\
-                    INSTALL_ROOT=%s, Script= %s"%(self.name,version,root_path,use_script))            
+                    INSTALL_ROOT=%s, Script= %s"%(self.name,version,root_path,use_script))
         #print tmp
         shell_env,ns=tmp
         # Add data to env
@@ -533,12 +536,12 @@ class ToolSetting(object):
         version=env[self.name]['VERSION']
         env[self.version_tag]=version
         env[self.rootpath_tag]=env[self.name]['INSTALL_ROOT']
-        
+
         api.output.verbose_msg('toolsettings',"Tool",self.name,"configured to version:",version)
  #       import pprint
  #       pp = pprint.PrettyPrinter(indent=4)
  #       pp.pprint(self.__dict__)
-        
 
-    
-    
+
+
+

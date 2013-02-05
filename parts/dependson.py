@@ -14,6 +14,7 @@ from requirement import REQ
 
 import SCons.Script 
 
+from SCons.Debug import logInstanceCreation
     
 def Component(env,name,version_range=None,requires=REQ.DEFAULT,section="build"):
     
@@ -51,6 +52,7 @@ def Component(env,name,version_range=None,requires=REQ.DEFAULT,section="build"):
 
 class ComponentEnv(object):
     def __init__(self,env):
+        if __debug__: logInstanceCreation(self)
         self.env=env
     def __call__(self,name,version_range=None,requires=REQ.DEFAULT):
         return self.env.Component(name,version_range,requires)

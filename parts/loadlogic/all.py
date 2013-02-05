@@ -3,6 +3,8 @@ import base
 from ..pnode import part
 from .. import api
 
+from SCons.Debug import logInstanceCreation
+
 import time
 
 class All(base.Base): #task_master type
@@ -11,40 +13,41 @@ class All(base.Base): #task_master type
     This is the basic default the SCons does, which is to load everything
     '''
     def __init__(self,pmanager):
+        if __debug__: logInstanceCreation(self)
         self.pmgr=pmanager
         self._section_from_cache=set() # all the section we need to load from cache
         self._parts_to_read=set() # all the parts we have to readin
-        
-        
+
+
     def next_task(self):
         t = self.__tasks[self.__i]
         if t is not None:
             self.__i += 1
         return t
-    
+
     def stop(self):
         self.__stopped=True
         self.__i= -1
-    
+
     @property
     def Stopped(self):
         return self.__stopped
-        
+
     def cleanup(self):
         pass
-        
+
     def _has_tasks(self):
         return self.__tasks != []
-        
+
     def DefineTasksList(self):
-        
+
         for v in self.pmgr.parts.values():
             self.__tasks.append(load_parts_task(v,self.pmgr,self))
-            
+
     def __call__(self):
         parts_to_load=self.pmgr.parts.values()
         parts_to_load.sort(part.pcmp)
-        
+
         total = len(parts_to_load) * 1.0
         cnt=0
         # in case of a fallback we really want to make sure

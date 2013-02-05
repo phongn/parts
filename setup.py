@@ -134,10 +134,10 @@ else:
     pk_package=[]
     
 from distutils.core import setup
-try:
-    import py2exe
-except:
-    print "py2exe not found"
+#try:
+#    import py2exe
+#except:
+#    print "py2exe not found"
 
 setup(name="parts",
         description="Extension module to SCons build system",
@@ -151,7 +151,7 @@ setup(name="parts",
         package_data={
                 'parts.parts-site': pk_data,
                 },
-        console=['main.py']
+        #console=['main.py']
         )
 
 setup(name="parts_util",

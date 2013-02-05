@@ -1,4 +1,4 @@
-
+from SCons.Debug import logInstanceCreation
 # simple event class
 # need to look at extending this or 
 # finding a usable existing solution
@@ -8,10 +8,11 @@
 class Event(object):
     
     def __init__(self):
-        self.__callbacks = set()
+        if __debug__: logInstanceCreation(self)
+        self.__callbacks = list()
 
     def Connect(self, callback):
-        self.__callbacks.add(callback)
+        self.__callbacks.append(callback)
         return self
 
     def __iadd__(self, callback):

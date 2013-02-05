@@ -4,14 +4,17 @@ def gxx_setup(env,ver):
         env['GXX_VERSION']=ver
     if env.get('GCC_VERSION') is None:
         env['GCC_VERSION']=ver
+    if env.get('BINUTILS_VERSION') is None and env['TARGET_PLATFORM']=='android':
+        env['BINUTILS_VERSION']=ver
+        
 
 def resolve(env,version):
     func=lambda x : gxx_setup(x,version)
     host=env['HOST_PLATFORM']
     if host.OS=='darwin':
         return [
-                ('g++',func),
                 ('gcc',func),
+                ('g++',func),
                 ('ar',None),
                 ('gas',None),
                 ('applelink',None),
@@ -20,8 +23,8 @@ def resolve(env,version):
 
     else:        
         return [
-                ('g++',func),
                 ('gcc',func),
+                ('g++',func),
                 ('ar',None),
                 ('gas',None),
                 ('gnulink',None)

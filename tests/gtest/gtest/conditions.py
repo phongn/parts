@@ -3,6 +3,8 @@ import os,sys
 import platform
 import stat
 
+import glb
+
 class Condition(object):
     def __init__(self,testfunc,reason,pass_value):
         self.__func=testfunc
@@ -40,6 +42,16 @@ class ConditionFactory(object):
         
         ret=Condition(function,reason,pass_value)
         return ret
+
+    def HasRegKey(self,root,keys,msg):
+        return self.Condition(
+                       lambda : _has_regkey(root,keys),
+                       msg,
+                       True
+                       )
+
+    def RegistryKeyEqual(self,key):
+        pass
 
     def RunCommand(self,command,msg,pass_value=0,env=None,shell=False):
         return self.Condition(
@@ -151,7 +163,51 @@ def _where_is(program,path=None):
                         return os.path.normpath(fext)
         
     return None
-                        
 
+if sys.platform == 'win32':
+    from  _winreg import *
 
+    glb.Locals['HKEY_CLASSES_ROOT']=HKEY_CLASSES_ROOT
+    glb.Locals['HKEY_CURRENT_USER']=HKEY_CURRENT_USER 
+    glb.Locals['HKEY_LOCAL_MACHINE']=HKEY_LOCAL_MACHINE 
+    glb.Locals['HKEY_USERS']=HKEY_USERS
+    glb.Locals['HKEY_CURRENT_CONFIG']=HKEY_CURRENT_CONFIG  
+                     
+    def _has_regkey(root,keys):
 
+        try:
+            # open hive
+            hive = ConnectRegistry(None,root)
+            
+            for key in keys: 
+                path,key = key.rsplit('\\',1)
+                # get path container
+                try:
+                    rpath = OpenKey(hive, path)
+                    #get key value
+                    QueryValueEx(rpath,key)
+                    return True
+                except WindowsError,e:
+                    pass
+
+        except WindowsError,e:
+            pass
+        
+        return False
+
+    def reg_key_equal(key,value):
+        pass
+
+else:
+    glb.Locals['HKEY_CLASSES_ROOT']=1
+    glb.Locals['HKEY_CURRENT_USER']=2
+    glb.Locals['HKEY_LOCAL_MACHINE']=3
+    glb.Locals['HKEY_USERS']=4
+    glb.Locals['HKEY_CURRENT_CONFIG']=5
+    
+    def _has_regkey(root,key):
+        return False
+
+    
+    def reg_key_equal(key,value):
+        return False

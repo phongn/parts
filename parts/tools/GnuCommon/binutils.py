@@ -5,6 +5,8 @@ from parts.tools.Common.ToolInfo import ToolInfo
 import SCons.Util
 import android
 
+from SCons.Debug import logInstanceCreation
+
 class BinutilInfo(GnuInfo):
     """
     We need this class be implemented because:
@@ -34,6 +36,7 @@ class BinutilInfo(GnuInfo):
 
 class BinutilsSetupWrapper(object):
     def __init__(self, binutils):
+        if __debug__: logInstanceCreation(self)
         self.__binutils = binutils
 
     def __call__(self, env):
@@ -215,7 +218,7 @@ binutils.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-', 'ld.exe'),
             script=None,
             subst_vars={
-                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-x86"',
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
                 'OBJCOPY':'i686-android-linux-objcopy',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -240,8 +243,8 @@ binutils.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld.exe'),
             script=None,
             subst_vars={
-                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-x86"',
-                'OBJCOPY':'i686-android-linux-objcopy',
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
+                'OBJCOPY':'i686-linux-android-objcopy',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -266,7 +269,7 @@ binutils.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-', 'ld.exe'),
             script=None,
             subst_vars={
-                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-14\arch-arm"',
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"',
                 'OBJCOPY':'arm-linux-androideabi-objcopy.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -291,7 +294,7 @@ binutils.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-', 'ld'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='i686-android-linux-ld'
             )
@@ -309,7 +312,7 @@ binutils.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-x86"'},
+            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='i686-linux-android-ld'
             )
@@ -328,7 +331,7 @@ binutils.Register(
             install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-', 'ld'),
             script=None,
             subst_vars={
-                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-14/arch-arm"',
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"',
                 'OBJCOPY':'arm-linux-androideabi-objcopy'
                 },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},

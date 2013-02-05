@@ -102,7 +102,8 @@ class base(object):
     @property
     def CheckOutDir(self):
         '''returns the path in which we want to checkout to'''
-        return self._env.Dir(self._env.subst('$CHECK_OUT_DIR')).path
+        return self._env.Dir('.').rel_path(self._env.Dir('$CHECK_OUT_DIR'))
+
     @property
     def PartFileName(self):
         '''returns the modifed path of the Parts file based on the check out directory'''
@@ -414,8 +415,9 @@ class base(object):
         This allows the object to update any data it needs on disk. This is always called.
         '''
         pass
-        
-    def command_output (self, cmd_str, echo=False):
+    
+    @staticmethod
+    def command_output (cmd_str, echo=False):
         '''
         This internal call is to help with making a system call and printing
         basic error messages

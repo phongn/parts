@@ -113,7 +113,8 @@ def _setUpPdbActions(env):
             env['_pdbChmodAction'] = "chmod $CHMODVALUE ${TARGET.attributes.pdb}"
         else:
             env['_pdbChmodAction'] = ""
-            parts.api.output.warning_msg(
+            if env['TARGET_PLATFORM'] != 'win32':
+             parts.api.output.warning_msg(
                 "chmod tool is not found on your system. " \
                 "Separate debug files created may have wrong permission bits"
             )
@@ -180,12 +181,17 @@ def generate(env):
 
     # Sometimes we have to use specific tools and command lines.
     # For example when building Android executables on Windows host
-    env['OBJCOPY'] = env.get('BINUTILS', {}).get('OBJCOPY', env['OBJCOPY'])
-    env['CHMODVALUE'] = env.get('BINUTILS', {}).get('CHMODVALUE', env['CHMODVALUE'])
-    env['LINKCOM'] = env.get('BINUTILS', {}).get('LINKCOM', env.get('LINKCOM'))
-    env['SHLINKCOM'] = env.get('BINUTILS', {}).get('SHLINKCOM', env.get('SHLINKCOM'))
-    env['__RPATH'] = env.get('BINUTILS', {}).get('__RPATH', env.get('__RPATH'))
-    env['RPATHPREFIX'] = env.get('BINUTILS', {}).get('RPATHPREFIX', env.get('RPATHPREFIX'))
+    try:
+        env.AppendUnique(LINKFLAGS=['-B{0}'.format(env['BINUTILS'].INSTALL_ROOT)])
+        env['OBJCOPY'] = env.get('BINUTILS', {}).get('OBJCOPY', env['OBJCOPY'])
+        env['CHMODVALUE'] = env.get('BINUTILS', {}).get('CHMODVALUE', env['CHMODVALUE'])
+        env['LINKCOM'] = env.get('BINUTILS', {}).get('LINKCOM', env.get('LINKCOM'))
+        env['SHLINKCOM'] = env.get('BINUTILS', {}).get('SHLINKCOM', env.get('SHLINKCOM'))
+        env['__RPATH'] = env.get('BINUTILS', {}).get('__RPATH', env.get('__RPATH'))
+        env['RPATHPREFIX'] = env.get('BINUTILS', {}).get('RPATHPREFIX', env.get('RPATHPREFIX'))
+    except KeyError:
+        pass
+    
 
     _setUpPdbActions(env)
 
@@ -193,7 +199,7 @@ def exists(env):
     """
     Proxy for SCons.Tool.gnulink.exists function.
     """
-    if env.has_key('BINUTILS_VERSION') or env.get('HOST_OS') == 'win32':
+    if env.has_key('BINUTILS_VERSION'):
         parts.tools.GnuCommon.binutils.MergeShellEnv(env)
 
     return SCons.Tool.gnulink.exists(env)

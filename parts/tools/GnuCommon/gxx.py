@@ -172,16 +172,14 @@ gxx.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-','g++.exe'),            
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-14\arch-x86"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\x86'
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
+                        'STL_MAP':android.android_stl_map_x86_pre_r8
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include\backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\x86\include'+os.pathsep+
+                        'CPLUS_INCLUDE_PATH':
                             r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\include', 
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
+                        
                         },
             test_file='i686-android-linux-g++.exe'
             )
@@ -199,16 +197,14 @@ gxx.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-','g++.exe'),            
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-14\arch-x86"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\${GXX.VERSION}\libs\x86'
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
+                        'STL_MAP':android.android_stl_map_x86
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\${GXX.VERSION}\include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\${GXX.VERSION}\include\backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\${GXX.VERSION}\libs\x86\include'+os.pathsep+
+                        'CPLUS_INCLUDE_PATH':
                             r'${GXX.INSTALL_ROOT}\toolchains\x86-${GXX.VERSION}\prebuilt\windows\include', 
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
+                        
                         },
             test_file='i686-linux-android-g++.exe'
             )
@@ -227,16 +223,13 @@ gxx.Register(
             install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','g++.exe'),        
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-14\arch-arm"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\armeabi-v7a'                                                    
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"',
+                        'STL_MAP':android.android_stl_map_arm
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GXX.VERSION}\prebuilt\windows\bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\include\backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}\sources\cxx-stl\gnu-libstdc++\libs\armeabi\include'+os.pathsep+
+                        'CPLUS_INCLUDE_PATH':
                             r'${GXX.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GXX.VERSION}\prebuilt\windows\include',
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
                         },
             test_file='arm-linux-androideabi-g++.exe'
             )
@@ -254,17 +247,13 @@ gxx.Register(
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-','g++'),  
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-14/arch-x86"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86'
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
+                        'STL_MAP':android.android_stl_map_x86_pre_r8
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/include',
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
-                                                    
+                        'CPLUS_INCLUDE_PATH':
+                            r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/include',                                                    
                         },
             test_file='i686-android-linux-g++'
             )
@@ -282,17 +271,13 @@ gxx.Register(
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-','g++'),  
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-14/arch-x86"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86'
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
+                        'STL_MAP':android.android_stl_map_x86
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/include',
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
-                                                    
+                        'CPLUS_INCLUDE_PATH':
+                            r'${GXX.INSTALL_ROOT}/toolchains/x86-${GXX.VERSION}/prebuilt/linux-x86/include',                                                    
                         },
             test_file='i686-linux-android-g++'
             )
@@ -310,21 +295,42 @@ gxx.Register(
             install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','g++'),    
             script=None,
             subst_vars={
-                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-14/arch-arm"',
-                        'LIBRARY_PATH':'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a'
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"',
+                        'STL_MAP':android.android_stl_map_arm
                         },
             shell_vars={
                         'PATH':r'${GXX.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GXX.VERSION}/prebuilt/linux-x86/bin',
-                        'CPLUS_INCLUDE_PATH':r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/armeabi-v7a/include'+os.pathsep+
-                            r'${GXX.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GXX.VERSION}/prebuilt/linux-x86/include',
-                        'LIBRARY_PATH':'${GXX.LIBRARY_PATH}'
-                                                    
+                        'CPLUS_INCLUDE_PATH':
+                            r'${GXX.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GXX.VERSION}/prebuilt/linux-x86/include',                                                    
                         },
             test_file='arm-linux-androideabi-g++'
             )
     ]
 )
 
+## MINGW compiler on windows
 
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    info=[
+    GnuInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            #MsiFinder('MingGW-*','DisplayName'),
+            PathFinder(['c:\\MinGW\\bin'])
+            ],
+        opt_dirs=[
+                'c:\\MinGW\\opt\\'
+            ],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${GCC.INSTALL_ROOT}'},
+        test_file='g++.exe'
+        )
+    ]
+)

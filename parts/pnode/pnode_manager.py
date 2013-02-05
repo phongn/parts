@@ -11,17 +11,21 @@ import part_info # needed for a type type
 
 import SCons.Node
 
+from SCons.Debug import logInstanceCreation
+
 class _node_info(object):
     __slots__=[
+        '__weakref__',
         '__csig',
         '__timestamp',
         '__id'
     ]
     def __init__(self,id,timestamp):
+        if __debug__: logInstanceCreation(self)
         self.__csig=None
         self.__timestamp=timestamp
         self.__id=id
-    
+
     @property
     def ID(self):
         return self.__id
@@ -42,19 +46,21 @@ class manager(object):
     _node_types={}
 
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         self.__known_pnodes={}   # ID:node:parts.pnode
         self.__known_nodes={}   # ID:SCons.Node.Node
         self.__factories={} # type:function(id)
         self.__aliases={} # ID:Alais node
         self.__store_all=False
-        
+
         # cached states
         self.__cache={}
 
         #map the events
         glb.engine.CacheDataEvent+=self.Store
-        glb.engine.PostProcessEvent+=self.StoreAllPNodes
         glb.engine.PostProcessEvent+=self._set_store_state
+        glb.engine.PostProcessEvent+=self.StoreAllPNodes
+        
 
     def _set_store_state(self,mode):
         from ..loadlogic import all
@@ -64,7 +70,8 @@ class manager(object):
                 self.__store_all=True
                 #clear out the cache
                 datacache.StoreData("nodeinfo",{})
-                datacache.ClearCache("nodeinfo",save=True)
+                #datacache.ClearCache("nodeinfo",save=True)
+                
 
     def TotalNode(self):
         return len(self.__known_nodes)
@@ -78,10 +85,10 @@ class manager(object):
 
     def isKnownNode(self,ID):
         return self.__known_nodes.has_key(ID)
-    
+
     def isKnownPNode(self,ID):
         return self.__known_pnodes.has_key(ID)
-    
+
     def isKnownAliasStored(self,ID):
         data=self._get_cache()
         if data:
@@ -218,13 +225,14 @@ class manager(object):
         datacache.StoreData("nodeinfo",valuestostore)
         
 
-    def store_value(self,node,_info,valuestostore): 
+
+    def store_value(self,node,_info,valuestostore):
             valuestostore[node.ID]={
                 'type':node.__class__,
                 'pinfo':_info
                 }
-            
-    
+
+
     def StoreAlias(self,anode,valuestostore=None):
         data={}
         stored_data=self._get_cache()
@@ -232,7 +240,7 @@ class manager(object):
 
         if valuestostore is None:
             valuestostore =  stored_data.get('aliases',{})
-        
+
         binfo = anode.get_binfo()
         # translate the node objects to a string value
         for a in ['bsources', 'bdepends', 'bimplicit']:
@@ -251,7 +259,7 @@ class manager(object):
         stored_data=self._get_cache()
         if stored_data is None: stored_data = {}
         valuestostore =  stored_data.get('known_nodes',{})
-        
+
         binfo = node.get_binfo()
         # if we already have stored information, we want to make sure any incremental changes
         # that might need to be added and stored correctly
@@ -271,9 +279,9 @@ class manager(object):
             # had to load everything, and as such should have a complete
             # set to have stored
             self.store_value(node,node.GenerateStoredInfo(),valuestostore)
-        
+
         self._set_cache('known_nodes',valuestostore)
-        
+
     def StorePNode(self,pnode):
         data={}
         stored_data=self._get_cache()
@@ -290,13 +298,13 @@ class manager(object):
             self.store_value(pnode,sd,valuestostore)
 
         self._set_cache('known_pnodes',valuestostore)
-        
+
     def StoreAllPNodes(self,build_mode):
         # this is mapped to the PostProcessEvent event to store all Pnode information we have
         for k,node in self.__known_pnodes.copy().iteritems():
             if node.LoadState==glb.load_file:
                 self.StorePNode(node)
-        
+
     def Store(self,goodexit,build_mode):
         # called at end of run to store and extra state that we can save,
         # but was not saved do to target, or build issues
@@ -307,25 +315,25 @@ class manager(object):
             for k,node in self.__aliases.iteritems():
                 if not node.isVisited:
                     self.StoreAlias(node)
-        
+
             for k,node in self.__known_nodes.copy().iteritems():
                 if not node.isVisited:
                     self.StoreNode(node)
                     if isinstance(node,SCons.Node.FS.Base) and node != node.srcnode():
                         self.StoreNode(node.srcnode())
-            datacache.SaveCache("nodeinfo")
+            
         elif (not goodexit) or (build_mode =='question'):
             datacache.ClearCache("nodeinfo")
 
     # this would mirror simular logic in the SCOns.Node classes
-    # the goal here is to not load these Nodes as the memory hit 
+    # the goal here is to not load these Nodes as the memory hit
     # of these objects because of imple details is to high
     # which has a side effect of slowing down the build.
     def ClearNodeinfo(self,nodeid):
         self.__cache['NodeInfo']={}
 
     def Nodeinfo(self,nodeid):
-        
+
         try:
             return self.__cache['NodeInfo'][nodeid]
         except KeyError:
@@ -336,7 +344,7 @@ class manager(object):
             # we need to return a dict with two piece of information
             # 1) a timestamp given that it makes sence
             # 2) a csig value, or MD5 value of the context of the node
-            
+
             # the trick is that object such as Aliases (and Values) are not yet defined
             # since the rule is that this logic only makes sense given node
             # changes on disk, values such as Alias are ignorable, since changes
@@ -345,12 +353,12 @@ class manager(object):
             # a different set of check looks to see if such a files changed, and set
             # the correct Part to a load state to make sure the taskmaster logic
             # can correct see what needs to be rebuilt if anything. Values are a little different
-            # in that the can be built ( unlike Aliases at the moment), however that does 
+            # in that the can be built ( unlike Aliases at the moment), however that does
             # not effect anything for us, as the only risk is that the builder always
             # build a new value ( ie based on time or date) which we can't check for at the moment
-            # and is the point of the force_load, AlwaysBuild logic for a Parts to make sure such items are always 
+            # and is the point of the force_load, AlwaysBuild logic for a Parts to make sure such items are always
             # such items are always loaded.
-            # Because of this we only deal with node that are a type of are based on a 
+            # Because of this we only deal with node that are a type of are based on a
             # SCons.Node.FS.Base type.
             orgid=nodeid
             info=None
@@ -360,13 +368,13 @@ class manager(object):
                     st_info=os.lstat(os.path.abspath(os.path.normpath(nodeid)))
                 except OSError:
                     st_info=None
-                if st_info is None and sinfo.SrcNodeID: 
+                if st_info is None and sinfo.SrcNodeID:
                     nodeid=sinfo.SrcNodeID
                     st_info=os.lstat(os.path.abspath(os.path.normpath(nodeid)))
-                
+
                 if st_info:
                     info = _node_info(nodeid,long(st_info.st_mtime))
-                
+
             if info is None:
                 info = _node_info(nodeid,0)
             self.__cache['NodeInfo'][orgid]=info
@@ -398,31 +406,31 @@ class manager(object):
         #else:
 
         #return SCons.Util.MD5signature(contents)
-   
+
     def hasNodeRelationChanged(self,snode,ninfo):
-        
+
         #This node may not be an File based value, so it may not have a time stamp
         # We cheat in that when we try to get the "timestamp" for node that don't have this
         # returning a 0 stored and 1 for current, this allows to force the MD5 check
-        
+
         curr_info=self.Nodeinfo(snode)
         if ninfo.get('timestamp',0) != curr_info.TimeStamp:
             # do MD5 check to see if it is really diffent
             if ninfo.get('csig',0) != curr_info.CSig:
                 api.output.verbose_msg(['node_check'],"{0} is out of date:\n current CSIG = {1}\n stored CSIG = {2}".format(curr_info.ID, curr_info.CSig, ninfo.get('csig',0)))
                 return True
-        return False 
-        
+        return False
+
     def hasNodeChanged(self,nodeid):
         #checks stored information to find out if it a change has happened since the last time we tried to build
         # this given node ( or something needed to build items to build this node, etc...)
-        
+
         # get stored info
         info=self.GetStoredNodeIDInfo(nodeid)
         if not info:
             api.output.verbose_msg(['node_check'],"{0} has no stored information".format(nodeid))
             return True
-        
+
         # if this node is a file based. does it exist
         if self.isNodeIDFileBased(nodeid):
             if not os.path.exists(nodeid):
@@ -436,19 +444,19 @@ class manager(object):
             return True
 
         src_data=info.SourceInfo
-        
+
         #for each source check:
         for snode,ninfo in src_data.iteritems():
             # if this node has changed
             if self.hasNodeRelationChanged(snode,ninfo):
                 api.output.verbose_msg(['node_check'],"{0} is out of date because the state of source {1} is different from what is stored".format(nodeid,snode))
                 return True
-        
+
         return False
-        
+
     def isNodeIDFileBased(self,nodeid):
-        
-        info=self.GetStoredNodeIDInfo(nodeid)        
+
+        info=self.GetStoredNodeIDInfo(nodeid)
         if not info and self. isKnownNode(nodeid):
             return isinstance(self.GetNode(nodeid),SCons.Node.FS.Base)
         elif info:

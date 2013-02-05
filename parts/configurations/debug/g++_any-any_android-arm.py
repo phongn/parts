@@ -14,18 +14,18 @@ config.VersionRange("3-*",
                         CCFLAGS=[
                                 '--sysroot=${GXX.SYS_ROOT}',
                                 '-O0',
-                                '-march=armv7-a',
                                 '-mfloat-abi=softfp',
                             ],
-                        CPPDEFINES=['DEBUG'],
+                        CPPDEFINES=['DEBUG',"${_ANDROID_STL('CPPDEFINES')}"],
+                        CPPPATH=["${_ANDROID_STL('CPPPATH')}"],
+                        CXXFLAGS=["${_ANDROID_STL('CXXFLAGS')}"],
                         LINKFLAGS=[
                                 '--sysroot=${GXX.SYS_ROOT}',
                                 '-Wl,--fix-cortex-a8'
                                    ],
                         LIBPATH=[
-                                '${GXX.LIBRARY_PATH}'
+                                "${_ANDROID_STL('LIBPATH')}"
                                 ],
-                        LIBS=['gnustl_shared']
+                        LIBS=["${_ANDROID_STL('LIBS')}"]
                         )
                     )
-

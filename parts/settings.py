@@ -11,6 +11,8 @@ import common
 import load_module
 #import platform_info
 
+from SCons.Debug import logInstanceCreation
+
 import SCons.Script
 
 import copy
@@ -18,20 +20,20 @@ import os
 import sys
 
 def normalize_map(m):
-    ''' doesn't do anything but look for certain key that might be in different 
+    ''' doesn't do anything but look for certain key that might be in different
     forms and translate them to a common one'''
     key='mode'
     value=m.get(key,None)
     if common.is_string(value) and not common.is_list(value):
         m[key]=value.split(',')
-    
+
     key='toolchain'
-    value=m.get(key,None)    
+    value=m.get(key,None)
     if common.is_string(value) and not common.is_list(value):
         tmp=common.process_tool_arg(value.split(','))
         tmp.reverse()
         m[key]=tmp
-    
+
     return m
 
 
@@ -40,6 +42,7 @@ def normalize_map(m):
 # class to handle old stuff that needs to change.. move to better location later
 class deprecated(object):
     def __init__(self,key,new_key,value):
+        if __debug__: logInstanceCreation(self)
         self.key=key
         self.new_key=new_key
         self._value=value
@@ -56,19 +59,19 @@ class deprecated(object):
 
     def __ne__(self,rhs):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
-        return self._value != rhs    
-    
+        return self._value != rhs
+
     def __hash__(self):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return hash(str(self._value))
-    
+
     def __len__(self):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return len(str(self._value))
     def __getitem__(self,key):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self._value[key]
-    
+
     def __add__(self, other):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return self._value+other
@@ -78,12 +81,13 @@ class deprecated(object):
     def __contains__ (self,item):
         api.output.warning_msg("[",self.key,"] is deprecated please use [",self.new_key,"]")
         return item in self._value
-        
+
 
 class string_tester(object):
     def __init__(self,value):
+        if __debug__: logInstanceCreation(self)
         self.value=value
-    
+
     def __eq__(self,rhs):
         import fnmatch
         return fnmatch.fnmatchcase(rhs, self.value)
@@ -108,55 +112,60 @@ def get_cache_values(*lst):
         for i in l:
             if i in cache_values:
                 ret+="%s=%s"%(i,l[i])
-        
+
     return ret
 
 class ToolChain():
-    
+    def __init__(self):
+        if __debug__: logInstanceCreation(self)
+
     def Exists(name,**kw):
         pass
 
 class All:
     def __init__(self,*lst):
+        if __debug__: logInstanceCreation(self)
         self.lst=lst
-        
+
     def Valid(self,tester):
         for i in self.lst:
             if tester(i)==False:
                 return False
         return True
-    
+
     def GetValues(self):
         return self.lst
-        
+
 
 
 class OneOf:
     def __init__(self,*lst):
+        if __debug__: logInstanceCreation(self)
         self.lst=lst
-        
+
     def Valid(self,tester):
         for i in self.lst:
             if tester(i)==True:
                 return True
         return False
-    
+
     def GetValues(self,tester):
         for i in self.lst:
             if tester(i)==True:
                 return [i]
         return []
-        
+
 class AnyOf:
     def __init__(self,*lst):
-        self.lst=lst        
-        
+        if __debug__: logInstanceCreation(self)
+        self.lst=lst
+
     def Valid(self,tester):
         for i in self.lst:
             if tester(i)==True:
                 return True
         return False
-    
+
     def GetValues(self,tester):
         ret=[]
         for i in self.lst:
@@ -169,39 +178,44 @@ class AnyOf:
 # move to a new file to remove core.py
 
 class parts_dict(dict):
+    def __init__(self, *args, **kw):
+        if __debug__: logInstanceCreation(self)
+        dict.__init__(self, *args, **kw)
+
     def __getattr__(self,name):
         return self[name]
-    
+
     def __setattr__(self,name,value):
         if is_dictionary(value):
             self[name]=parts_dict(value)
         else:
             self[name]=value
-            
+
     def __delattr__(self,name):
         del self[name]
-    
+
 opt_true_values  = set(['y', 'yes', 'true', 't', '1', 'on' , 'all' ])
 opt_false_values = set(['n', 'no', 'false', 'f', '0', 'off', 'none'])
-   
+
 
 class Settings(object):
-    
-    __env_chache={} 
-    
+
+    __env_chache={}
+
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         #dict.__init__(self,kw)
 
         #cfg_files=[SCons.Script.GetOption('cfg_file')]
         #vars=Variables.Variables(cfg_files,args=overrides,user_defaults=glb.defaultoverides)
-        
+
         self.vars=Variables.Variables()
         self.vars._on_change.Connect(self._handle_var_change)
         self.options=SCons.Script.Main.OptionsParser.values
         self.__addshellpath=True
         self.__env_cache={}
-        
-    
+
+
     ## stuff for self.value logic
 ##    def __getattr__(self,name):
 ##        return self[name]
@@ -212,25 +226,25 @@ class Settings(object):
 
     def SetOptionDefault(self,):
         pass
-        
+
     @property
     def AddShellPath(self):
         '''
         Tell us if we are going to add the Shell when we create the Environment
         '''
         return self.__addshellpath
-    
+
     @AddShellPath.setter
     def AddShellPath(self,val):
         '''
         Sets if we are going to add the Shell when we create the Environment
         '''
         self.__addshellpath=val
-        
+
     # option get --<name>
     def AddOption(self,*lst,**kw):
         return SCons.Script.AddOption(*lst,**kw)
-    
+
     def BoolOption(self,name,default=None,explict=False,dest=None,help=''):
         '''Constructs a --<option> argument that expects some bool value
         @param option Name of the option
@@ -238,11 +252,11 @@ class Settings(object):
         @param explict The user has to say --key=true, --key will not work
         @param dest The name of the value we use to get this value
         @param help The help text for this option
-        
+
         '''
-        
+
         def opt_bool(option, opt, value, parser,var):
-            
+
             TrueValue=True
             if value is None:
                 parser.values.__dict__[var]=TrueValue
@@ -253,9 +267,9 @@ class Settings(object):
             elif tmp in opt_false_values:
                 parser.values.__dict__[var]= not TrueValue
             else:
-                raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' % 
-                        (var.replace('-','_'),value,opt_true_values|opt_false_values)) 
-                        
+                raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' %
+                        (var.replace('-','_'),value,opt_true_values|opt_false_values))
+
         return SCons.Script.AddOption(name,
             dest=dest,
             nargs=explict and 1 or '?',
@@ -263,27 +277,27 @@ class Settings(object):
             type='string',
             action='callback',
             help=help)
-                        
-        
-    def FeatureOption(self,name,default=True,explict=False,dest=None,help=''): 
-        
+
+
+    def FeatureOption(self,name,default=True,explict=False,dest=None,help=''):
+
         if default != True and default != False:
             print "Error Default value for Feature has to be a True or False value"
-        
+
         a=SCons.Script.AddOption("--enable-{0}".format(name),
             dest=dest,
             default=default,
             action="store_true",
             help='Enable Parts data to be used cache')
-            
+
         b=SCons.Script.AddOption("--disable-{0}".format(name),
             dest=dest,
             default=default,
             action="store_false",
             help='Disable Parts data cache from being used')
-            
+
         return [a,b]
-    
+
     def EnumOption(self,name,choices,default,dest,help):
         return SCons.Script.AddOption(name,
             dest=dest,
@@ -292,13 +306,13 @@ class Settings(object):
             type='choice',
             choices=choices,
             action='store',
-            help=help) 
-    
+            help=help)
+
     def ListOption(self,name,default=[],dest=None,help=None):
-        
-        def opt_list(option, opt, value, parser,var): 
+
+        def opt_list(option, opt, value, parser,var):
             parser.values.__dict__[var]=value.split(',')
-            
+
         SCons.Script.AddOption(name,
             dest=dest,
             default=default,
@@ -307,23 +321,23 @@ class Settings(object):
             type='string',
             action='callback',
             help=help)
-            
+
     def IntOption(self,name,default=0,dest=None,help=None):
-        
+
         SCons.Script.AddOption(name,
             dest=dest,
             default=default,
             nargs=1,
             type='int',
             action='store',
-            help=help) 
-            
+            help=help)
+
     def PathOption(self,*lst,**kw):
         pass
-        
+
     def GetOption(self,name):
         SCons.Script.GetOption(name)
-    
+
     # Variables are <name>=Value
     def AddVariable(self,name, help=None,  default=None, validator=None, converter=None, value=None, help_group=None):
         self.vars.Add(Variables.Variable(name, help, default, validator, converter, value, help_group))
@@ -339,10 +353,10 @@ class Settings(object):
         self.vars.Add(Variables.PathVariable(name, name, help, default, validator, value, help_group))
     def PackageVariable(self, name, help, default, searchfunc=None, value=None, help_group=None):
         self.vars.Add(Variables.PackageVariable(name, name, help, default, searchfunc, value, help_group))
-        
+
     def ToolChain(self,name):
         return ToolChain(name)
-        
+
     def Configuration(self,name,default_ver_func,post_process_func=None):
         return self.Config_Set.Configuration(default_ver_func,post_process_func)
 
@@ -350,9 +364,13 @@ class Settings(object):
     def __apply_tools_and_config(self,env,pre=[],post=[]):
          ## apply tool chain
         env.ToolChain(pre+env['toolchain']+post)
-        ## apply the configuration for the tool    
+        ## apply the configuration for the tool
         env.Configuration(env.subst('${CONFIG}'))
-                       
+        #get mappers
+        mappers=self._mappers
+        #set mappers
+        env.Replace(**mappers)
+
         ## this is for fixing an issue with the scanners in which one item in a env
         ## does not have the $vars fully expanded, which causes an issue with in the
         ## dependency tree. This leads to a false rebuild of few files
@@ -368,10 +386,10 @@ class Settings(object):
             env=self.BasicEnvironment()
             # extra tools we don't think should be tools
             self.__apply_tools_and_config(env,post=['install','zip'])
-                
+
             ## See if the user want to whack the default environment with the shell value.
             #if  SCons.Script.GetOption('use_env') == True or self.UseSystemEnvironment:
-            #    env['ENV']=os.environ    
+            #    env['ENV']=os.environ
             self.__env_cache[key]=env
         return env
 
@@ -391,7 +409,7 @@ class Settings(object):
 
         WANRING! Clone the returned object before modifying it!
         """
-        
+
         ## case 1 BASE + default toolchain logic
         if kw =={}:
             env=self.DefaultEnvironment()
@@ -407,7 +425,7 @@ class Settings(object):
                 del kw['append']
             except KeyError:
                 pass
-             
+
             cache_key=get_cache_values(normalize_map(prepend),
                                     normalize_map(append),
                                     normalize_map(kw))#,
@@ -421,7 +439,7 @@ class Settings(object):
                 if user_tools is None:
                     # we want our toolchain logic to be used
                     # turn off the Scons logic for speed
-                    #replace['tools']=[]    
+                    #replace['tools']=[]
                     # update toolchain with a minor tweaks the user wants
                     pre_tools=prepend.get('toolchain',[])
                     if pre_tools!=[]:
@@ -429,17 +447,17 @@ class Settings(object):
                     post_tools=append.get('toolchain',[])
                     if post_tools!=[]:
                         del append['toolchain']
-                    # minor messing around with tools still need 
+                    # minor messing around with tools still need
                     # some tools I would not view as "tools"
-                    # that would be part of a tool chain but stuff that 
+                    # that would be part of a tool chain but stuff that
                     # would always exist
                     post_tools.extend(['install','zip'])
-            
+
                 # get base Environment
                 env=self.BasicEnvironment()
-                # we need to take any values in the kw that are Variables and 
+                # we need to take any values in the kw that are Variables and
                 # reapply an convert logic on them. To do this we seperate them
-                # from the rest of the general key values 
+                # from the rest of the general key values
                 vars={}
                 tmp_kw=kw.copy()
                 for k,v in tmp_kw.iteritems():
@@ -450,19 +468,19 @@ class Settings(object):
                     if k in self.vars:
                         vars[k]=v
                         del kw[k]
-                    
-            
+
+
                 # Clone it and apply any overides we need to.
                 env=env.Clone(**kw)
-                
+
                 # reapply any values that are Vars so the convert logic gets applied correctly
                 for k,v in vars.iteritems():
                     self.vars[k].Update(env,v)
-                
+
                 # apply our tool chain user is not using a hard coded SCons one
                 if user_tools is None:
                     self.__apply_tools_and_config(env,pre_tools,post_tools)
-            
+
                 #append any data or prepend any data as needed
                 #will probally need better error handling later
                 for k,v in append.iteritems():
@@ -473,7 +491,7 @@ class Settings(object):
                         env[k]=v
                     else:
                         api.output.warning_msg('Ignoring appending value', k,"as it is not a list. It is type",type(v),".")
-        
+
                 for k,v in prepend.iteritems():
                     has_hey=env.has_key(k)
                     if common.is_list(v) and has_hey:
@@ -482,7 +500,7 @@ class Settings(object):
                         env[k]=v
                     else:
                         api.output.warning_msg('Ignoring prepending value', k,"as it is not a list. It is type",type(v),".")
-                        
+
                 self.__env_cache[cache_key]=env
 
         ## See if the user want to whack the default environment with the shell value.
@@ -490,15 +508,15 @@ class Settings(object):
         #    env['ENV']=os.environ
         return env
 
-        
+
     def BasicEnvironment(self):
-        ''' 
-        This makes a minimum environment with no tool or configuration setup, 
+        '''
+        This makes a minimum environment with no tool or configuration setup,
         but has all "parts" variables done. This does not allow for any overides
         it is as it says here.. it is a basic environment based on the Setting
         object values
-        ''' 
-        
+        '''
+
         try:
             #env=self.__env_cache[231]
             env=self.__env_cache["base"]
@@ -508,30 +526,26 @@ class Settings(object):
             ## apply variable values
             ## get command line args
             overrides=copy.deepcopy(SCons.Script.ARGUMENTS)
-            ## get set of config files to process    
+            ## get set of config files to process
             cfg_files=[SCons.Script.GetOption('cfg_file')]
             # get global overrides is any
             glb_defaults={}#glb.defaultoverides
             # apply values
             self.vars.Update(env,args=overrides,files=cfg_files,user_defaults=glb_defaults,add_unknown=True)
-                        
+
             #get the builders
             builders=self._builders
             #set builders
             env['BUILDERS'].update(builders)
-            
-            #get mappers
-            mappers=self._mappers
-            #set mappers
-            env.Replace(**mappers)
-            
+
             # some general values needed to have certain stuff work better
             if env['HOST_PLATFORM'] == 'posix':
-                env['ENV']['HOME']=os.environ['HOME']               
-                
-            #env['ENV']=os.environ 
+                env['ENV']['HOME']=os.environ['HOME']
+
+            env['PART_USER']=common.GetUserName(env)
+
             env['RPATH']=[]
-            
+
                 # stuff to zap
             env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
             env["config"]=deprecated("config","CONFIG",env['CONFIG'])
@@ -542,26 +556,26 @@ class Settings(object):
         #if self.__env_cache!={}:
         #    print "Cleared Cache"
         self.__env_cache={}
-        
-        
+
+
 
     @property
     def _mappers(self):
         return glb.mappers
-    
+
     @property
     def _builders(self):
         return glb.builders
 
 #########
 
-    
+
     #@cache
     def _basic_base_env(self,**kw):
         '''
         This creates a base environment with the mininium stuff needed
         '''
-        
+
         ## create a new environment
         ### get our toolpath if it not set by the user
         #try:
@@ -569,10 +583,10 @@ class Settings(object):
         #    del kw['toolpath']
         #except:
         tool_path=load_module.get_site_directories('tools')
-        
-        # add extra value we have    
+
+        # add extra value we have
         kw["PARTS_MODE"]=glb.engine._build_mode
-        
+
         # make the SCons environment #############################
         env=SCons.Script.Environment(
                                 toolpath=tool_path,
@@ -586,29 +600,29 @@ class Settings(object):
             # add certain paths for windows
             env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root(), delete_existing=1)
             env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root()+'\\system32', delete_existing=1)
-        
+
         #add path to current Python being used, so we use this instead of some other version
         # this allow Command that run python to work as expected
         env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
 
         #return the cached env
-        return env#.Clone()        
-    
+        return env#.Clone()
+
     def Component(self,):
         return self.Part()
-        
+
     def Part(self):
         return Part_t(config_content=self,)
-        
+
     def __has_env_cached():
-        ''' tells is the current state of this configuration object has a cached 
+        ''' tells is the current state of this configuration object has a cached
         environment created yet.
         '''
-        
-        
+
+
 def DefaultSettings():
     try:
         return DefaultSettings.__cache
-    except AttributeError: 
+    except AttributeError:
         DefaultSettings.__cache=Settings()
         return DefaultSettings.__cache

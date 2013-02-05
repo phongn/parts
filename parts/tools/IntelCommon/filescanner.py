@@ -6,11 +6,14 @@ import parts.tools.Common.Finders as Finders
 import common
 import subprocess
 
+from SCons.Debug import logInstanceCreation
+
 # for version 12.x
 class file_scanner12(object):
     def __init__(self,path,pattern,arch,env):
+        if __debug__: logInstanceCreation(self)
         self.path=path # path to scan
-        self.pattern=pattern    # pattern to install root 
+        self.pattern=pattern    # pattern to install root
         self.arch=arch
         self.env_var=Finders.EnvFinder(env,arch)
         self.cache=None
@@ -32,13 +35,13 @@ class file_scanner12(object):
                         # if this is a directory
                         result0=reg.match(item0)
                         if result0:
-                            # this is one possible way to look at the 
+                            # this is one possible way to look at the
                             # version number of the compiler
                             # ie the data.update.package form
                             version_group1=result0.groups()[0]+"."+result0.groups()[1]
                             # test for the bin directory
                             bin_path=os.path.join(fullpath0,'bin',self.arch,'icc')
-                            
+
                             if os.path.exists(bin_path):
                                 # this is a valid path..
                                 # at this point we want to get the version
@@ -49,16 +52,16 @@ class file_scanner12(object):
                                  stderr=subprocess.STDOUT,
                                  stdout = subprocess.PIPE)
 
-                                pipe.wait()  
+                                pipe.wait()
                                 line = pipe.stdout.readline()# first line has version in??
                                 match = re.search(r'([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
-                                
-                                if match:   
+
+                                if match:
                                     version_group2 = match.group(0)
                                     ret[version_group1]=fullpath0
-                                    ret[version_group2]=fullpath0 
-                                
-                        
+                                    ret[version_group2]=fullpath0
+
+
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
@@ -93,6 +96,7 @@ class file_scanner12(object):
 # for version 11.x
 class file_scanner11(object):
     def __init__(self,path,pattern,pattern2,arch,env):
+        if __debug__: logInstanceCreation(self)
         self.path=path
         self.pattern=pattern
         self.pattern2=pattern2
@@ -154,9 +158,10 @@ class file_scanner11(object):
             if common.MatchVersionNumbers(version,i):
                 return tmp[i]
         return None
-    
+
 class file_scanner9_10(object):
     def __init__(self,path,pattern,arch,env):
+        if __debug__: logInstanceCreation(self)
         self.path=path
         self.pattern=pattern
         self.arch=arch
@@ -196,8 +201,8 @@ class file_scanner9_10(object):
         for i in k:
             if common.MatchVersionNumbers(version,i):
                 return i
-        return None  
-      
+        return None
+
     def resolve(self,version):
         tmp=self.scan()
         if tmp is None:
@@ -208,6 +213,6 @@ class file_scanner9_10(object):
             if common.MatchVersionNumbers(version,i):
                 #print version, i
                 return tmp[i]
-        return None  
-        
-        
+        return None
+
+

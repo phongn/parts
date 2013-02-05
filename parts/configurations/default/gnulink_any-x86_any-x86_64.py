@@ -2,10 +2,13 @@
 ### GNU linker configurations
 ######################################
 
-from gnulink import post_process_func,map_default_version
+
 from parts.config import *
 
-config = configuration(map_default_version, post_process_func)
+def map_default_version(env):
+    return env['GCC_VERSION']
+
+config = configuration(map_default_version)
 
 config.VersionRange("*",
                     prepend=ConfigValues(

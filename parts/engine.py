@@ -24,8 +24,8 @@ import target_type
 import events
 import pnode.pnode_manager
 
-
-
+from SCons.Script.Main import memory_stats
+from SCons.Debug import logInstanceCreation
 
     
 ################################################################################
@@ -86,6 +86,7 @@ def is_Sconstruct_up_to_date():
 # would it be nice if ther was a addon base in Scons... hmmmmm
 class parts_addon(object):
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         
         # some known data items
         self.__part_manager=None
@@ -234,80 +235,85 @@ class parts_addon(object):
         that we might want to do. such as processing the part files, 
         delayed mapping, etc
         '''
-        
-        self.__had_error=False
-        # generate the cache key
-        self.generate_cache_key()
-        # set state sconstruct to loaded
-        self.__is_sconstruct_loaded=True
-        # call event that we are loaded
-        self.SConstructLoadedEvent(self.__build_mode)
+        memory_stats.append('before Parts processed')
         try:
-            targets=SCons.Script.BUILD_TARGETS
-            # check to see that we even have targets to process
-            if targets == []:
-                return 
-            
-            #set stack info for reporting issues
-            #errors.SetPartStackFrameInfo()
-            
-            # If the logger is not being used we want to remove the
-            # queue logger to save memory
-            if glb.rpter.logger is logger.QueueLogger:
-                # this should reset QueueLogger
-                glb.rpter.logger=logger.nil_logger
-                        
-            #process the Parts if any exist
-            self.__part_manager.ProcessParts()
-                    
-            # process Queue
-            self.parts_process_queue()   
-            self.PostProcessEvent(self.__build_mode)
-
-            datacache.SaveCache()
-            self._loaded_data=True
-            
-            #clear the datacache
-            # change this to clear on certain caches like the vcs
-            #datacache.ClearCache()
-
-            if sys.platform == 'win32':
-                #Allow us to prevent error dialog boxes.. useful for running programs such as tests
-                import ctypes
-                tmp=ctypes.windll.kernel32.SetErrorMode(0)
-                ctypes.windll.kernel32.SetErrorMode(tmp|0x0001|0x0002|0x0008)
-
-            #reset our stack info for error reporting.. (todo. double check this again)
-            #errors.ResetPartStackFrameInfo()
-        except:
-            self.__had_error=True
-            raise
+            self.__had_error=False
+            # generate the cache key
+            self.generate_cache_key()
+            # set state sconstruct to loaded
+            self.__is_sconstruct_loaded=True
+            # call event that we are loaded
+            self.SConstructLoadedEvent(self.__build_mode)
+            try:
+                targets=SCons.Script.BUILD_TARGETS
+                # check to see that we even have targets to process
+                if targets == []:
+                    return 
                 
+                #set stack info for reporting issues
+                #errors.SetPartStackFrameInfo()
+                
+                # If the logger is not being used we want to remove the
+                # queue logger to save memory
+                if glb.rpter.logger is logger.QueueLogger:
+                    # this should reset QueueLogger
+                    glb.rpter.logger=logger.nil_logger
+                            
+                #process the Parts if any exist
+                self.__part_manager.ProcessParts()
+                        
+                # process Queue
+                self.parts_process_queue()   
+                self.PostProcessEvent(self.__build_mode)
+
+                #datacache.SaveCache()
+                self._loaded_data=True
+                
+                #clear the datacache for certain cases that we don't need to touch any more
+                #to save memory
+                datacache.ClearCache(key="vcs")
+
+                if sys.platform == 'win32':
+                    #Allow us to prevent error dialog boxes.. useful for running programs such as tests
+                    import ctypes
+                    tmp=ctypes.windll.kernel32.SetErrorMode(0)
+                    ctypes.windll.kernel32.SetErrorMode(tmp|0x0001|0x0002|0x0008)
+
+                #reset our stack info for error reporting.. (todo. double check this again)
+                #errors.ResetPartStackFrameInfo()
+            except:
+                self.__had_error=True
+                raise
+        finally:
+            memory_stats.append('after Parts processed')
         
     
     ##
     
     def parts_process_queue(self):
        
-        # process any data we have to post process
-        if self.__post_process_queue!=[]:
-            api.output.print_msg("Processing post logic queue")
-            total=len(self.__post_process_queue)*1.0
-            cnt=0
-            msg='{0}/{1}'.format(cnt,total)
-            api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
-            for i in self.__post_process_queue:
-                cnt+=1
-                msg='{0}/{1} '.format(cnt,total)
-                api.output.verbose_msg(["post_process_queue"],"Processing post logic queue {0:.2%} {1}".format((cnt/total),i))
-                api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
-                i()
+        memory_stats.append('Before post logic queue processing')
+        try:
+            # process any data we have to post process
+            if self.__post_process_queue!=[]:
+                api.output.print_msg("Processing post logic queue")
+                total=len(self.__post_process_queue)*1.0
+                cnt=0
+                msg='{0}/{1}'.format(cnt,total)
+                api.output.console_msg(" Processing post logic queue %3.2f%% %s \033[K"%((cnt/total*100),msg))
+                for i in self.__post_process_queue:
+                    cnt+=1
+                    msg='{0}/{1} '.format(cnt,total)
+                    api.output.verbose_msg(["post_process_queue"],"Processing post logic queue {0:.2%} {1}".format((cnt/total),i))
+                    api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
+                    i()
 
-            msg='{0}/{1}'.format(cnt,total)
-            api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
-            self.__post_process_queue=[]
-            api.output.print_msg("Processing post logic queue finished!")
-        
+                msg='{0}/{1}'.format(cnt,total)
+                api.output.console_msg(" Processing post logic queue {0:.2%} {1} \033[K".format((cnt/total),msg))
+                self.__post_process_queue=[]
+                api.output.print_msg("Processing post logic queue finished!")
+        finally:
+            memory_stats.append('After post logic queue processed')
         #for p in self.__part_manager.parts.values():
             #p.Env.subst(p.Env['ENV']['INCLUDE'])
             

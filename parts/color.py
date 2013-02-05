@@ -1,6 +1,8 @@
 import sys
 from optparse import OptionValueError
 
+from SCons.Debug import logInstanceCreation
+
 Dim=-4
 Bold=-3
 Bright=-3
@@ -54,6 +56,7 @@ def color_to_str(color):
         
 class ConsoleColor(object):
     def __init__(self,fg_color=Default,bk_color=Default):
+        if __debug__: logInstanceCreation(self)
         
         
         self.fg_color=fg_color

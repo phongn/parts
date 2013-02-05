@@ -4,6 +4,8 @@ import os.path
 import variable
 import SCons.Errors
 
+from SCons.Debug import logInstanceCreation
+
 # JK note that this took a little extra to get work to get working as this was 
 # a translation of a class not a tuple of values
 
@@ -11,6 +13,7 @@ class PathVariable(object):
     def __init__(self, name, help, default, validator=None, value=None, help_group=None):
         '''
         '''
+        if __debug__: logInstanceCreation(self)
         if validator is None:
             validator = self._PathExists
             

@@ -12,6 +12,7 @@ import exceptions
 import SCons.Node.FS
 from SCons.Script.SConscript import SConsEnvironment
 from SCons.Scanner import Scanner
+from SCons.Debug import logInstanceCreation
 
 
 from .. import metatag
@@ -62,6 +63,7 @@ except ImportError:
         Context class to temporary elevate privilege.
         """
         def __init__(self, privilegeName):
+            if __debug__: logInstanceCreation(self, 'parts.overrides.symlinks.Privilege')
             token = ctypes.c_void_p()
             if ctypes.windll.kernel32.OpenProcessToken(
                     ctypes.c_void_p(ctypes.windll.kernel32.GetCurrentProcess()),
@@ -273,6 +275,7 @@ class FileSymbolicLink(SCons.Node.FS.File):
     specified as its argument.
     """
     def __init__(self, name, directory, fs):
+        if __debug__: logInstanceCreation(self, 'parts.overrides.symlinks.FileSymbolicLink')
         SCons.Node.FS.File.__init__(self, name, directory, fs)
 
     @property

@@ -1,5 +1,7 @@
 # this area defines code in Parts thart overides code in SCons because of feature enhancement or bug fixes
 
+import debug
+import scons_util
 import env_alias
 import os_file
 import build_hook

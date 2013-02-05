@@ -19,6 +19,9 @@ def generate(env):
     else:
         env['SHCCFLAGS'] = SCons.Util.CLVar('$CCFLAGS -fPIC')
 
+    if env['TARGET_PLATFORM']=='android':
+        env.SetDefault(ANDROID_API='${GetLatestNDKAPI()}')
+
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']
         

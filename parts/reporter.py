@@ -24,7 +24,7 @@ if 'stacktrace' in SCons.Script.GetOption('debug'):
 else:
     class PartRuntimeError(SCons.Errors.UserError):
         pass
-    
+
 class streamer(object):
     def __init__(self,outfunc):
         self.outfunc=outfunc
@@ -33,22 +33,19 @@ class streamer(object):
     def flush(self):
         pass
 
-test_search=0
-test_match=1
-
 warning_tests = [
-    (test_search,re.compile('\s?warnings?\s?(?!\.)\D',re.IGNORECASE))
+    re.compile('(\A|\s)warning?\s?(([?!: ])|(\.\s))\D',re.IGNORECASE).search
     ]
 
 error_tests =[
-    (test_search,re.compile('\s?errors?\s?(?!\.)\D',re.IGNORECASE)),
-    (test_match,re.compile('fail$',re.IGNORECASE))
+    re.compile('(\A|\s)error?\s?(([?!: ])|(\.\s))\D',re.IGNORECASE).search,
+    re.compile('fail$',re.IGNORECASE).match
     ]
 
 message_tests =[
-    (test_search,re.compile('(scons?\s?:)',re.IGNORECASE)),
-    (test_search,re.compile('(parts?\s?:)',re.IGNORECASE)),
-    (test_search,re.compile('(Install file?\s?:)')),
+    re.compile('(scons?\s?:)',re.IGNORECASE).search,
+    re.compile('(parts?\s?:)',re.IGNORECASE).search,
+    re.compile('(Install file?\s?:)').search,
     ]
 
 DEFAULT_STREAM=0
@@ -56,12 +53,6 @@ OUT_STREAM=1
 MESSAGE_STREAM=2
 WARNING_STREAM=3
 ERROR_STREAM=4
-
-def do_test(test,str):
-    if test[0]==test_search:
-        return test[1].search(str)
-    elif test[0]==test_match:
-        return test[1].match(str)
 
 def remap(s,org_stream):
     global last_type
@@ -76,26 +67,26 @@ def remap(s,org_stream):
 
 def is_warning(str):
     for test in warning_tests:
-        if do_test(test,str):
+        if test(str):
             return True
     return False
 
 def is_error(str):
     for test in error_tests:
-        if do_test(test,str):
+        if test(str):
             return True
     return False
 
 def is_message(str):
     for test in message_tests:
-        if do_test(test,str):
+        if test(str):
             return True
     return False
 
-    
+
 class reporter(object):
     def __init__(self):
-        
+
         # so we can process any text that is being outputted by some other means
         self.trace=[]
 
@@ -103,18 +94,18 @@ class reporter(object):
         self.console=console.Console()
         sys.stdout=streamer(self.stdout)
         sys.stderr=streamer(self.stderr)
-        
-        # setup the rest of the stuff    
+
+        # setup the rest of the stuff
         self.logger=logger.QueueLogger()
         self.already_printed = set()
         self.silent=False
         self.verbose=[]
         self.__is_setup=False
-        
-            
+
+
     def Setup(self,logger,silent,verbose,trace,use_color):
-        
-        self.silent=silent                
+
+        self.silent=silent
         if use_color == False or use_color is None:
             self.console.ProcessColor=False
         else:
@@ -126,7 +117,7 @@ class reporter(object):
             self.console.Message.Color=use_color['stdmsg']
             self.console.Trace.Color=use_color['stdtrace']
             self.console.Verbose.Color=use_color['stdverbose']
-        
+
         self.trace=trace
         if self.trace==[]:
             api.output.trace_msg=_empty_msg
@@ -134,7 +125,7 @@ class reporter(object):
         else:
             api.output.trace_msg=api.output._trace_msg
             api.output.trace_msgf=api.output._trace_msgf
-            
+
         self.verbose=verbose
         if self.verbose==[]:
             api.output.verbose_msg=_empty_msg
@@ -142,18 +133,18 @@ class reporter(object):
         else:
             api.output.verbose_msg=api.output._verbose_msg
             api.output.verbose_msgf=api.output._verbose_msgf
-            
+
         self.logger=logger
         self.__is_setup=True
 
     def ShutDown(self):
         self.logger.ShutDown()
         self.console.ShutDown()
-        
+
 
     def reset_logger(self,obj):
-        ''' 
-        reset the log data when our logger is a QueueLogger to the new 
+        '''
+        reset the log data when our logger is a QueueLogger to the new
         logger object by adding data in QueueLogger to new object
         '''
         if type(self.logger) is logger.QueueLogger and type(obj) is not logger.QueueLogger:
@@ -177,15 +168,15 @@ class reporter(object):
         return self.__is_setup
 
     def part_warning(self,msg,print_once=False,stackframe=None,show_stack=True):
-        
-        s="Parts: Warning: "+msg        
+
+        s="Parts: Warning: "+msg
         if show_stack:
             if stackframe is not None:
                 filename, lineno, routine, content=stackframe
             else:
                 filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
-        
+
         if print_once ==True:
             if hash(s) not in self.already_printed:
                 self.already_printed.add(hash(s))
@@ -193,7 +184,7 @@ class reporter(object):
                 return
         self.console.Warning.write(s)
         self.logger.logwrn(s)
-        
+
     def part_error(self,msg,stackframe=None,show_stack=True,exit=True):
 
         s="Parts: Error!: "+msg
@@ -203,12 +194,12 @@ class reporter(object):
             else:
                 filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
-        
+
         self.console.Error.write(s)
         self.logger.logerr(s)
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
-        
+
     def part_message(self,msg_lst,show_prefix):
         if self.silent ==False:
             msg=map(str,msg_lst[1:-1])
@@ -237,7 +228,7 @@ class reporter(object):
                 msg=msg_lst[0].join(msg)+msg_lst[-1]
                 s='Trace: [%s] %s'%(tmp[0],msg)
                 self.stdtrace(s)
-            
+
     def user_warning(self,env,msg,print_once=False,stackframe=None,show_stack=True):
         if env.get("PART_NAME") is None:
             s="User Warning: "+msg
@@ -249,7 +240,7 @@ class reporter(object):
             else:
                 filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
-        
+
         if print_once ==True:
             if hash(s) not in self.already_printed:
                 self.already_printed.add(hash(s))
@@ -257,7 +248,7 @@ class reporter(object):
                 return
         self.console.Warning.write(s)
         self.logger.logwrn(s)
-        
+
     def user_error(self,env,msg,stackframe=None,show_stack=True,exit=True):
 
         if env.get("PART_NAME") is None:
@@ -270,12 +261,12 @@ class reporter(object):
             else:
                 filename, lineno, routine, content = errors.GetPartStackFrameInfo()
             s+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
-        
+
         self.console.Error.write(s)
         self.logger.logerr(s)
         if exit:
             raise PartRuntimeError("Unrecoverable Error!")
-        
+
     def user_message(self,env,msg):
         if self.silent ==False:
             if env.get("PART_NAME") is None:
@@ -283,12 +274,12 @@ class reporter(object):
             else:
                 s='Message from Part "%s": %s'%(env.PartName(),msg)
             self.stdmsg(s,False)
-            
-            
+
+
     def remapped(self,msg,org_stream):
         remap_type = remap(msg,org_stream)
         if remap_type==DEFAULT_STREAM:
-            return False        
+            return False
         if remap_type == ERROR_STREAM:
             self.stderr(msg,False)
         elif remap_type == WARNING_STREAM:
@@ -297,7 +288,7 @@ class reporter(object):
             self.stdmsg(msg,False)
 
         return True
-        
+
     def stdout(self,msg,remap=True):
         '''This function gets all redirected stdout text from random print calls'''
         if remap==True:
@@ -307,7 +298,7 @@ class reporter(object):
         else:
             self.console.write(msg)
             self.logger.logout(msg)
-         
+
     def stderr(self,msg,remap=True):
         '''This will gets any stderr text in scons via a print>>stderr usage'''
         #print>> sys.__stderr__, "Error message"
@@ -316,10 +307,10 @@ class reporter(object):
                 self.console.Error.write(msg)
                 self.logger.logerr(msg)
         else:
-            self.console.Error.write(msg)   
+            self.console.Error.write(msg)
             self.logger.logerr(msg)
-        
-            
+
+
     def stdwrn(self,msg,remap=True):
         '''Unlike stdout and stderr, stdwrn doesn't really exist.. but we use
         this to pass text that is in a warning state from with in parts'''
@@ -330,7 +321,7 @@ class reporter(object):
         else:
             self.console.Warning.write(msg)
             self.logger.logwrn(msg)
-            
+
     def stdmsg(self,msg,remap=True):
         '''Unlike stdout and stderr, stdmsg doesn't really exist.. but we use
         this to pass text that is a message form the system parts or SCons'''
@@ -355,7 +346,7 @@ class reporter(object):
     def stdconsole(self,msg,remap=True):
         '''writes to the Console directly... nice for progress effects'''
         self.console.write(msg)
-        
+
 
 
 def _empty_msg(catagory,*lst,**kw):
@@ -374,11 +365,11 @@ def user_report_warning(*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
     glb.rpter.user_warning(SCons.Script.DefaultEnvironment(),msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
-    
+
 def user_print_msg(*lst,**kw):
     msg=map(str,lst)
     glb.rpter.user_message(SCons.Script.DefaultEnvironment(),kw.get('sep',' ').join(msg)+kw.get('end','\n'))
-    
+
 def user_verbose(catagory,*lst,**kw):
     catagory=common.make_list(catagory)
     catagory.append('all')
@@ -387,7 +378,7 @@ def user_verbose(catagory,*lst,**kw):
         glb.rpter.verbose=SCons.Script.GetOption('verbose')
         if glb.rpter.verbose is None: glb.rpter.verbose=[]
     glb.rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
-    
+
 # env version
 def user_report_error_env(env,*lst,**kw):
     msg=map(str,lst)
@@ -398,11 +389,11 @@ def user_report_warning_env(env,*lst,**kw):
     msg=map(str,lst)
     msg=kw.get('sep',' ').join(msg)+kw.get('end','\n')
     glb.rpter.user_warning(env,msg,kw.get('print_once',False),kw.get('stackframe',None),kw.get('show_stack',False))
-    
+
 def user_print_msg_env(env,*lst,**kw):
     msg=map(str,lst)
     glb.rpter.user_message(env,kw.get('sep',' ').join(msg)+kw.get('end','\n'))
-    
+
 def user_verbose_env(env,catagory,*lst,**kw):
     catagory=common.make_list(catagory)
     catagory.append('all')
@@ -411,11 +402,11 @@ def user_verbose_env(env,catagory,*lst,**kw):
         glb.rpter.verbose=SCons.Script.GetOption('verbose')
         if glb.rpter.verbose is None: glb.rpter.verbose=[]
     glb.rpter.verbose_msg(catagory,[kw.get('sep',' ')]+list(lst)+[kw.get('end','\n')])
-    
 
 
-        
-    
+
+
+
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 

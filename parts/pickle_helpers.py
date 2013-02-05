@@ -124,10 +124,10 @@ def persistent_pickle(obj):
 
     if isinstance(obj,SCons.Node.Node):
         return "node::{0}".format(pickle_node(obj))
-    elif isinstance(obj,pnode.pnode.pnode):
-        return "pnode::{0}".format(pickle_pnode(obj))
-    elif isinstance(obj,requirement.REQ):
-        return "REQ::{0}".format(pickle_req(obj))
+    #elif isinstance(obj,pnode.pnode.pnode):
+    #    return "pnode::{0}".format(pickle_pnode(obj))
+    #elif isinstance(obj,requirement.REQ):
+    #    return "REQ::{0}".format(pickle_req(obj))
     return None
 
 
@@ -135,10 +135,10 @@ def persistent_unpickle(perid):
     ntype,value=perid.split("::",1)
     if ntype == 'node':
         return unpickle_node(value)
-    elif ntype == 'pnode':
-        return unpickle_pnode(value)
-    elif ntype == 'REQ':
-        return unpickle_req(value)
+    #elif ntype == 'pnode':
+    #    return unpickle_pnode(value)
+    #elif ntype == 'REQ':
+    #    return unpickle_req(value)
     else:
         raise cPickle.UnpicklingError, 'Unknown custom pickle Type {0}'.format(ntype)
 

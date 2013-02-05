@@ -10,6 +10,8 @@ if not color.is_win32:
     import fcntl
     import termios
 
+from SCons.Debug import logInstanceCreation
+
 import SCons.Script
 SCons.Script.AddOption("--console-stream",
             dest='console-stream',
@@ -58,6 +60,7 @@ SCons.Script.AddOption("--hide-progress",
 class NullStream(object):
 
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         pass
     
     def write(self,s):
@@ -71,6 +74,7 @@ class NullStream(object):
 
 class Cursor(object):
     def __init__(self,x,y):
+        if __debug__: logInstanceCreation(self)
         self.__x=x
         self.__y=y
     
@@ -92,6 +96,7 @@ class Console(object):
     trace_stream=5
     verbose_stream=6
     def __init__(self):
+        if __debug__: logInstanceCreation(self)
         
         self.clearline=False
         self.__lock=thread.allocate_lock() # used to sync output cases across streams

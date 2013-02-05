@@ -19,7 +19,7 @@ import thread
 
 import pprint
 
-    
+
 gcnt=0
 class section(pnode.pnode):
     """description of class"""
@@ -28,16 +28,16 @@ class section(pnode.pnode):
         '__name',
         '__depends', # what we depend on directly (ie explictly), as list (order needed) of ComponentRef objects
         '__full_depends', # what depend on directly and indirectly
-        
+
         '__exports', # value we will export
         '__export_as_depends', #set of values exported item to map as a depends node, when they are referenced in a dependson call
-        
+
         #'__build_context_files', # File that contain code for the builder (or best guess)
         '__target_nodes', # target node for this section
         '__source_nodes', # Source node for this section
         '__installed_files',# anything that gets installed for packaging.
-        
-        
+
+
         '__pobj', # reference to the part containing this section.
         '__env', # the environment for the given section (cloned from Parts object)
         '__user_env_diff',
@@ -46,26 +46,26 @@ class section(pnode.pnode):
     #
 
     def __init__(self,pobj=None,ID=None):
-        
+
             self._ID=ID
-        
+
             self.__pobj=pobj
             self.__env={}
-            
+
             self.__depends=[]
             self.__full_depends=[]
-        
+
             self.__exports={}
-            self.__export_as_depends=set([]) 
-        
+            self.__export_as_depends=set([])
+
             self.__source_nodes = set()
             self.__target_nodes = set()
             self.__installed_files=set()
             self.__user_env_diff={}
-        
+
             self._cache={}
             super(section, self).__init__()
-            
+
     def _setup_(self,pobj,env=None,*lst,**kw):
         self.__pobj=pobj
         if env:
@@ -73,15 +73,15 @@ class section(pnode.pnode):
         else:
             self.__env=self.__pobj.Env.Clone()
         self.__env['PART_SECTION']=self.Name
-        
+
     def Reset(self):
         ''' reset cached state of section'''
         self.__depends=[]
         self.__full_depends=[]
-        
+
         self.__exports={}
-        self.__export_as_depends=set([]) 
-        
+        self.__export_as_depends=set([])
+
         self.__source_nodes = set()
         self.__target_nodes = set()
         self.__installed_files=set()
@@ -91,47 +91,47 @@ class section(pnode.pnode):
     @property
     def Name(self):
         raise NotImplementedError
-        
+
     @property
     def Exports(self): #mutable
         return self.__exports
-    
+
     @property
     def ExportAsDepends(self):
         return self.__export_as_depends
-        
+
     @property
     def Targets(self):
         return self.__target_nodes
- 
+
     @property
     def Sources(self):
         return self.__source_nodes
-    
+
     @property
     def InstalledFiles(self):
         return self.__installed_files
-    
-    @property    
+
+    @property
     def Depends(self):
         return self.__depends
-    
-    @Depends.setter   
+
+    @Depends.setter
     def Depends(self,val):
         common.extend_if_absent(self.__depends,val)
-    
-    @property    
+
+    @property
     def AlwaysBuild(self):
         return self._cache.get("always_build",False)
-    
-    @AlwaysBuild.setter   
+
+    @AlwaysBuild.setter
     def AlwaysBuild(self,val):
         self._cache["always_build"]=val
-    
+
     @property
     def FullDepends(self):
         return self.__full_depends
-    
+
     @property
     def Part(self):
         return self.__pobj
@@ -139,35 +139,35 @@ class section(pnode.pnode):
     @property
     def Env(self):
         return self.__env
-    
+
     @property
     def UserEnvDiff(self):
         return self.__user_env_diff
-    
+
     def map_group(self,key,nodes):
         '''
         map a sub group of node to the core sections alias
         '''
-        
+
         alias_str=self.ID
         alias_group_str="{0}::{1}".format(alias_str,key)
 
         a_group=self.__env.Alias(alias_group_str,nodes)
         a=self.__env.Alias(alias_str,a_group)
 
-    
+
     def _map_targets(self):
-        ''' 
-        Here we map all known target files that happen in this component 
+        '''
+        Here we map all known target files that happen in this component
         to the alias value, to ensure that it is built in case there are actions
         that are no mapped correctly to some action that is mapped to the alias
         such as and sdk or install action
         '''
-      
+
         # This is the base Alias for a given Part
         alias_str='{0}::alias::{1}'.format(self.Name,self.__pobj.Alias)
         alias_str_r='{0}::'.format(alias_str)
-        
+
         # This magic here find all Alias targets that got defined, and if there are in a certain format,
         # they get mapped as a dependancy to the primary alias. This allows us to make "groups" aliases
         # so we can depend on a set of node, such as all the include file, or lib files of a part without
@@ -183,7 +183,7 @@ class section(pnode.pnode):
                 obj.ID != alias_str_r
 
         a=self.__env.Alias(alias_str,filter(map_alias ,self.Targets))
-                        
+
         # build::alias::foo -> build::alias::foo::
         a1=self.__env.Alias(alias_str_r,a)
         # map build::alias::foo.sub1:: -> build::alias::foo::
@@ -208,9 +208,9 @@ class section(pnode.pnode):
                 sec=pobj.Section(d.SectionName)
                 sec._add_full_parts_depends(ret)
         return ret
-                
+
     def _add_full_parts_depends(self,data):
-        
+
         try:
         # check if self is added
             if self.__name in data[self.Part.Alias]['sections']:
@@ -218,7 +218,7 @@ class section(pnode.pnode):
                 return
         except KeyError:
             pass
-        
+
         #else add self
         try:
             data[self.Part.Alias]['sections'].add([self.__name])
@@ -233,9 +233,9 @@ class section(pnode.pnode):
                 pobj=d.PartRef.UniqueMatch
                 sec=pobj.Section(d.SectionName)
                 sec._add_full_parts_depends(data)
-        
+
     def ESigs(self):
-        
+
         def replace_nodes(lst):
             newval=[]
             for i in lst:
@@ -252,12 +252,12 @@ class section(pnode.pnode):
         try:
             return self._cache['esigs']
         except KeyError:
-            esig=hashlib.md5()    
+            esig=hashlib.md5()
             # we expand the values here to reduce processing needs latter
             # the the reason we would store this is to speed up build latter
             # ideally this only needs to be expanded in cases of the classic format
             # or cases in which the user added such value to be exported
-            
+
             export_csig={}
             for k,v in self.__exports.copy().iteritems():
                 if common.is_list(v):
@@ -268,7 +268,7 @@ class section(pnode.pnode):
                         self.__exports[k]=kk
                     else:
                         del self.__exports[k]
-                     
+
 
                 else:
                     if common.is_string(v) and '$' in v:
@@ -279,7 +279,7 @@ class section(pnode.pnode):
                     elif not v:
                         del self.__exports[k]
                 try:
-                    
+
                     md5=hashlib.md5()
                     md5.update(common.get_content(self.__exports[k]))
                     tmp=md5.hexdigest()
@@ -287,10 +287,10 @@ class section(pnode.pnode):
                     export_csig[k]=tmp
                 except KeyError:
                     pass
-                
+
             self._cache['esigs']=export_csig
             self._cache['esig']=esig.hexdigest()
-        
+
         return self._cache['esigs']
 
     def ESig(self):
@@ -305,17 +305,17 @@ class section(pnode.pnode):
         if tmp.PartID: # quick sanity check that this is good data
             return tmp
         return None
-    
+
     def GenerateStoredInfo(self):
         info=section_info.section_info()
-               
+
         info.PartID=self.Part.ID
         info.Name=self.Name
-        
+
         info.ESigs=self.ESigs()
         info.ESig=self.ESig()
         info.Exports=self.__exports
-        
+
         ## data about what this depends on we want the direct depend here
         ## as this will allow us to speed up incremential build latter
         tmp=[]
@@ -324,14 +324,14 @@ class section(pnode.pnode):
             tmp.append(
                        dependent_info.dependent_info(d)
                        )
-            
+
         info.UserEnvDiff=self.__user_env_diff
         info.DependsOn=tmp
         # these are items that are exported, and noted as a map_as_depends in ExportItem()
         info.ExportedRequirements=self.ExportAsDepends
 
         return info
-    
+
     def LoadFromCache(self):
         info = self.Stored
         # get out owning part
@@ -346,36 +346,36 @@ class section(pnode.pnode):
         self.__exports=info.Exports
 
         # need to map these items as Aliases
-        self.__export_as_depends=info.ExportedRequirements 
+        self.__export_as_depends=info.ExportedRequirements
         for export in self.__export_as_depends:
             try:
                 self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__pobj.Alias,export),self.__exports[export])
             except KeyError:
                 api.output.verbose_msgf(['cache_load_warning'],"{0} was not found in the exports dictionary. Mapping value of []",export)
                 self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name,self.__pobj.Alias,export),[])
-            
+
     def hasPartFileChanged(self):
         '''Has the Part File defining this section changed in some way
-        
-        This can include if the Parent Parts file changed, as this could change 
+
+        This can include if the Parent Parts file changed, as this could change
         what the children Part files would define.
         '''
         return glb.pnodes.GetPNode(self.Stored.PartID).hasFileChanged()
-    
+
     def TagDirectDependAsLoad(self,load_manager):
         try:
             return self._cache['TagDirectDependAsLoad']
         except KeyError:
             # get stored data
             stored_data=self.Stored
-            
+
             if stored_data is None:
                 self._cache['TagDirectDependAsLoad']=False
                 #return False to signal there was a cache issue
                 return False
             # set our state
             self.ReadState=glb.load_file
-                            
+
             for dep in stored_data.DependsOn:
                 sec=glb.pnodes.GetPNode(dep.SectionID)
                 if not sec.TagDirectDependAsLoad(load_manager):
@@ -396,27 +396,27 @@ class section(pnode.pnode):
             except AttributeError:
                 pass
             return self._cache['TagDirectDependAsLoad']
-        
-    
+
+
     @property
     def ReadState(self):
         if self.__pobj is None:
             return glb.pnodes.GetPNode(self.Stored.PartID).ReadState
         return self.__pobj.ReadState
-    
+
     @ReadState.setter
     def ReadState(self,state):
         if self.__pobj is None:
             glb.pnodes.GetPNode(self.Stored.PartID).UpdateReadState(state)
         else:
             self.Part.UpdateReadState(state)
-    
-   
+
+
 class build_section(section):
     __slots__=[]
     def __init__(self,pobj=None,ID=None):
         super(build_section, self).__init__(pobj,ID)
-        
+
     @staticmethod
     def _process_arg(pobj=None,**kw):
         id = kw.get('ID')
@@ -426,25 +426,25 @@ class build_section(section):
             setup=True
         elif id is None:
             raise ValueError , "Invalid arguments values when creating section type"
-        
-        return id,setup    
-        
+
+        return id,setup
+
     @section.ID.getter
     def ID(self):
         if self._ID is None:
             self._ID="{1}::{0}".format(self.Part.ID,self.Name)
         return self._ID
-    
+
     @section.Name.getter
     def Name(self):
         return "build"
-    
+
 
 class utest_section(section):
     __slots__=[]
     def __init__(self,pobj=None,ID=None,env=None):
         super(utest_section, self).__init__(pobj,ID)
-        
+
     @staticmethod
     def _process_arg(pobj=None,**kw):
         id = kw.get('ID')
@@ -454,15 +454,15 @@ class utest_section(section):
             setup=True
         elif id is None:
             raise ValueError , "Invalid arguments values when creating section type"
-        
-        return id,setup    
-        
+
+        return id,setup
+
     @section.ID.getter
     def ID(self):
         if self._ID is None:
             self._ID="{1}::{0}".format(self.Part.ID,self.Name)
         return self._ID
-    
+
     @section.Name.getter
     def Name(self):
         return "utest"

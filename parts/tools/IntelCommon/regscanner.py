@@ -4,6 +4,8 @@ import re
 import parts.tools.Common.Finders as Finders
 import common
 
+from SCons.Debug import logInstanceCreation
+
 # this are primary for finding Intel compilers on windows platforms
 # file_scanner is for finding files on Posix/Linux systems
 
@@ -11,6 +13,7 @@ import common
 #this is a general scanner for all version till version 11.1
 class reg_scanner(object):
     def __init__(self,regkeys,pattern,arch,env,ver):
+        if __debug__: logInstanceCreation(self)
         self.pattern=pattern
         self.reg_keys=regkeys
         self.arch=arch
@@ -38,11 +41,11 @@ class reg_scanner(object):
                 except WindowsError:
                     # if not try again
                     pass
-            #if this is none we have an error        
+            #if this is none we have an error
             if k is None:
                 #print "Error 1... No Intel compilers found via std install means"
-                return 
-            
+                return
+
             i = 0
             try:
                 while i < 50: #Don't loop forever, just in case of massive failure
@@ -50,14 +53,14 @@ class reg_scanner(object):
                     subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
                     #parse to see if we got match
                     result=reg.match(subkey)
-                    if result:                
+                    if result:
                         # form up full key name to test for install
                         keyname2=keyname+"\\"+subkey+"\\"+self.arch+"\\ProductDir"
                         try:
                             #try to get value
                             path = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
                                              keyname2)[0]
-                            
+
                             ret[".".join(result.groups())]=path
                         except WindowsError:
                             #key not registry.. so we ignore
@@ -73,7 +76,7 @@ class reg_scanner(object):
                     ret[self.ver]=ret
             self.cache=ret
         return self.cache
-        
+
     def resolve_version(self,version):
         tmp=self.scan()
         if tmp is None:
@@ -84,7 +87,7 @@ class reg_scanner(object):
             if common.MatchVersionNumbers(version,i):
                 return i
         return None
-        
+
     def resolve(self,ver):
         tmp=self.scan()
         if tmp is None:
@@ -94,12 +97,13 @@ class reg_scanner(object):
         for i in k:
             if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
-        return None  
+        return None
 
 
 #this is a general scanner for all version at version 11.1 (and beyond??)
 class reg_scanner2(object):
     def __init__(self,regkeys,pattern,arch,env,ver):
+        if __debug__: logInstanceCreation(self)
         self.pattern=pattern
         self.reg_keys=regkeys
         self.arch=arch
@@ -107,7 +111,7 @@ class reg_scanner2(object):
         self.cache=None
         self.ver=ver
 
-    
+
     def scan(self):
         # search for all known location for a give version
         if self.cache is None:
@@ -128,11 +132,11 @@ class reg_scanner2(object):
                 except WindowsError:
                     # if not try again
                     pass
-            #if this is none we have an error        
+            #if this is none we have an error
             if k is None:
                 #print "Error 1... No Intel compilers found via std install means"
-                return 
-            
+                return
+
             i = 0
             try:
                 while i < 50: #Don't loop forever, just in case of massive failure
@@ -140,18 +144,18 @@ class reg_scanner2(object):
                     subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
                     #parse to see if we got match
                     result=reg.match(subkey)
-                    
-                    if result:                
+
+                    if result:
                         # form up full key name to test for install
                         #keyname=keyname+"\\"+subkey+"\\C++\\"+self.arch+"\\ProductDir"
                         keyname1=keyname+"\\"+subkey+"\\C++\\ProductDir"
-                        
+
                         try:
                             #try to get value
                             path = SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
                                              keyname1)[0]
-                            
-                            
+
+
                             # and check to see if we have this arch version installed
                             keyname1=keyname+"\\"+subkey+"\\C++\\"+self.arch+"\\DisplayString"
                             SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
@@ -165,7 +169,7 @@ class reg_scanner2(object):
                                              keyname1)[0]
                             vc=subkey
                             tmp=".".join([str(va),str(vb),vc])
-                            
+
                             ret[tmp]=path
                         except WindowsError:
                             #key not registry.. so we ignore
@@ -180,7 +184,7 @@ class reg_scanner2(object):
                 if ret is not None:
                     ret[self.ver]=ret
             self.cache=ret
-            
+
         return self.cache
 
     def resolve_version(self,version):
@@ -193,7 +197,7 @@ class reg_scanner2(object):
             if common.MatchVersionNumbers(version,i):
                 return i
         return None
-        
+
     def resolve(self,ver):
         tmp=self.scan()
         if tmp is None:
@@ -203,17 +207,18 @@ class reg_scanner2(object):
         for i in k:
             if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
-        return None  
+        return None
 
 
 #this is a general scanner for all version till version 12.0
 class reg_scanner_v12(object):
     def __init__(self,regkeys,subkey_path,env_var):
+        if __debug__: logInstanceCreation(self)
         # the root reg keys to scan
         self.reg_keys=regkeys
         # the subkey path
         self.subkey_path=subkey_path
-        
+
         self.env_var=Finders.EnvFinder(env_var)
         self.cache=None
 
@@ -221,9 +226,9 @@ class reg_scanner_v12(object):
         '''
         '''
         # the 12 compiler on windows require a two step look up process
-        # step on is to get a GUID value that is part of the path to the keys we 
+        # step on is to get a GUID value that is part of the path to the keys we
         # really want to read, such ProductDir.
-        
+
         if self.cache is None:
             # what we will want to return
             ret={}
@@ -239,12 +244,12 @@ class reg_scanner_v12(object):
                 except WindowsError:
                     # if not try again
                     pass
-                    
-            #if this is none we have an error        
+
+            #if this is none we have an error
             if keyname is None:
                 #print "Error 1... No Intel compilers found via std install means"
                 return
-            
+
             root_key=key
             subkey="{0}{1}\\SubKey".format(root_key,self.subkey_path)
             #get the SubKey
@@ -256,9 +261,9 @@ class reg_scanner_v12(object):
             except WindowsError:
                 #key not registry.. nothing to find
                 return
-            
+
             fullrootkey="{0}\\{1}\\{2}".format(root_key,subkey,"C++")
-            
+
             try:
                 # Get path
                 keyname1=fullrootkey+"\\ProductDir"
@@ -274,24 +279,24 @@ class reg_scanner_v12(object):
                 keyname1=fullrootkey+"\\Revision"
                 vc=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE,
                                     keyname1)[0]
-                
+
                 tmp=".".join([str(va),str(vb),str(vc)])
                 ret[tmp]=path
-                                             
+
             except WindowsError:
                 #key not registry.. nothing to find
                 return
-            
+
             if ret =={}:
                 # ctest env
                 ret = self.env_var()
                 if ret is not None:
                     ret[self.ver]=ret
             self.cache=ret
-            
+
         return self.cache
-            
-        
+
+
     def resolve_version(self,version):
         tmp=self.scan()
         if tmp is None:
@@ -302,7 +307,7 @@ class reg_scanner_v12(object):
             if common.MatchVersionNumbers(version,i):
                 return i
         return None
-        
+
     def resolve(self,ver):
         tmp=self.scan()
         if tmp is None:
@@ -312,4 +317,4 @@ class reg_scanner_v12(object):
         for i in k:
             if common.MatchVersionNumbers(ver,i):
                 return tmp[i]
-        return None  
+        return None

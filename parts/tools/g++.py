@@ -30,6 +30,11 @@ def generate(env):
     else:
         env['SHOBJSUFFIX'] = '.pic.o'
         env['OBJSUFFIX'] = '.o'
+
+    if env['TARGET_PLATFORM']=='android':
+        env.SetDefault(ANDROID_API='${GetLatestNDKAPI()}')
+        env.SetDefault(ANDROID_STL='gnustl_shared')
+    
     
     #Backward compatiblity
     env['CXXVERSION']=env['GXX']['VERSION']  

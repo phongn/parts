@@ -9,7 +9,7 @@ import sys
 import SCons.Environment
 import SCons.Util
 
-
+from SCons.Debug import logInstanceCreation
 
 # remove to use common version once we clean up code a bit more
 def make_list(obj):
@@ -41,6 +41,7 @@ class Variables(dict,object):
         @param args The command line ARGUMENTS used to override any value from the command line
         @param user_defaults Values to overide the defined varaible defaults with
         """
+        if __debug__: logInstanceCreation(self)
         
         if args is None:
             args={}
