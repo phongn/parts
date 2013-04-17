@@ -103,27 +103,35 @@ class ToolInfo(object):
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)+env.subst("$CONFIG")]
         except KeyError:
-            if SCons.Util.is_String(script):
+            
+            if SCons.Util.is_String(script) and script not in ['True','False','true','false','1','0']:
                 # process the script directly
+                api.output.verbose_msg("toolinfo","Getting environment via custom script")
                 if os.path.exists(script):
                     ret=env.GetScriptVariables(scripts)
                 else:
                     # error as no file exits
                     pass
-            elif script==True:
-
+            elif script==True or \
+                script in ['True','true','1'] or\
+                self.shell_vars == {} or\
+                self.shell_vars is None:
+                api.output.verbose_msg("toolinfo","Getting environment via tool script")
                 #get the default script if one exists and use it
                 if self.script is not None:
-                    script_data=self.script.get_script(env)
+                    script_data=self.script(env)
                     if script_data is None:
                     # we have an error as script was not found
+                        api.output.warning_msgf("Script '{0}' not found, needed to setup tool '{1}', version '{2}'",self.script.name,tool,version,show_stack=False)
                         return {}
-                    ret=env.GetScriptVariables(script_data[0],script_data[1])
+                    ret=env.GetScriptVariables(script_data,self.script.args)
+                    
                 else:
                     return {}
 
             else: # script is False
                 # subst data
+                api.output.verbose_msg("toolinfo","Getting environment via variable substution")
                 for k, v in self.shell_vars.iteritems():
                     ret[k]=os.path.normpath(env.subst(v))
 
@@ -136,22 +144,22 @@ class ToolInfo(object):
 
     def query(self,env,namespace,root_path,use_script):
         if SCons.Util.is_List(self.install_root):
-            api.output.trace_msg("toolinfo","Query based on finders")
+            api.output.verbose_msg("toolinfo","Query based on finders")
             found={self.version:root_path}
-        elif SCons.Util.is_String(use_script):
-            api.output.trace_msg("toolinfo","Query based on script")
+        elif SCons.Util.is_String(use_script):# this is incorrect...
+            api.output.verbose_msg("toolinfo","Query based on script")
             found={'0.0.0':None}
         else:
-            api.output.trace_msg("toolinfo","Query based on scanner object")
+            api.output.verbose_msg("toolinfo","Query based on scanner object")
             found=self.install_root.scan()
-        api.output.trace_msgf("toolinfo","Found {0}",found)
+        api.output.verbose_msgf("toolinfo","Found {0}",found)
         if found is None:
             return None
 
         ret={}
         for v,p in found.iteritems():
             tmp=self.exists(env,namespace,v,p,use_script)
-            api.output.trace_msgf("toolinfo","Exists test returned {0}",tmp)
+            api.output.verbose_msgf("toolinfo","Exists test returned {0}",tmp)
             if tmp is not None:
                 ret[v]=tmp
                 #ret.update(self.make_ver_shell_env_set(v,tmp))

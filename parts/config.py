@@ -492,6 +492,7 @@ def load_tool_config(env,name,tool,host,target):
             ec_str=StringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
+            continue
         ## Load our config data, and map the version value
         #g_config_context[tool]=mod.__file__
         if mod.__file__.endswith('.py'):

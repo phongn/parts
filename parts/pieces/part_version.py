@@ -49,7 +49,7 @@ class _PartVersion(object):
 from SCons.Script.SConscript import SConsEnvironment
 
 # add global for new format
-api.register.add_global_parts_object('PartVersion',_PartVersion)
+api.register.add_global_parts_object('PartVersion',_PartVersion,True)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.PartVersion=part_version

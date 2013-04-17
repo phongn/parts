@@ -71,7 +71,6 @@ class manager(object):
                 #clear out the cache
                 datacache.StoreData("nodeinfo",{})
                 #datacache.ClearCache("nodeinfo",save=True)
-                
 
     def TotalNode(self):
         return len(self.__known_nodes)
@@ -260,7 +259,6 @@ class manager(object):
         if stored_data is None: stored_data = {}
         valuestostore =  stored_data.get('known_nodes',{})
 
-        binfo = node.get_binfo()
         # if we already have stored information, we want to make sure any incremental changes
         # that might need to be added and stored correctly
         if node.Stored:

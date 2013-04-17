@@ -214,6 +214,7 @@ class svn(base):
                 CHECKOUT_DIR='$VCS_SVN_DIR',
                 TOOL=svn.svnpath,
                 REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision']),
+                REVISION_LOW=common.DelayVariable(lambda : self.get_svn_data()['revision_low']),
                 SERVER_PATH=self.FullPath,
                 MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified']),
                 PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial']),
@@ -259,14 +260,18 @@ class svn(base):
     def _cache_filename(self):
         return self._env['ALIAS']
 
-def GetSvnData(env,checkoutdir='.'):
+def GetSvnData(env,checkoutdir=None):
 
     server=None
     url=None
     modified=False
     switched=False
     partial=False
-    rev_lst=[]
+    rev_low=None
+    rev_high=None
+
+    if checkoutdir is None:
+        checkoutdir = env.AbsDir('.')
             
     if svn.svnver is None:
         svn.svnver=env.WhereIs('svnversion',os.environ['PATH'])
@@ -274,27 +279,38 @@ def GetSvnData(env,checkoutdir='.'):
         svn.svnpath=env.WhereIs('svn',os.environ['PATH'])
                         
     ret,data=base.command_output('"{0}" {1}'.format(svn.svnver,checkoutdir))
-    if not ret and not data.startswith('Unversioned'):
-        data=data.strip('\n\r\t ')
-        tmp=data.split(':')
+    # this is a quick check to see if the current directory may be in bad state
+    # but not unversioned. Given that we try to the directory above us, till we get an unversioned
+    # value
+    while not ret and not data.startswith('Unversioned') and data[0] not in '0123456789':
+        checkoutdir=os.path.split(checkoutdir)[0]
+        if checkoutdir == '': break
+        ret,data=base.command_output('"{0}" {1}'.format(svn.svnver,checkoutdir))
+
+    if not ret and data[0] in '0123456789':
+        data=data.strip('\n\r\t ')        
         if data =='exported':
             pass
         else:
-            for i in tmp:
-                try:
-                    rev_lst.append(int(i))
-                except ValueError:
-                    indx=0
-                    if 'M' in i:
-                        modified=True
-                        indx-=1
-                    if 'S' in i:
-                        switched=True
-                        indx-=1
-                    if 'P' in i:
-                        partial=True
-                        indx-=1
-                    rev_lst.append(int(i[:indx]))
+            tmp=data.split(':')
+            if len(tmp)==2:
+                rev_low=int(tmp[0])
+                i=tmp[1]
+            else:
+                i=tmp[0]
+                indx=0
+                if 'M' in i:
+                    modified=True
+                    indx-=1
+                if 'S' in i:
+                    switched=True
+                    indx-=1
+                if 'P' in i:
+                    partial=True
+                if indx < 0:
+                    rev_high=int(i[:indx])
+                else:
+                    rev_high=int(i)
                     
        
     #get the path
@@ -309,7 +325,8 @@ def GetSvnData(env,checkoutdir='.'):
                 server=i[len('Repository Root: '):]
         
     ret={
-        'revision':rev_lst,
+        'revision':rev_high,
+        'revision_low':rev_low,
         'modified':modified,
         'switched':switched,
         'partial':partial,

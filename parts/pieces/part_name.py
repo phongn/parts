@@ -35,14 +35,14 @@ class _PartName(object):
     def __init__(self,env):
         if __debug__: logInstanceCreation(self)
         self.env=env
-    def __call__(self,name=None):
-        return part_name(name)
+    def __call__(self,name=None,parent_name=None):
+        return part_name(self.env,name,parent_name)
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
 # add global for new format
-api.register.add_global_parts_object('PartName',_PartName)
+api.register.add_global_parts_object('PartName',_PartName,True)
 
 # adding logic to Scons Enviroment object
 SConsEnvironment.PartName=part_name

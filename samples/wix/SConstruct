@@ -35,25 +35,25 @@ SetOptionDefault('INSTALL_API', '${INSTALL_ROOT}/sdk')
 Part(
     alias = 'wixsample4',
     parts_file = 'wixsample4/wixsample4.parts',
-    append = {'toolchain': 'wix_3.5'},
+    append = {'toolchain': 'wix'},
     )
 
 Part(
     alias = 'wixsample1',
     parts_file = 'wixsample1/wixsample1.parts',
-    toolchain = 'wix_3.5'
+    toolchain = 'wix'
     )
 
 Part(
     alias = 'wixsample2',
     parts_file = 'wixsample2/wixsample2.parts',
-    toolchain = 'cl,wix_3.5'
+    toolchain = 'cl,wix'
     )
 
 Part(
     alias = 'wixsample3',
     parts_file = 'wixsample3/wixsample3.parts',
-    append = {'toolchain': 'wix_3.5'},
+    append = {'toolchain': 'wix'},
     )
 
 Part(

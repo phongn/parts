@@ -83,7 +83,12 @@ class map_rpath_part(object):
         if self.env['AUTO_RPATH']==True:
             rlst=self.env.get('RPATH',[])
             # make a mapping between the bin and lib directories
-            rlst.append(self.env.Literal('\'$$ORIGIN/'+common.relpath(self.env.Dir('$INSTALL_LIB').path,self.env.Dir('$INSTALL_BIN').path)+'\''))
+            if self.env['HOST_OS'] == 'win32':
+                quote = '"'
+            else:
+                quote = "'"
+            rlst.append(self.env.Literal('{0}$$ORIGIN/{1}{0}'.format(quote, self.env.Dir('$INSTALL_BIN').rel_path(
+                                self.env.Dir('$INSTALL_LIB')))))
             self.env['RPATH']=rlst
 
 class map_build_context(object):

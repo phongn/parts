@@ -64,23 +64,20 @@ def add_variable(key,default,help,validator=None,converter=None):
     '''Generic variable addition'''
     from .. import settings
     settings.DefaultSettings().AddVariable(key, help=help,  default=default, validator=validator, converter=converter, value=None, help_group=None)
-    #glb.def_vars.append((key,help,default,validator,converter))
+
 
 def add_bool_variable(key,default,help):
     '''Generic varible addition'''
     from .. import settings
     settings.DefaultSettings().BoolVariable(key, help=help,  default=default,value=None, help_group=None)
-    #glb.def_vars.append(SCons.Script.BoolVariable(key,help,default))    
 
 def add_enum_variable(key,default,help,allowed_values,map={},ignorecase=1):
     '''Generic varible addition'''
     from .. import settings
     settings.DefaultSettings().EnumVariable(key, help=help, default=default, allowed_values=allowed_values, map=map, ignorecase=ignorecase,value=None,help_group=None)
-    #glb.def_vars.append(SCons.Script.EnumVariable(key,help,default,allowed_values,map,ignorecase))
 
 def add_list_variable(key,default,help,names=[],map={}):
     '''Generic varible addition'''
     from .. import settings
     from .. import Variables
     settings.DefaultSettings().ListVariable(key, help=help,  default=default,names=names, map=map, value=None, help_group=None)
-    #glb.def_vars.append(Variables.ListVariable2(key,help,default,allowed_values,map))  

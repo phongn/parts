@@ -12,13 +12,13 @@ Intelc.Register(
     targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
-            version='13.0.*,2013.0.*-2013.*',
+            version='13.*,2013.0.*-2013.*',
             install_scanner=filescanner.file_scanner12(
                 '/opt/intel',
                 common.intel_13_plus_posix,
                 'ia32',
                 'ICPP_COMPILER13'),
-            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'), # huh?
             subst_vars={
             
             },
@@ -38,13 +38,13 @@ Intelc.Register(
     targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
-            version='13.0.*,2013.0.*-2013.*',
+            version='13.*,2013.0.*-2013.*',
             install_scanner=filescanner.file_scanner12(
                 '/opt/intel',
                 common.intel_13_plus_posix,
                 'intel64',
                 'ICPP_COMPILER13'),
-            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'), # huh?
             subst_vars={
             
             },
@@ -57,6 +57,30 @@ Intelc.Register(
             )
         ]
     )
+
+# k1om 13.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('posix','k1om')],
+    info=[
+        IntelcInfo(
+            version='13.*,2013.0.*-2013.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                common.intel_13_plus_posix,
+                'intel64_mic',
+                'ICPP_COMPILER13'),
+            script=None,
+            subst_vars={
+            },
+            shell_vars={'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64_mic/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/mic/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/mic/'
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
 
 # 32-bit 12.1
 Intelc.Register(

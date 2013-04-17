@@ -237,7 +237,7 @@ android_stl_map_x86={
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'],
                      'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86"],
-                     'LIBS':['gnustl_shared']
+                     'LIBS':['gnustl_shared','m']
                     }
     }
 
@@ -278,7 +278,7 @@ android_stl_map_x86_pre_r8={
                             r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward',
                             r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'],
                      'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86"],
-                     'LIBS':['gnustl_shared']
+                     'LIBS':['gnustl_shared','m']
                     }
     }
 

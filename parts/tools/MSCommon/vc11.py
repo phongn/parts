@@ -30,44 +30,53 @@ msvc.Register(
                     r'C:\Program Files\Microsoft Visual Studio 11.0\VC'
                 ])
             ],
-            script=ScriptFinder('${CL.VSINSTALL}/Common7/Tools/vcvars32.bat'),
+            script=ScriptFinder('${MSVC.VCINSTALL}/vcvarsall.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
             'FRAMEWORK_ROOT64':framework_root64()
             },
-            shell_vars={
-                        'PATH':
-                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
-                            get_current_sdk()+'/bin'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'                            
-                            ,
-                        'INCLUDE':
-                            '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
-                            get_current_sdk()+'/include'
-                        ,
-                        'LIB':
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB'+os.pathsep+
-                            '${MSVC.VCINSTALL}/lib'+os.pathsep+
-                            get_current_sdk()+'/lib'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'
-                        ,
-                        'LIBPATH':
-                            '${MSVC.VCINSTALL}ATLMFC/LIB'+os.pathsep+
-                            get_current_sdk()+'/lib'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT}/v4.0.30319'
-                        ,
-                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
-                        },
+            shell_vars={ },
             test_file='cl.exe'
             )
         ]
     )
+
+msvc.Register(
+    hosts=[SystemPlatform('win32','x86'),SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('win32','arm')],
+    info=[
+        ToolInfo(
+            version='11.0',
+            install_scanner=[
+                RegFinder([
+                    r'Software\Wow6432Node\Microsoft\VisualStudio\11.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VisualStudio\11.0\Setup\VC\ProductDir',
+                    r'Software\Wow6432Node\Microsoft\VCExpress\11.0\Setup\VC\ProductDir',
+                    r'Software\Microsoft\VCExpress\11.0\Setup\VC\ProductDir'
+                ]),
+                EnvFinder([
+                    'VS110COMNTOOLS'
+                ],'../../VC'),
+                PathFinder([
+                    r'C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC',
+                    r'C:\Program Files\Microsoft Visual Studio 11.0\VC'
+                ])
+            ],
+            script=ScriptFinder('${MSVC.VCINSTALL}/bin/x86_arm/vcvarsx86_arm.bat'),
+            subst_vars={
+            'VCINSTALL':'${MSVC.INSTALL_ROOT}',
+            'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
+            'FRAMEWORK_ROOT':framework_root(),
+            'FRAMEWORK_ROOT64':framework_root64()
+            },
+            shell_vars={ },
+            test_file='cl.exe'
+            )
+        ]
+    )
+
 
 # 64-bit native
 msvc.Register(
@@ -88,48 +97,20 @@ msvc.Register(
                     r'C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC'
                 ])
             ],
-            script=ScriptFinder('${MSVC.VCINSTALL}/bin/AMD64/vcvarsamd64.bat'),
+            script=ScriptFinder('${MSVC.VCINSTALL}/bin/AMD64/vcvars64.bat'),
             subst_vars={
             'VCINSTALL':'${MSVC.INSTALL_ROOT}',
             'VSINSTALL':'${MSVC.INSTALL_ROOT}/..',
             'FRAMEWORK_ROOT':framework_root(),
             'FRAMEWORK_ROOT64':framework_root64()
             },
-            shell_vars={
-                        'PATH':
-                            '${MSVC.VCINSTALL}/bin/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
-                            get_current_sdk()+'/bin/x64'+os.pathsep+
-                            get_current_sdk()+'/bin'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'                            
-                            ,
-                        'INCLUDE':
-                            '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
-                            get_current_sdk()+'/include'
-                        ,
-                        'LIB':
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
-                            get_current_sdk()+'lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
-                        ,
-                        'LIBPATH':
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
-                        ,
-                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
-                        },
-            test_file='AMD64/cl.exe'
+            shell_vars={},
+            test_file='cl.exe'
             )
         ]
     )
 
-#cross - 64-bit. This also works for ia64
+#cross - 64-bit. 
 msvc.Register(
     hosts=[SystemPlatform('win32','any')],# say 'any' as the code will preffer this less than a native version
     targets=[SystemPlatform('win32','x86_64')],
@@ -159,36 +140,8 @@ msvc.Register(
             'FRAMEWORK_ROOT64':framework_root64()
             },
             shell_vars={
-                        'PATH':
-                            '${MSVC.VCINSTALL}/bin/x86_amd64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/bin'+os.pathsep+
-                            get_current_sdk()+'/bin/x64'+os.pathsep+
-                            get_current_sdk()+'/bin'+os.pathsep+
-                            '${MSVC.VCINSTALL}/VCPackages'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/IDE'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/Tools'+os.pathsep+
-                            '${MSVC.VSINSTALL}/Common7/Tools/bin'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
-                            ,
-                        'INCLUDE':
-                            '${MSVC.VCINSTALL}/ATLMFC/INCLUDE'+os.pathsep+
-                            '${MSVC.VCINSTALL}/INCLUDE'+os.pathsep+
-                            get_current_sdk()+'/include'
-                        ,
-                        'LIB':
-                            '${MSVC.VCINSTALL}/ATLMFC/LIB/AMD64'+os.pathsep+
-                            '${MSVC.VCINSTALL}/lib/AMD64'+os.pathsep+
-                            get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
-                        ,
-                        'LIBPATH':
-                            '${MSVC.VCINSTALL}ATLMFC/LIB/AMD64'+os.pathsep+
-                            get_current_sdk()+'/lib/x64'+os.pathsep+
-                            '${MSVC.FRAMEWORK_ROOT64}/v4.0.30319'
-                        ,
-                        'SYSTEMROOT':SCons.Platform.win32.get_system_root()
                         },
-            test_file='x86_amd64/cl.exe'
+            test_file='cl.exe'
             )
         ]
     )  

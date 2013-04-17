@@ -20,10 +20,10 @@ class Condition(object):
         '''
         return self.Pass()
 
-    def Pass(self):        
+    def Pass(self):
         return self.__pass_value == self.__func()
-    
-    @property            
+
+    @property
     def Message(self):
         return self.__msg
 
@@ -36,10 +36,10 @@ class ConditionFactory(object):
         '''This is a general function for any condition testing
         it takes a a function that will return true or false
         a message to report why this condition failed ( and as such we skipped the test)
-        optional value to control if the return value of False should be used as a failure of 
+        optional value to control if the return value of False should be used as a failure of
         the condition. defaults to True.. ie False is failure and True is passing.
         '''
-        
+
         ret=Condition(function,reason,pass_value)
         return ret
 
@@ -119,11 +119,11 @@ class Conditions(object):
         for cond in self.__condition_if:
             if cond:
                 # we had a failure
-                self.__reason=cond.Message                
+                self.__reason=cond.Message
                 return False
 
         return True
-    
+
     @property
     def _Reason(self):
         return self.__reason
@@ -144,7 +144,7 @@ def _where_is(program,path=None):
         try:
             path = os.environ['PATH'].split(os.pathsep )
         except KeyError:
-            # no path set? 
+            # no path set?
             #well there is nothing to find.
             return None
     try:
@@ -161,38 +161,42 @@ def _where_is(program,path=None):
                     st = os.stat(fext)
                     if stat.S_IMODE(st[stat.ST_MODE]) & stat.S_IXUSR:
                         return os.path.normpath(fext)
-        
+
     return None
 
 if sys.platform == 'win32':
     from  _winreg import *
 
     glb.Locals['HKEY_CLASSES_ROOT']=HKEY_CLASSES_ROOT
-    glb.Locals['HKEY_CURRENT_USER']=HKEY_CURRENT_USER 
-    glb.Locals['HKEY_LOCAL_MACHINE']=HKEY_LOCAL_MACHINE 
+    glb.Locals['HKEY_CURRENT_USER']=HKEY_CURRENT_USER
+    glb.Locals['HKEY_LOCAL_MACHINE']=HKEY_LOCAL_MACHINE
     glb.Locals['HKEY_USERS']=HKEY_USERS
-    glb.Locals['HKEY_CURRENT_CONFIG']=HKEY_CURRENT_CONFIG  
-                     
+    glb.Locals['HKEY_CURRENT_CONFIG']=HKEY_CURRENT_CONFIG
+
     def _has_regkey(root,keys):
 
         try:
-            # open hive
-            hive = ConnectRegistry(None,root)
-            
-            for key in keys: 
-                path,key = key.rsplit('\\',1)
+            for fullkey in keys:
+                path,key = fullkey.rsplit('\\',1)
                 # get path container
                 try:
-                    rpath = OpenKey(hive, path)
-                    #get key value
-                    QueryValueEx(rpath,key)
+                    # normal case is that we want to get a key
+                    with OpenKey(root,path) as rpath:
+                        #get key value
+                        QueryValueEx(rpath,key)
                     return True
                 except WindowsError,e:
-                    pass
+                    try:
+                        # maybe this was just checking for a path
+                        with OpenKey(root,fullkey) as rpath:
+                            pass
+                        return True
+                    except WindowsError,e:
+                        pass
 
         except WindowsError,e:
             pass
-        
+
         return False
 
     def reg_key_equal(key,value):
@@ -204,10 +208,10 @@ else:
     glb.Locals['HKEY_LOCAL_MACHINE']=3
     glb.Locals['HKEY_USERS']=4
     glb.Locals['HKEY_CURRENT_CONFIG']=5
-    
+
     def _has_regkey(root,key):
         return False
 
-    
+
     def reg_key_equal(key,value):
         return False

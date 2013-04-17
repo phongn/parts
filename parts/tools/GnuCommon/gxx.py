@@ -1,6 +1,6 @@
 import os
 from common import gxx, GnuInfo
-from parts.tools.Common.Finders import PathFinder,ScriptFinder
+from parts.tools.Common.Finders import PathFinder,ScriptFinder,EnvFinder
 from parts.platform_info import SystemPlatform
 from parts.tools.Common.ToolInfo import ToolInfo
 import android
@@ -50,6 +50,29 @@ gxx.Register(
         subst_vars={},
         shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
         test_file='g++',
+        opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
+        )
+    ]
+)
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('posix','k1om')],
+    info=[
+        GnuInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/linux-k1om-4.7/bin'])
+            ],
+        opt_dirs=[],
+        script=None,
+        subst_vars={},
+        shell_vars={'PATH':'${GXX.INSTALL_ROOT}'},
+        test_file='x86_64-k1om-linux-g++',
         opt_pattern='gcc\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)'
         )
     ]
@@ -322,6 +345,10 @@ gxx.Register(
         # so we allow this to be set
         install_scanner=[
             #MsiFinder('MingGW-*','DisplayName'),
+            EnvFinder([
+                    'MINGW_PREFIX',
+                    'MINGW_PATH'
+                ],'bin'),
             PathFinder(['c:\\MinGW\\bin'])
             ],
         opt_dirs=[

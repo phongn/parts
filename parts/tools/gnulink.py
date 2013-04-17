@@ -2,7 +2,7 @@
 This file is a proxy for SCons.Tool.gnulink. It forwards calls to generate and exists
 functions to appropriate ones in SCons.Tool.gnulink module.
 
-The purpose of this module to add ability to generate separate debug files (pdbs) on Linux 
+The purpose of this module to add ability to generate separate debug files (pdbs) on Linux
 as well as add ability to strip resulting binaries.
 
 This module introduces two environment variables to control binary stripping and pdbs creation:
@@ -18,6 +18,7 @@ This module introduces two environment variables to control binary stripping and
 """
 
 import SCons.Tool.gnulink
+import SCons.Tool.mingw
 import SCons.Action
 import parts.api.output
 import parts.tools.GnuCommon
@@ -105,10 +106,10 @@ def _setUpPdbActions(env):
     env['_stripResolveString'] = _stripResolveString
 
 
-    env['_pdbAction'] = "$OBJCOPY --only-keep-debug ${TARGET} ${TARGET.attributes.pdb}"
+    env['_pdbAction'] = "$OBJCOPY --only-keep-debug $PDBFLAGS ${TARGET} ${TARGET.attributes.pdb}"
     env['_pdbActionString'] = 'Creating PDB for ${TARGET}'
 
-    if env.get('CHMODVALUE'):   
+    if env.get('CHMODVALUE'):
         if env.Detect("chmod"):
             env['_pdbChmodAction'] = "chmod $CHMODVALUE ${TARGET.attributes.pdb}"
         else:
@@ -160,6 +161,8 @@ def _setUpPdbActions(env):
 
     return env
 
+
+
 def generate(env):
     """
     Proxy for SCons.Tool.gnulink.generate function.
@@ -167,16 +170,19 @@ def generate(env):
     private _setUpPdbActions function which in its turn adds pdb creation/binary stripping
     actions to the environment
     """
-    
+
     env['LIBPREFIX']      = 'lib'
     env['LIBSUFFIX']      = '.a'
     env['SHLIBPREFIX']    = 'lib'
     env['SHLIBSUFFIX']    = '.so'
     env['OBJCOPY']        = 'objcopy'
     env['CHMODVALUE']     = '644'
-
+    
+    # this is a hard set.. normally handled by scons platform logic
+    # but for win32 hosts it gets the values wrong ( it assumes .a only)
+    env['LIBSUFFIXES']    = [ '$LIBSUFFIX', '$SHLIBSUFFIX' ]
+    
     SCons.Tool.gnulink.generate(env)
-
     parts.tools.GnuCommon.binutils.setup(env)
 
     # Sometimes we have to use specific tools and command lines.
@@ -191,7 +197,13 @@ def generate(env):
         env['RPATHPREFIX'] = env.get('BINUTILS', {}).get('RPATHPREFIX', env.get('RPATHPREFIX'))
     except KeyError:
         pass
-    
+
+    if env['TARGET_OS']=='win32':
+        # this is a mingw based build.
+        env['SHLINKCOM']   = SCons.Tool.mingw.shlib_action
+        env['LDMODULECOM'] = SCons.Tool.mingw.shlib_action
+        env.Append(SHLIBEMITTER = [SCons.Tool.mingw.shlib_emitter])
+        env['SHLIBSUFFIX']    = '.dll'
 
     _setUpPdbActions(env)
 

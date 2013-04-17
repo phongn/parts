@@ -6,8 +6,8 @@
     <ProjectGuid>{8f62fc3b-b6cf-46be-a8da-7c9c423a9db5}</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>C:\Python27\Scripts\scons-2.1.0.py</StartupFile>
-    <SearchPath>C:\Python27\scons-2.1.0</SearchPath>
-    <WorkingDirectory>C:\Users\jlkenny\code\parts</WorkingDirectory>
+    <SearchPath>C:\Python27\scons-2.1.0\;..\</SearchPath>
+    <WorkingDirectory>C:\Users\jlkenny\code\pf132</WorkingDirectory>
     <AssemblyName>Parts</AssemblyName>
     <Name>Parts</Name>
     <RootNamespace>Parts</RootNamespace>
@@ -326,6 +326,7 @@
     <Compile Include="tools\MSCommon\vc11.py" />
     <Compile Include="tools\MSCommon\wix.py" />
     <Compile Include="tools\wix.py" />
+    <Compile Include="vcs\git.py" />
     <Compile Include="vcs\smart_svn.py" />
   </ItemGroup>
 </Project>

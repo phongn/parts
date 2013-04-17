@@ -12,9 +12,11 @@ glb.sconstruct_path=SCons.Script.DefaultEnvironment().Dir("#").abspath
 scons_DefaultEnvironment=SCons.Script.DefaultEnvironment
 
 def Part_DefaultEnvironment(*args,**kw):
-    env=settings.DefaultSettings().DefaultEnvironment()#*args,**kw)
+    env=settings.DefaultSettings().DefaultEnvironment()
     if id(glb.engine.def_env) != id(env):
         glb.engine.def_env=env
+    if args or kw:
+        return env.Clone(*args,**kw)
     return env
         
 

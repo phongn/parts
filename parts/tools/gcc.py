@@ -21,6 +21,26 @@ def generate(env):
 
     if env['TARGET_PLATFORM']=='android':
         env.SetDefault(ANDROID_API='${GetLatestNDKAPI()}')
+    elif  env['TARGET_PLATFORM']=='win32':
+        # set some value for the mingw build
+        # note on this side we have export libs
+
+        ## resource builder
+        env['WIN32DEFPREFIX']        = ''
+        env['WIN32DEFSUFFIX']        = '.def'
+        env['WINDOWSDEFPREFIX']      = '${WIN32DEFPREFIX}'
+        env['WINDOWSDEFSUFFIX']      = '${WIN32DEFSUFFIX}'
+
+        env['SHOBJSUFFIX'] = '.o'
+        env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
+
+        env['RC'] = 'windres'
+        env['RCFLAGS'] = SCons.Util.CLVar('')
+        env['RCINCFLAGS'] = '$( ${_concat(RCINCPREFIX, CPPPATH, RCINCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+        env['RCINCPREFIX'] = '--include-dir '
+        env['RCINCSUFFIX'] = ''
+        env['RCCOM'] = '$RC $_CPPDEFFLAGS $RCINCFLAGS ${RCINCPREFIX} ${SOURCE.dir} $RCFLAGS -i $SOURCE -o $TARGET'
+        env['BUILDERS']['RES'] = res_builder
 
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']

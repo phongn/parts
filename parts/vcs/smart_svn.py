@@ -101,6 +101,7 @@ class smart_svn(svn.svn):
                 REPOSITORY=repo,
                 SERVER=self.Server,
                 REVISION=common.DelayVariable(lambda : self.get_svn_data()['revision']),
+                REVISION_LOW=common.DelayVariable(lambda : self.get_svn_data()['revision_low']),
                 MODIFIED=common.DelayVariable(lambda :self.get_svn_data()['modified']),
                 PARTIAL=common.DelayVariable(lambda :self.get_svn_data()['partial']),
                 SWITCHED=common.DelayVariable(lambda :self.get_svn_data()['switched']),
@@ -129,7 +130,10 @@ class smart_svn(svn.svn):
         in SVN, and if it does use it, else if will fallback to different location or error out
         if nothing is found.
         '''
-
+        # This is a simple test to see if the login, or something else is messed up an the user needs to fix it
+        retcode,text=self.command_output('"{0}" ls --non-interactive {1}'.format(svn.svn.svnpath,self.Server))
+        if retcode:
+            api.output.error_msg("SVN access issue:\n {0}".format(text.rstrip()),show_stack=False)
         # get branch we want
         branch=self.GetBranchType()
         api.output.verbose_msgf("smart_svn","Finding information for branch {0}",branch)
@@ -160,7 +164,7 @@ class smart_svn(svn.svn):
             
             api.output.error_msgf(
                 'Could not find {0} branch "{1}" in svn\n looked in {2}',
-                self._vars['NAME'],branch,self._vars['BRANCH_MAP'][branch],
+                self._vars['NAME'],branch,self._env.subst(self._vars['BRANCH_MAP'][branch]),
                 show_stack=False
                 )
         if ret.endswith("/"): ret=ret[:-1]
@@ -243,7 +247,7 @@ class smart_svn(svn.svn):
         datacache.StoreData(name=self._cache_filename,data=tmp,key='vcs')
         
 api.register.add_global_object('VcsSmartSvn',smart_svn)
-api.register.add_variable('VCS_SMART_SVN_DIR','${CHECK_OUT_ROOT}/${VCS.NAME}','Full path used for any given checked out item')
+api.register.add_variable('VCS_SMART_SVN_DIR','${CHECK_OUT_ROOT}/${VCS.NAME}${VCS.STABLE_VERSION}','Full path used for any given checked out item')
 api.register.add_variable('UID_PATH','<unknown>','')
 from .. import glb
 from optparse import OptionValueError

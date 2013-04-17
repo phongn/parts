@@ -487,7 +487,7 @@ class part_id_mapper(mapper):
                 pobj=match.UniqueMatch
             else:
                 api.output.trace_msg(['partid_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
-                self.name_to_alias_failed(env,match,policy=self.policy)
+                self.name_to_alias_failed(env,match,policy=Policy.REQPolicy.error)
 
             api.output.trace_msg(['partid_mapper','mapper'],spacer,'Found matching part! name: {0} version:{1} -> alias: {2}'.format(self.part_name,self.ver_range,pobj.Alias))
 
@@ -640,7 +640,7 @@ class part_id_export_mapper(mapper):
             ec_str=cStringIO.StringIO()
             traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,'mapping happened\n mapper: ${{{0}("{1}","{2}","{3}",{4})}}"\n'.format(self.name,self.part_name,self.section,self.part_prop,self.policy)+ec_str.getvalue(),
                 stackframe=self.stackframe,
                 exit=False
                 )

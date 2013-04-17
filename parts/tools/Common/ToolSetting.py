@@ -6,9 +6,15 @@ import parts.api.output as output
 import copy
 import SCons.Errors
 
+from parts.version import version_range
+
 from SCons.Debug import logInstanceCreation
 
 def MatchVersionNumbers(verStr1, verStr2):
+    if isinstance(verStr1, version_range):
+        return verStr2 in verStr1
+    if isinstance(verStr2, version_range):
+        return verStr1 in verStr2
     if verStr1[-1] == '.':
         verStr1=verStr1[:-1]
     major1, minor1, rev1, junk = (verStr1+'.-1.-1.-1').split('.',3)
@@ -388,19 +394,19 @@ class ToolSetting(object):
         return ret
 
 
-    def merge_tools(self,target,tools):
+    def merge_tools(self,target,tools,host):
 
         try:
             #get the existing item in target
             items=self.tools[target]
         except KeyError:
             # not defined so we just add the set and return
-            api.output.verbose_msgf("toolsettings", "For tool {0} adding info for target:{1} verions:{2}",self.name,target,[str(i) for i in tools.keys()])
+            api.output.verbose_msgf("toolsettings", "For tool: '{0}' host: '{3}' adding info for target:{1} verions:{2}",self.name,target,[str(i) for i in tools.keys()],host)
             self.tools[target]=tools
             return
 
+        api.output.verbose_msgf("toolsettings", "For tool: '{0}' host: '{3}' adding info for target:{1} verions:{2}",self.name,target,[str(i) for i in tools.keys()],host)
         for key,val in tools.iteritems():
-
             # if we have this version already
             if items.has_key(key):
                 # only add it if the key is native
@@ -433,7 +439,7 @@ class ToolSetting(object):
                     tmp[i.version]=[i]
                 #add info sorted in to correct target buckets
                 for t in targets:
-                    self.merge_tools(t,tmp)
+                    self.merge_tools(t,tmp,h)
 
 
     def get_shell_env(self,env):
@@ -454,19 +460,28 @@ class ToolSetting(object):
         try:
             return self.shell_cache[cache_key]
         except KeyError:
-            api.output.verbose_msgf(['toolsettings'],"Getting environment for {0}",key)
+            
             _env=env.Clone()
-            # query data
-            if version is not None:
-                self.query_for_exact(_env,key,version)
-            else:
-                self.query_for_known(_env,key)
-
+           
             # basic info we will need
             tinfo=None
             root_path=_env.get(self.rootpath_tag,None)
             use_script=_env.get(self.script_tag,False)
             target=_env['TARGET_PLATFORM']
+            config=env.subst("$CONFIG")
+            
+            api.output.verbose_msgf(['toolsettings'],"Getting environment for tool: {0}\n version: {1}\n use_script: {2}\n target: {3}\n config: {4}",
+                                    self.name,
+                                    "latest" if version is None else version,
+                                    use_script,
+                                    target,
+                                    config
+                                    )
+             # query data
+            if version is not None:
+                self.query_for_exact(_env,key,version)
+            else:
+                self.query_for_known(_env,key)
 
             ##get the tool info for the host-target combo for the requested version
             #get latest found version if not provided
@@ -507,13 +522,13 @@ class ToolSetting(object):
             # teh tool setup would have reset teh version, but not the install root
             if _v is None and _env.get(self.rootpath_tag,None) is None:
                 root_path=ret[1]['INSTALL_ROOT']
-                key=str(root_path)+str(use_script)+str(target)+env.subst("$CONFIG")
+                key=str(root_path)+str(use_script)+str(target)+config
                 self.shell_cache[str(_v)+key]=ret
         return ret
 
     def MergeShellEnv(self,env):
         import pprint
-        pp = pprint.PrettyPrinter(indent=4)
+#        pp = pprint.PrettyPrinter(indent=4)
 #        pp.pprint(self.__dict__)
 
         version=env.get(self.version_tag,None)

@@ -85,13 +85,18 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     errors.SetPartStackFrameInfo()
 
     if ("utest::" in env["SUPPRESS_SECTION"] or 
-        "utest" in env["SUPPRESS_SECTION"] or 
-        "run_utest::" in env["SUPPRESS_SECTION"] or 
-        "run_utest" in env["SUPPRESS_SECTION"]) and \
+        "utest" in env["SUPPRESS_SECTION"]) and \
         SCons.Script.GetOption('section_suppression'):
         api.output.verbose_msgf("warning",'Skipping the processing of Part section "utest" in Part {0}',env.PartName())
         return []
-    
+    skip_run_test=False
+    if ("run_utest::" in env["SUPPRESS_SECTION"] or 
+        "run_utest" in env["SUPPRESS_SECTION"]) and \
+        SCons.Script.GetOption('section_suppression'):
+        api.output.verbose_msgf("warning",'Skipping the processing of Part section "run_utest" of section "utest" in Part {0}',env.PartName())
+        skip_run_test=True
+
+
     targets=SCons.Script.BUILD_TARGETS
     for t in targets:
         tmp=target_type(t)
@@ -270,7 +275,8 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     
     ## this builder makes the scripts to run the test on
     ## the command line with ease
-    sec.Env['ENV'].update(sec.Env.get('UNIT_TEST_ENV',{}))
+    for k,v in sec.Env.get('UNIT_TEST_ENV',{}).iteritems():
+        sec.Env['ENV'][k] = sec.Env.subst(v)
     #in case a python script is being called.. it is the same version of python as we are using
     sec.Env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
     scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],[ret[0].abspath,sec.Env.Value(command_args),sec.Env.Value(sec.Env.subst("$UNIT_TEST_RUN_COMMAND"))],UNIT_TEST_ENV=sec.Env.get('UNIT_TEST_ENV',{}))
@@ -280,30 +286,43 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     ## the command action to Run this stuff
     cmd='$UNIT_TEST_RUN_SCRIPT_COMMAND'
     # map top level run alias... first one maps to build based 'base_alias'
-    core_run_alias=sec.Env.Override({'TIME_OUT':sec.Env.get("RUN_UTEST_TIME_OUT",sec.Env.get('TIME_OUT'))}).Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',
-                                                                                                                  core_alias,sec.Env.Action(cmd,exitstatfunc=sec.Env['RUN_UTEST_EXIT_FUNCTION'])
+    def wrap_exit_code_function(function, env, stackframe):
+        '''
+        SCons.Action object accepts exitstatfunc argument to be a callable
+        with returncode as its only parameter. We want to pass some more arguments
+        to our function.
+        '''
+        return lambda rcode: function(rcode, env=env, stackframe=stackframe)
+
+    if not skip_run_test:
+        core_run_alias=sec.Env.Override({'TIME_OUT':sec.Env.get("RUN_UTEST_TIME_OUT",sec.Env.get('TIME_OUT'))}).Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',
+                                                                                                                  core_alias,sec.Env.Action(cmd,exitstatfunc=wrap_exit_code_function(sec.Env['RUN_UTEST_EXIT_FUNCTION'], sec.Env, errors.GetPartStackFrameInfo()))
                                                                                                                   )
-    sec.Env.AlwaysBuild(core_run_alias)
+        sec.Env.AlwaysBuild(core_run_alias)
     
     base_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_alias)
-    base_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_run_alias)
-    sec.Env.AlwaysBuild(base_run_alias)
+    if not skip_run_test:
+        base_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}',core_run_alias)
+        sec.Env.AlwaysBuild(base_run_alias)
     
     
     recurse_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_alias)
-    recurse_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_run_alias)
-    sec.Env.AlwaysBuild(recurse_run_alias)
+    if not skip_run_test: 
+        recurse_run_alias=sec.Env.Alias('${RUN_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::',base_run_alias)
+        sec.Env.AlwaysBuild(recurse_run_alias)
     
     
     talias=common.map_alias_to_root(sec.Part,'utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
-    talias_run=common.map_alias_to_root(sec.Part,'run_utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
-    sec.Env.AlwaysBuild(talias_run)
+    if not skip_run_test:
+        talias_run=common.map_alias_to_root(sec.Part,'run_utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
+        sec.Env.AlwaysBuild(talias_run)
     
     
     #Top level
     sec.Env.Alias('${BUILD_UTEST_CONCEPT}',talias)
-    r=sec.Env.Alias('${RUN_UTEST_CONCEPT}',talias_run)
-    sec.Env.AlwaysBuild(r)
+    if not skip_run_test:
+        r=sec.Env.Alias('${RUN_UTEST_CONCEPT}',talias_run)
+        sec.Env.AlwaysBuild(r)
     parent_obj.DefiningSection=curr_sec
     errors.ResetPartStackFrameInfo()
     sec.LoadState=glb.load_file
@@ -311,7 +330,13 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     return ret
        
   
-def run_utest_return_default(code):
+def run_utest_return_default(code, env=None, stackframe=None):
+    '''
+    Callback to be called on unit-test exit.
+    @param code: unit-test process exit code.
+    @param env: Environment used to define run unit-test Action object.
+    @param stackframe: Tuple of (filename, lineno, routine, content).
+    '''
     return code
 
 # This is what we want to be setup in parts

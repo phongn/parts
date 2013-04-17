@@ -188,7 +188,6 @@ def allProducts():
 if __name__ == '__main__':
     import re
     for product in allProducts():
-        if re.match('Intel.*Compiler.*(IA-32|Intel.*64)', product.ProductName):
-            print product.ProductName, product.VersionString
+        print product.ProductName.encode('mbcs', errors='ignore'), product.VersionString.encode('mbcs', errors='ignore')
 # vim: set et ts=4 sw=4 ft=python :
 

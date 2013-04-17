@@ -66,7 +66,6 @@ class Changed(base.Base):
             total = len(self.sections_to_load)
             cnt=0
             for s in self.sections_to_load:
-                #print s.ID,s.ReadState
                 api.output.console_msg("Loading {0:.1%} ({1}/{2} sections) \033[K".format((cnt*1.0)/total,cnt,total))
                 self.pmgr.LoadSection(s)
                 cnt+=1
@@ -74,14 +73,16 @@ class Changed(base.Base):
 
         return self._up_to_date
 
-    def isNodeChanged(self,sec,nodeid):
+    def isNodeChanged(self,sec,nodeid,_indent=1):
         # this does a recusive node check to see if
         # this node or it children are out of date
         # we go depth first as this overall allows us to
         # reduce the number of edge checks that may need to be do.
         try:
             # try to return known information about the state of this node
-            return self._known_nodes[nodeid]
+            tmp=self._known_nodes[nodeid]
+            api.output.verbose_msg(['node_check_extra'],'used cache for node {0}={1}'.format(nodeid,tmp))
+            return tmp
         except KeyError:
             # we don't know about this node yet.. so figure it out
 
@@ -97,13 +98,15 @@ class Changed(base.Base):
             #get sources to this target node
             src_data=info.SourceInfo
             #for each source check to see if that is out of date
+            api.output.verbose_msg(['node_check_extra'],'{0} Check Sources for {1}'.format(" "*_indent,nodeid))
             for srcID,ninfo in src_data.iteritems():
+                api.output.verbose_msg(['node_check_extra'],'{0} Source "{1}"'.format(" "*_indent,srcID))
                 try:
                     # get the state of node given we have visited it already
                     tmp=self._known_nodes[srcID]
                 except KeyError:
                     #don't have it yet. go down tree to get information
-                    tmp=self.isNodeChanged(sec,srcID)
+                    tmp=self.isNodeChanged(sec,srcID,_indent+1)
                 if tmp:
                     # we are out of date because a src node is out of date
                     self._known_nodes[nodeid] = True
@@ -158,17 +161,21 @@ class Changed(base.Base):
             api.output.console_msg("Checking node groups {0:.1%} ({1}/{2}) \033[K".format((cnt*1.0)/total,cnt,total))
             cnt+=1
             nodeIDs=[]
-            try:
-                requirements=self._section_info[secID]['requirements']
-            except:
+            if self._section_info[secID]['is_core_section']:
                 requirements=None
+            else:
+                try:
+                    # todo .. Check to make sure we can safely remove this code
+                    # this should not exist only in cases of "is_core_section" 
+                    requirements=self._section_info[secID]['requirements']
+                except:
+                    requirements=None
             sec=stored_data=self._section_info[secID]['section']
             stored_data=sec.Stored
 
             if sec.AlwaysBuild:
                 self.SetToLoad(sec,"AlwaysBuild was called in the section, force loading.")
                 continue
-
             if requirements:
                 # there are requirements we want to check for..
                 # here we turn each requirement in to a Node
@@ -184,7 +191,7 @@ class Changed(base.Base):
 
             # for each "root node" we need to check if it is out-of-date
             for nodeID in nodeIDs:
-                api.output.verbose_msg(['update_check_extra'], "check nodes group",nodeID)
+                api.output.verbose_msg(['node_check_extra'], "check nodes group",nodeID)
                 if self.isNodeChanged(sec,nodeID):
                     self.SetToLoad(sec,"Node defined in this or dependent section is out of date")
                     break
@@ -226,7 +233,9 @@ class Changed(base.Base):
             # add section as known
             # Note we want to consider updating requirements via seeing if the group
             # maps to a requirement
-            for i in sections: self.AddSection(i)
+            for i in sections: 
+                if i in self.targets: self.AddSection(i,iscore=True)
+                else: self.AddSection(i)
             self.ProcessSections(sections)
         api.output.verbose_msg(['update_check'],"Finished - Context checked in {0} sec".format(time.time()-st))
 
@@ -339,14 +348,37 @@ class Changed(base.Base):
             section have a possible change on disk that would casue a need
             for a rescan, and rebuild of stuff that the scan might have returned
         4) along the way if we see the dependent section is out of date we are out of date
-            as well. hwoever we still have to check all depenants as we need to know
+            as well. hwoever we still have to check all dependents as we need to know
             everything we may have to load, as we don't store this information, since
             a simple change may map the section relationships.
         '''
 
+        ## this is hack to deal with a issue that needs a little more work
+        # the issue is that the logic allows for a unit test to depend on other sections 
+        # via the depends arg. The issue is that we may load a unit test, but will not be 
+        # able to load a extra depends on a dependent unit test call. This is not needed to do the
+        # build, but not loading it will cause data mapping  and stored state issues.
+        # see if the utest target is being used..
+        import SCons
+        from .. import target_type 
+        targets=SCons.Script.BUILD_TARGETS
+        for t in targets:
+            tmp=target_type.target_type(t)
+            sep_len=len("::")
+            if tmp.Section == 'utest':
+                #if so we want to make see if we have a section utest that matches the build section 
+                # given this is a build section.
+                if sec.Name == 'build':
+                    if glb.pnodes.isKnownPNodeStored("utest::{0}".format(sec.Stored.PartID)):
+                        tsec=glb.pnodes.GetPNode("utest::{0}".format(sec.Stored.PartID))
+                        #if tsec is None:
+                        #    1/0
+                        self.ProcessSection(tsec)
+
+        ## end of hack
 
         for dep_info in sec.Stored.DependsOn:
-            api.output.verbose_msg(['update_check_extra'], sec.ID,"->",dep_info.PartName)
+            api.output.verbose_msg(['update_check_extra'],"ID:", sec.ID,"Dependson -> Name:",dep_info.PartName)
             # check to see that the if depends mapping we have is still valid
             if self.hasDependsMappingChanged(dep_info):
                 if not self._section_info[sec.ID]['depend_esig_changed']:
@@ -489,7 +521,6 @@ class Changed(base.Base):
             # REQ.Default.. but local requirement is only for REQ.HEADERS
             if req.key in rsigs.keys():
              if dep_sec.Stored.ESigs.get(req.key,'0')!=rsigs.get(req.key,'0'):
-                print dep_sec.Stored.ESigs.get(req.key,'0'),rsigs.get(req.key,'0')
                 self.SetToLoad(sec,'{0} out-of-date! Dependent values "{1}" from "{2}" changed'.format(sec.ID,req.key,dep_sec.ID))
                 return True
         return False
@@ -594,13 +625,14 @@ class Changed(base.Base):
 
 
     def UpdateRequirements(self,sec,requirements):
+        #check to see the requirements are not set to load everything
+        if self._section_info[sec.ID].get('is_core_section',False):
+            return False # nothing changed we need to have checked    
         if requirements is None:
             requirements = requirement.Default()
         try:
             curr_req=self._section_info[sec.ID]['requirements']
             # try to set the requirements
-
-
             # are requirements all existing in current requirements?
             if not requirements.issubset(curr_req):
                 # Add what we have with what exists
@@ -612,7 +644,7 @@ class Changed(base.Base):
         return True # this is not known
 
 
-    def AddSection(self,sec):
+    def AddSection(self,sec,iscore=False):
 
         try:
             self._section_info[sec.ID]
@@ -623,6 +655,7 @@ class Changed(base.Base):
             self._section_info[sec.ID]={}
             self._section_info[sec.ID]['section']=sec
             self._section_info[sec.ID]['depend_esig_changed']=False
+            self._section_info[sec.ID]['is_core_section']=iscore
             # add to the sections we know about and will try to load
             # based on finail read state
             self.known_sections.append(sec)

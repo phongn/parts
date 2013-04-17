@@ -10,9 +10,9 @@
 
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='ProgramFilesFolder' Name='PFiles'>
-                <Directory Id='MyDir' Name='Test Program'>
+                <Directory Id='MyDir' Name='Test Program' FileSource='$(sys.SOURCEFILEDIR)'>
                     <Component Id='MyComponent' Guid='696fe198-eb26-47d1-9ed5-759c5d6a5f8b' >
-                        <File Id='ReadmeTxt' Name='readme.txt' DiskId='1' Source='readme.txt' />
+                        <File Id='ReadmeTxt' Name='readme.txt' DiskId='1' />
                     </Component>
                 </Directory>
             </Directory>

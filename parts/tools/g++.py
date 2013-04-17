@@ -4,10 +4,19 @@ import SCons.Tool
 import parts.tools.GnuCommon
 import parts.tools.Common
 
-# have to copy this file from Scons as I can't seem to get the import to get it from the standad SCons install
 cplusplus = __import__('c++', globals(), locals(), [])
 
 import parts.api.output as output
+
+
+
+## this are builders for making resources for mingw based builds on windows
+res_action = SCons.Action.Action('$RCCOM', '$RCCOMSTR')
+
+res_builder = SCons.Builder.Builder(action=res_action, suffix='.o',
+                                    source_scanner=SCons.Tool.SourceFileScanner)
+SCons.Tool.SourceFileScanner.add_scanner('.rc', SCons.Defaults.CScan)
+
 
 def generate(env):
     """Add Builders and construction variables for g++ to an Environment."""
@@ -34,7 +43,28 @@ def generate(env):
     if env['TARGET_PLATFORM']=='android':
         env.SetDefault(ANDROID_API='${GetLatestNDKAPI()}')
         env.SetDefault(ANDROID_STL='gnustl_shared')
+    elif  env['TARGET_PLATFORM']=='win32':
+        # set some value for the mingw build
+        # note on this side we have export libs
+
+        ## resource builder
+        env['WIN32DEFPREFIX']        = ''
+        env['WIN32DEFSUFFIX']        = '.def'
+        env['WINDOWSDEFPREFIX']      = '${WIN32DEFPREFIX}'
+        env['WINDOWSDEFSUFFIX']      = '${WIN32DEFSUFFIX}'
+
+        env['SHOBJSUFFIX'] = '.o'
+        env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
+
+        env['RC'] = 'windres'
+        env['RCFLAGS'] = SCons.Util.CLVar('')
+        env['RCINCFLAGS'] = '$( ${_concat(RCINCPREFIX, CPPPATH, RCINCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+        env['RCINCPREFIX'] = '--include-dir '
+        env['RCINCSUFFIX'] = ''
+        env['RCCOM'] = '$RC $_CPPDEFFLAGS $RCINCFLAGS ${RCINCPREFIX} ${SOURCE.dir} $RCFLAGS -i $SOURCE -o $TARGET'
+        env['BUILDERS']['RES'] = res_builder
     
+
     
     #Backward compatiblity
     env['CXXVERSION']=env['GXX']['VERSION']  

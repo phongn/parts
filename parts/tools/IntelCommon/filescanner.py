@@ -53,14 +53,14 @@ class file_scanner12(object):
                                  stdout = subprocess.PIPE)
 
                                 pipe.wait()
-                                line = pipe.stdout.readline()# first line has version in??
-                                match = re.search(r'([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
+                                for line in pipe.stdout:
+                                    match = re.search(r'icc\s+version\s+([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
 
-                                if match:
-                                    version_group2 = match.group(0)
-                                    ret[version_group1]=fullpath0
-                                    ret[version_group2]=fullpath0
-
+                                    if match:
+                                        version_group2 = match.group(1)
+                                        ret[version_group1]=fullpath0
+                                        ret[version_group2]=fullpath0
+                                        break
 
             if ret =={}:
                 # ctest env

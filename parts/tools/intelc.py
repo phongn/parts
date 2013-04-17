@@ -28,7 +28,7 @@ def generate(env):
     if is_windows:
         # Look for license file dir
         # in system environment, and default location.
-        envlicdir = os.environ.get("INTEL_LICENSE_FILE", '').split(';')
+        envlicdir = os.environ.get("INTEL_LICENSE_FILE", '').split(os.pathsep)
         defaultlicdir = r'C:\Program Files\Common Files\Intel\Licenses'
 
         licdir = None

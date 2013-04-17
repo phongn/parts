@@ -24,11 +24,26 @@ def read_reg(value):
     return SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, value)[0]
 
 def get_current_sdk():
-    ''' get SDK path based on reg key used for vc 9.0 and newer'''
+    ''' get SDK path based on reg key used for vc 9.0 and 10'''
     # note this key is used for both 32-bit and 64-bit systems
     # this mean the that default path will always be program file/xxx
     # even on 64-bit systems
     key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\CurrentInstallFolder'
+    dir=''
+    try:
+        dir=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, key)[0]
+        debug('Found SDK dir in registry: %s' % dir)
+    except WindowsError, e:
+        debug('Did not find SDK dir key %s in registry' % \
+              (key))
+    return dir
+
+def get_current_sdk11():
+    ''' get SDK path based on reg key used for vc 11'''
+    # note this key is used for both 32-bit and 64-bit systems
+    # this mean the that default path will always be program file/xxx
+    # even on 64-bit systems
+    key='SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.0\CurrentInstallFolder'
     dir=''
     try:
         dir=SCons.Util.RegGetValue(SCons.Util.HKEY_LOCAL_MACHINE, key)[0]

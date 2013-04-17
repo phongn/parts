@@ -165,7 +165,7 @@ def depends_on(env,depends):
     # make any string a component object
     for i in depends:
         if common.is_string(i):
-            depends_list.append(Component(i))
+            depends_list.append(Component(env,i))
         else:
             depends_list.append(i)
             

@@ -76,6 +76,7 @@ class part(pnode.pnode,part_compatiblity):
 
     '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
     '__env_diff_sig', # The MD5 value of this difference
+    '__env_mini_diff_sig' # a short form of it
 
     '__build_context_files',
     '__config_context_files',
@@ -624,7 +625,7 @@ class part(pnode.pnode,part_compatiblity):
         # create diff with default environment
         base_env=self.__settings._env_const_ref()
         #check to see if the big three are different config, target_platform, toolchain
-        #if so we want to diff off of that case, as these can item can make a mass set
+        #if so we want to diff off of that case, as these items can make a massive set
         # of changes we really want to ignore, or don't care about as much as the
         # one item that caused them to change
         diff={}
@@ -647,24 +648,39 @@ class part(pnode.pnode,part_compatiblity):
 
         diff.update(diff_env(base_env,self.__env,['SKIP_CONCEPT_DEFINITION']))
         if diff !={}:
-            import hashlib
+            
             md5=hashlib.md5()
             md5.update(common.get_content(diff))
             self.__env_diff=diff
-            #print diff
             self.__env_diff_sig=md5.hexdigest()
+            self.__env_mini_diff_sig=self.__env_diff_sig[-4:]
+            path_sig=self.__env_mini_diff_sig
         else:
             self.__env_diff={}
             self.__env_diff_sig=''
+            self.__env_mini_diff_sig=''
+            # since we we can load the same part from different directories, we assume a version difference
+            # we don't know what the difference is yet (as the part file is not read). We md5 the path to make a difference
+            # if there is no version difference, we will get an ambigous error message later when we try to build,
+            # via same outputs, or via mapper function not having more than one match.
+            md5=hashlib.md5()
+            md5.update(self.__env.subst(self.__file))
+            md5.update(self.__env_diff_sig)
+            path_sig=md5.hexdigest()[-4:]
+
 
         #We need to set to the alias value as this is the unique ID used to map data internally
         if self.__alias is None:
             # we don't have a user provided alias.. make it off the file name
             tmp=self.__env.subst(self.__file)
+            
             tmp=os.path.splitext(os.path.split(tmp)[1])[0] # we only want the file name
-            tmp="%s%s"%(tmp,self.__env_diff_sig)
+            #path sig would be enough, but the alias in some form gives the user a value
+            # they can reconize.
+            tmp="{0}-{1}".format(tmp,path_sig)
             self.__alias=tmp
             self.__short_alias=tmp
+            self.__short_name=tmp
         ##we need to check if this is a sub Parts
 
         if self.__parent is None:
@@ -776,6 +792,8 @@ class part(pnode.pnode,part_compatiblity):
         self.__env['PART_SHORT_NAME']="${PARTSHORTNAME('"+self.__alias+"')}"
         self.__env['PART_ROOT_NAME']="${PARTS('"+self.__root.__alias+"','Name')}"
         self.__env['PART_ROOT_SIG']=self.__root.__env_diff_sig
+        self.__env['PART_ROOT_MINI_SIG']=self.__root.__env_mini_diff_sig
+        self.__env['PART_MINI_SIG']=self.__env_mini_diff_sig
         if self.__parent is None:
             self.__env['PART_PARENT_NAME']=None
         else:

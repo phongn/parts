@@ -11,10 +11,12 @@ def generate(env):
     wixObject = createWixObjectBuilder(env)
     msi = createMsiBuilder(env)
 
+    env['WIX_TOOL_PATHS'] = ['${WIX.INSTALL_ROOT}'] # This variable is used by wixEnvScanner to find exts
+
     env['WIXPPPATH'] = []
     env['WIXPPPATHPREFIX'] = '-I'
     env['WIXPPPATHSUFFIX'] = ''
-    env['_WIXPPFLAGS'] = '$( ${_concat(WIXPPPATHPREFIX, WIXPPPATH, WIXPPPATHSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+    env['_WIXPPFLAGS'] = '$( ${_concat(WIXPPPATHPREFIX, WIXPPPATH, WIXPPPATHSUFFIX, __env__, lambda x: [x.abspath for x in RDirs(x)], TARGET, SOURCE)} $)'
     env['WIXPPDEFINES'] = []
     env['WIXPPDEFPREFIX'] = '-d'
     env['WIXPPDEFSUFFIX'] = ''
@@ -23,17 +25,21 @@ def generate(env):
 
     env['WIXOBJPREFIX'] = ''
     env['WIXOBJSUFFIX'] = '.wixobj'
+
     env['WIXLINKEXTPREFIX'] = ''
     env['WIXLINKEXTSUFFIX'] = '.dll'
     env['_nodes_to_strs'] = lambda prefix, list, suffix, env: [str(x) for x in SCons.Defaults._concat_ixes(prefix, list, suffix, env)]
     env['_WIXEXTSTRS'] = '${_nodes_to_strs(WIXLINKEXTPREFIX, WIXLINKEXTENSIONS, WIXLINKEXTSUFFIX, __env__)}'
     env['_WIXLINKEXTENSIONS'] = '${_defines("-ext ", _WIXEXTSTRS, "", __env__)}'
 
+    env['_WIXLCLSTRS'] = '${[x.abspath for x in __env__.arg2nodes(WIXLOCALIZATION)]}'
+    env['_WIXLOCALIZATION'] = '${_defines("-loc ", _WIXLCLSTRS, "", __env__)}'
+
     env['WIXFILEPATH'] = ['$SRC_DIR']
     env['WIXFILEDIRPREFIX'] = '-b ' # Do not remove trailing space
     env['WIXFILEDIRSUFFIX'] = ''
     env['_WIXFILEDIRFLAGS'] = '$( ${_concat(WIXFILEDIRPREFIX, WIXFILEPATH, WIXFILEDIRSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
-    env['WIXLINKCOM'] = '$WIXLINK $WIXLINKFLAGS $_WIXLINKEXTENSIONS $_WIXFILEDIRFLAGS -o $TARGET $SOURCES'
+    env['WIXLINKCOM'] = '$WIXLINK $WIXLINKFLAGS $_WIXLINKEXTENSIONS $_WIXFILEDIRFLAGS $_WIXLOCALIZATION -o $TARGET $SOURCES'
 
     env['MSIPREFIX'] = ''
     env['MSISUFFIX'] = '.msi'

@@ -54,220 +54,12 @@ class fake_ninfo(object):
 
 Node.make_ninfo_from_dict=lambda self,dict:fake_ninfo(dict.get('timestamp',0),dict.get('csig',0))
 
-#def _node_up_to_date(node,ninfo):
-#    '''
-#    Expects a Scons node objects, will test aginst stored info
-#    to see if it is uptodate
-#    '''
-#
-#    try:
-#        class fake_ninfo(object):
-#            #__slots__=['timestamp','csig']
-#            def __init__(self,timestamp,csig):
-#                self.timestamp=timestamp
-#                self.csig=csig
-#        tninfo=fake_ninfo(ninfo['timestamp'],ninfo['csig'])
-#        ninfo=tninfo
-#    except:
-#        pass
-#
-#    print ninfo.__dict__
-#    # see if node time stamp matches
-#    tmp=getattr(ninfo,'timestamp',None)
-#    if tmp is None:
-#        s="'%s' does not exist in the SCons DB"%(node)
-#        #metatag.MetaTag(node,ns='parts',uptodate=s)
-#        api.output.verbose_msg("update_check",s)
-#        return False
-#    if node.exists() == False:
-#        s="'%s' does not exist"%(node)
-#        #metatag.MetaTag(node,ns='parts',uptodate=s)
-#        api.output.verbose_msg("update_check",s)
-#        return False
-#    if node.get_timestamp() != tmp:
-#        # timestamp did not match.. try md5
-#        api.output.verbose_msg("update_check","TimeStamp diff in '%s'"%(node))
-#        if node.get_csig() != getattr(ninfo,'csig',0):
-#            # md5 failure
-#            #print ninfo.__dict__,node.get_csig()
-#            s="%s is out of date because of differences"%(node)
-#            #metatag.MetaTag(node,ns='parts',uptodate=s)
-#            api.output.verbose_msg("update_check",s)
-#            return False
-#    #api.output.verbose_msg("update_check","%s seems to be unmodified"%(node))
-#    #metatag.MetaTag(node,ns='parts',uptodate=True)
-#    return True
-
-#SCons.Node.Node.is_same_since=_node_up_to_date
-
 
 # as it turns out this testing before Scons maps a Environment to a node is broken
 # to fix it we will map the Node Class default function ourself
 # other wise it go through a Environment proxy, which can be a NULL class that does nothing
 # not we only do this for the File as all other values at the moment
 File.changed_since_last_build = File.changed_timestamp_then_content
-
-
-
-
-total=0
-
-def _part_isUpToDate(self):
-    '''
-    '''
-    global total
-    total+=1
-    try:
-        tmp=self._memo['_part_isUpToDate']
-        return tmp
-    except KeyError:
-        #print total,"->", self.ID
-        def check_nodes(data):
-            nodelist=[]
-            ret=False
-            # get the set of node object from str value
-            for j,k in data:
-                if common.is_string(k):
-                    # this is a string.. we want to make it a SCons Node
-                    # look it up in our DB
-                    i=glb.pnodes.GetNode(k)
-                    #i=j.str_to_node(k)
-                    # not found... possible the path was stored with bad "/" values
-                    if i is None and '\\' in k:
-                        # try again
-                        i=glb.pnodes.GetNode(make_path_ID(k))
-                    if i is None:
-                        #This might be a source node, with some builder that
-                        # that output in a "wrong" place.
-                        # see if it exists
-                        if os.path.exists(k):
-                            #it exists.. make a entry node
-                            i=glb.pnodes.Create(Entry,k)
-                        else:
-                            api.output.verbose_msgf("update_check",'{0} out-of-date! {1} is not known',self.ID,k)
-                            return False
-
-                    i.disambiguate()
-
-                    if isinstance(i,SCons.Node.FS.Base):
-
-                        st_info=i.get_stored_info()
-                        #Scons is  not storing information on source node
-                        # this tends to be an issue with Directories used as sources
-                        if st_info is None and isinstance(i,Dir):
-                            # we skip this at the moment
-                            continue
-                        nbinfo=st_info.binfo
-
-                        if not i.exists() and not i.srcnode().exists() and \
-                            nbinfo.bsourcesigs == [] and \
-                            nbinfo.bdependsigs == [] and \
-                            nbinfo.bimplicitsigs ==[] :
-                            # we need to figure out the real source file and check it
-                            # load from our cache information as SCons does not store this
-                            # relationship. It assume the file are read in fully
-                            # so any test it has are done one fully setup nodes
-                            storedpinfo=i.Stored
-                            if storedpinfo:
-                                n=storedpinfo.SrcNode(i)
-                                api.output.verbose_msg("update_check",'Getting src node for {0}\n {1} '.format(i.ID,n.ID))
-                                n._memo['get_stored_info']=i._memo['get_stored_info']
-                                i.clear()
-                                i=n
-                else:
-                    i=k
-                    try:
-                        j=k.get_stored_info().ninfo
-                    except AttributeError:
-                        if isinstance(k,Alias):
-                            binfo=glb.pnodes.GetAliasStoredInfo(k.ID)
-                            if binfo:
-                                k._memo['get_stored_info']=wrapper(binfo)
-                            try:
-                                j=k.get_stored_info().ninfo
-                            except AttributeError:
-                                j=k.get_ninfo()
-
-
-
-                nodelist.append((i,j))
-            #########
-            # sort list
-            #nodelist.sort(key=hash)
-            ##########
-            #process the list of nodes
-            for i in nodelist:
-                api.output.verbose_msgf("update_check_extra",'{0} checking for changes in node {0}',self.ID,i[0])
-                # test to see if it thinks it is out of date
-                if not i[0].pisUpToDate:
-                    api.output.verbose_msgf("update_check",'{0} out-of-date! SCons Node "{1}" says it is out of date',self.ID,i[0])
-                    return False
-
-                # we test if this is out of date from the local point of view
-                if isinstance(i[0],FSBase):
-                    if not i[0].exists():
-                        api.output.verbose_msgf("update_check",'{0} out-of-date! "{1}" does not exist',self.ID,i[0])
-                        return False
-                    else:
-                        api.output.verbose_msgf("update_check_extra",'{0} -- "{1}" does exist',self.ID,i[0])
-                    if i[0].changed_since_last_build(self,i[1]):#_node_up_to_date(i[0],i[1]):
-                        #print i[0].get_ninfo().__dict__,i[1].__dict__#,i[0].get_csig()
-                        api.output.verbose_msgf("update_check",'{0} out-of-date! "{1}" is different since this node was last built',self.ID,i[0])
-                        return False
-                    else:
-                        api.output.verbose_msgf("update_check_extra",'{0} -- "{1}" does not look like it changed',self.ID,i[0])
-
-            return True
-        # End of check_nodes procedure
-
-        try:
-            binfo=self.get_stored_info().binfo
-        except AttributeError:
-            # this is probally an Value I was loading from my parts DB
-            binfo=self.get_binfo()
-
-        # see if anything this node depends on is out of date, if so we are out of date
-        nodes=itertools.izip(binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs,
-            getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]))
-
-        if not check_nodes(nodes):
-            self._memo['_part_isUpToDate'] = False
-            return self._memo['_part_isUpToDate']
-
-
-        if self.Stored:
-            # check for AlwaysBuild State
-            if self.Stored.AlwaysBuild:
-                api.output.verbose_msgf("update_check",'{0} out-of-date! Because AlwaysBuild() was called on node',self.ID)
-                self._memo['_part_isUpToDate'] = False
-                return self._memo['_part_isUpToDate']
-            # check any side effect nodes
-            side_effects=self.Stored.SideEffectIDs
-            for nodeid in side_effects:
-                node=glb.pnodes.GetNode(nodeid)
-                if not node.pisUpToDate:
-                    api.output.verbose_msgf("update_check",'{0} out-of-date! Side effect target {1} is out of date',self.ID,node.ID)
-                    self._memo['_part_isUpToDate'] = False
-                    return self._memo['_part_isUpToDate']
-
-                #if self.changed_since_last_build(self,ninfo):#_node_up_to_date(self,ninfo):
-                    #api.output.verbose_msg("node_update_check",'{0} out-of-date! out of date with itself'.format(self.ID))
-                    #self._memo['_part_isUpToDate'] = False
-                    #return self._memo['_part_isUpToDate']
-
-        # are we out of date
-        #if isinstance(self,FSBase):
-        #    if not self.exists():
-        #        api.output.verbose_msg("update_check",'{0} out-of-date! Does not exist!'.format(self.ID))
-        #        self._memo['_part_isUpToDate'] = False
-        #        return self._memo['_part_isUpToDate']
-
-        #api.output.verbose_msg("node_update_check",'{0} is up to date!'.format(self.ID))
-        self._memo['_part_isUpToDate'] = True
-        return self._memo['_part_isUpToDate']
-
-
-SCons.Node.Node.pisUpToDate=property(_part_isUpToDate)
 
 
 # built replacement (wrapper)
@@ -461,8 +253,11 @@ def GenerateStoredInfo(self):
 
     info.AlwaysBuild=self.always_build==True
     if isinstance(self,FSBase):
-        if self.ID != self.srcnode().ID:
-            info.SrcNodeID=self.srcnode().ID
+        try:
+            if self.ID != self.srcnode().ID:
+                info.SrcNodeID=self.srcnode().ID
+        except:
+            pass
 
     binfo=self.get_binfo()
     nodes=itertools.izip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),

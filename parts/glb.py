@@ -13,23 +13,15 @@ pnodes=None
 part_frame=[]
 _host_platform=None
 builders={}
-#g_args={}
 env_cache={}
 # global object to add to parts call
 parts_objs={}
 parts_objs_env={}
 known_concepts=[]
 
-#g_parts={} 
-#g_name_alias={}
+
 # state object of what is being processed.
 part_being_processed=[]
-
-def_vars=[]
-
-## adding stuff here as the Varible are falling apart on handing objects
-#defaultoverides={'PACKAGE_GROUP_FILTER':{}}
-#defaultoverides={}
 
 # set of the part we know we want to build
 buildable_part=set()
@@ -76,6 +68,7 @@ arch_map = {
 'x86_64':'x86_64',
 'IA64':'ia64',
 'ia64':'ia64',
+'k1om':'k1om',
 'arm':'arm',
 'any':'any'
 }

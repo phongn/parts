@@ -1,5 +1,6 @@
 import null
 import base
+import git
 import svn
 import smart_svn
 import task

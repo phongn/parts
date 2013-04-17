@@ -1,7 +1,14 @@
 Import('*')
 
-env.PartName(env.subst('${PART_ALIAS}'))
+env.PartName('wixsample4')
 env.PartVersion('1.0.0')
+
+env.DependsOn([
+    Component('wixsample1', requires = REQ.EXISTS),
+    Component('wixsample2', requires = REQ.EXISTS),
+    Component('wixsample3', requires = REQ.EXISTS),
+    Component('wixsample5', requires = REQ.EXISTS),
+])
 
 # This is the most complex sample. It demonstrates:
 #  1. How WIXFILEPATH works.

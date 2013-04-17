@@ -40,6 +40,8 @@ class BinutilsSetupWrapper(object):
         self.__binutils = binutils
 
     def __call__(self, env):
+        if env.subst('$TARGET_ARCH') in ('k1om', ) and env.subst('$OBJCOPY') == 'objcopy':
+            env['OBJCOPY'] = '${HOST_ARCH}-${TARGET_ARCH}-linux-objcopy'
         if env.has_key('BINUTILS_VERSION') or env.has_key('BINUTILS_INSTALL_ROOT') or env.get('HOST_OS') != env.get('TARGET_OS'):
             # We call it MergeShellEnv but don't be confused by its name because binutils ToolSetting objects do not
             # modify sehll environment but only initialize BINUTILS namespace
@@ -70,9 +72,36 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
+        opt_pattern=binutils_pattern
+        )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('posix','k1om')],
+    info=[
+    BinutilInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[
+            PathFinder(['/usr/linux-k1om-4.7/bin'])
+            ],
+        opt_dirs=[],
+        script=None,
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/x86_64-k1om-linux-objcopy',
+        },
+        shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
+        test_file='x86_64-k1om-linux-ld',
         opt_pattern=binutils_pattern
         )
     ]
@@ -95,7 +124,9 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
         opt_pattern=binutils_pattern
@@ -120,7 +151,9 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
         opt_pattern=binutils_pattern
@@ -145,7 +178,9 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
         opt_pattern=binutils_pattern
@@ -171,7 +206,9 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
         opt_pattern=binutils_pattern
@@ -197,7 +234,9 @@ binutils.Register(
                 '/opt/'
             ],
         script=None,
-        subst_vars={},
+        subst_vars={
+            'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+        },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
         opt_pattern=binutils_pattern
@@ -219,7 +258,7 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
-                'OBJCOPY':'i686-android-linux-objcopy',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-android-linux-objcopy.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -244,7 +283,7 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
-                'OBJCOPY':'i686-linux-android-objcopy',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-linux-android-objcopy.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -270,7 +309,7 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"',
-                'OBJCOPY':'arm-linux-androideabi-objcopy.exe',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin\arm-linux-androideabi-objcopy.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -294,7 +333,10 @@ binutils.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-android-linux-', 'ld'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-objcopy'
+            },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='i686-android-linux-ld'
             )
@@ -312,7 +354,10 @@ binutils.Register(
             version='*',
             install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld'),
             script=None,
-            subst_vars={'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-objcopy'
+            },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='i686-linux-android-ld'
             )
@@ -332,7 +377,7 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"',
-                'OBJCOPY':'arm-linux-androideabi-objcopy'
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/arm-linux-androideabi-objcopy'
                 },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='arm-linux-androideabi-ld'

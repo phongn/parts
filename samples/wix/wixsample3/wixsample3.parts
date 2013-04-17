@@ -1,6 +1,6 @@
 Import('*')
 
-env.PartName('${PART_ALIAS}')
+env.PartName('wixsample3')
 env.PartVersion('1.0.0')
 
 # This sample tests plain installation: all sources are static and resides in src_dir

@@ -148,7 +148,7 @@ def ProcessInstall(env,target,sources,sub_dir,create_sdk,sdk_dir='',no_pkg=False
                     ret=[s]
                     
                 installed_files.extend(env.Install(dest_dir, ret,tags=tags,**kw))
-                src_lst.append(env.File(ret[0]))
+                src_lst.append(env.Entry(ret[0])) 
             else:
                 api.output.warning_msg("Unknown type in ProcessInstall() in installs.py")
         

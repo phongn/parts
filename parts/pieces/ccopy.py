@@ -307,17 +307,34 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     else:
         copy_logic=env.__CCopyBuilderC__
 
-    sources=env.arg2nodes(source, env.fs.Entry)
-
+    sources=common.make_list(source)
+    
     n_targets = []
     for dnode in dnodes:
         for src in sources:
-            # Prepend './' so the lookup doesn't interpret an initial
-            # '#' on the file name portion as meaning the Node should
-            # be relative to the top-level SConstruct directory.
-            e = env.fs.Entry(os.sep.join(['.', src.name]), dnode)
-            if isinstance(src, symlinks.FileSymbolicLink):
-                symlinks.ensure_node_is_symlink(e)
+            if common.is_string(src):
+                src=env.arg2nodes(src, env.fs.Entry)[0]
+                # Prepend './' so the lookup doesn't interpret an initial
+                # '#' on the file name portion as meaning the Node should
+                # be relative to the top-level SConstruct directory.
+                e = dnode.Entry(os.sep.join(['.', src.name]))
+            elif isinstance(src, SCons.Node.FS.Dir):
+                e = dnode.Dir(os.sep.join(['.', src.name]))
+            elif isinstance(src, symlinks.FileSymbolicLink):
+                #symlinks.ensure_node_is_symlink(e)
+                try:
+                    e=dnode.FileSymbolicLink(os.sep.join(['.', src.name]))
+                except:
+                    # this is a hack to deal with some backward compatibility issue
+                    # with deal with symlinks in old code
+                    e = dnode.Entry(os.sep.join(['.', src.name]))
+                    symlinks.ensure_node_is_symlink(e)
+            elif isinstance(src, SCons.Node.FS.File):
+                e = dnode.File(os.sep.join(['.', src.name]))
+            else:
+                # should not happen...
+                e = dnode.Entry(os.sep.join(['.', src.name]))
+        
             tmp=copy_logic(target=e,source=src,**kw)
 
             try:

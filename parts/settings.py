@@ -365,8 +365,11 @@ class Settings(object):
          ## apply tool chain
         env.ToolChain(pre+env['toolchain']+post)
         ## apply the configuration for the tool
-        env.Configuration(env.subst('${CONFIG}'))
-        #get mappers
+        env.Configuration()
+        
+        ## Get mappers  
+        # we apply this after the tool chain to prevent issue with
+        # tools adding new mapper logic.
         mappers=self._mappers
         #set mappers
         env.Replace(**mappers)
@@ -376,20 +379,24 @@ class Settings(object):
         ## dependency tree. This leads to a false rebuild of few files
         import overrides
         overrides.scanner.Scanner_override()
+        # this breaks up the value string toolchain in to a list of values ( need to tweak this logic when we use properties )
         env['TOOLCHAIN']=env['toolchain'] if isinstance(env['toolchain'],str) else ",".join(map(lambda x: x if isinstance(x,str) else x[0] if len(x)==1 or x[1] is None else "_".join(x),env['toolchain']))
 
     def DefaultEnvironment(self):
-        key="base_with_tools"
+        '''
+        Returns instance of the default environment for this Setting object.
+        If we don't have one, we create an instance and store it in our cache.
+        We would not have one, because there was a change in the Settings (which
+        would remove the instance from the cache or one had not been created yet.
+        '''
+
+        #todo.. the logic for clearing the default environment has not been done yet
+
+        key="DefaultEnvironment"
         try:
             env=self.__env_cache[key]
         except KeyError:
-            env=self.BasicEnvironment()
-            # extra tools we don't think should be tools
-            self.__apply_tools_and_config(env,post=['install','zip'])
-
-            ## See if the user want to whack the default environment with the shell value.
-            #if  SCons.Script.GetOption('use_env') == True or self.UseSystemEnvironment:
-            #    env['ENV']=os.environ
+            env=self._env_const_ref().Clone()
             self.__env_cache[key]=env
         return env
 
@@ -404,104 +411,102 @@ class Settings(object):
     def _env_const_ref(self,**kw):
         """
         This makes a reference to environment with the toolchain and configruation set on it
-        given the user is not setting tools directly. This if for Raw Scons file
-        compatibilty. Otherwise we try to use any tools in our toolchain.
-
-        WANRING! Clone the returned object before modifying it!
+        given the user is not setting tools directly. This function would normally be the 
+        Environment() call. But we have a need to get an instance of the environment for diffing
+        purposes because of this we want to pass back a instance, not a copy of the of the environment
+        object, to reduce memory usage and help on the speed.
+          
+        WANRING! Clone the returned object before modifying it! This is assumed to be read only, but we have no way to enforce it
         """
 
-        ## case 1 BASE + default toolchain logic
-        if kw =={}:
-            env=self.DefaultEnvironment()
-        else:
-            ## case 2 BASE + [possible toolchain overide/native scons tools] + new key-values
-            prepend=kw.get('prepend',{})
-            try:
-                del kw['prepend']
-            except KeyError:
-                pass
-            append=kw.get('append',{})
-            try:
-                del kw['append']
-            except KeyError:
-                pass
+        
+        prepend=kw.get('prepend',{})
+        try:
+            del kw['prepend']
+        except KeyError:
+            pass
+        append=kw.get('append',{})
+        try:
+            del kw['append']
+        except KeyError:
+            pass
 
-            cache_key=get_cache_values(normalize_map(prepend),
-                                    normalize_map(append),
-                                    normalize_map(kw))#,
-                                    #normalize_map(glb.defaultoverides))
-            try:
-                env=self.__env_cache[cache_key]
-            except KeyError:
-                #print "new custom"
-                # check to see if the user set their own tools up in the old way
-                user_tools=kw.get('tools')
-                if user_tools is None:
-                    # we want our toolchain logic to be used
-                    # turn off the Scons logic for speed
-                    #replace['tools']=[]
-                    # update toolchain with a minor tweaks the user wants
-                    pre_tools=prepend.get('toolchain',[])
-                    if pre_tools!=[]:
-                        del prepend['toolchain']
-                    post_tools=append.get('toolchain',[])
-                    if post_tools!=[]:
-                        del append['toolchain']
-                    # minor messing around with tools still need
-                    # some tools I would not view as "tools"
-                    # that would be part of a tool chain but stuff that
-                    # would always exist
-                    post_tools.extend(['install','zip'])
+        cache_key=get_cache_values(normalize_map(prepend),
+                                normalize_map(append),
+                                normalize_map(kw))#,
+                                #normalize_map(glb.defaultoverides))
+        try:
+            env=self.__env_cache[cache_key]
+        except KeyError:
+            #print "new custom"
+            # check to see if the user set their own tools up in the old way
+            user_tools=kw.get('tools')
+            if user_tools is None:
+                # we want our toolchain logic to be used
+                # turn off the Scons logic for speed
+                #replace['tools']=[]
+                # update toolchain with a minor tweaks the user wants
+                pre_tools=prepend.get('toolchain',[])
+                if pre_tools!=[]:
+                    del prepend['toolchain']
+                post_tools=append.get('toolchain',[])
+                if post_tools!=[]:
+                    del append['toolchain']
+                # minor messing around with tools still need
+                # some tools I would not view as "tools"
+                # that would be part of a tool chain but stuff that
+                # would always exist
+                post_tools.extend(['install','zip'])
 
-                # get base Environment
-                env=self.BasicEnvironment()
-                # we need to take any values in the kw that are Variables and
-                # reapply an convert logic on them. To do this we seperate them
-                # from the rest of the general key values
-                vars={}
-                tmp_kw=kw.copy()
-                for k,v in tmp_kw.iteritems():
-                    #if the value if a callable we want to add it as a function
-                    if hasattr(v, '__call__'):
-                            api.output.verbose_msgf("settings","Adding function {0} as {1}",v,k)
-                            env.AddMethod(v,k)
-                    if k in self.vars:
-                        vars[k]=v
-                        del kw[k]
+            # get base Environment
+            env=self.BasicEnvironment()
+            # we need to take any values in the kw that are Variables and
+            # reapply an convert logic on them. To do this we seperate them
+            # from the rest of the general key values
+            vars={}
+            tmp_kw=kw.copy()
+            for k,v in tmp_kw.iteritems():
+                #if the value if a callable we want to add it as a function
+                if hasattr(v, '__call__'):
+                        api.output.verbose_msgf("settings","Adding function {0} as {1}",v,k)
+                        env.AddMethod(v,k)
+                if k in self.vars:
+                    vars[k]=v
+                    del kw[k]
 
 
-                # Clone it and apply any overides we need to.
-                env=env.Clone(**kw)
+            # Clone it and apply any overides we need to.
+            env=env.Clone(**kw)
 
-                # reapply any values that are Vars so the convert logic gets applied correctly
-                for k,v in vars.iteritems():
-                    self.vars[k].Update(env,v)
+            # reapply any values that are Vars so the convert logic gets applied correctly
+            for k,v in vars.iteritems():
+                self.vars[k].Update(env,v)
 
-                # apply our tool chain user is not using a hard coded SCons one
-                if user_tools is None:
-                    self.__apply_tools_and_config(env,pre_tools,post_tools)
+            # apply our tool chain user is not using a hard coded SCons one
+            if user_tools is None:
+                self.__apply_tools_and_config(env,pre_tools,post_tools)
 
-                #append any data or prepend any data as needed
-                #will probally need better error handling later
-                for k,v in append.iteritems():
-                    has_hey=env.has_key(k)
-                    if common.is_list(v) and has_hey:
-                        env.AppendUnique(**{k:v})
-                    elif common.is_list(v) and not has_hey:
-                        env[k]=v
-                    else:
-                        api.output.warning_msg('Ignoring appending value', k,"as it is not a list. It is type",type(v),".")
+            #append any data or prepend any data as needed
+            #will probally need better error handling later
+            for k,v in append.iteritems():
+                has_hey=env.has_key(k)
+                if common.is_list(v) and has_hey:
+                    env.AppendUnique(**{k:v})
+                elif common.is_list(v) and not has_hey:
+                    env[k]=v
+                else:
+                    api.output.warning_msg('Ignoring appending value', k,"as it is not a list. It is type",type(v),".")
 
-                for k,v in prepend.iteritems():
-                    has_hey=env.has_key(k)
-                    if common.is_list(v) and has_hey:
-                        env.PrependUnique(**{k:v})
-                    elif common.is_list(v) and not has_hey:
-                        env[k]=v
-                    else:
-                        api.output.warning_msg('Ignoring prepending value', k,"as it is not a list. It is type",type(v),".")
+            for k,v in prepend.iteritems():
+                has_hey=env.has_key(k)
+                if common.is_list(v) and has_hey:
+                    env.PrependUnique(**{k:v})
+                elif common.is_list(v) and not has_hey:
+                    env[k]=v
+                else:
+                    api.output.warning_msg('Ignoring prepending value', k,"as it is not a list. It is type",type(v),".")
 
-                self.__env_cache[cache_key]=env
+            self.__env_cache[cache_key]=env
 
         ## See if the user want to whack the default environment with the shell value.
         #if  SCons.Script.GetOption('use_env') == True or self.UseSystemEnvironment:
@@ -509,7 +514,7 @@ class Settings(object):
         return env
 
 
-    def BasicEnvironment(self):
+    def BasicEnvironment(self,toolpath=[]):
         '''
         This makes a minimum environment with no tool or configuration setup,
         but has all "parts" variables done. This does not allow for any overides
@@ -518,18 +523,19 @@ class Settings(object):
         '''
 
         try:
-            #env=self.__env_cache[231]
             env=self.__env_cache["base"]
         except KeyError:
-           # print "new base"
-            env=self._basic_base_env(tools=[])
+            env=self._basic_base_env(tools=[],**{'toolpath':toolpath})
             ## apply variable values
             ## get command line args
+            # these are first priority overides
             overrides=copy.deepcopy(SCons.Script.ARGUMENTS)
             ## get set of config files to process
+            # these are second priority overides
             cfg_files=[SCons.Script.GetOption('cfg_file')]
             # get global overrides is any
-            glb_defaults={}#glb.defaultoverides
+            # these are third priority overides
+            glb_defaults={} # Don't have any at the moment. review for later removal, once setting is public
             # apply values
             self.vars.Update(env,args=overrides,files=cfg_files,user_defaults=glb_defaults,add_unknown=True)
 
@@ -538,17 +544,10 @@ class Settings(object):
             #set builders
             env['BUILDERS'].update(builders)
 
-            # some general values needed to have certain stuff work better
-            if env['HOST_PLATFORM'] == 'posix':
-                env['ENV']['HOME']=os.environ['HOME']
-
-            env['PART_USER']=common.GetUserName(env)
-
-            env['RPATH']=[]
-
-                # stuff to zap
+            # stuff to zap.. backwards compatiblity
             env["ARCHITECTURE"]=deprecated("ARCHITECTURE","TARGET_ARCH",env['TARGET_ARCH'])
             env["config"]=deprecated("config","CONFIG",env['CONFIG'])
+            
             self.__env_cache["base"]=env
         return env.Clone()
 
@@ -574,15 +573,19 @@ class Settings(object):
     def _basic_base_env(self,**kw):
         '''
         This creates a base environment with the mininium stuff needed
+        Deal with mostly, internal hacks or system tweaks. BasicEnvironment()
+        deals with common general case. 
         '''
 
         ## create a new environment
         ### get our toolpath if it not set by the user
-        #try:
-        #    tool_path=kw['toolpath']
-        #    del kw['toolpath']
-        #except:
-        tool_path=load_module.get_site_directories('tools')
+        try:
+            tool_path=common.make_list(kw['toolpath'])
+            del kw['toolpath']
+        except:
+            tool_path=[]
+        #add the Parts toolpaths
+        tool_path+=load_module.get_site_directories('tools')
 
         # add extra value we have
         kw["PARTS_MODE"]=glb.engine._build_mode
@@ -597,16 +600,24 @@ class Settings(object):
         env['_BUILD_CONTEXT_FILES']=set() # make a Var
 
         if env['HOST_PLATFORM']['OS'] =='win32':
-            # add certain paths for windows
+            # add certain paths for windows, that have been missing.
             env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root(), delete_existing=1)
             env.AppendENVPath('PATH',SCons.Platform.win32.get_system_root()+'\\system32', delete_existing=1)
+
+        elif env['HOST_PLATFORM'] == 'posix':
+            env['ENV']['HOME']=os.environ['HOME']
+
+        # some general values we need to setup on any given system
+        env['PART_USER']=common.GetUserName(env)
+        env['RPATH']=[] # double check this case, linker tools may have this covered now.
+
 
         #add path to current Python being used, so we use this instead of some other version
         # this allow Command that run python to work as expected
         env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
 
         #return the cached env
-        return env#.Clone()
+        return env
 
     def Component(self,):
         return self.Part()
