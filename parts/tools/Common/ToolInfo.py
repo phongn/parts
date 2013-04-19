@@ -122,7 +122,10 @@ class ToolInfo(object):
                     script_data=self.script(env)
                     if script_data is None:
                     # we have an error as script was not found
-                        api.output.warning_msgf("Script '{0}' not found, needed to setup tool '{1}', version '{2}'",self.script.name,tool,version,show_stack=False)
+                    # we can ignore it
+                        # try to warn if we have an install root
+                        if install_root is not None:
+                            api.output.verbose_msgf("toolinfo","Script '{0}' not found, needed to setup tool '{1}', version '{2}'",self.script.name,tool,version,show_stack=False)
                         return {}
                     ret=env.GetScriptVariables(script_data,self.script.args)
                     
