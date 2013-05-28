@@ -5,6 +5,8 @@ import parts.tools.GnuCommon
 import parts.tools.Common
 import parts.api.output as output
 
+import SCons.Tool.mingw as mingw
+
 def generate(env):
     """Add Builders and construction variables for gcc to an Environment."""
     SCons.Tool.cc.generate(env)
@@ -40,7 +42,7 @@ def generate(env):
         env['RCINCPREFIX'] = '--include-dir '
         env['RCINCSUFFIX'] = ''
         env['RCCOM'] = '$RC $_CPPDEFFLAGS $RCINCFLAGS ${RCINCPREFIX} ${SOURCE.dir} $RCFLAGS -i $SOURCE -o $TARGET'
-        env['BUILDERS']['RES'] = res_builder
+        env['BUILDERS']['RES'] = mingw.res_builder
 
     #Backward compatiblity
     env['CCVERSION']=env['GCC']['VERSION']

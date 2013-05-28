@@ -1,6 +1,7 @@
 
 import SCons.Util
 import SCons.Tool
+import SCons.Tool.mingw as mingw
 import parts.tools.GnuCommon
 import parts.tools.Common
 
@@ -62,7 +63,7 @@ def generate(env):
         env['RCINCPREFIX'] = '--include-dir '
         env['RCINCSUFFIX'] = ''
         env['RCCOM'] = '$RC $_CPPDEFFLAGS $RCINCFLAGS ${RCINCPREFIX} ${SOURCE.dir} $RCFLAGS -i $SOURCE -o $TARGET'
-        env['BUILDERS']['RES'] = res_builder
+        env['BUILDERS']['RES'] = mingw.res_builder
     
 
     
