@@ -119,8 +119,8 @@ class Test(object):
 
 
 # public methods 
-    def AddTestRun(self,name='general',displaystr=None):
-        tmp=testrun.TestRun(self,"%s-%s"%(len(self._TestRuns),name),displaystr)
+    def AddTestRun(self, name='general', displaystr=None):
+        tmp = testrun.TestRun(self, "%s-%s" % (len(self._TestRuns), name), displaystr)
         self._TestRuns.append(tmp)
         return tmp
 

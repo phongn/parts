@@ -62,7 +62,7 @@ class GnuInfo(ToolInfo):
             if match:
                 line = match.group(1)
                 return line
-   
+
         return None         
 
     def resolve_version(self,version):
@@ -201,5 +201,6 @@ class GnuInfo(ToolInfo):
 
 gxx=ToolSetting('gxx')
 gcc=ToolSetting('gcc')
+clang=ToolSetting('clang')
 binutils=ToolSetting('binutils')
 

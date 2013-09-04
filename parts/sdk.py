@@ -351,7 +351,7 @@ def CreateSDK_SF(node, env, path):
 def CreateSDK_BF(target, source, env):
     
 
-    output=env["PART_LOG_MAPPER"]
+    output=env._get_part_log_mapper()
     id=output.TaskStart('Generating SDK file for Part '+str(os.path.split(target[0].path)[1][:-9]))
      
     # the part object for this sdk file we want to make
@@ -451,7 +451,7 @@ SConsEnvironment.SdkScript=SdkScript
 
 
 api.register.add_builder('__CreateSDKBuilder__',SCons.Builder.Builder(
-        action = SCons.Script.Action(CreateSDK_BF,CreateSDK_StrF),
+        action = SCons.Script.Action(CreateSDK_BF,CreateSDK_StrF, varlist=['PART_NAME', 'ALIAS']),
         #target_factory = SCons.Node.FS.File,
         #source_factory = SCons.Node.FS.File,
         emitter=CreateSDK_Emit,

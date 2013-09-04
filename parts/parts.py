@@ -68,13 +68,13 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.Part=SubPart_factory
 
 # add configuartion varaible needed for part
-api.register.add_variable('PART_BUILD_CONCEPT','build${ALIAS_SEPARTATOR}','Namespace used to just build a given target')
+api.register.add_variable('PART_BUILD_CONCEPT','build${ALIAS_SEPARATOR}','Namespace used to just build a given target')
 
 api.register.add_variable('ALIAS_POSTFIX','',' ')
 api.register.add_variable('ALIAS_PREFIX','','')
 
-api.register.add_variable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARTATOR}','Namespace to express building via an Alias target')
-api.register.add_variable('PART_NAME_CONCEPT','name${ALIAS_SEPARTATOR}','Namespace to express building via a Part Name and possible version')
+api.register.add_variable('PART_ALIAS_CONCEPT','alias${ALIAS_SEPARATOR}','Namespace to express building via an Alias target')
+api.register.add_variable('PART_NAME_CONCEPT','name${ALIAS_SEPARATOR}','Namespace to express building via a Part Name and possible version')
 api.register.add_variable('BUILD_DIR_ROOT','#_build', 'Root directory for building a given build configuration/variant')
 api.register.add_variable('BUILD_DIR','$BUILD_DIR_ROOT/${PART_SECTION}_${CONFIG}_${TARGET_PLATFORM}${"_"+TOOLCHAIN.replace(",","_") if TOOLCHAIN!="default" else ""}/$ALIAS', 'Full path used to for building a given build configuration/variant')
 #api.register.add_variable('BUILD_DIR','$BUILD_DIR_ROOT/${CONFIG}_${TARGET_PLATFORM}/$ALIAS', 'Full path used to for building a given build configuration/variant')

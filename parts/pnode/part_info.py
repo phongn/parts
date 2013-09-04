@@ -1,6 +1,7 @@
 import stored_info
 from .. import glb
 from .. import platform_info
+from .. import common
 
 class part_info(stored_info.stored_info):
     """description of class"""
@@ -30,7 +31,7 @@ class part_info(stored_info.stored_info):
         '__vcs_cache_filename'  # information about cache file that has information about VCS state for this Parts, if any. - good after file read
     ]
     def __init__(self):
-        
+
         self.__name=''
         self.__short_name=''
         self.__ID=''
@@ -41,7 +42,7 @@ class part_info(stored_info.stored_info):
         self.__config=''
         self.__platform_match=''
         self.__config_match=True
-        self.__package_group='' 
+        self.__package_group=''
         self.__mode=[]
         self.__subpartIDs=set()
         self.__parentIDs=[]
@@ -54,8 +55,8 @@ class part_info(stored_info.stored_info):
         self.__force_load=False
         self.__kw={}
         self.__vcs_cache_filename=None
-        
-   
+
+
     @property
     def Name(self):
         return self.__name
@@ -79,7 +80,7 @@ class part_info(stored_info.stored_info):
 
     @property
     def ShortID(self):
-        return self.__short_alias   
+        return self.__short_alias
     @ShortID.setter
     def ShortID(self,val):
         self.__short_alias=val
@@ -138,7 +139,7 @@ class part_info(stored_info.stored_info):
         return self.__mode
     @Mode.setter
     def Mode(self,val):
-        self.__mode=val
+        self.__mode=common.make_list(val)
 
     @property
     def SubPartIDs(self):
@@ -217,10 +218,6 @@ class part_info(stored_info.stored_info):
     def VcsCacheFilename(self,val):
         self.__vcs_cache_filename=val
 
-    def post_load_convet(self):
-        self.__target_platform=platform_info.SystemPlatform(self.__target_platform)
-        self.__platform_match=platform_info.SystemPlatform(self.__platform_match)
-
     @property
     def Parent(self):
         return glb.pnodes.GetPNode(self.ParentID)
@@ -228,3 +225,6 @@ class part_info(stored_info.stored_info):
     @property
     def Root(self):
         return glb.pnodes.GetPNode(self.RootID)
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

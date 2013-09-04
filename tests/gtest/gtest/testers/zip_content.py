@@ -7,52 +7,63 @@ import tester
 import gtest.host as host
 
 class ZipContent(tester.Tester):
-    def __init__(self,zfile, includes = None, excludes=None, kill_on_failure=False):
+    ZIP_MAGIC = '\x50\x4B\x05\x06'
+    def __init__(self, includes = None, excludes=None, kill_on_failure=False):
+        super(ZipContent, self).__init__(test_value=True, kill_on_failure=kill_on_failure)
+        self.__include = includes or ()
+        self.__exclude = excludes or ()
 
-        # validate we can process the file.
+    def test(self, eventinfo, **kw):
+        self.__test()
+        if self.Result == tester.ResultType.Failed and self.KillOnFailure:
+            self.Reason += "\n Kill on failure is set"
+            raise tester.KillOnFailureError()
+    
+    def __test(self):
+        zfile = self.TestValue.AbsPath
+        self.Description = "Checking that {0} contains {1} and does not contain {2}".format(
+                zfile, self.__include, self.__exclude)
+        
         fileName = zfile.lower()
-        if not(fileName.endswith('.tar.gz') or fileName.endswith('.tgz') or fileName.endswith('.tar.bz2') \
-            or fileName.endswith('.tbz') or fileName.endswith('.tb2') or fileName.endswith('.zip') or fileName.endswith('.bz2')):
-            host.WriteError('Unsupported archive extension for zip file {0}\n Support extension are:\n'+\
-            ' .zip,\n  .tb2,\n  .tar.gz,\n  .tgz,\n  .tar.bz2,\n  .bz2,\n  .tb2'.format(zfile))
-
-        super(ZipContent,self).__init__(test_value=True,kill_on_failure=kill_on_failure)
-        self.Description="Checking that {0} contains {1} and does not contain {2}".format(zfile,includes,excludes)
-        self.zfile=zfile
-        self.include=includes
-        self.excludes=excludes
-
-    def test(self,eventinfo, **kw):
-        fileName = self.__fromFile.name.lower()
-        if fileName.endswith('.tar.gz') or fileName.endswith('.tgz') or fileName.endswith('.tar.bz2') \
-            or fileName.endswith('.tbz') or fileName.endswith('.tb2') or fileName.endswith('.bz2'):
-            archive = tarfile.open(self.zipfile)
+        if any(fileName.endswith(ext) for ext in ('.tar.gz', '.tgz', '.tar.bz2', '.tbz',
+                                                  '.tb2', '.bz2')):
+            archive = tarfile.open(zfile)
             names = archive.getnames()
         elif fileName.endswith('.zip'):
-            archive = zipfile.ZipFile(self.zipfile)
-            names = archive.namelist()
-        
+            # a check for Python 2.6 having issues with empty zip files
+            fileSize = os.path.getsize(zfile)
+            if fileSize == 0:
+                # empty zip file, don't try to open
+                names = ()
+            elif fileSize <= 22: # the size of empty zipfile with header
+                with open(zfile, 'rb') as f:
+                    content = f.read()
+                if not content.startswith(self.ZIP_MAGIC):
+                    raise zipfile.BadZipfile(('"%s" seems to be not a zip file: ' + \
+                                              'it doesn\'t start with ZIP magic') % zfile)
+                if content[len(self.ZIP_MAGIC):].replace('\x00', ''):
+                    raise zipfile.BadZipfile(('"%s" seems to be not a zip file: ' + \
+                                              'it\s too small but isn\'t empty inside') % zfile)
+                names = ()
+            else:
+                # this seems to be normal zipfile, try python zipfile now
+                archive = zipfile.ZipFile(zfile)
+                names = archive.namelist()
+        else:
+            self.Result = tester.ResultType.Failed
+            self.Reason = 'Unsupported archive type: {0}'.format(zfile)
 
-        if self.__contains:
-            for contain in self.__contains:
-                if contain not in names:
-                    self.Result=ResultType.Failed
-                    reason='File "{0}" not found in archive "{}"'.format(contain,self.zfile)
-                    if self.KillOnFailure:
-                        self.Reason=reason+"\n Kill on failure is set".format(val,self._value)
-                        raise KillOnFailureError
-                    self.Reason=reason
-                    
+        for contain in self.__include:
+            if contain not in names:
+                self.Result = tester.ResultType.Failed
+                self.Reason = 'File "{0}" not found in archive "{1}"'.format(contain, zfile)
+                return
 
-        if self.__notContains:
-            for notContain in self.__notContains:
-                if notContain in names:
-                    self.Result=ResultType.Failed
-                    reason='File "{0}" found in archive "{}"'.format(contain,self.zfile)
-                    if self.KillOnFailure:
-                        self.Reason=reason+"\n Kill on failure is set".format(val,self._value)
-                        raise KillOnFailureError
-                    self.Reason=reason
+        for notContain in self.__exclude:
+            if notContain in names:
+                self.Result = tester.ResultType.Failed
+                self.Reason = 'File "{0}" found in archive "{1}"'.format(notContain, zfile)
+                return
 
-        self.Result=ResultType.Passed
-        self.Reason="Archive file contents match requested filters"
+        self.Result = tester.ResultType.Passed
+        self.Reason = "Archive file contents match requested filters"

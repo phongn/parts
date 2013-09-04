@@ -44,26 +44,36 @@ class TestExtract(unittest.TestCase):
         rmdir('data')
 
     def test_zipGenerator(self):
-        theList = [
-            'data/1/4/5/5',
-            'data/1/4/4',
-            'data/1/1',
-            'data/1/2/4',
-            'data/1/2/3/5',
-            'data/1/2/3/3',
-            'data/1/2/2']
-        self.assertEqual(set(theList), set(str(x) for x in extract.zipGenerator('./testdata/archives/data.zip'))))
+        theList = ['data/',
+                   'data/1/',
+                   'data/1/4/',
+                   'data/1/4/5/',
+                   'data/1/4/5/5',
+                   'data/1/4/4',
+                   'data/1/1',
+                   'data/1/2/',
+                   'data/1/2/4',
+                   'data/1/2/3/',
+                   'data/1/2/3/5',
+                   'data/1/2/3/3',
+                   'data/1/2/2']
+        self.assertEqual(set(theList), set(str(x) for x in extract.zipGenerator('./testdata/archives/data.zip')))
 
     def test_tarGenerator(self):
-        theList = [
-            'data/1/4/5/5',
-            'data/1/4/4',
-            'data/1/1',
-            'data/1/2/4',
-            'data/1/2/3/5',
-            'data/1/2/3/3',
-            'data/1/2/2']
-        self.assertEqual(set(theList), set(str(x) for x in extract.tarGenerator('./testdata/archives/data.tar.gz'))))
+        theList = ['data',
+                   'data/1',
+                   'data/1/4',
+                   'data/1/4/5',
+                   'data/1/4/5/5',
+                   'data/1/4/4',
+                   'data/1/1',
+                   'data/1/2',
+                   'data/1/2/4',
+                   'data/1/2/3',
+                   'data/1/2/3/5',
+                   'data/1/2/3/3',
+                   'data/1/2/2']
+        self.assertEqual(set(theList), set(str(x) for x in extract.tarGenerator('./testdata/archives/data.tar.gz')))
 
     def test_builder(self):
         env = DefaultEnvironment()

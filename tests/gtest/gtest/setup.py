@@ -176,6 +176,10 @@ class Setup(object):
         if not self.__reason:
             return "Setup has no issues"
         return self.__reason
+    
+    @_Reason.setter
+    def _Reason(self, value):
+        self.__reason = value
 
     @property
     def _Failed(self):

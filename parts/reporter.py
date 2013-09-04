@@ -18,7 +18,7 @@ import common
 import console
 import errors
 
-if 'stacktrace' in SCons.Script.GetOption('debug'):
+if 'stacktrace' in (SCons.Script.GetOption('debug') or []):
     class PartRuntimeError(SCons.Errors.StopError):
         pass
 else:

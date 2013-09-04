@@ -11,7 +11,6 @@ extension = '.exe' if sys.platform=='win32' else ''
 contains = ['bin/test1' + extension]
 notContains = ['bin/test2' + extension]
 
-content_tester = Testers.ZipContent("install.zip", includes = contains, excludes = notContains)
+content_tester = Testers.ZipContent(includes=contains, excludes=notContains)
 t.ReturnCode = 0
-t.Disk.File("install.zip", exists = True, content = content_tester)
-
+t.Disk.File("install.zip", exists=True, content=content_tester)

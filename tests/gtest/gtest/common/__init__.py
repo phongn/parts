@@ -1,43 +1,33 @@
-import argparse 
-import copy
+import time
+import collections
 
-class extendAction(argparse.Action):
-    def __init__(self,
-                 option_strings,
-                 dest,
-                 nargs=None,
-                 const=None,
-                 default=None,
-                 type=None,
-                 choices=None,
-                 required=False,
-                 help=None,
-                 metavar=None):
-        if nargs == 0:
-            raise ValueError('nargs for append actions must be > 0; if arg '
-                             'strings are not supplying the value to append, '
-                             'the append const action may be more appropriate')
-        if const is not None and nargs != OPTIONAL:
-            raise ValueError('nargs must be %r to supply const' % OPTIONAL)
-        super(extendAction, self).__init__(
-            option_strings=option_strings,
-            dest=dest,
-            nargs=nargs,
-            const=const,
-            default=default,
-            type=type,
-            choices=choices,
-            required=required,
-            help=help,
-            metavar=metavar)
+def quirkyCompile(string, filename, mode='exec', flags=0, dont_inherit=0):
+    '''
+    Compiles a string into Python code object trying to workaround some quirks of Python 2.6
+    '''
+    return compile(string.replace('\r', '') + '\n', filename, mode, flags, dont_inherit)
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        import copy
-        items = copy.copy(getattr(namespace, self.dest, []))
-        if items is None:
-            items = []
-        for i in values:
-            i=i.split(",")
-            items.extend(i)
-        setattr(namespace, self.dest, items)
+class RunTimer(object):
+    def __init__(self, ):
+        self.events = collections.defaultdict(list)
 
+    def startEvent(self, name):
+        self.events[name].append((time.time(), None))
+    
+    def stopEvent(self, name):
+        try:
+            lastStampStart, lastStampFinish = self.events[name][-1]
+        except IndexError:
+            raise KeyError('No event "%s" was started' % name)
+        if lastStampFinish:
+            raise KeyError('Event "%s" was already marked as stopped' % name)
+        self.events[name].pop()
+        self.events[name].append((lastStampStart, time.time()))
+    
+    def getEvents(self):
+        result = []
+        for name, stamps in self.events.iteritems():
+            for start, stop in stamps:
+                if start and stop: # sanity check
+                    result.append((name, stop - start))
+        return sorted(result, key=lambda (name, duration): duration, reverse=True)

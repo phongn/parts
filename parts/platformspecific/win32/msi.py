@@ -42,11 +42,11 @@ INSTALLSTATE_DEFAULT      =  5  # use default, local or source
 #} INSTALLSTATE;
 
 # From MsiQuery.h
-MSIDBOPEN_READONLY     = 0  # database open read-only, no persistent changes     
-MSIDBOPEN_TRANSACT     = 1  # database read/write in transaction mode            
-MSIDBOPEN_DIRECT       = 2  # database direct read/write without transaction     
-MSIDBOPEN_CREATE       = 3  # create new database, transact mode read/write      
-MSIDBOPEN_CREATEDIRECT = 4  # create new database, direct mode read/write        
+MSIDBOPEN_READONLY     = 0  # database open read-only, no persistent changes
+MSIDBOPEN_TRANSACT     = 1  # database read/write in transaction mode
+MSIDBOPEN_DIRECT       = 2  # database direct read/write without transaction
+MSIDBOPEN_CREATE       = 3  # create new database, transact mode read/write
+MSIDBOPEN_CREATEDIRECT = 4  # create new database, direct mode read/write
 MSIDBOPEN_PATCHFILE    = 16 # add flag to indicate patch file
 
 class Product(object):
@@ -169,7 +169,7 @@ class Record(MsiHandle):
         ret = windll.msi.MsiRecordGetStringW(self._handle, index, buff, ctypes.byref(charCount))
         if ret != 0:
             raise ctypes.WinError(ret)
-        
+
         return buff.value
 
 def allProducts():

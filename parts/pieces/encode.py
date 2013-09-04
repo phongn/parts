@@ -47,7 +47,7 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.EncodeFile=_EncodeFile
 
 
-encodeAction = SCons.Action.Action(_encode_bd,_encode_sf)
+encodeAction = SCons.Action.Action(_encode_bd,_encode_sf, varlist=['ENCODE_SOURCE', 'ENCODE_TARGET'])
 api.register.add_builder('__EncodeFile',SCons.Builder.Builder(action = encodeAction,
                     source_factory = SCons.Node.FS.File,
                     target_factory = SCons.Node.FS.File))

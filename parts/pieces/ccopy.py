@@ -213,7 +213,7 @@ def CCopyFuncWrapper(dest, source, env, copyfunc):
 def CCopyFunc(target, source, env, copy_logic):
 
     # get the logger for the given part
-    output=env.get("PART_LOG_MAPPER",part_nil_logger)
+    output=env._get_part_log_mapper()
     # tell it we are starting a task
     id=output.TaskStart(CCopyStringFunc(target,source,env)+"\n")
 

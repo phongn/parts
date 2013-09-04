@@ -1,6 +1,7 @@
 import os
 import zipfile
 import tarfile
+import contextlib
 import SCons.Builder
 import SCons.Action
 import SCons.Environment
@@ -202,7 +203,7 @@ class _ZipInfoProxy(_ArcInfoProxy):
         return self._item.filename[-1] == '/'
 
 def zipGenerator(source):
-    with zipfile.ZipFile(str(source)) as zfile:
+    with contextlib.closing(zipfile.ZipFile(str(source))) as zfile:
         index = -1
         for zinfo in zfile.infolist():
             index += 1
@@ -214,7 +215,7 @@ def emitterUnzip(target,source,env):
     return target, source
 
 def tarGenerator(source):
-    with tarfile.open(str(source)) as tfile:
+    with contextlib.closing(tarfile.open(str(source))) as tfile:
         index = -1
         for info in tfile:
             index += 1

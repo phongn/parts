@@ -3,7 +3,7 @@ import SCons.Script
 import parts.api as api
 
 def tar(target, source, env, type):
-            
+
     # this code makes a seperate File handle directly
     # as it was discovered that the tarfile logic will add the subdirectories
     # to the current directory for the main archive as a "feature"
@@ -39,23 +39,23 @@ def tar(target, source, env, type):
     #tar.close()
 
 
-TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w') )
-GzAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|gz') )
-bz2Action = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|bz2') )
+TarAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w'), varlist=['BUILD_DIR', 'SRC_DIR'])
+GzAction = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|gz'), varlist=['BUILD_DIR', 'SRC_DIR'])
+bz2Action = SCons.Action.Action(lambda target, source, env : tar(target, source, env,'w|bz2'), varlist=['BUILD_DIR', 'SRC_DIR'])
 
 api.register.add_builder('TarFile',SCons.Builder.Builder(action = TarAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffix = '.tar',multi = 1))
-                                
+
 api.register.add_builder('GzFile',SCons.Builder.Builder(action = GzAction,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffx = '.tar.gz',multi = 1))
-                                
+
 api.register.add_builder('Bz2File',SCons.Builder.Builder(action = bz2Action,
                                    source_factory = SCons.Node.FS.Entry,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffix = '.bz2',multi = 1))
 
- 
+

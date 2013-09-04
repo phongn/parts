@@ -12,10 +12,12 @@ from SCons.Debug import logInstanceCreation
 
 import SCons.Node
 import SCons.Util
+from SCons.Util import silent_intern
 SCons.Node.NodeList = SCons.Util.NodeList
 
 import itertools
 import os
+import sys
 import hashlib
 import pprint
 import stat
@@ -62,33 +64,9 @@ Node.make_ninfo_from_dict=lambda self,dict:fake_ninfo(dict.get('timestamp',0),di
 File.changed_since_last_build = File.changed_timestamp_then_content
 
 
-# built replacement (wrapper)
-def parts_built(self):
-    self._orig_built()
-    #say this built Parts know to update this nodes info
-    self.isBuilt=True
-
-Node._orig_built=Node.built
-Node.built=parts_built
-#File._orig_built=File.built
-#File.built=parts_built
-#Dir._orig_built=Dir.built
-#Dir.built=parts_built
-
-def _get_isbuilt(self):
-    return getattr(self,'_isBuilt',False)
-
-def _set_isbuilt(self,value):
-    self._isBuilt=value
-
-SCons.Node.Node.isBuilt=property(_get_isbuilt,_set_isbuilt)
-
 
 # visited replacement
 def parts_visited(self):
-    #self.get_csig()
-
-    #self.clear_memoized_values()
     self._orig_visited()
 
     if not self.isVisited:
@@ -119,8 +97,6 @@ Node._orig_visited=Node.visited
 Node.visited=parts_visited
 File._orig_visited=File.visited
 File.visited=parts_visited
-#Dir._orig_visited=Dir.visited
-#Dir.visited=parts_visited
 Alias._orig_alias_visited=Alias.visited
 Alias.visited=parts_alias_visited
 
@@ -161,9 +137,6 @@ def _my_init(self,name, directory, fs):
 SCons.Node.FS.Base.orig_init=SCons.Node.FS.Base.__init__
 SCons.Node.FS.Base.__init__=_my_init
 
-#SCons.Node.FS.Dir.orig_init=SCons.Node.Node.__init__
-#SCons.Node.FS.Dir.__init__=_my_init
-
 def def_FS_Entry___init__(klass):
     orig = klass.__init__
     def __init__(self, name, directory, fs):
@@ -201,15 +174,125 @@ def _my_init(self,name):
 SCons.Node.Alias.Alias.orig_init=SCons.Node.Alias.Alias.__init__
 SCons.Node.Alias.Alias.__init__=_my_init
 
+def override_get_found_includes(klass):
+    def get_found_includes(self, env, scanner, path):
+        """Return the included implicit dependencies in this file.
+        Cache results so we only scan the file once per path
+        regardless of how many times this information is requested.
+        """
+        memo_key = (id(env), id(scanner)) + path
+        try:
+            memo_dict = self._memo['get_found_includes']
+        except KeyError:
+            memo_dict = {}
+            self._memo['get_found_includes'] = memo_dict
+        else:
+            try:
+                return memo_dict[memo_key]
+            except KeyError:
+                pass
 
-def parts_node_hash(self):
-    try:
-        return self._hash
-    except AttributeError:
-        self._hash = hash(self.ID)
-    return hash(self.ID)
+        if scanner:
+            # result = [n.disambiguate() for n in scanner(self, env, path)]
+            result = scanner(self, env, path)
+            result = [N.disambiguate() for N in result]
+        else:
+            result = []
 
-SCons.Node.Node.__hash__=parts_node_hash
+        memo_dict[memo_key] = result
+
+        return result
+    klass.get_found_includes = get_found_includes
+
+override_get_found_includes(SCons.Node.FS.File)
+
+def override_FileFinder(klass):
+    def find_file(self, filename, paths, verbose=None):
+        """
+        find_file(str, [Dir()]) -> [nodes]
+
+        filename - a filename to find
+        paths - a list of directory path *nodes* to search in.  Can be
+                represented as a list, a tuple, or a callable that is
+                called with no arguments and returns the list or tuple.
+
+        returns - the node created from the found file.
+
+        Find a node corresponding to either a derived file or a file
+        that exists already.
+
+        Only the first file found is returned, and none is returned
+        if no file is found.
+        """
+        memo_key = self._find_file_key(filename, paths)
+        try:
+            memo_dict = self._memo['find_file']
+        except KeyError:
+            memo_dict = {}
+            self._memo['find_file'] = memo_dict
+        else:
+            try:
+                return memo_dict[memo_key]
+            except KeyError:
+                pass
+
+        if verbose and not callable(verbose):
+            if not SCons.Util.is_String(verbose):
+                verbose = "find_file"
+            _verbose = u'  %s: ' % verbose
+            verbose = lambda s: sys.stdout.write(_verbose + s)
+
+        if os.altsep and os.altsep != os.sep:
+            filename = filename.replace(os.altsep, os.sep)
+
+        filename = SCons.Node.FS._my_normcase(filename)
+        drive, dir = SCons.Node.FS._my_splitdrive(filename)
+        path_components = [x for x in dir.split(os.sep) if x]
+        if not path_components:
+            memo_dict[memo_key] = None
+            return None
+
+        if drive or dir.startswith(os.sep):
+            # file name specifies absolute path
+            if paths:
+                paths = tuple(path.fs.get_root(drive) for path in paths)
+            else:
+                paths = (SCons.Node.FS.get_default_fs().get_root(drive),)
+
+        name = path_components.pop(-1)
+        if callable(paths):
+            paths = paths()
+        for path in paths:
+            for entry in path_components:
+                try:
+                    path = path.entries[entry]
+                except KeyError:
+                    path = path.dir_on_disk(entry)
+                    if path is None:
+                        break
+                else:
+                    if isinstance(path, SCons.Node.FS.Dir):
+                        continue
+                    elif isinstance(path, SCons.Node.FS.Entry):
+                        path.must_be_same(SCons.Node.FS.Dir)
+                        continue
+                    else:
+                        break
+            else:
+                if verbose:
+                    verbose("looking for '%s' in '%s' ...\n" % (name, path))
+                result, d = path.srcdir_find_file(name)
+                if result:
+                    if verbose:
+                        verbose("... FOUND '%s' in '%s'\n" % (name, d))
+                    memo_dict[memo_key] = result
+                    return result
+        else:
+            memo_dict[memo_key] = None
+            return None
+    klass.find_file = find_file
+override_FileFinder(SCons.Node.FS.FileFinder)
+SCons.Node.FS.find_file = SCons.Node.FS.FileFinder().find_file
 
 def get_stored_info_alias(self):
     return self._memo.get('get_stored_info')
@@ -217,16 +300,11 @@ def get_stored_info_alias(self):
 SCons.Node.Alias.Alias.get_stored_info=get_stored_info_alias
 
 def Stored(self):
-
     try:
-        return self.__stored
-    except AttributeError:
-        try:
-            self.__stored=self.LoadStoredInfo()
-        except errors.LoadStoredError:
-                self.__stored=None
+        return self.LoadStoredInfo()
+    except errors.LoadStoredError:
+        return None
 
-    return self.__stored
 
 SCons.Node.Node.Stored=property(Stored)
 

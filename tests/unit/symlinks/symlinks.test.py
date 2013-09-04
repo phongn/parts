@@ -31,8 +31,7 @@ class TestFileSymbolicLink(unittest.TestCase):
     def test_envFileSymbolicLink(self):
         self.assertIsInstance(DefaultEnvironment().FileSymbolicLink('a'), SCons.Node.FS.FileSymbolicLink)
         self.assertIsInstance(DefaultEnvironment().Entry('a'), SCons.Node.FS.FileSymbolicLink)
-        with self.assertRaises(TypeError):
-            DefaultEnvironment().Dir('a')
+        self.assertRaises(TypeError, DefaultEnvironment().Dir, 'a')
 
 from parts.overrides.symlinks import os_symlink
 from parts.overrides.symlinks import os_readlink
@@ -50,14 +49,12 @@ class TestOsSymlink(unittest.TestCase):
         rmdir(self.workDir)
 
     def test_os_symlink(self):
-        with self.assertRaises(OSError):
-            os_symlink('target', self.notlinkname, False)
+        self.assertRaises(OSError, os_symlink, 'target', self.notlinkname, False)
         os_symlink('target', self.linkname, False)
         os.unlink(self.linkname)
 
     def test_os_readlink(self):
-        with self.assertRaises(OSError):
-            os_readlink(self.notlinkname)
+        self.assertRaises(OSError, os_readlink, self.notlinkname)
         os_symlink('target', self.linkname, False)
         self.assertEqual(os_readlink(self.linkname), 'target')
         os.unlink(self.linkname)

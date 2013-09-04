@@ -21,8 +21,10 @@ class GoldFile(tester.Tester):
             pass
         try:
             val_content=file(tmp).read()
-        except:
-            host.WriteError("Can't open file {0}".format(tmp))
+        except (OSError, IOError), e:
+            self.Result=tester.ResultType.Failed
+            self.Reason=str(e)
+            return
 
         # get the gold file context
         tmp=self._GetContent(eventinfo,self._goldfile)
@@ -116,3 +118,40 @@ class GoldFile(tester.Tester):
         except KeyError:
             pass
         return None
+
+class GoldFileList(tester.Tester):
+    def __init__(self, goldfilesList, test_value=None, kill_on_failure=False):
+        super(GoldFileList, self).__init__(test_value=test_value,
+                                          kill_on_failure=kill_on_failure)
+        self.Description = "Checking that {0} matches one of {1}".format(test_value,
+                ', '.join([str(gold) for gold in goldfilesList]))
+        golds = []
+        for goldfile in goldfilesList:
+            golds.append(GoldFile(goldfile, test_value=test_value,
+                                  kill_on_failure=kill_on_failure))
+        self._golds = golds
+        
+    def test(self, eventinfo, **kw):
+        results = []
+        for gold in self._golds:
+            gold.test(eventinfo, **kw)
+            results.append(gold.Reason)
+            if gold.Result == tester.ResultType.Passed:
+                self.Result = tester.ResultType.Passed
+                self.Reason = 'Gold file %s matched' % gold._goldfile
+                return
+
+        # there were no matching gold files found
+        self.Result = tester.ResultType.Failed
+        self.Reason = 'No matching gold files found, differences:\n%s' % '\n\n'.join(results)
+
+    @property
+    def TestValue(self):
+        return self.__test_value
+
+    @TestValue.setter
+    def TestValue(self, value):
+        self.__test_value = value
+        for gold in self._golds:
+            gold.TestValue = value
+        

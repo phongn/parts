@@ -6,40 +6,75 @@ import setup
 import host
 import glb
 import testers
+from fnmatch import fnmatch
 from common.pathutils import remove_read_only
-
+from common import quirkyCompile, RunTimer
+from common.threadpool import ThreadPool
+from report import TestsReport
+import time
 
 class Engine(object):
     """description of class"""
 
-    def __init__(self,host,jobs=1,test_dir='./',run_dir="./_sandbox",gtest_site=None):
-        self.__host=host
-        self.__tests={}
-        self.__jobs=jobs
-        self.__test_dir=test_dir
-        self.__run_dir=os.path.abspath(run_dir)
-        self.__gtest_site=gtest_site
+    def __init__(self, host, jobs=1, test_dir='./', run_dir="./_sandbox", gtest_site=None,
+                 filter_in='*', dump_report=False):
+        self.__host = host
+        self.__tests = {}
+        self.__jobs = jobs
+        self.__test_dir = test_dir
+        self.__run_dir = os.path.abspath(run_dir)
+        self.__gtest_site = gtest_site
+        self.__filter_in = filter_in
+        self.__dump_report = dump_report
+        self.__timer = RunTimer()
+        if jobs > 1:
+            self.__pool = ThreadPool(jobs)
         if glb.Engine:
             raise RuntimeError("Only one engine can be created at a time")
-        glb.Engine=self
-       
+        glb.Engine = self
+
     def Start(self):
+        self.__timer.startEvent('total')
         if os.path.exists(self.__run_dir):
-            host.WriteVerbose("engine","The Sandbox directory exists, will try to remove")
-            try:
-                shutil.rmtree(self.__run_dir,onerror=remove_read_only)
-            except Exception, e:
-                host.WriteError("Unable to remove sandbox directory for clean test run\n Reason: {0}".format(e),show_stack=False)
-            host.WriteVerbose("engine","The Sandbox directory was removed")
-        host.WriteVerbose("engine","Loading Extensions")
+            self.__timer.startEvent('sandbox cleanup')
+            host.WriteVerbose("engine", "The Sandbox directory exists, will try to remove")
+            oldExceptionArgs = None
+            while True:
+                try:
+                    shutil.rmtree(self.__run_dir, onerror=remove_read_only)
+                except BaseException, e:
+                    if e.args != oldExceptionArgs:
+                        # maybe this is Windows issue where antivirus won't let us remove
+                        # some random directory, so we're waiting & retrying
+                        oldExceptionArgs = e.args
+                        time.sleep(1)
+                        continue
+                    host.WriteError(("Unable to remove sandbox directory for clean test run" + \
+                                     "\n Reason: {0}").format(e), show_stack=False)
+                    raise
+                else:
+                    # no exceptions, the directory was wiped
+                    break
+            host.WriteVerbose("engine", "The Sandbox directory was removed")
+            self.__timer.stopEvent('sandbox cleanup')
+        self.__timer.startEvent('extensions load')
+        host.WriteVerbose("engine", "Loading Extensions")
         self._load_extensions()
-        host.WriteVerbose("engine","Scanning for tests")
+        self.__timer.stopEvent('extensions load')
+        self.__timer.startEvent('scanning for tests')
+        host.WriteVerbose("engine", "Scanning for tests")
         self._scan_for_tests()
-        host.WriteVerbose("engine","Running tests")
+        self.__timer.stopEvent('scanning for tests')
+        host.WriteVerbose("engine", "Running tests")
         self._run_tests()
-        host.WriteVerbose("engine","Making report")
-        ret=self._make_report()
-        return ret
+        self.__timer.startEvent('making report')
+        host.WriteVerbose("engine", "Making report")
+        result = self._make_report()
+        self.__timer.stopEvent('making report')
+        self.__timer.stopEvent('total')
+        for eventName, eventDuration in self.__timer.getEvents():
+            host.WriteVerbose('durations', '%s - %.2f sec.' % (eventName.ljust(40), eventDuration))
+        return result
 
     def _load_extensions(self):
         # load files of our extension type in the directory
@@ -61,15 +96,15 @@ class Engine(object):
                     self._load_file(f,locals,locals)
         else:
             host.WriteVerbose("engine","gtest-site path not found")
-        
+
 
 
     def _scan_for_tests(self):
-        
+
         ret=[]
         for root, dirs, files in os.walk(self.__test_dir):
             host.WriteVerbose("test_scan","Looking for tests in",root)
-            
+
             for f in files:
                 if f.endswith('.test.py') or f.endswith(".test"):
                     if f.endswith('.test.py'):
@@ -77,88 +112,62 @@ class Engine(object):
                     else:
                         name=f[:-len('.test')]
 
+                    if not fnmatch(name, self.__filter_in):
+                        continue
+
                     if self.__tests.has_key(name):
                         host.WriteWarning("overiding test",name, "with test in", root)
                     host.WriteVerbose("test_scan","   Found test",name)
                     self.__tests[name]=test.Test(name,root,f,self.__run_dir,self.__test_dir)
 
     def _run_tests(self):
-        for t in self.__tests.itervalues():
-            tmp=runtesttask.RunTestTask(t)
-            tmp()
-    
-    def _load_file(self,file,globals=None,locals=None):
-        g = globals if globals else {}
-        l = locals if locals else {}
-        host.WriteVerbose("engine","Loading file: {0}",file)
-        exec(compile(open(file).read(), file, 'exec'),g,l)
+        if self.__jobs > 1:
+            for t in self.__tests.itervalues():
+                self.__pool.addTask(self.__run_test_task, t)
+            self.__pool.waitCompletion()
+        else:
+            for t in self.__tests.itervalues():
+                self.__run_test_task(t)
+
+    def __run_test_task(self, task):
+        self.__timer.startEvent('running test <%s>' % task.Name)
+        runtesttask.RunTestTask(task)()
+        self.__timer.stopEvent('running test <%s>' % task.Name)
+
+    def _load_file(self, file, globals=None, locals=None):
+        host.WriteVerbose("engine", "Loading file: {0}", file)
+        with open(file, 'r') as f:
+            exec(quirkyCompile(f.read(), file), globals or {}, locals or {})
         #print g
-        
+
 
     def _make_report(self):
+        report = TestsReport()
+        for test in self.__tests.itervalues():
+            report.addTestRun(test)
         host.WriteMessage("\nReport: --------------")
-        # fix this up to use an report object
-        had_issue=0
-        skipped=0
-        passed=0
-        def print_run_result(i):
-            if i.Result == testers.ResultType.Passed:
-                host.WriteMessage("  Test: {0} - {1}".format(i.Description,testers.ResultType.to_string(i.Result)))
-            else:
-                host.WriteMessage("  Test: {0} - {1}".format(i.Description,testers.ResultType.to_string(i.Result)))
-                host.WriteMessage("   Reason: {0}".format(i.Reason))
-
-        for t in self.__tests.itervalues():
-            if t._Result == testers.ResultType.Skipped:
-                skipped+=1
-                host.WriteMessage('\nTest run "{0}" in directory "{1}"'.format(t.TestFile,t.TestDirectory))
-                host.WriteMessage(" Skipped - {0}".format(t._Conditions._Reason))
-            elif t._Result != testers.ResultType.Passed:
-                had_issue+=1
-                host.WriteMessage('\nTest run "{0}" in directory "{1}"'.format(t.TestFile,t.TestDirectory))
-                
-                if t.Setup._Failed:
-                    host.WriteMessage(" Setup: - Failed")
-                    host.WriteMessage("   Reason: {0}".format(t.Setup._Reason))
-                for tr in t._TestRuns:
-                    if tr._Result == testers.ResultType.Passed:
-                        host.WriteMessage("\n {0} - Passed".format(tr.Name))
-                    elif tr._Result == testers.ResultType.Warning:
-                        host.WriteMessage("\n {0} - Warning".format(tr.Name))
-                        for i in tr.get_testers():
-                            print_run_result(i)
-                    elif tr._Result == testers.ResultType.Failed:
-                        host.WriteMessage("\n {0} - Failed".format(tr.Name))
-                        for i in tr.get_testers():
-                            print_run_result(i)
-                    elif tr._Result == testers.ResultType.Skipped:
-                        host.WriteMessage("\n {0} - Skipped".format(tr.Name))
-                        host.WriteMessage("  Reason: Previous test run failed.".format())
-                    elif tr._Result == testers.ResultType.Unknown:
-                        host.WriteMessage("\n {0} - Unknown?".format(tr.Name))
-                        for i in tr.get_testers():
-                            print_run_result(i)
-            else:
-                passed+=1
-
+        for msg in report.exportForConsole():
+            host.WriteMessage(msg)
         host.WriteMessage("")
-        if not had_issue:
-            host.WriteMessage("All tests passed!\n Warnings: 0\n Skipped: {0}\n Passed: {1}".format(skipped,passed))
+        if sum([report.stats[resType] for resType in (testers.ResultType.Exception,
+                                                      testers.ResultType.Failed,
+                                                      testers.ResultType.Unknown,
+                                                      testers.ResultType.Warning)]) > 0:
+            host.WriteMessage('Test run had isses!')
+            runResult = 1
         else:
-            host.WriteMessage("Test run had Failures\n Errors: {0}\n Warnings: 0\n Skipped: {1}\n Passed: {2}".format(had_issue,skipped,passed))
+            host.WriteMessage('All tests passed')
+            runResult = 0
+        for resType in (testers.ResultType.Unknown, testers.ResultType.Exception,
+                        testers.ResultType.Failed,  testers.ResultType.Warning,
+                        testers.ResultType.Skipped, testers.ResultType.Passed):
+            amount = report.stats[resType]
+            host.WriteMessage(' %s: %s' % (testers.ResultType.to_string(resType), amount))
 
-        if had_issue:
-            return 1
-        return 0
-
+        if self.__dump_report:
+            host.WriteMessage('\n\n{JSON_REPORT}%s{/JSON_REPORT}' % report.exportForJson())
+        return runResult
 
     @property
     def Host(self):
         return self.__host
-
-   
-
-
-
-        
-    

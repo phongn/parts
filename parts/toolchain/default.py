@@ -2,6 +2,7 @@
 
 import parts.load_module as load_module
 import SCons.Tool
+import platform
 
 # this is a helper function to help with this code until we get a better solution created
 # with the settings object
@@ -44,6 +45,10 @@ def resolve(env,version):
             return [
                     ('gnutools',None),
                     ('icc',None),                    
+            ]
+        elif (platform.mac_ver()[0] >= env.Version("10.9.0")) and (test_tool(env, "clang")):
+                return [
+                    ('clang',None)
             ]
         else:
             return [

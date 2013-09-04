@@ -42,18 +42,17 @@ t.ReturnCode=0
 t.Streams.Debug='gold/target_good6.gold'
 
 # do runs with bad options
-t=Test.AddTestRun("bad")
-t.Command="scons all --target-platform=fake-x86 --trace=target_platform_option --tc=null"
-t.ReturnCode=2
-t.Streams.stderr='gold/target_bad1.gold'
+t = Test.AddTestRun("bad")
+t.Command = "scons all --target-platform=fake-x86 --trace=target_platform_option --tc=null"
+t.ReturnCode = 2
+t.Streams.stderr = ['gold/target_bad1.scons23.gold', 'gold/target_bad1.scons21.gold']
 
-t=Test.AddTestRun("bad")
-t.Command="scons all --target-platform=badval --trace=target_platform_option --tc=null"
-t.ReturnCode=2
-t.Streams.stderr='gold/target_bad2.gold'
+t = Test.AddTestRun("bad")
+t.Command = "scons all --target-platform=badval --trace=target_platform_option --tc=null"
+t.ReturnCode = 2
+t.Streams.stderr = ['gold/target_bad2.scons23.gold', 'gold/target_bad2.scons21.gold']
 
-t=Test.AddTestRun("bad")
-t.Command="scons all --target-platform=darwin-z7000 --trace=target_platform_option --tc=null"
-t.ReturnCode=2
-t.Streams.stderr='gold/target_bad3.gold'
-
+t = Test.AddTestRun("bad")
+t.Command = "scons all --target-platform=darwin-z7000 --trace=target_platform_option --tc=null"
+t.ReturnCode = 2
+t.Streams.stderr = ['gold/target_bad3.scons23.gold', 'gold/target_bad3.scons21.gold']

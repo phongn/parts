@@ -19,7 +19,7 @@ def WriteDebug(catagory,*lst,**kw):
         'all' in glb.Engine.Host.DebugCatagories:
             glb.Engine.Host.WriteDebug(catagory,kw.get('sep',' ').join(lst)+kw.get('end','\n'))
 
-def WriteVerbose(catagory,*lst,**kw):
+def WriteVerbose(catagory, *lst, **kw):
     if glb.Engine:
         if catagory.lower() in glb.Engine.Host.VerboseCatagories or \
         'all' in glb.Engine.Host.VerboseCatagories:

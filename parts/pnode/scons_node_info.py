@@ -4,12 +4,14 @@ import stored_info
 class scons_node_info(stored_info.stored_info):
     """description of class"""
     __slots__=[
-        '__type',
-        '__components',
-        '__side_effect_IDs',
-        '__always_build',
-        '__srcnodeID',
-        '__source_info'
+        '__type', # Instance type: SCons.Node.FS.Base, SCons.Node.FS.Entry, SCons.Node.FS.Dir, SCons.Node.FS.File,
+                  # SCons.Node.FS.FileSymbolicLink, SCons.Node.Value (?)
+        '__components', # Section ids grouped by part ids. dict(part_id=set([sec_id1, sec_id2]))
+        '__side_effect_IDs', # List of node's side-effects.
+        '__always_build', # Flag if this node should be re-built always
+        '__srcnodeID', # Source node id if present
+        '__source_info' # dictionary of children including sources, implicit and explicit dependencies
+                        # keys are children names, values is a dictionary of 'timestamp' and 'csig' values.
     ]
     def __init__(self):
         self.__type=None

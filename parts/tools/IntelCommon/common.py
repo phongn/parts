@@ -3,23 +3,21 @@ from parts.tools.Common.ToolSetting import ToolSetting
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.version import version_range
 
-intel_9='([9])([0-1])'
-intel_9_posix='([9]).([0-9]).([0-9][0-9][0-9])'
-intel_10='([1][0])([0-9]).([0-9][0-9][0-9])'
-intel_10_posix='([1][0]).([0-9]).([0-9][0-9][0-9])'
-intel_11='([1][1])([0-9]).([0-9][0-9][0-9])'
-intel_11_outer='([1][1]).([0-9])'
-intel_11_inner='([0-9][0-9][0-9])'
-intel_12_posix='composerxe-([2][0][0-9][0-9]).([0-9]+.[0-9]+)'
-intel_12_1_posix='composer_xe_([2][0][0-9][0-9])_sp1.([0-9]+.[0-9]+)'
+intel_9 = r'(9)([0-1])'
+intel_9_posix = r'(9).(\d).(\d\d\d)'
+intel_10 = r'(10)(\d).(\d\d\d)'
+intel_10_posix = r'(10).(\d).(\d\d\d)'
+intel_11 = r'(11)(\d).(\d\d\d)'
+intel_11_outer = r'(11).(\d)'
+intel_11_inner = r'(\d\d\d)'
+intel_12_posix = r'composerxe-(2011)\.(\d+.\d+)'
+intel_12_1_posix = r'composer_xe_(2011)_sp1\.(\d+.\d+)'
 
 # hopefully a stable base 
-intel_13_plus_posix='composer_xe_([2][0][0-9][0-9]).([0-9]+.[0-9]+)'
-
+intel_13_plus_posix = r'composer_xe_(20\d\d)\.(\d+.\d+)'
 
 #different layout in registry
-intel_11_1='[0-9][0-9][0-9]'
-
+intel_11_1 = r'\d\d\d'
 
 def MatchVersionNumbers(verStr1, verStr2):
 

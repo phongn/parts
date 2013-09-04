@@ -30,7 +30,7 @@ def zip(target, source, env):
     zf.close()
 
 
-ZipAction = SCons.Action.Action(zip)
+ZipAction = SCons.Action.Action(zip, varlist=['BUILD_DIR', 'SRC_DIR', 'src_dir'])
 
 api.register.add_builder('ZipFile',SCons.Builder.Builder(action = ZipAction,
                                    source_factory = SCons.Node.FS.Entry,

@@ -759,11 +759,7 @@ class part(pnode.pnode,part_compatiblity):
         self.__env['SHORT_ALIAS']=self.__short_alias
 
         ## logger and task spawners
-        spawn=self.__env['PART_SPAWNER']
-        self.__env['PART_LOG_MAPPER']=part_logger.part_logger(self.__env,glb.rpter.console)
-        self.__env['SPAWN']=spawn()
-        
-
+        self.__env['SPAWN']='${PART_SPAWNER(__env__)}'
 
         ## package logic ( as it is currently)
         self.__env['PARTS_PACKAGE_GROUPS']=self.__package_group

@@ -1,9 +1,13 @@
 
 from .. import glb
 from .. import datacache
-from .. import pickle_helpers
 from .. import api
 from .. import metatag
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 
 import pnode
@@ -60,7 +64,7 @@ class manager(object):
         glb.engine.CacheDataEvent+=self.Store
         glb.engine.PostProcessEvent+=self._set_store_state
         glb.engine.PostProcessEvent+=self.StoreAllPNodes
-        
+
 
     def _set_store_state(self,mode):
         from ..loadlogic import all
@@ -161,10 +165,15 @@ class manager(object):
         data=self._get_cache()
         if data:
             try:
-                ninfo=data['known_nodes'][nodeID]['pinfo']
-                return ninfo
+                return pickle.loads(data['known_nodes'][nodeID]['pinfo'])
             except KeyError:
-                pass
+                return None
+            except (TypeError, pickle.UnpicklingError):
+                # Old-style cache. Convert it into new one
+                data = data['known_nodes'][nodeID]
+                result = data['pinfo']
+                data['pinfo'] = pickle.dumps(result, 2)
+                return result
         return None
 
     def GetStoredPNodeInfo(self,node):
@@ -174,11 +183,15 @@ class manager(object):
         data=self._get_cache()
         if data:
             try:
-                info=data['known_pnodes'][nodeID]['pinfo']
-                info.post_load_convet()
-                return info
+                return pickle.loads(data['known_pnodes'][nodeID]['pinfo'])
             except KeyError:
-                pass
+                return None
+            except (TypeError, pickle.UnpicklingError):
+                # Old-style cache. Convert it into new one
+                data = data['known_pnodes'][nodeID]
+                result = data['pinfo']
+                data['pinfo'] = pickle.dumps(result, 2)
+                return result
         return None
 
     def GetAllKnownStoredNodeIDs(self):
@@ -222,17 +235,17 @@ class manager(object):
         valuestostore= {} if stored_data is None else stored_data
         valuestostore[key]=value
         datacache.StoreData("nodeinfo",valuestostore)
-        
+
 
 
     def store_value(self,node,_info,valuestostore):
             valuestostore[node.ID]={
                 'type':node.__class__,
-                'pinfo':_info
+                'pinfo':pickle.dumps(_info, 2)
                 }
 
 
-    def StoreAlias(self,anode,valuestostore=None):
+    def StoreAlias(self,node,valuestostore=None):
         data={}
         stored_data=self._get_cache()
         if stored_data is None: stored_data = {}
@@ -240,7 +253,7 @@ class manager(object):
         if valuestostore is None:
             valuestostore =  stored_data.get('aliases',{})
 
-        binfo = anode.get_binfo()
+        binfo = node.get_binfo()
         # translate the node objects to a string value
         for a in ['bsources', 'bdepends', 'bimplicit']:
             try:
@@ -249,7 +262,7 @@ class manager(object):
                 pass
             else:
                 setattr(binfo, a, list(map(node_to_str, val)))
-        valuestostore[anode.ID]=binfo
+        valuestostore[node.ID]=binfo
 
         self._set_cache('aliases',valuestostore)
 
@@ -319,7 +332,7 @@ class manager(object):
                     self.StoreNode(node)
                     if isinstance(node,SCons.Node.FS.Base) and node != node.srcnode():
                         self.StoreNode(node.srcnode())
-            
+
         elif (not goodexit) or (build_mode =='question'):
             datacache.ClearCache("nodeinfo")
 
@@ -468,7 +481,11 @@ class manager(object):
             return ret
         pnodes=  stored_data.get('known_pnodes',{})
         for pnodeid, data in pnodes.iteritems():
-            pinfo=data['pinfo']
+            try:
+                pinfo = pickle.loads(data['pinfo'])
+            except (TypeError, pickle.UnpicklingError):
+                pinfo = data['pinfo']
+                data['pinfo'] = pickle.dumps(pinfo, 2)
             if isinstance(pinfo,part_info.part_info):
                 # if so test the Part file state
                 tmp=pinfo.File
@@ -506,6 +523,5 @@ def node_to_str(node):
         print "unknown type",node,type(node)
     return None
 
-#glb.pnodes=manager()
-
+# vim: set et ts=4 sw=4 ai ft=python :
 

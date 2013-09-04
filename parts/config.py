@@ -18,6 +18,8 @@ import copy
 
 from SCons.Debug import logInstanceCreation
 
+from platform_info import SystemPlatform
+
 def null_ver_mapper(env):
     return '0.0.0'
 
@@ -307,6 +309,8 @@ def load_cfg(name):
         load_cfg(dep)
 
 def make_name_list(tool,host,target):
+    #TODO: make this generate
+    host, target = [SystemPlatform(str(x)) for x in (host, target)]
     nl=[
     tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+target.ARCH,
     tool+"_"+host.OS+"-"+host.ARCH+"_"+target.OS+"-"+'any',
@@ -407,43 +411,45 @@ def make_name_dict(tool,host,target):
     return nl
 
 
-def found_config_files(name,tool,host,target):
+def found_config_files(name, tool, host, target):
     '''
     Just see if we can find the file that would be loaded, if any.
     This is more for build context testing. To see if something changed
     '''
-    ret=set()
-    dep=g_configuration[name].Dependent()
+    ret = set()
+    dep = g_configuration[name].Dependent()
     if dep is not None:
-        ret=found_config_files(dep,tool,host,target)
-    name_list=make_name_list(tool,host,target)
-    for k in name_list:
-        try:
-            api.output.verbose_msg('configuration',"trying to load file <%s.py>"%k)
-            mod=load_module.load_module(
-                    load_module.get_site_directories(
-                            os.path.join('configurations',name)
-                            ),
-                    k,
-                    'config'+name
-                    )
+        ret = found_config_files(dep, tool, host, target)
+    name_list = make_name_list(tool, host, target)
+    pathList = load_module.get_site_directories(os.path.join('configurations', name))
+    possibleModules = load_module.get_possible_modules(pathList)
+    typeName = 'config%s' % name
 
+    for configName in name_list:
+        if configName not in possibleModules:
+            # there isn't such configuration at all, skip its loading
+            api.output.verbose_msg(['configuration', 'load_module'],
+                'Skipping load of configuration %s as no modules for it exist' % configName)
+            continue
+
+        try:
+            api.output.verbose_msg('configuration', "trying to load file <%s.py>" % configName)
+            mod = load_module.load_module(pathList, configName, typeName)
             if mod.__file__.endswith('.py'):
                 ret.add(os.path.abspath(mod.__file__))
             else:
                 ret.add(os.path.abspath(mod.__file__)[:-1])
-            break;
+            break
         except ImportError:
             pass
-        except Exception,ec:
-            ec_str=StringIO.StringIO()
-            traceback.print_exc(file=ec_str)
-            api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
+        except:
+            api.output.verbose_msg("configuration", "Unexpected failure:\n",
+                                   traceback.format_exc())
 
     return ret
 
 
-def load_tool_config(env,name,tool,host,target):
+def load_tool_config(env, name, tool, host, target):
     '''
     Load all infomation about a given tool in to a memory cache.
     Will load all information in file about different version.
@@ -455,93 +461,94 @@ def load_tool_config(env,name,tool,host,target):
     ## First we need to start by loading base config
 
     # get dependent config, None is there is no dependent
-    dep=g_configuration[name].Dependent()
-    base_settings=({},{})
-    base_ver_mapper=null_ver_mapper
+    dep = g_configuration[name].Dependent()
+    base_settings = ({},{})
+    base_ver_mapper = null_ver_mapper
     if dep is not None: # we have a dependent
         # Did we load the dependent information already?
-        if g_configuration[dep].has_tool_cfg(tool,host,target) == False:
+        if not g_configuration[dep].has_tool_cfg(tool, host, target):
             # if not, we need to load it
-            load_tool_config(env,dep,tool,host,target)
+            load_tool_config(env, dep, tool, host, target)
 
     ################################################
-    ## Now the base config ( if any) is loaded we need to load the current confirguation
+    ## Now the base config (if any) is loaded; we need to load the current confirguation
 
-    api.output.verbose_msg('configuration',"Loading configuration <%s> for tool <%s>"%(name,tool))
+    api.output.verbose_msg('configuration',
+                           "Loading configuration <%s> for tool <%s>" % (name, tool))
 
     # get list of possible file name forms to try load
-    name_list=make_name_list(tool,host,target)
-    found=True
-    ver=None
-    mod=None
+    name_list = make_name_list(tool, host, target)
+    found = True
+    ver = None
+    mod = None
+    pathList = load_module.get_site_directories(os.path.join('configurations', name))
+    possibleModules = load_module.get_possible_modules(pathList)
+    typeName = 'config%s' % name
     # we want to try to load the first file match as this is viewed as the best match
-    for k in name_list:
+    for configName in name_list:
+        if configName not in possibleModules:
+            # there isn't such configuration at all, skip its loading
+            api.output.verbose_msg(['configuration', 'load_module'],
+                'Skipping load of configuration %s as no modules for it exist' % configName)
+            continue
+
         try:
-            api.output.verbose_msg('configuration',"trying to load file <%s.py>"%k)
-            mod=load_module.load_module(
-                    load_module.get_site_directories(
-                            os.path.join('configurations',name)
-                            ),
-                    k,
-                    'config'+name
-                    )
-            api.output.verbose_msg('configuration','Configuration <%s> loaded! File <%s>'%(name,mod.__file__))
+            api.output.verbose_msg('configuration', "trying to load file <%s.py>" % configName)
+            mod = load_module.load_module(pathList, configName, typeName)
+            api.output.verbose_msg('configuration',
+                                'Configuration <%s> loaded! File <%s>' % (name, mod.__file__))
         except ImportError:
             continue
-        except Exception,ec:
-            ec_str=StringIO.StringIO()
-            traceback.print_exc(file=ec_str)
-            api.output.verbose_msg("configuration","Unexpected failure:\n",ec_str.getvalue())
+        except SyntaxError:
+            # make errors in configurations really visible
+            raise
+        except:
+            api.output.verbose_msg("configuration", "Unexpected failure:\n",
+                                   traceback.format_exc())
             continue
         ## Load our config data, and map the version value
         #g_config_context[tool]=mod.__file__
         if mod.__file__.endswith('.py'):
-            files=set([mod.__file__])
+            files = set([mod.__file__])
         else:
-            files=set([mod.__file__[:-1]])
+            files = set([mod.__file__[:-1]])
         #get version based on value in environment
-        ver=mod.config.map_none_version(env)
+        ver = mod.config.map_none_version(env)
         break
     else:
         # we don't have any configruation files.
         # we make note of this as we will store empty setting for this case later
         # or setting based on dependent values
-        files=set()
+        files = set()
         # reports that for this configruation there was not special data defined
-        api.output.verbose_msg('configuration','Configuration <%s> found no configuration for tool <%s>'%(name,k))
-        found=False # nothing found
+        api.output.verbose_msg('configuration',
+                'Configuration <%s> found no configuration for tool <%s>' % (name, configName))
+        found = False # nothing found
 
     #############################################################
     # At this point we want to get all information for the different versions
     # and store this information.
-    #if found==True:
-    #    for ver_rng, settings in mod.config.ver_rng.iteritems():
-    #        # Store unmerged settings for each versions
-    #        api.output.verbose_msg('configuration',"Storing settings")
-    #        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
 
-
-
-    #        ## if we have dependent setting, get this for the current version range
-    #        if dep != None:
-
-    if dep != None:
+    if dep is not None:
         # Get base settings
-        api.output.verbose_msg(['configuration','configuration_setup'],'Getting dependent configuration settings',dep)
-        base_settings=g_configuration[dep].get_config_setting(env,tool,ver,host,target)
-        api.output.verbose_msg('configuration_setup','Got Settings of:',base_settings)
-        files.update(g_configuration[dep].defining_files(tool,host,target))
+        api.output.verbose_msg(['configuration', 'configuration_setup'],
+                               'Getting dependent configuration settings', dep)
+        base_settings = g_configuration[dep].get_config_setting(env, tool, ver, host, target)
+        api.output.verbose_msg('configuration_setup', 'Got Settings of:', base_settings)
+        files.update(g_configuration[dep].defining_files(tool, host, target))
 
-    if found==True:
+    if found:
         # merge setting
-        api.output.verbose_msg('configuration',"Merging configurtation settings")
-        settings,ver_rng=mod.config.merge(ver,base_settings)
-        api.output.verbose_msg(['configuration_setup'],'Got Settings of:',settings)
-        api.output.verbose_msg('configuration',"Storing settings")
-        g_configuration[name].add_config_setting(tool,ver_rng,host,target,settings,mod.config.default_ver_func,files)
+        api.output.verbose_msg('configuration', "Merging configurtation settings")
+        settings, ver_rng = mod.config.merge(ver, base_settings)
+        api.output.verbose_msg(['configuration_setup'], 'Got Settings of:', settings)
+        api.output.verbose_msg('configuration', "Storing settings")
+        g_configuration[name].add_config_setting(tool, ver_rng, host, target, settings,
+                                                 mod.config.default_ver_func, files)
     else:
-        api.output.verbose_msg('configuration',"Storing settings")
-        g_configuration[name].add_config_setting(tool,version.version_range(),host,target,base_settings,base_ver_mapper,files)
+        api.output.verbose_msg('configuration', "Storing settings")
+        g_configuration[name].add_config_setting(tool, version.version_range(), host, target,
+                                                 base_settings, base_ver_mapper, files)
 
 def get_config(env,name,tool,host,target):
     ver=None

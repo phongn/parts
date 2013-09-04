@@ -17,7 +17,6 @@ import thread
 import os
 import cPickle
 import base64
-import cStringIO
 
 from SCons.Debug import logInstanceCreation
 
@@ -34,21 +33,12 @@ def print_stack():
 g_complex_sub={}
 
 def pack_data(data):
-    buffout=cStringIO.StringIO()
-    pkl=cPickle.Pickler(buffout)
-    pkl.dump(data)
-    tmp= buffout.getvalue()
-    info = base64.b64encode(tmp)
-    return info
+    return base64.b64encode(cPickle.dumps(data, 2))
 
 def unpack_data(data):
     if isinstance(data,SCons.Subst.CmdStringHolder):
         data=str(data[:])
-    tmp = base64.b64decode(data)
-    buffin=cStringIO.StringIO(tmp)
-    upkl=cPickle.Unpickler(buffin)
-    info=upkl.load()
-    return info
+    return cPickle.loads(base64.b64decode(data))
 
 class mapper(object):
     def __init__(self):
@@ -114,10 +104,8 @@ class mapper(object):
         env.Exit(1)
 
     def unexpected_error(self,env):
-        ec_str=cStringIO.StringIO()
-        traceback.print_exc(file=ec_str)
         api.output.error_msg(
-            "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+            "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
             stackframe=self.stackframe,
             exit=False
             )
@@ -438,10 +426,8 @@ class part_mapper(mapper):
 
         except Exception,ec:
 
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -539,10 +525,8 @@ class part_id_mapper(mapper):
 
         except Exception,ec:
 
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -589,6 +573,8 @@ class part_id_export_mapper(mapper):
             match=part_ref.part_ref(target_type.target_type(self.part_name),pobj_org.Uses)
             if match.hasUniqueMatch:
                 pobj=match.UniqueMatch
+            elif match.hasStoredMatch:
+                pobj=match.StoredUniqueMatch
             else:
                 api.output.trace_msg(['partexport_mapper','mapper'],spacer,'Failed to find Part that matches name: {0}'.format(self.part_name))
                 self.name_to_alias_failed(env,match,policy=self.policy)
@@ -637,10 +623,8 @@ class part_id_export_mapper(mapper):
 
         except Exception,ec:
 
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,'mapping happened\n mapper: ${{{0}("{1}","{2}","{3}",{4})}}"\n'.format(self.name,self.part_name,self.section,self.part_prop,self.policy)+ec_str.getvalue(),
+                "Unexpected exception in",self.name,'mapping happened\n mapper: ${{{0}("{1}","{2}","{3}",{4})}}"\n'.format(self.name,self.part_name,self.section,self.part_prop,self.policy)+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -680,10 +664,8 @@ class part_subst_mapper(mapper):
             ret = penv.subst(self.substr)
 
         except Exception,ec:
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -712,10 +694,8 @@ class part_name_mapper(mapper):
             if self.env_var:
                 env[self.env_var]=ret
         except Exception,ec:
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )
@@ -745,10 +725,8 @@ class part_shortname_mapper(mapper):
 
             ret=pobj.ShortName
         except Exception,ec:
-            ec_str=cStringIO.StringIO()
-            traceback.print_exc(file=ec_str)
             api.output.error_msg(
-                "Unexpected exception in",self.name,"mapping happened\n"+ec_str.getvalue(),
+                "Unexpected exception in",self.name,"mapping happened\n"+traceback.format_exc(),
                 stackframe=self.stackframe,
                 exit=False
                 )

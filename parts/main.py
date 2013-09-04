@@ -17,7 +17,6 @@ import engine # get engine
 glb.engine=engine.parts_addon()
 
 # load rest of the code
-import pickle_helpers # set a global function for pickling of functions
 import config
 import tool_mapping
 import pattern
@@ -44,7 +43,7 @@ else:
     glb.pnodes=pnode.pnode_manager.manager()
 
 
-# import extra funcion 
+# import extra funcion
 ## this will be viewed as global function to the user in the Sconstruct file
 globals().update(glb.globals)
 

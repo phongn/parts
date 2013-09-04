@@ -5,50 +5,43 @@ import linecache
 import interfaces
 import gtest.common as common
 
+from optparse import OptionGroup
+
 class ConsoleHost(interfaces.UIHost):
     """description of class"""
-    def __init__(self,parser):
-        
-        defaults = parser.add_argument_group('Console options', 'Arguments unique to console')
-        defaults.add_argument("--show-color",
-                        action='store_true',
-                        help="Show colored output")
-        defaults.add_argument("--disable-color",
-                        dest='show_color',
-                        action='store_false',
-                        help="Disable and colored output")
-        
-        defaults.add_argument("--verbose","-v",
-                        action=common.extendAction,
-                        nargs='*',
-                        metavar="catagory",
-                        help="Display all verbose messages or only messages of provided catagories")
+    def __init__(self, parser):
+        defaults = OptionGroup(parser, 'Console options', 'Arguments unique to console')
+        defaults.add_option("--show-color", action='store_true', dest='show_color',
+                            help="Show colored output")
+        defaults.add_option("--disable-color", dest='show_color', action='store_false',
+                            help="Disable colored output")
+        defaults.add_option('-v', "--verbose", dest='verbose', action='append',
+                            metavar="category", help="Display all verbose messages or only "
+                            "messages of provided categories")
+        defaults.add_option("--debug", dest='debug', action='append', metavar="category",
+                            help="Display all debug messages or only messages of provided "
+                            "categories")
+        parser.add_option_group(defaults)
 
-        defaults.add_argument("--debug",
-                        action=common.extendAction,
-                        nargs='*',
-                        metavar="catagory",
-                        help="Display all debug messages or only messages of provided catagories")
+        options, args = parser.parse_args()
 
-        args=parser.parse_args()
-        
-        self.__verbose=[] if args.verbose is None else args.verbose
-        self.__debug=args.debug
+        self.__verbose = options.verbose or []
+        self.__debug = options.debug or []
 
 #class C io streams
-    
+
     def WriteStdOut(self,msg):
         sys.__stdout__.write(msg)
-            
+
     def WriteStdErr(self,msg):
         sys.__stderr__.write(msg)
 
 # our virtual streams
-    
+
     def WriteMessage(self,msg):
         sys.__stdout__.write(msg)
 
-    
+
     def get_contents(self, filename, lineno):
         content=''
         if lineno > 3:
@@ -71,11 +64,11 @@ class ConsoleHost(interfaces.UIHost):
                 lineno= frame.f_lineno
                 routine=frame.f_code.co_name
                 content=self.get_contents(filename, lineno)
-                
+
             msg+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
         sys.__stdout__.write("Warning: "+msg)
 
-    
+
     def WriteError(self,msg,stack=None,show_stack=True,exit=1):
         if show_stack:
             if stack is not None:
@@ -86,7 +79,7 @@ class ConsoleHost(interfaces.UIHost):
                 lineno= frame.f_lineno
                 routine=frame.f_code.co_name
                 content=self.get_contents(filename, lineno)
-                
+
             msg+=' File: "%s", line: %s, in "%s"\n %s\n' % (filename, lineno, routine,content)
 
         sys.__stderr__.write("Error: "+msg)
@@ -94,9 +87,6 @@ class ConsoleHost(interfaces.UIHost):
         if exit:
             sys.exit(exit)
 
-
-
-    
     def WriteDebug(self,catagory,stream):
         '''
         prints a debug message
@@ -109,7 +99,7 @@ class ConsoleHost(interfaces.UIHost):
         '''
         sys.__stdout__.write("Debug: [{0}] {1}".format(catagory,msg))
 
-    
+
     def WriteVerbose(self,catagory,msg):
         '''
         prints a verbose message
@@ -118,11 +108,11 @@ class ConsoleHost(interfaces.UIHost):
         The host may or may not be given all verbose messages
         by the engine. The catagory is not added to the message.
         The host can use this value help orginize messages, it is suggested
-        that a given message is clearly formatted with the catagory type. 
+        that a given message is clearly formatted with the catagory type.
         '''
         sys.__stdout__.write("Verbose: [{0}] {1}".format(catagory,msg))
 
-    
+
     def WriteProgress(self,task,msg=None,progress=None,completed=False):
         '''
         task - string telling the current activity we are doing
@@ -140,16 +130,16 @@ class ConsoleHost(interfaces.UIHost):
 
     @property
     def DebugCatagories(self):
-        ''' 
-        returns list of string defining the catagories of debug messages we want to have 
+        '''
+        returns list of string defining the catagories of debug messages we want to have
         processed by the engine
         '''
         return self.__debug
 
     @property
     def VerboseCatagories(self):
-        ''' 
-        returns list of string defining the catagories of verbose messages we want to have 
+        '''
+        returns list of string defining the catagories of verbose messages we want to have
         processed by the engine
         '''
         return self.__verbose

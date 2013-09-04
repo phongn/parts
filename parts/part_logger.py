@@ -3,15 +3,16 @@ import common
 import console
 import api.output
 import version
+from process_tools import waitForProcess, killProcessTree
 
 import SCons.Script
 
-import subprocess,sys,string,os
-import thread,threading
-import time
+import subprocess, sys, string, os
+import thread, threading
 import platform
 
 from SCons.Debug import logInstanceCreation
+from SCons.Errors import UserError
 
 pyver=version.version(platform.python_version())
 
@@ -39,41 +40,11 @@ class pipeRedirector(object):
         self.thread = None
         self.writer = None
 
-class process_wait(object):
-    ''' ugly hack to work around that we have a good way to wait with timeout till python 3.3'''
-    def __init__(self,proc):
-        if __debug__: logInstanceCreation(self, 'parts.part_logger.process_wait')
-        self.__finished=threading.Event()
-        self.__proc=proc
-        self.thread = threading.Thread(target=self._do_wait,
-                args=())
-        self.thread.start()
-
-    def _do_wait(self):
-
-        try:
-            self.__proc.wait()
-        except OSError, e:
-            self.__finished.set()
-            if e.errno != 10:
-                raise e
-        self.__finished.set()
-
-    def finished(self,timeout=None):
-        self.__finished.wait(timeout)
-
-class part_spawner(common.bindable):
-    def __init__(self):
+class part_spawner(object):
+    __slots__ = ['__weakref__', 'env']
+    def __init__(self, env=None):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.part_spawner')
-        self.env=None
-
-    def _bind(self,env,key):
         self.env=env
-
-    def _rebind(self,env,key):
-        tmp=part_spawner() # make a copy (no state to pass here)
-        tmp._bind(env,key) # bind
-        return tmp # return new value
 
     def __call__(self,shell, escape, cmd, args, Env):
         # setup the call
@@ -81,7 +52,7 @@ class part_spawner(common.bindable):
         for k,v in Env.iteritems():
             ENV[k]=str(v)
         # get the part_logger
-        output=self.env["PART_LOG_MAPPER"]
+        output=self.env._get_part_log_mapper()
 
         # we ignore the escape function as it breaks linux,
         # and was breaking on python 2.7 windows by adding extra " values
@@ -103,41 +74,31 @@ class part_spawner(common.bindable):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
+        timeout = self.env.get('TIME_OUT', None)
+        if timeout:
+            # might be passed in on the command line, so it would be a string value
+            timeout = float(timeout)
+
         # get the output and redirect to logger
         p1 = pipeRedirector(proc.stdout, lambda x: output.WriteOut(id, x))
         p2 = pipeRedirector(proc.stderr, lambda x: output.WriteErr(id, x))
-        #DO wait hack until we get a python 3.3 setup as base ( first need python 3 support :-) )
-        pproc=process_wait(proc)
-
-        timeout=self.env.get('TIME_OUT',None)
-        if timeout:
-            timeout =int(timeout) # might be passed in on the command line, so it would be a string value
-        pproc.finished(timeout)
-        if proc.poll() is None:
-            # known bug in some python versions with kill() on win32 systems
-            # we do this because terminate process get complex witha shell involed
-            if sys.platform == 'win32':
-                # kill full process tree
-                subprocess.call("TASKKILL /F /T /PID {0}".format(proc.pid))
-            else:
-                proc.kill()
-
-        # force pipe-redirectors to close handles
-        p1.close()
-        p2.close()
-
-        # we are done tell logger this action is done.
-        ret = proc.returncode
-        output.TaskEnd(id,ret)
+        try:
+            waitForProcess(proc, timeout)
+            if proc.poll() is None:
+                killProcessTree(proc)
+                raise UserError("Killed by timeout ({0} sec)".format(timeout))
+        finally:
+            p1.close()
+            p2.close()
+            # we are done, so tell logger this action is done.
+            ret = proc.returncode
+            output.TaskEnd(id, ret)
         return ret
 
-
-
 class part_logger(object):
-    def __init__(self,env,console):
+    def __init__(self,env):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.part_logger')
         self.env=env
-        def_env=SCons.Script.DefaultEnvironment()
         self.reporter=glb.rpter
         tmp=SCons.Script.GetOption('num_jobs') > 1
         if tmp:
@@ -362,7 +323,20 @@ class parts_text_logger(object):
             self.m_file.close() # part of quick "to many file handle" fix
             self.m_lock.release()# part of quick "to many file handle" fix
 
+def _get_part_log_mapper(env):
+    try:
+        result = env['PART_LOG_MAPPER']
+    except KeyError:
+        result = part_nil_logger()
+    else:
+        if common.is_string(result):
+            result = env.subst(result, raw = 1, conv = lambda x: x)
+    return result
+from SCons.Environment import SubstitutionEnvironment as SConsEnvironment
+SConsEnvironment._get_part_log_mapper = _get_part_log_mapper
 
+api.register.add_variable('_part_logger',part_logger, '')
+api.register.add_variable('PART_LOG_MAPPER', '${_part_logger(__env__)}','')
 api.register.add_variable('PART_SPAWNER',part_spawner,'')
 api.register.add_variable('PART_LOGGER','PART_NIL_LOGGER','')
 api.register.add_variable('PART_NIL_LOGGER',part_nil_logger,'')

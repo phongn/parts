@@ -13,7 +13,6 @@ class pnode(object):
         '__load_state',
         '_remove_cache',
         '__is_loading',
-        '__stored',
         '_isVisited'
     ]
     def __init__(self):
@@ -22,7 +21,6 @@ class pnode(object):
         self._remove_cache=False
         # state
         self.__is_loading=False
-        self.__stored=False
         self._isVisited=False
 
     @property
@@ -53,15 +51,10 @@ class pnode(object):
 
     @property
     def Stored(self):
-        if self.__stored is not False:
-            return self.__stored
-        else:
-            try:
-                self.__stored=self.LoadStoredInfo()
-            except errors.LoadStoredError:
-                self.__stored=None
-        return self.__stored
-
+        try:
+            return self.LoadStoredInfo()
+        except errors.LoadStoredError:
+            return None
 
     def LoadStoredInfo(self):
         raise NotImplementedError
@@ -157,4 +150,6 @@ def pnode_factory(klass,*lst,**kw):
             ret._setup_(*lst,**kw)
 
     return ret
+
+# vim: set et ts=4 sw=4 ai ft=python :
 

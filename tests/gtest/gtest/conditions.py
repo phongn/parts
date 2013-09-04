@@ -6,18 +6,12 @@ import stat
 import glb
 
 class Condition(object):
-    def __init__(self,testfunc,reason,pass_value):
-        self.__func=testfunc
-        self.__msg=reason
+    def __init__(self, testfunc, reason, pass_value):
+        self.__func = testfunc
+        self.__msg = reason
         self.__pass_value = pass_value
 
-    def __bool__(self):
-        return self.Pass()
-
-    def __len__(self):
-        '''for some reason the __bool__ is not called
-        but the fallback of __len__ is.
-        '''
+    def __nonzero__(self):
         return self.Pass()
 
     def Pass(self):

@@ -489,7 +489,7 @@ SConsEnvironment.InstallItem=InstallItem
 
 # add configuartion variable
 
-api.register.add_variable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARTATOR}','')
+api.register.add_variable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARATOR}','')
 
 api.register.add_variable('INSTALL_ROOT','#_install/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}','')
 

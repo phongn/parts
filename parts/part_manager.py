@@ -1051,9 +1051,9 @@ class part_manager(object):
                             part_lst.remove(pobj)
                 elif k == 'mode':
                     mv=v.split(',')
-                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj._mode)
+                    api.output.verbose_msgf("reduce_target_mapping","  Matching Attibute: {0} Values:{1} {2}",k,v,pobj.Mode)
                     for v in mv:
-                        if v not in pobj._mode:
+                        if v not in pobj.Mode:
                             api.output.verbose_msgf("reduce_target_mapping","  Removing Part {0}",pobj.ID)
                             part_lst.remove(pobj)
                             break

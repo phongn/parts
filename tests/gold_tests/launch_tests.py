@@ -1,6 +1,9 @@
-import subprocess,sys
+import subprocess
+import sys
 
 if sys.platform == 'win32':
-    sys.exit(subprocess.call("launch_tests.bat"))
+    launcher = "launch_tests.bat"
 else:
-    sys.exit(subprocess.call("./launch_tests.sh"))
+    launcher = "./launch_tests.sh"
+
+sys.exit(subprocess.call([launcher] + sys.argv[1:], shell=False))

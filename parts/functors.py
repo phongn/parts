@@ -49,9 +49,9 @@ def gen_rpath_link(sec):
             sec.Exports['rlink']=rplst
 
         elif d.PartRef.hasMatch ==False:
-            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.PartName,d.PartRef.NoMatchStr()),show_stack=False)
+            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.Name,d.PartRef.NoMatchStr()),show_stack=False)
         elif d.PartRef.hasAmbiguousMatch:
-            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.PartName,d.PartRef.NoMatchStr()),show_stack=False)
+            api.output.warning_msg("Failed to map dependency for {0} when mapping -rpath-link data because:\n {1}".format(sec.Part.Name,d.PartRef.NoMatchStr()),show_stack=False)
     return rplst
 
 

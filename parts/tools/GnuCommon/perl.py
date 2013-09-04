@@ -7,7 +7,7 @@ perl=ToolSetting('PERL')
 
 perl.Register(
     hosts=[SystemPlatform('win32','any')],
-    targets=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('any','any')],
     info=[
     GnuInfo(
         install_scanner=[
@@ -25,7 +25,7 @@ perl.Register(
 
 perl.Register(
     hosts=[SystemPlatform('win32','x86_64')],
-    targets=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('any','any')],
     info=[
     GnuInfo(
         install_scanner=[

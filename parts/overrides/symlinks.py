@@ -17,7 +17,6 @@ from SCons.Debug import logInstanceCreation
 
 from .. import metatag
 from .. import common
-from .. import pickle_helpers
 from .. import api
 
 ## Begin OS level support for symbolic links
@@ -382,33 +381,6 @@ def ensure_node_is_symlink(node, template = None):
             if template is not None:
                 node.linkto = template.linkto
     return node
-
-def _wrap_node_to_str(node_to_str):
-    def call(node_to_str, node):
-        if isinstance(node, SCons.Node.FS.FileSymbolicLink):
-            api.output.verbose_msg('symlinks',
-                    "Dumping SymLink node {node} pointing to {linkto}".format(node=node, linkto=node.linkto))
-            return '{ID}\0{linkto}'.format(ID=node.ID, linkto=node.linkto or '').replace(os.sep, '/')
-        return node_to_str(node)
-
-    return lambda node: call(node_to_str, node)
-
-pickle_helpers.node_to_str = _wrap_node_to_str(pickle_helpers.node_to_str)
-
-def _wrap_unpickle_node(unpickle_node):
-    def call(unpickle_node, node):
-        nameparts = node.split('\0')
-        result = unpickle_node(nameparts[0])
-        if isinstance(result, SCons.Node.FS.FileSymbolicLink):
-            if len(nameparts) > 1 and nameparts[1]:
-                result.linkto = nameparts[1]
-            api.output.verbose_msg('symlinks',
-                    'Unpickled {node} symlink pointing to {linkto}'.format(
-                        node=result, linkto=result.linkto))
-        return result
-    return lambda node: call(unpickle_node, node)
-
-pickle_helpers.unpickle_node = _wrap_unpickle_node(pickle_helpers.unpickle_node)
 
 def _wrap_MetaTag(MetaTag):
     def call(MetaTag, nodes, ns, **kw):

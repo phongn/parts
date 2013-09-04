@@ -318,8 +318,14 @@
     <Compile Include="pnode\dependent_info.py" />
     <Compile Include="tools\ar.py" />
     <Compile Include="tools\as.py" />
+    <Compile Include="tools\clang.py" />
+    <Compile Include="tools\gas.py" />
     <Compile Include="tools\GnuCommon\android.py" />
     <Compile Include="tools\GnuCommon\binutils.py" />
+    <Compile Include="tools\GnuCommon\clang.py" />
+    <Compile Include="tools\jar.py" />
+    <Compile Include="tools\javac.py" />
+    <Compile Include="tools\javah.py" />
     <Compile Include="tools\ld.py" />
     <Compile Include="tools\lipo.py" />
     <Compile Include="tools\MSCommon\MsiFinder.py" />

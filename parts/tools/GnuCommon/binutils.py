@@ -74,6 +74,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -99,6 +100,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/x86_64-k1om-linux-objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/x86_64-k1om-linux-ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='x86_64-k1om-linux-ld',
@@ -126,6 +128,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -153,6 +156,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -180,6 +184,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -208,6 +213,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -236,6 +242,7 @@ binutils.Register(
         script=None,
         subst_vars={
             'OBJCOPY':'${BINUTILS.INSTALL_ROOT}/objcopy',
+            'AR':'${BINUTILS.INSTALL_ROOT}/ar',
         },
         shell_vars={'BINUTILS_INSTALL_ROOT':'${BINUTILS.INSTALL_ROOT}'},
         test_file='ld',
@@ -259,6 +266,9 @@ binutils.Register(
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
                 'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-android-linux-objcopy.exe',
+                'AR':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-android-linux-ar.exe',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-android-linux-ranlib.exe',
+                'AS':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-android-linux-as.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -266,7 +276,8 @@ binutils.Register(
                 'RPATHPREFIX':'-Wl,-rpath=',
             },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin'},
-            test_file='i686-android-linux-ld.exe'
+            test_file='i686-android-linux-ld.exe',
+
             )
     ]
 )
@@ -284,6 +295,9 @@ binutils.Register(
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"',
                 'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-linux-android-objcopy.exe',
+                'AR':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-linux-android-ar.exe',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-linux-android-ranlib.exe',
+                'AS':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin\i686-linux-android-as.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -291,7 +305,9 @@ binutils.Register(
                 'RPATHPREFIX':'-Wl,-rpath=',
             },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86-${BINUTILS.VERSION}\prebuilt\windows\bin'},
-            test_file='i686-linux-android-ld.exe'
+            test_file='i686-linux-android-ld.exe',
+
+
             )
     ]
 )
@@ -310,6 +326,8 @@ binutils.Register(
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"',
                 'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin\arm-linux-androideabi-objcopy.exe',
+                'AR':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin\arm-linux-androideabi-ar.exe',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin\arm-linux-androideabi-ranlib.exe',
                 'CHMODVALUE':None,
                 'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
                 'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
@@ -317,7 +335,9 @@ binutils.Register(
                 'RPATHPREFIX':'-Wl,-rpath=',
             },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${BINUTILS.VERSION}\prebuilt\windows\bin'},
-            test_file='arm-linux-androideabi-ld.exe'
+            test_file='arm-linux-androideabi-ld.exe',
+
+
             )
     ]
 )
@@ -335,10 +355,13 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
-                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-objcopy'
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-objcopy',
+                'AR':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-ar',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-ranlib',
             },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
-            test_file='i686-android-linux-ld'
+            test_file='i686-android-linux-ld',
+
             )
     ]
 )
@@ -356,7 +379,9 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
-                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-android-linux-objcopy'
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-linux-android-objcopy',
+                'AR':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-linux-android-ar',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/i686-linux-android-ranlib',
             },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='i686-linux-android-ld'
@@ -377,11 +402,60 @@ binutils.Register(
             script=None,
             subst_vars={
                 'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"',
-                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/arm-linux-androideabi-objcopy'
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/arm-linux-androideabi-objcopy',
+                'AR':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/arm-linux-androideabi-ar',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin/arm-linux-androideabi-ranlib',
                 },
             shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86/bin'},
             test_file='arm-linux-androideabi-ld'
             )
     ]
 )
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-', 'ld'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/i686-linux-android-objcopy',
+                'AR':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/i686-linux-android-ar',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/i686-linux-android-ranlib',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/x86-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin'},
+            test_file='i686-linux-android-ld'
+            )
+    ]
+)
+
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-', 'ld'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/arm-linux-androideabi-objcopy',
+                'AR':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ar',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ranlib',
+                },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${BINUTILS.VERSION}/prebuilt/linux-x86_64/bin'},
+            test_file='arm-linux-androideabi-ld'
+            )
+    ]
+)
+
+#vim: set et ts=4 sw=4 ai :
 

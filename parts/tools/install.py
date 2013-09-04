@@ -50,8 +50,6 @@ from SCons.Util import make_path_relative
 #
 # We keep track of *all* installed files.
 import SCons.Tool.install
-from parts.glb import _INSTALLED_PACKAGING_GROUPS
-from parts.glb import _INSTALLED_NO_PACKAGING_GROUPS
 from parts.common import make_list
 import parts.overrides.symlinks as symlinks
 from parts.part_logger import part_nil_logger
@@ -101,7 +99,7 @@ def installFunc(target, source, env):
            "Installing source %s into target %s: target and source lists must have same length."%(map(str, source), map(str, target))
 
     # get the logger for a given Part if it exists
-    output=env.get("PART_LOG_MAPPER",part_nil_logger())
+    output=env._get_part_log_mapper()
     # tell it we are starting a task
     id=output.TaskStart(stringFunc(target,source,env)+"\n")
 

@@ -7,6 +7,12 @@ def generate(env):
     parts.tools.GnuCommon.binutils.setup(env)
 
     SCons.Tool.ar.generate(env)
+    env['AR'] = env.get('BINUTILS', {}).get('AR', env['AR'])
+    try:
+        env['RANLIB'] = env.get('BINUTILS', {}).get('RANLIB', env['RANLIB'])
+    except KeyError:
+        pass
+
 
 def exists(env):
     parts.tools.GnuCommon.binutils.setup(env)

@@ -103,7 +103,6 @@ class ToolInfo(object):
         try:
             return self.shell_cache[str(version)+str(install_root)+str(script)+env.subst("$CONFIG")]
         except KeyError:
-            
             if SCons.Util.is_String(script) and script not in ['True','False','true','false','1','0']:
                 # process the script directly
                 api.output.verbose_msg("toolinfo","Getting environment via custom script")
@@ -163,7 +162,7 @@ class ToolInfo(object):
         for v,p in found.iteritems():
             tmp=self.exists(env,namespace,v,p,use_script)
             api.output.verbose_msgf("toolinfo","Exists test returned {0}",tmp)
-            if tmp is not None:
+            if tmp:
                 ret[v]=tmp
                 #ret.update(self.make_ver_shell_env_set(v,tmp))
         return ret

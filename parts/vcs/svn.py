@@ -208,7 +208,12 @@ class svn(base):
         '''
         if svn.svnpath is None:
             svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
-                
+        try:
+            # useful for linux boxes
+            self._env['ENV']['DBUS_SESSION_BUS_ADDRESS']=os.environ['DBUS_SESSION_BUS_ADDRESS']
+        except KeyError:
+            pass
+                  
         self._env['VCS']=common.namespace(
                 TYPE='svn',
                 CHECKOUT_DIR='$VCS_SVN_DIR',

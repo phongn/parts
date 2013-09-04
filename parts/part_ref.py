@@ -147,7 +147,7 @@ class part_ref(object):
                 elif k == 'mode':
                     mv=v.split(',')
                     for i in mv:
-                        if i not in pobj._mode:
+                        if i not in pobj.Mode:
                             break
                         else:
                             stmp="   mode has {0}\n".format(v)

@@ -142,10 +142,12 @@ class posix_scanner(object):
                                 if item1.startswith(self.arch):
                                     version=item1.split("-")[-1]
                                     archpath=item1
-                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/linux-x86/bin',self.tool_prefix+self.tool)
-                                    if os.path.isfile(toolpath):
-                                        # we have a hit. store important data
-                                        ret[version]=ndk_path
+                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/linux-{0}/bin',self.tool_prefix+self.tool)
+                                    for arch in ('x86', 'x86_64'):
+                                        if os.path.isfile(toolpath.format(arch)):
+                                            # we have a hit. store important data
+                                            ret[version]=ndk_path
+                                            break
             self.cache=ret
         return self.cache
 

@@ -6,9 +6,8 @@ import atexit
 import pprint
 import hashlib
 import copy
-from cStringIO import StringIO
 
-import SCons.Script    
+import SCons.Script
 import SCons.Node.FS
 
 import glb
@@ -27,7 +26,7 @@ import pnode.pnode_manager
 from SCons.Script.Main import memory_stats
 from SCons.Debug import logInstanceCreation
 
-    
+
 ################################################################################
 
 import time
@@ -39,7 +38,7 @@ def get_Sconstruct_files():
     '''
     #Get the name of the SConstruct file... as the user mighthave used -F
     fnames=SCons.Script.GetOption('file')
-    
+
     if not fnames:
         # check current directory to see if what "default" file exits
         if os.path.exists("SConstruct"):
@@ -48,15 +47,15 @@ def get_Sconstruct_files():
             fnames=["Sconstruct"]
         elif os.path.exists("sconstruct"):
             fnames=["sconstruct"]
-    
+
     return fnames
-    
+
 def is_Sconstruct_up_to_date():
     '''
     This functions will tell us if the Sconstruct file looks as if it has changed
     by checking the MD5
     '''
-    
+
     fnames=get_Sconstruct_files()
     data=datacache.GetCache("global_data")
     ret=True
@@ -80,14 +79,14 @@ def is_Sconstruct_up_to_date():
         else:
             api.output.verbose_msg("update_check",'File: %s does not exist'%(i))
             ret=False
-    
+
     return ret
 
 # would it be nice if ther was a addon base in Scons... hmmmmm
 class parts_addon(object):
     def __init__(self):
         if __debug__: logInstanceCreation(self)
-        
+
         # some known data items
         self.__part_manager=None
         self.__def_env=None
@@ -96,24 +95,24 @@ class parts_addon(object):
         self.__build_mode=None
         self.__had_error=None
         self.__is_sconstruct_loaded=False
-        
+
         self._exit_up_to_date=False
         self._loaded_data=False
-        
+
         #events
         self.CacheDataEvent=events.Event()
         self.CacheDataEvent+=self._store_global_data
         self.SConstructLoadedEvent=events.Event()
         self.PostProcessEvent=events.Event()
-                
+
         # start up the reporter which controls the streams and all output
         use_color=SCons.Script.GetOption('use_color')
         # need to trace this before we set the colors else the tests break
         api.output.trace_msg("use_color_option","use_color =",use_color)
-        redirected=os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False        
+        redirected=os.isatty(sys.__stdout__.fileno()) ==False or os.isatty(sys.__stderr__.fileno()) ==False
         if use_color is not None and use_color.has_key('defaults') and redirected:
                 use_color=False
-                
+
         log_obj=logger.QueueLogger
         log_obj=log_obj('','')
         try:
@@ -132,12 +131,12 @@ class parts_addon(object):
             trace=trace,
             use_color=use_color
             )
-            
-        
-        
+
+
+
     def Start(self):
         api.output.verbose_msg("init","Starting up Parts")
-        
+
         # set up some globals
         glb.pnodes=pnode.pnode_manager.manager()
 
@@ -154,7 +153,7 @@ class parts_addon(object):
         self.def_env.Default('')
         self.def_env.EnsureSConsVersion(2,1,0)
         #self._setup_defenv()
-                
+
         #try to setup all logger
         self._setup_logger()
         # generate help text
@@ -164,39 +163,39 @@ class parts_addon(object):
         self._setup_sdk()
         #setup the progress meter
         self._setup_progress_meter()
-        
+
         # setup managers
         self.__part_manager=part_manager.part_manager()
-        
+
         api.output.verbose_msg("init","Registering exit handler")
         atexit.register(self.ShutDown)
-        
+
         # this is a hack to get around an issue with stuff like the extract builder that would create
-        # a a.sconsign.dblite file in the wrong directorty as a side effect of the variant direct change of 
+        # a a.sconsign.dblite file in the wrong directorty as a side effect of the variant direct change of
         # the CWD bug in SCons
         self.def_env.File(get_Sconstruct_files()[0]).get_csig()
-        
-        
-                
+
+
+
     def ShutDown(self):
-        
+
         # if we exit because we are up-to-date... just exit
         if self._exit_up_to_date or self.__build_mode=='help' or self.__build_mode=='question':
             return
-        
-        # write out data cache files..given nothing went wrong and 
+
+        # write out data cache files..given nothing went wrong and
         # we had something to build
         # check to see that we even have targets to process, and that there are no error conditions
         if SCons.Script.BUILD_TARGETS:# and SCons.Script.Main.exit_status == 0 and self.HadError==False and self.__use_cache == True:
             # current changed logic to say teh build is good if we loaded all the information we had to load.
             # given this we don't realy care if there was a bad "build" as the state we care about should be OK
-            self.store_db_data(self._loaded_data,self.__build_mode) 
+            self.store_db_data(self._loaded_data,self.__build_mode)
         #else:
-        #    self.store_db_data(False) 
-        datacache.SaveCache()        
+        #    self.store_db_data(False)
+        datacache.SaveCache()
         #get what went wrong if anything
         bf_lst=SCons.Script.GetBuildFailures()
-        
+
         #report what went wrong if anything
         if bf_lst:
             bf_lst_len = len(bf_lst)
@@ -214,11 +213,11 @@ class parts_addon(object):
                                                                               bf.node)
                 else:
                     msg+='Node: "{0}"\n'.format(bf.node)
-            
+
             api.output.print_msg("Summary: {0} build failure detected during build\n{1}".format(bf_lst_len,msg))
-            
+
         glb.rpter.ShutDown()
-        
+
     def UpToDateExit(self):
         # do a exit because everything is up-to-date
         self._exit_up_to_date=True
@@ -227,12 +226,12 @@ class parts_addon(object):
         # state can get messed up here, so the hard case maybe better
         exit(0) # hard exit
         #self.def_env.Exit(0) # soft exit()
-        
+
     def Process(self,fs, options, targets, target_top):
         '''
         This does the main processing of the parts before Scons takes over again
-        The main goal of this function to do an post Sconstruct reading processing 
-        that we might want to do. such as processing the part files, 
+        The main goal of this function to do an post Sconstruct reading processing
+        that we might want to do. such as processing the part files,
         delayed mapping, etc
         '''
         memory_stats.append('before Parts processed')
@@ -248,27 +247,27 @@ class parts_addon(object):
                 targets=SCons.Script.BUILD_TARGETS
                 # check to see that we even have targets to process
                 if targets == []:
-                    return 
-                
+                    return
+
                 #set stack info for reporting issues
                 #errors.SetPartStackFrameInfo()
-                
+
                 # If the logger is not being used we want to remove the
                 # queue logger to save memory
                 if glb.rpter.logger is logger.QueueLogger:
                     # this should reset QueueLogger
                     glb.rpter.logger=logger.nil_logger
-                            
+
                 #process the Parts if any exist
                 self.__part_manager.ProcessParts()
-                        
+
                 # process Queue
-                self.parts_process_queue()   
+                self.parts_process_queue()
                 self.PostProcessEvent(self.__build_mode)
 
                 #datacache.SaveCache()
                 self._loaded_data=True
-                
+
                 #clear the datacache for certain cases that we don't need to touch any more
                 #to save memory
                 datacache.ClearCache(key="vcs")
@@ -286,12 +285,12 @@ class parts_addon(object):
                 raise
         finally:
             memory_stats.append('after Parts processed')
-        
-    
+
+
     ##
-    
+
     def parts_process_queue(self):
-       
+
         memory_stats.append('Before post logic queue processing')
         try:
             # process any data we have to post process
@@ -316,10 +315,10 @@ class parts_addon(object):
             memory_stats.append('After post logic queue processed')
         #for p in self.__part_manager.parts.values():
             #p.Env.subst(p.Env['ENV']['INCLUDE'])
-            
-       
+
+
     def store_db_data(self,goodexit,build_mode):
-        
+
         # store each part we know about information
         # call Part manager to do this
         api.output.print_msg("Storing Data Cache")
@@ -330,14 +329,14 @@ class parts_addon(object):
         datacache.SaveCache()
         api.output.verbose_msg(['cache_save'],"Save time=",time.time()-st)
         api.output.print_msg("Done -- Storing Data Cache")
-        
+
     def _store_global_data(self,goodexit,build_mode):
         if build_mode=='question':
-            return       
+            return
         if goodexit:
-            
+
             global_data={}
-        
+
             # get SConstruct file data ( maybe more than one )
             # we store a dictionary of
             #{<Sconstruct path w/name>:
@@ -346,7 +345,7 @@ class parts_addon(object):
             #           timestamp:<value>
             #       }
             #}
-            
+
             ## Store ninfo about the SConstruct file
             tmp={}
             for i in get_Sconstruct_files():
@@ -357,19 +356,19 @@ class parts_addon(object):
                         }
             #add to global data
             global_data['sconstruct_files']=tmp
-                       
+
             #store data in Cache
-            datacache.StoreData('global_data',global_data)       
-        
+            datacache.StoreData('global_data',global_data)
+
     #setup APIs
     def _setup_variables(self):
-        ''' 
+        '''
         Set all the varible that we have or need globally
         '''
-        
+
         # set up the build mode
         args = sys.argv[1:]
-        
+
         api.output.verbose_msg("startup","Setting building mode")
         if SCons.Script.GetOption('clean'):
             self.__build_mode='clean'
@@ -379,22 +378,22 @@ class parts_addon(object):
             self.__build_mode='question'
         else:
             self.__build_mode='build'
-            
+
         self.__use_cache=SCons.Script.GetOption("parts_cache")
 
-        
-            
+
+
     def _setup_defenv(self):
-                
+
         pass
 
-    
+
     def _setup_logger(self):
-        
+
         api.output.verbose_msg("startup","Processing logger options")
         directory=self.def_env.Dir(self.def_env['LOG_ROOT_DIR'])
         log_obj=SCons.Script.GetOption('logger')
-        
+
         #compatibility check
         if type(glb.rpter.logger) is logger.QueueLogger:
             tmp=SCons.Script.ARGUMENTS.get('LOGGER',None)
@@ -408,7 +407,7 @@ class parts_addon(object):
                     mod=load_module.load_module(
                         load_module.get_site_directories('loggers'),
                         tmp,
-                        'logger')  
+                        'logger')
                     log_obj=mod.__dict__.get(tmp,logger.QueueLogger)
         # just in case of some not running in a normal build run
         if not log_obj:
@@ -419,30 +418,30 @@ class parts_addon(object):
             #Setup new log object and copy over stored messages
             log_obj=log_obj(directory.abspath,self.def_env['LOG_FILE_NAME'])
             glb.rpter.reset_logger(log_obj)
-        
+
     def _setup_arguments(self):
         '''
         Setup the main option with the varible that can be used to control it
         with SetOptionDefault or the config file
         '''
-        
+
         overides={}
         tmp=SCons.Script.GetOption('target_platform')
         if tmp is not None:
             api.output.verbose_msg("startup","Setting target_platform:",tmp,'type:',type(tmp))
             overides['TARGET_PLATFORM']=tmp
-        
-        
+
+
         tmp=SCons.Script.GetOption('build_config')
         if tmp is not None:
             api.output.verbose_msg("startup","Setting build_config:",tmp,'type:',type(tmp))
             overides['CONFIG']=tmp
-        
+
         tmp=SCons.Script.GetOption('tool_chain')
         if tmp is not None:
             api.output.verbose_msg("startup","Setting tool_chain:",tmp,'type:',type(tmp))
             overides['toolchain']=tmp
-            
+
         tmp=SCons.Script.GetOption('mode')
         if tmp is not None:
             api.output.verbose_msg("startup","Setting mode:",tmp,'type:',type(tmp))
@@ -454,14 +453,14 @@ class parts_addon(object):
             overides['CCOPY_LOGIC']=tmp
 
         SCons.Script.ARGUMENTS.update(overides)
-        
-        # this is basically just tests code... 
+
+        # this is basically just tests code...
         tmp=SCons.Script.GetOption('target_platform')
         api.output.trace_msg("target_platform_option","target_platform =",tmp)
         if tmp:
             api.output.trace_msg("target_platform_option_arch","target_arch =",tmp.ARCH)
             api.output.trace_msg("target_platform_option_os","target_os =",tmp.OS)
-        
+
         api.output.trace_msg("build_config_option","build_config =",SCons.Script.GetOption('build_config'))
         api.output.trace_msg("tool_chain_option","tool_chain =",SCons.Script.GetOption('tool_chain'))
         api.output.trace_msg("mode_option","mode =",SCons.Script.GetOption('mode'))
@@ -474,10 +473,10 @@ class parts_addon(object):
         #api.output.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
         api.output.trace_msg("vcs_jobs_option","vcs_jobs =",SCons.Script.GetOption('vcs_jobs'))
         api.output.trace_msg("update_option","update =",SCons.Script.GetOption('update'))
-        
+
     def _setup_sdk(self):
         return
-        
+
     def _setup_progress_meter(self):
         api.output.verbose_msg("startup","Setting up show-progress feature")
         if SCons.Script.GetOption('show_progress'):
@@ -487,11 +486,11 @@ class parts_addon(object):
             #        self._node=None
             #    def __call__(self, node, *args, **kw):
             #        if self._time:
-            #            tt=time.time() - self._time 
+            #            tt=time.time() - self._time
             #            if time.time() - self._time > 10:
-            #                
+            #
             #                glb.rpter.console.Warning.write( " ****** {0} is took {1} sec to process\n".format(self._node.ID,tt))
-            #        
+            #
             #        glb.rpter.console.Trace.write("Processing {0}\n".format(node.ID))
             #        self._time=time.time()
             #        self._node=node
@@ -500,7 +499,7 @@ class parts_addon(object):
 
     def add_preprocess_logic_queue(self,funcobj):
         self.__post_process_queue.append(funcobj)
-                               
+
 
 
     def _setup_help_info(self):
@@ -533,22 +532,22 @@ Use -H or --help-options for a list of scons options
                 if not self.__variant_source_mapping.has_key(nodestr):
                     self.__variant_source_mapping[nodestr]=None
         return self.__variant_source_mapping[nodestr]
-                
-                
+
+
 
     def generate_cache_key(self):
-        
+
         try:
             tmp=self.__cache_key=SCons.Script.ARGUMENTS['USE_CACHE_KEY']
             return tmp
         except KeyError:
             pass
-        
-        md5=hashlib.md5()        
-                
+
+        md5=hashlib.md5()
+
         # get overides Variables
         vars={}
-        #vars=copy.deepcopy(glb.defaultoverides)        
+        #vars=copy.deepcopy(glb.defaultoverides)
         vars.update(SCons.Script.ARGUMENTS)
         # stuff that is getting mapped in more than one way
         # that needs to be white listed from being part of the cache key
@@ -567,7 +566,7 @@ Use -H or --help-options for a list of scons options
             if k not in white_list:
                 tmp=common.get_content(v)
                 md5.update(k+tmp )
-                
+
         # set of --options
         # list of arguments we want to process as they might effect build state
         # these items we know effect the build ( should change to list of item we know don't effect the system)
@@ -587,12 +586,12 @@ Use -H or --help-options for a list of scons options
             if v!=getattr(SCons.Script.Main.OptionsParser.values,k):
                 tmp=common.get_content(v)
                 md5.update(k+tmp)
-                
-                #print k,v,getattr(SCons.Script.Main.OptionsParser.values,k)            
+
+                #print k,v,getattr(SCons.Script.Main.OptionsParser.values,k)
 
         # this stuff makes up the core key
         md5.update("%s,%s,%s"%(self.def_env.subst('$CONFIG'),self.def_env['HOST_PLATFORM'],self.def_env['TARGET_PLATFORM']))
-        # the thought is that the exact tool path are chached  
+        # the thought is that the exact tool path are chached
         # so changes to cli tools are seen as different
         for i in self.def_env['CONFIGURED_TOOLS']:
             tmp=self.def_env.get(i.upper())
@@ -602,9 +601,9 @@ Use -H or --help-options for a list of scons options
                 md5.update(i)
         # store the ENV value as this has value that can tell us of differences
         md5.update(common.get_content(self.def_env['ENV']))
-        
+
         # we make a different key based on the different "concepts" we building
-        # as each concept would ideally define a different section, and different sections 
+        # as each concept would ideally define a different section, and different sections
         # define different set of actions and nodes we need to know about
         targets=SCons.Script.BUILD_TARGETS
         tmp_lst=set()
@@ -618,48 +617,48 @@ Use -H or --help-options for a list of scons options
         # a different set gets a different key
         for pobj in self.__part_manager.parts.values():
             if pobj.isRoot: md5.update(pobj.ID)
-        
+
         self.__cache_key=md5.hexdigest()
-        
-   
+
+
     @property
     def _cache_key(self):
         if self.__cache_key is None:
             self.generate_cache_key()
         return self.__cache_key
-    
+
     @_cache_key.setter
     def _cache_key(self,val):
         self.__cache_key=val
-    
+
     @property
     def _build_mode(self):
         return self.__build_mode
-    
+
     @property
     def _part_manager(self,):
         return self.__part_manager
-    
+
     @property
     def HadError(self):
         if self.__had_error is None:
             SCons.Script.Main.exit_status=2
             return True
-            
+
         return self.__had_error
-    
+
     @HadError.setter
     def HadError(self,value):
         self.__had_error=value
-    
-    @property             
+
+    @property
     def isSconstructLoaded(self):
         return self.__is_sconstruct_loaded
-   
-    @property                
+
+    @property
     def def_env(self):
         return self.__def_env
-    
+
     @def_env.setter
     def def_env(self,value):
         cache_path=None
@@ -670,22 +669,22 @@ Use -H or --help-options for a list of scons options
         self.__def_env._CacheDir_path=cache_path
         #This is backward compatibility for Parts
         self.__def_env['PREPROCESS_LOGIC_QUEUE']=self.__post_process_queue
-        
-        self.def_env.Decider('MD5-timestamp')
-        
-                
 
-#api.register.add_variable('use_source_for','','Controls what Part and dependents to build from source when building off of SDKs')
-#api.register.add_bool_variable('use_sdk',False, 'Controls if SDKs dependents are used to build target instead of sources')
+        self.def_env.Decider('MD5-timestamp')
+
+
 
 api.register.add_bool_variable('use_env',False,'Controls if the shell enviroment will be used instead of values setup by SCons, and Parts')
 api.register.add_bool_variable('duplicate_build',False,'Controls if the src files are copied to the build area for building')
 api.register.add_list_variable('mode',['default'],'Values used to control different build mode for a given part')
 
-api.register.add_variable('ALIAS_SEPARTATOR','::','seperator used to seperate namespace concepts from general alias value')
+api.register.add_variable('ALIAS_SEPARATOR','::','seperator used to seperate namespace concepts from general alias value')
 
 api.register.add_variable('PROGRESS_STR',['scons: Evaluating |\r',
                                     'scons: Evaluating /\r',
                                     'scons: Evaluating -\r',
                                     'scons: Evaluating \\\r'],
                                     'What is used to show progress state')
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

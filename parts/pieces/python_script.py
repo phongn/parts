@@ -44,6 +44,6 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.PythonScript=PythonScript    
     
 api.register.add_builder('_PyScriptBuilder_',SCons.Script.Builder(
-        action = SCons.Script.Action(py_bld,py_bld_str),
+        action = SCons.Script.Action(py_bld,py_bld_str,varlist=['__PYTHONSCRIPT_FUNC_', '__PYTHONSCRIPT_ARGS_']),
         emitter=py_blde
         ))

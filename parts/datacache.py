@@ -1,7 +1,6 @@
 import glb
 import common
 import api.output
-import pickle_helpers
 import errors
 
 import cPickle
@@ -11,7 +10,7 @@ import fnmatch
 import SCons.Script
 
 __cache={}
-__dirty_cache=[]
+__dirty_cache=set()
 __db_key={}
 __bad_cache=False
 
@@ -25,27 +24,24 @@ def db_key(length):
         md5.update("DB Cache Version 1.2.3 length %s"%(length))
         __db_key[length]=md5.hexdigest()
     return __db_key[length]
-     
 
 
-def load_cache_data(datafile):
-    #print "loading data file:" , datafile
+
+def __load_cache_data(datafile):
     try:
         if os.path.exists(datafile):
             with open(datafile, 'rb') as inputfile:
-                p= cPickle.Unpickler(inputfile)
-                p.persistent_load =pickle_helpers.persistent_unpickle
-                (tmp,stored_data)=p.load()
+                tmp, stored_data = cPickle.load(inputfile)
             return (tmp,stored_data)
 
     except Exception,ec:
         api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile,print_once=True)
         global __bad_cache
         __bad_cache=True
-        
+
     return None
 
-def store_cache_data(datafile,data):
+def __store_cache_data(datafile,data):
     path,filename=os.path.split(datafile)
     if not os.path.exists(path):
         os.makedirs(path)
@@ -54,14 +50,11 @@ def store_cache_data(datafile,data):
             v=data.get('__version__',0)
         except AttributeError:
             v=0
-        p= cPickle.Pickler(outfile,2)
-        p.persistent_id=pickle_helpers.persistent_pickle
         try:
-            p.dump(((db_key(len(data)),v),data))
+            data_to_dump = ((db_key(len(data)),v),data)
         except TypeError:
-            p.dump(((db_key(1),v),data))
-    
-    
+            data_to_dump = ((db_key(1),v),data)
+        cPickle.dump(data_to_dump, outfile, 2)
 
 __use_parts_cache = None
 def GetCache(name,key=None):
@@ -91,7 +84,7 @@ def GetCache(name,key=None):
         return __cache[filename]
     except KeyError:
         # if not already loaded we load it
-        ret=load_cache_data(filename)
+        ret=__load_cache_data(filename)
         if ret is not None:
             try:
                 v=ret[1].get('__version__',0)
@@ -113,15 +106,13 @@ def StoreData(name,data,key=None):
     '''
     set the value of this cache and save the data
     '''
-    global __cache
+    global __cache, __dirty_cache
     if key is None: #get default key
         key=_get_default_key()
-        
+
     filename=os.path.join(".parts.cache",key,name+".cache")
     __cache[filename]=data
-    if filename not in __dirty_cache:
-        __dirty_cache.append(filename)
-    
+    __dirty_cache |= set((filename,))
 
 def SaveCache(name=None,key=None):
     '''
@@ -138,37 +129,37 @@ def SaveCache(name=None,key=None):
     # store everything for a given key
     if name is None and key:
         tmp=os.path.join(".parts.cache",key,"*.cache")
-        for k in __dirty_cache[:]:
+        for k in set(__dirty_cache):
             #see if the path matched
             if fnmatch.fnmatchcase(k, tmp):
-                store_cache_data(k,__cache[k])
+                __store_cache_data(k,__cache[k])
                 __dirty_cache.remove(k)
-                
+
     # store everything case
     elif name is None and key is None:
         for k in __dirty_cache:
-            store_cache_data(k,__cache[k])
-        __dirty_cache=[]
-    
+            __store_cache_data(k,__cache[k])
+        __dirty_cache=set()
+
     # store everything for a given name and default key
     elif name and key is None:
         key=_get_default_key()
         filename=os.path.join(".parts.cache",key,name+".cache")
         if filename in __dirty_cache:
             data=__cache[filename]
-            store_cache_data(filename,data)
+            __store_cache_data(filename,data)
             __dirty_cache.remove(filename)
-        
-    
+
+
     # store a give name for a given key
     else:
         filename=os.path.join(".parts.cache",key,name+".cache")
 
         if filename in __dirty_cache:
             data=__cache[filename]
-            store_cache_data(filename,data)
+            __store_cache_data(filename,data)
             __dirty_cache.remove(filename)
-        
+
 def ClearCache(name=None,key=None,save=False):
     '''
     Clear out the cache of data in memory
@@ -182,7 +173,7 @@ def ClearCache(name=None,key=None,save=False):
             pass
         except ValueError:
             pass
-    
+
     if save:
         SaveCache(name,key)
      # clear everything for a given key
@@ -192,27 +183,28 @@ def ClearCache(name=None,key=None,save=False):
             #see if the path matched
             if fnmatch.fnmatchcase(k, tmp):
                 clear_item(k)
-                
+
     # clear everything case
     elif name is None and key is None:
         del __cache
         __cache={}
         del __dirty_cache
-        __dirty_cache=[]
+        __dirty_cache=set()
     # clear everything for a given name and default key
     elif name and key is None:
         key=_get_default_key()
         filename=os.path.join(".parts.cache",key,name+".cache")
         clear_item(filename)
-    
+
     # clear a give name for a given key
     else:
         filename=os.path.join(".parts.cache",key,name+".cache")
         clear_item(filename)
 
-    
-        
+
+
 def _get_default_key():
     return glb.engine._cache_key
-    
-    
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

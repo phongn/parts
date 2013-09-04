@@ -166,11 +166,11 @@ class Changed(base.Base):
             else:
                 try:
                     # todo .. Check to make sure we can safely remove this code
-                    # this should not exist only in cases of "is_core_section" 
+                    # this should not exist only in cases of "is_core_section"
                     requirements=self._section_info[secID]['requirements']
                 except:
                     requirements=None
-            sec=stored_data=self._section_info[secID]['section']
+            sec=self._section_info[secID]['section']
             stored_data=sec.Stored
 
             if sec.AlwaysBuild:
@@ -233,7 +233,7 @@ class Changed(base.Base):
             # add section as known
             # Note we want to consider updating requirements via seeing if the group
             # maps to a requirement
-            for i in sections: 
+            for i in sections:
                 if i in self.targets: self.AddSection(i,iscore=True)
                 else: self.AddSection(i)
             self.ProcessSections(sections)
@@ -271,7 +271,8 @@ class Changed(base.Base):
 
     def SetParentToLoad(self,sec):
         # For each of the parent ID's we need to set to load the build section
-        pobj=glb.pnodes.GetPNode(sec.Stored.PartID)
+        stored = sec.Stored
+        pobj=glb.pnodes.GetPNode(stored.PartID)
         for prtID in pobj.Stored.ParentIDs:
             pnode=glb.pnodes.GetPNode(prtID)
             tmp_sec=glb.pnodes.GetPNode(pnode.Stored.SectionIDs['build'])
@@ -279,15 +280,23 @@ class Changed(base.Base):
             self.SetToLoad(tmp_sec,"{0} is parent of {1}".format(tmp_sec.ID,sec.ID))
 
     def DependentOutOfDate(self,sec):
-        if self.isSectionMarkedChanged(sec):
-            return True
+        seen = set()
+        def isDependentOutOfDate(self, sec):
+            changed = self.isSectionMarkedChanged(sec)
+            if sec.ID in seen:
+                return changed
 
-        for dep_info in sec.Stored.DependsOn:
-            dep_sec=glb.pnodes.GetPNode(dep_info.SectionID)
-            if self.DependentOutOfDate(dep_sec):
-                self.SetToLoad(sec,"{0} depends on another section that is out of date".format(sec.ID))
+            seen.add(sec.ID)
+            if changed:
                 return True
-        return False
+
+            for dep_info in sec.Stored.DependsOn:
+                dep_sec=glb.pnodes.GetPNode(dep_info.SectionID)
+                if isDependentOutOfDate(self, dep_sec):
+                    self.SetToLoad(sec,"{0} depends on another section that is out of date".format(sec.ID))
+                    return True
+            return False
+        return isDependentOutOfDate(self, sec)
 
     def SetDependsToCacheLoad(self,sec):
         for dep_info in sec.Stored.DependsOn:
@@ -354,19 +363,19 @@ class Changed(base.Base):
         '''
 
         ## this is hack to deal with a issue that needs a little more work
-        # the issue is that the logic allows for a unit test to depend on other sections 
-        # via the depends arg. The issue is that we may load a unit test, but will not be 
+        # the issue is that the logic allows for a unit test to depend on other sections
+        # via the depends arg. The issue is that we may load a unit test, but will not be
         # able to load a extra depends on a dependent unit test call. This is not needed to do the
         # build, but not loading it will cause data mapping  and stored state issues.
         # see if the utest target is being used..
         import SCons
-        from .. import target_type 
+        from .. import target_type
         targets=SCons.Script.BUILD_TARGETS
         for t in targets:
             tmp=target_type.target_type(t)
             sep_len=len("::")
             if tmp.Section == 'utest':
-                #if so we want to make see if we have a section utest that matches the build section 
+                #if so we want to make see if we have a section utest that matches the build section
                 # given this is a build section.
                 if sec.Name == 'build':
                     if glb.pnodes.isKnownPNodeStored("utest::{0}".format(sec.Stored.PartID)):
@@ -432,10 +441,14 @@ class Changed(base.Base):
 
     def SetToLoad(self,sec,reason):
         try:
-            self._section_info[sec.ID]['changed']
+            section_info = self._section_info[sec.ID]
+        except KeyError:
+            self._section_info = section_info = dict()
+        try:
+            section_info['changed']
         except KeyError:
             api.output.verbose_msg(['update_check'],'{0} is out of date because: "{1}"'.format(sec.ID,reason))
-            self._section_info[sec.ID]['changed']=reason
+            section_info['changed']=reason
             sec.ReadState=glb.load_file
             self._up_to_date=False
             self.sections_to_load.append(sec)
@@ -546,7 +559,7 @@ class Changed(base.Base):
                                 sec.Stored.Part.Stored.Config,
                                 tool,
                                 platform_info.HostSystem(),
-                                sec.Stored.Part.Stored.TargetPlatform)
+                                platform_info.SystemPlatform(sec.Stored.Part.Stored.TargetPlatform))
                 ## first check to see if these are the files we have cached
                 # check to see that we have the same amount of files
                 if len(cfg_files)!=len(file_list):
@@ -627,7 +640,7 @@ class Changed(base.Base):
     def UpdateRequirements(self,sec,requirements):
         #check to see the requirements are not set to load everything
         if self._section_info[sec.ID].get('is_core_section',False):
-            return False # nothing changed we need to have checked    
+            return False # nothing changed we need to have checked
         if requirements is None:
             requirements = requirement.Default()
         try:
