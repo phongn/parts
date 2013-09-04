@@ -5,6 +5,84 @@ from parts.tools.Common.Finders import RegFinder,EnvFinder,PathFinder,ScriptFind
 from parts.platform_info import SystemPlatform
 import os
 
+intel_14_posix = r'composer_xe_(20\d\d)_sp1\.(\d+.\d+)'
+
+# 32-bit 14.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any'),SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
+    info=[
+        IntelcInfo(
+            version='14.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                intel_14_posix,
+                'ia32',
+                'ICPP_COMPILER14'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'), # huh?
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/ia32/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/ia32/'                      
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
+    
+# 64-bit 14.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
+    info=[
+        IntelcInfo(
+            version='14.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                intel_14_posix,
+                'intel64',
+                'ICPP_COMPILER14'),
+            script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'), # huh?
+            subst_vars={
+            
+            },
+            shell_vars={
+                        'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/intel64'                     
+                        },
+            test_file='icc'
+            )
+        ]
+    )
+
+# k1om 14.0
+Intelc.Register(
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('posix','k1om')],
+    info=[
+        IntelcInfo(
+            version='14.*',
+            install_scanner=filescanner.file_scanner12(
+                '/opt/intel',
+                intel_14_posix,
+                'intel64_mic',
+                'ICPP_COMPILER14'),
+            script=None,
+            subst_vars={
+            },
+            shell_vars={'PATH':'${INTELC.INSTALL_ROOT}/bin/intel64_mic/',
+                        'INCLUDE':'${INTELC.INSTALL_ROOT}/compiler/include/mic/',
+                        'LIB':'${INTELC.INSTALL_ROOT}/compiler/lib/mic/'
+                        },
+            test_file='icc'
+            )
+        ]
+    )   
+
 
 # 32-bit 13.0
 Intelc.Register(
