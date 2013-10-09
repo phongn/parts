@@ -69,7 +69,7 @@ sys.exit(proc.returncode)
 '''
     f.write(command)
     f = open(str(target[1]), 'wb')
-    f.write("@pushd %~dp0\r\n@python "+target[0].name+" %*\r\n@popd")
+    f.write("@pushd %~dp0\r\n@python "+target[0].name+" %*\r\nset ERROR_LEVEL=%ERRORLEVEL%\r\n@popd\r\nexit %ERROR_LEVEL%")
     f.close()
     st = os.stat(str(target[0]))
     os.chmod(str(target[0]), stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IEXEC)
@@ -92,7 +92,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
     skip_run_test=False
     if ("run_utest::" in env["SUPPRESS_SECTION"] or
         "run_utest" in env["SUPPRESS_SECTION"]) and \
-        SCons.Script.GetOption('section_suppression'):
+        SCons.Script.GetOption('section_suppression') or (env['HOST_OS'] <> env['TARGET_OS']):
         api.output.verbose_msgf("warning",'Skipping the processing of Part section "run_utest" of section "utest" in Part {0}',env.PartName())
         skip_run_test=True
 

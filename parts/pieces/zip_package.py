@@ -1,26 +1,16 @@
+import parts.errors
 import parts.common as common
 import parts.glb as glb
 
 from SCons.Debug import logInstanceCreation
 
-class map_zip_builder(object):
-    def __init__(self,env,target,sources,**kw):
-        if __debug__: logInstanceCreation(self)
-        self.env=env
-        self.target=target
-        self.sources=sources
-        self.kw=kw
-
-    def __call__(self):
-        new_sources=[]
-        # turn the Part value in to a set of File objects
-        for s in self.sources:
-            common.extend_unique(new_sources,self.env.GetPackageGroupFiles(s))
+def map_zip_builder(env, target, sources, stackframe, **kw):
+    def zip_builder():
+        new_sources, _ = env.Override(kw).GetFilesFromPackageGroups(target, sources, stackframe)
 
         # really call the builder so everything is setup correctly
-        ret=self.env.ZipFile(self.target,new_sources,src_dir="$INSTALL_ROOT")
-        # really call the builder so everything is setup correctly
-        return ret
+        return env.ZipFile(target, new_sources, src_dir="$INSTALL_ROOT", **kw)
+    return zip_builder
 
 def ZipPackage_wrapper(env,target,sources,**kw):
     # currently we assume all sources are Group values
@@ -39,7 +29,8 @@ def ZipPackage_wrapper(env,target,sources,**kw):
 
     sources=[env.subst(s) for s in sources]
 
-    glb.engine.add_preprocess_logic_queue(map_zip_builder(env,target[0],sources,**kw))
+    glb.engine.add_preprocess_logic_queue(map_zip_builder(env, target[0], sources,
+                parts.errors.GetPartStackFrameInfo(), **kw))
     return target
 
 

@@ -39,7 +39,7 @@ java.Register(
     targets = [SystemPlatform('any', 'any')],
     info = [
         ToolInfo(
-            version='1.4.0.0',
+            version='1.4.0',
             install_scanner = [
                 PathFinder(['/usr/bin'])
             ],
@@ -51,7 +51,7 @@ java.Register(
         ToolInfo(
             version='1.6.0',
             install_scanner = [
-                PathFinder(['/usr/java/jdk1.6.0*/bin/', '/opt/jdk1.6.0*/bin/'])
+                PathFinder(['/usr/java/jdk1.6.0*/bin', '/opt/jdk1.6.0*/bin'])
             ],
             script=None,
             subst_vars={},
@@ -61,7 +61,7 @@ java.Register(
         ToolInfo(
             version='1.7.0',
             install_scanner = [
-                PathFinder(['/usr/java/jdk1.7.0*/bin/', '/opt/jdk1.7.0*/bin/'])
+                PathFinder(['/usr/java/jdk1.7.0*/bin', '/opt/jdk1.7.0*/bin'])
             ],
             script=None,
             subst_vars={},

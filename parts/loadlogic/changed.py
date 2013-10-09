@@ -16,6 +16,13 @@ import time
 
 from SCons.Debug import logInstanceCreation
 
+class SectionInfo(dict):
+    def __init__(self, onabsent):
+        self.onabsent = onabsent
+    def __missing__(self, key):
+        self.onabsent(key)
+        return self.get(key)
+
 class Changed(base.Base):
     '''
     This loader will load any changed or new Part file so we can get updated information saved in our cache on what
@@ -42,7 +49,8 @@ class Changed(base.Base):
         # and some state about why we are loading or stuff we may need to check for
         # in later passes
         #will be in the form of {sec.ID:{datatype:info}}
-        self._section_info={}
+        # TODO : Make section a simple dictionary when the issue with KeyError excption is resolved.
+        self._section_info=SectionInfo(lambda key: self.AddSection(glb.pnodes.GetPNode(key)))
         # cache of known configuration
         self._knowncfgs={}
         # cache of known builders
@@ -659,20 +667,19 @@ class Changed(base.Base):
 
     def AddSection(self,sec,iscore=False):
 
-        try:
-            self._section_info[sec.ID]
+        if self._section_info.has_key(sec.ID):
             return False
-        except KeyError:
-            # Not known at the moment
-            # set up basic structure
-            self._section_info[sec.ID]={}
-            self._section_info[sec.ID]['section']=sec
-            self._section_info[sec.ID]['depend_esig_changed']=False
-            self._section_info[sec.ID]['is_core_section']=iscore
-            # add to the sections we know about and will try to load
-            # based on finail read state
-            self.known_sections.append(sec)
-            return True
+        # Not known at the moment
+        # set up basic structure
+        self._section_info[sec.ID] = dict(
+            section = sec,
+            depend_esig_changed = False,
+            is_core_section = iscore
+        )
+        # add to the sections we know about and will try to load
+        # based on finail read state
+        self.known_sections.append(sec)
+        return True
 
 
     def process_depends(self,pobj,depends):

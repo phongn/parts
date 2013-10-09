@@ -186,7 +186,7 @@ class part_manager(object):
                         if node:
                             self.add_stored_node_info(node,[])
                         else:
-                            self.__hasStored=False
+                            return True
                         if not self.__hasStored:
                             api.output.verbose_msgf(['target_mapping'],'Target: "{0}" missing stored data, Loading everything',tstr)
                             return True
@@ -196,8 +196,7 @@ class part_manager(object):
                         for subid in _pobj.Stored.SubPartIDs:
                             subpobj=glb.pnodes.GetPNode(subid)
                             if tobj.Section != tobj.Concept:
-                                if _map_alias(subpobj,tobj):
-                                    return
+                                _map_alias(subpobj,tobj)
                             secid=subpobj.Stored.SectionIDs.get(tobj.Section)
                             if secid:
                                 tmp=glb.pnodes.GetPNode(secid)
@@ -215,8 +214,7 @@ class part_manager(object):
                         if tobj.isRecursive:
                             # try to load this section
                             if tobj.Section != tobj.Concept:
-                                if _map_alias(pobj,tobj):
-                                    return
+                                _map_alias(pobj,tobj)
                             secid=pobj.Stored.SectionIDs.get(tobj.Section)
                             if secid:
                                 tmp=glb.pnodes.GetPNode(secid)
@@ -226,8 +224,7 @@ class part_manager(object):
 
                         else:
                             if tobj.Section != tobj.Concept:
-                                if _map_alias(pobj,tobj):
-                                    return
+                                _map_alias(pobj,tobj)
 
                             # try to load this section
                             tmp=pobj.Stored.SectionIDs.get(tobj.Section)

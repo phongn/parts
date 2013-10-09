@@ -13,6 +13,7 @@
 int main()
 {
     PRINT_MSG;
+    Sleep(200);
     std::cout<<"; test #1 passed"<<std::endl;
     return 0;
 }

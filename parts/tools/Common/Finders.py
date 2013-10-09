@@ -1,5 +1,7 @@
 
-import os,sys
+import sys
+import os
+import glob
 import re
 import SCons.Util
 
@@ -15,14 +17,15 @@ class PathFinder(object):
 
     def __call__(self):
         ret=None
-        for p in self.paths:
-            if os.path.isdir(p):
-                ret=p
-                #print('Found default path [%s]' % (p))
-                return ret
-            else:
-                #print('Did not find default path [%s]' % (p))
-                pass
+        for pattern in self.paths:
+            for p in glob.glob(pattern):
+                if os.path.isdir(p):
+                    ret=p
+                    #print('Found default path [%s]' % (p))
+                    return ret
+                else:
+                    #print('Did not find default path [%s]' % (p))
+                    pass
         return ret
 
 class EnvFinder(object):
@@ -105,7 +108,7 @@ if sys.platform == 'win32':
             @param subDir: a string to be appended to path found in MSI to form a full path to a directory
             """
             self.__pattern = re.compile(productNamePattern)
-            self.__component = component
+            self.__component = re.compile(component)
             self.__upDirs = upDirs
             self.__subDir = subDir
 
@@ -127,19 +130,19 @@ if sys.platform == 'win32':
                 for product in msi.allProducts():
                     if self.__pattern.match(product.ProductName):
                         db = msi.Database(product.LocalPackage, msi.MSIDBOPEN_READONLY)
-                        view = db.openView("select ComponentId from Component where Component='%s'" \
-                                % self.__component)
-                        for item in view:
-                            state, path = product.getComponentPath(item.valueAsString(1))
-                            path = os.path.dirname(path)
-                            if state == msi.INSTALLSTATE_LOCAL and os.path.exists(path):
-                                if self.__upDirs is not None:
-                                    for i in xrange(self.__upDirs):
-                                        path = os.path.dirname(path)
-                                if self.__subDir:
-                                    path = os.path.join(path, self.__subDir)
-                                self.__path = path
-                                return self.__path
+                        view = db.openView("select Component, ComponentId from Component")
+                        for componentName, componentID in view:
+                            if self.__component.match(componentName):
+                                state, path = product.getComponentPath(componentID)
+                                path = os.path.dirname(path)
+                                if state == msi.INSTALLSTATE_LOCAL and os.path.exists(path):
+                                    if self.__upDirs is not None:
+                                        for i in xrange(self.__upDirs):
+                                            path = os.path.dirname(path)
+                                    if self.__subDir:
+                                        path = os.path.join(path, self.__subDir)
+                                    self.__path = path
+                                    return self.__path
                 self.__path = None
             return self.__path
 

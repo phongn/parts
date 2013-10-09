@@ -3,8 +3,12 @@ import sys
 import os
 import subprocess
 import collections
+import time
 
-from SCons.Errors import UserError
+try:
+    from SCons.Errors import UserError
+except ImportError:
+    UserError = Exception
 
 class ProcessAction:
     SUSPEND =   'suspend'
@@ -22,13 +26,16 @@ def _callWithCheck(message, *call_args, **call_kw):
 
 if os.name == 'nt':
     import ctypes
-    from ctypes.wintypes import DWORD, HANDLE, BOOL
+    from ctypes.wintypes import DWORD, HANDLE, BOOL, FILETIME, LARGE_INTEGER
+    LPFILETIME = ctypes.POINTER(FILETIME)
+    LPLARGE_INTEGER = ctypes.POINTER(LARGE_INTEGER)
 
     # constants taken from MSDN
     TH32CS_SNAPPROCESS = 0x2    # snapshot all the processes on the system
     TH32CS_SNAPTHREAD = 0x4     # snapshot all the threads on the system
     THREAD_SUSPEND_RESUME = 0x2 # suspend or resume a thread
     PROCESS_TERMINATE = 0x1     # terminate a process
+    PROCESS_QUERY_INFORMATION = 0x400 # required to get process times
 
     MAX_PATH = 260
 
@@ -70,8 +77,7 @@ if os.name == 'nt':
         def getInfo(self):
             return SmallThreadInfo(self.th32ThreadID, self.th32OwnerProcessID)
 
-    WaitForSingleObject = ctypes.windll.kernel32.WaitForSingleObject
-    WaitForSingleObject.argtypes = (HANDLE, DWORD)
+    from _subprocess import WaitForSingleObject
 
     CloseHandle = ctypes.windll.kernel32.CloseHandle
     CloseHandle.restype = BOOL
@@ -113,9 +119,13 @@ if os.name == 'nt':
     TerminateProcess.argtypes = (HANDLE, ctypes.c_uint)
     TerminateProcess.restype = BOOL
 
+    GetProcessTimes = ctypes.windll.kernel32.GetProcessTimes
+    GetProcessTimes.argtypes = (HANDLE, LPFILETIME, LPFILETIME, LPFILETIME, LPFILETIME)
+    GetProcessTimes.restype = BOOL
+
     def __waitForProcess(process, timeout):
         # WaitForSingleObject expects timeout in milliseconds, so we convert it
-        WaitForSingleObject(int(process._handle), int(timeout * 1000))
+        WaitForSingleObject(process._handle, int(timeout * 1000))
 
     def _traverseWinStructures(snapFlags, entryClass, traverseFirst, traverseNext):
         snapHandle = CreateToolhelp32Snapshot(snapFlags, 0)
@@ -132,9 +142,37 @@ if os.name == 'nt':
         finally:
             CloseHandle(snapHandle)
 
+    def __getProcessCreationTime(pid):
+        '''
+        returns process creation time
+        '''
+        handle = OpenProcess(PROCESS_QUERY_INFORMATION, False, pid)
+        if handle == 0:
+            return None
+        try:
+            created, exited, kernel, user = FILETIME(), FILETIME(), FILETIME(), FILETIME()
+            if not GetProcessTimes(handle, ctypes.byref(created), ctypes.byref(exited),
+                    ctypes.byref(kernel), ctypes.byref(user)):
+                return None
+            return ctypes.cast(ctypes.pointer(created), LPLARGE_INTEGER).contents.value
+        finally:
+            CloseHandle(handle)
     def _listAllProcesses():
         for name, pid, ppid in _traverseWinStructures(TH32CS_SNAPPROCESS, ProcessEntry32,
                                             Process32First, Process32Next):
+            # Windows does not set process parent id to 0 when the parent dies
+            # we need to detect such sitation. We use the fact that parent
+            # is always older then a child.
+            processCreated = __getProcessCreationTime(pid)
+            if processCreated is None:
+                # if we cannot read from the process we don't care about it
+                # because it is not in our sub-tree or it may be dead.
+                continue
+            parentCreated  = __getProcessCreationTime(ppid)
+            if (parentCreated is None) or (parentCreated >= processCreated):
+                # Parent is not accessible -> pid is orphan
+                # Parent is younger than pid -> pid is orphan
+                ppid = None
             yield pid, ppid
 
     def _listAllThreads():
@@ -177,12 +215,6 @@ if os.name == 'nt':
         except BaseException, e:
             raise UserError('Cannot {2} PID {0}: {1}'.format(pid, e, action))
 
-    def killProcessTree(proc):
-        # we do this because terminate process get complex with shell involed, also we want to
-        # terminate all the process tree
-        _callWithCheck('Cannot kill PID %s: TASKKILL rc = {0}, output = {1}' % proc.pid,
-                       "TASKKILL /F /T /PID {0}".format(proc.pid), shell=True)
-
 elif os.name == 'posix':
     import signal
     import time
@@ -216,9 +248,9 @@ elif os.name == 'posix':
                 time.sleep(0.1)
 
     if sys.platform == 'cygwin':
-        _PS_CALL_CMD = ['ps', '-e']
+        _PS_CALL_CMD = ['ps', '-eW']
     else:
-        _PS_CALL_CMD = ['ps', '-A', '-o', 'pid,ppid']
+        _PS_CALL_CMD = ['ps', '-A', '-o', 'pid,ppid,stat']
 
     def _listAllProcesses():
         out = _callWithCheck('Cannot get the list of running processes: ps rc = {0}, '
@@ -228,10 +260,12 @@ elif os.name == 'posix':
             raise UserError('Bad ps output header: {0}'.format(lines[0]))
         for line in lines[1:]:
             try:
-                yield [int(x) for x in re.findall(r'(\d+)', line)[:2]]
+                pid, ppid, stat = re.match(r'^\s*(\d+)\s+(\d+)\s+(\S+)', line).groups()
+                if not stat.startswith('Z'):
+                    yield int(pid), int(ppid)
             except ValueError:
                 raise UserError('Bad line in ps output: {0}'.format(line.strip()))
-        
+
     ACTION_SIGNALS = {ProcessAction.SUSPEND: [signal.SIGSTOP],
                       ProcessAction.TERMINATE: [signal.SIGTERM, signal.SIGKILL],
                       ProcessAction.RESUME: [signal.SIGCONT]}
@@ -279,3 +313,34 @@ def waitForProcess(process, timeout=None):
                 raise
     else:
         __waitForProcess(process, timeout)
+
+import unittest
+
+class TestKillProcessTree(unittest.TestCase):
+    if os.name == 'nt':
+        pause = 'pause'
+        pwd = 'cd'
+        null = 'nul'
+        sep = '&'
+    else:
+        pause = 'read'
+        pwd = 'pwd'
+        null = '/dev/null'
+        sep = ';'
+    def test_nozombie(self):
+        zombie = subprocess.Popen('{pause} > {null} 2>&1 {sep} {pwd} > {null} 2>&1'.format(
+                    pause = self.pause, pwd = self.pwd, null = self.null, sep = self.sep),
+                stdin = subprocess.PIPE,
+                shell = True)
+        pid = zombie.pid
+        time.sleep(0.1) # Give zombie time to start
+        proclist1 = _getRunningProcesses()[os.getpid()]
+        zombie.stdin.write('\n')
+        time.sleep(0.5) # Give zombie time to die
+        proclist2 = _getRunningProcesses()[os.getpid()]
+        zombie.wait() # Shoot it!
+        self.assertTrue(pid in proclist1)
+        self.assertFalse(pid in proclist2)
+
+if __name__ == '__main__':
+    unittest.main()

@@ -4,6 +4,8 @@ import metatag
 import api.output
 import settings
 
+import policy
+
 import SCons.Script
 
 
@@ -94,6 +96,50 @@ def PrependPackageGroupCriteriaEnv(env,name,func):
         env['PACKAGE_GROUP_FILTER'][name]=common.make_list(func)
     return PackageGroup(name)
 
+def GetFilesFromPackageGroups(target, groups, no_pkg=False, stackframe=None):
+    return SCons.Script.DefaultEnvironment().GetFilesFromPackageGroups(target, groups, no_pkg, stackframe)
+
+def def_GetFilesFromPackageGroups(klass):
+    def GetFilesFromPackageGroups(env, target, groups, no_pkg=False, stackframe=None):
+        '''
+        Returns tuple: (files, duplicates). files is list of Node objects
+        specified in the groups. duplicates is a list each item of which is
+        a tuple of duplicated Node object and list of groups where the Node object
+        is referenced.
+
+        If env's subst variable PACKAGE_DUPLICATE_FILES_HANDLING is set to "error"
+        the function will through SCons.Errors.UserError exception.
+        If the variable is set to "warning" the function will only output a message
+        to stderr and log file.
+        '''
+        visited = dict()
+        duplicates = dict()
+        for group in groups:
+            files = GetPackageGroupFiles(group)
+            intersection = set(visited.iterkeys()) & set(files)
+            for file in intersection:
+                duplicates[file] = (duplicates.get(file) or (visited[file],)) + (group,)
+            visited.update((file, group) for file in files)
+        if duplicates:
+            try:
+                multigroup_policy = getattr(policy.ReportingPolicy,
+                    env.get('PACKAGE_DUPLICATE_FILES_HANDLING'))
+            except (TypeError, AttributeError):
+                multigroup_policy = policy.ReportingPolicy.ignore
+            api.output.policy_msg(multigroup_policy, 'packaging',
+                    'While forming "{0}" package found files included by multiple groups: \n{1}'.format(
+                        target, '\n'.join(
+                            '\t{0} is included by groups: {1}'.format(
+                                file, ', '.join(sorted(groups))
+                                ) for (file, groups) in sorted(duplicates.iteritems())
+                            )
+                        ),
+                    stackframe = stackframe
+                    )
+        return sorted(visited.iterkeys()), sorted(duplicates.iteritems())
+    klass.GetFilesFromPackageGroups = GetFilesFromPackageGroups
+    return klass
+
 def GetPackageGroupFiles(name,no_pkg=False):
     '''
     Get all the file that are installed that are define as part of a group.
@@ -129,7 +175,6 @@ def get_group_list(name, no_pkg):
         return result
 
 def SortPackageGroups():
-
     grps=PackageGroups() # get the groups
 
     # reset the cache
@@ -152,24 +197,24 @@ def SortPackageGroups():
 
             for f in files:
                 _no_pkg=metatag.MetaTagValue(f,'no_package','package',False)
-                group_val=metatag.MetaTagValue(f,'group','package',None)
-                if group_val is None:
-                    group_val=name
+                group_val = list(common.make_list(metatag.MetaTagValue(f,'group','package',[])))
+                if not group_val:
+
+                    # Set default meta-tag value
+                    metatag.MetaTag(f, 'package', group=name)
+
+                    for group, tests in map_objs.iteritems():
+                        for test in tests:
+                            if test(f):
+                                common.append_unique(group_val, group)
+                    if not group_val:
+                        group_val = [name]
                     #apply meta tag to file
                     metatag.MetaTag(f,'package',group=group_val)
-                    #apply any mappings
 
-                    for tmp in map_objs.iteritems():
-                        key,tests=tmp
-                        for t in tests:
-                            if t(f):
-                                metatag.MetaTag(f,'package',group=key)
-                                #get new group value
-                                api.output.verbose_msg('packaging',"Remapping",f,"from package_group",group_val,'to',key)
-                                group_val=key
-                                break
-                common.append_unique(get_group_list(group_val, _no_pkg), f)
-                api.output.verbose_msg('packaging','Adding to PackageGroup={0}, no_package={1} nodes={2}'.format(group_val, _no_pkg, f.ID))
+                for group in group_val:
+                    common.append_unique(get_group_list(group, _no_pkg), f)
+                api.output.verbose_msg('packaging','Adding to PackageGroup(s)={0}, no_package={1} nodes={2}'.format(group_val, _no_pkg, f.ID))
 
 def GetPackageGroupFiles_env(env,name,no_pkg=False):
     return GetPackageGroupFiles(name,no_pkg)
@@ -205,6 +250,9 @@ from SCons.Script.SConscript import SConsEnvironment
 
 SConsEnvironment.GetPackageGroupFiles=GetPackageGroupFiles_env
 
+from SCons.Environment import SubstitutionEnvironment as SubstEnv
+def_GetFilesFromPackageGroups(SubstEnv)
+
 SConsEnvironment.ReplacePackageGroupCritera=ReplacePackageGroupCriteriaEnv_old
 SConsEnvironment.AppendPackageGroupCritera=AppendPackageGroupCriteriaEnv_old
 SConsEnvironment.PrependPackageGroupCritera=PrependPackageGroupCriteriaEnv_old
@@ -213,17 +261,18 @@ SConsEnvironment.ReplacePackageGroupCriteria=ReplacePackageGroupCriteriaEnv
 SConsEnvironment.AppendPackageGroupCriteria=AppendPackageGroupCriteriaEnv
 SConsEnvironment.PrependPackageGroupCriteria=PrependPackageGroupCriteriaEnv
 
-api.register.add_variable('PACKAGE_GROUP_FILTER',{},"")
+api.register.add_variable('PACKAGE_GROUP_FILTER', {}, "")
 
-api.register.add_global_object('PackageGroups',PackageGroups)
-api.register.add_global_object('PackageGroup',PackageGroup)
-api.register.add_global_object('GetPackageGroupFiles',GetPackageGroupFiles)
+api.register.add_global_object('PackageGroups', PackageGroups)
+api.register.add_global_object('PackageGroup', PackageGroup)
+api.register.add_global_object('GetPackageGroupFiles', GetPackageGroupFiles)
+api.register.add_global_object('GetFilesFromPackageGroups', GetFilesFromPackageGroups)
 
-api.register.add_global_object('ReplacePackageGroupCritera',ReplacePackageGroupCritera)
-api.register.add_global_object('AppendPackageGroupCritera',AppendPackageGroupCritera)
-api.register.add_global_object('PrependPackageGroupCritera',PrependPackageGroupCritera)
+api.register.add_global_object('ReplacePackageGroupCritera', ReplacePackageGroupCritera)
+api.register.add_global_object('AppendPackageGroupCritera', AppendPackageGroupCritera)
+api.register.add_global_object('PrependPackageGroupCritera', PrependPackageGroupCritera)
 
-api.register.add_global_object('ReplacePackageGroupCriteria',ReplacePackageGroupCriteria)
-api.register.add_global_object('AppendPackageGroupCriteria',AppendPackageGroupCriteria)
-api.register.add_global_object('PrependPackageGroupCriteria',PrependPackageGroupCriteria)
+api.register.add_global_object('ReplacePackageGroupCriteria', ReplacePackageGroupCriteria)
+api.register.add_global_object('AppendPackageGroupCriteria', AppendPackageGroupCriteria)
+api.register.add_global_object('PrependPackageGroupCriteria', PrependPackageGroupCriteria)
 

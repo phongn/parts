@@ -560,7 +560,8 @@ Use -H or --help-options for a list of scons options
             'mode',
             'CCOPY_LOGIC',
             'BUILD_BRANCH',
-            'USE_CACHE_KEY'
+            'USE_CACHE_KEY',
+            'SVN_REVISION',
             ]
         for k,v in vars.iteritems():
             if k not in white_list:
@@ -602,21 +603,18 @@ Use -H or --help-options for a list of scons options
         # store the ENV value as this has value that can tell us of differences
         md5.update(common.get_content(self.def_env['ENV']))
 
-        # we make a different key based on the different "concepts" we building
-        # as each concept would ideally define a different section, and different sections
-        # define different set of actions and nodes we need to know about
-        targets=SCons.Script.BUILD_TARGETS
-        tmp_lst=set()
-        for t in targets:
-            tmp=target_type.target_type(t)
-            if tmp.Section not in tmp_lst:
-                tmp_lst.add(tmp.Section)
-                md5.update(tmp.Section)
-
-        # we add information about that parts we have defined.
-        # a different set gets a different key
-        for pobj in self.__part_manager.parts.values():
-            if pobj.isRoot: md5.update(pobj.ID)
+###        # we make a different key based on the different "concepts" we building
+###        # as each concept would ideally define a different section, and different sections
+###        # define different set of actions and nodes we need to know about
+###        targets=SCons.Script.BUILD_TARGETS
+###        tmp_lst=set(target_type.target_type(target).Section for target in targets)
+###        for item in tmp_lst:
+###            md5.update(item)
+###
+###        # we add information about that parts we have defined.
+###        # a different set gets a different key
+###        for pobj in self.__part_manager.parts.values():
+###            if pobj.isRoot: md5.update(pobj.ID)
 
         self.__cache_key=md5.hexdigest()
 

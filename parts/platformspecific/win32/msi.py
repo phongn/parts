@@ -172,6 +172,10 @@ class Record(MsiHandle):
 
         return buff.value
 
+    def __iter__(self):
+        for index in xrange(1, self.getFieldCount()+1):
+            yield self.valueAsString(index)
+
 def allProducts():
     """
     Return all products known to MSI on the machine.
