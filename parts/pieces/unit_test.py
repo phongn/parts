@@ -38,7 +38,7 @@ def unit_test_script_bf(target, source, env):
     f = open(str(target[0]), 'wb')
 
     cmd=env.subst("$UNIT_TEST_RUN_COMMAND")
-    command_env=env.get('UNIT_TEST_ENV',{})
+    command_env=dict(env.get('UNIT_TEST_ENV',{}))
 
     # update the value
     for k,v in command_env.iteritems():
@@ -97,14 +97,6 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
         skip_run_test=True
 
 
-    targets=SCons.Script.BUILD_TARGETS
-    for t in targets:
-        tmp=target_type(t)
-        sep_len=len(env.subst("$ALIAS_SEPARATOR"))
-        if tmp.Section == 'utest':
-            break
-    else:
-        return []
 
     ## get Part object of Part defining the utest call
     parent_obj=glb.engine._part_manager._from_env(env)
@@ -280,7 +272,13 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
             sec.Env['ENV'][k] = sec.Env.subst(v)
         #in case a python script is being called.. it is the same version of python as we are using
         sec.Env.PrependENVPath('PATH',os.path.split(sys.executable)[0],delete_existing=True)
-        scripts_out=sec.Env.__UTEST__(build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'],[ret[0].abspath,sec.Env.Value(command_args),sec.Env.Value(sec.Env.subst("$UNIT_TEST_RUN_COMMAND"))],UNIT_TEST_ENV=sec.Env.get('UNIT_TEST_ENV',{}))
+        scripts_out=sec.Env.__UTEST__(
+                build_dir+"/_scripts_/"+sec.Env['UNIT_TEST_SCRIPT_NAME'], [],
+                # Need to convert UNIT_TEST_ENV dictionary into a list
+                # of (key, value) pairs to make SCons correctly track changes
+                # in its contents.
+                UNIT_TEST_ENV = sec.Env.get('UNIT_TEST_ENV', {}).items()
+                )
         scripts_out=sec.Env.CCopy("$UNIT_TEST_DIR",scripts_out)
         ### here we map a bunch of aliases
         core_alias=sec.Env.Alias('${BUILD_UTEST_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}::${UNIT_TEST_TARGET}',a+scripts_out+out+ret)
@@ -326,7 +324,7 @@ def unit_test(env,target,source,command_args=[],data_src=[],src_dir='.',make_pdb
 
         talias=common.map_alias_to_root(sec.Part,'utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
         if not skip_run_test:
-            talias_run=common.map_alias_to_root(sec.Part,'run_utest','{0}::${{PART_ALIAS_CONCEPT}}{1}::')
+            talias_run = common.map_alias_to_root(sec.Part, 'run_utest', '{0}::${{PART_ALIAS_CONCEPT}}{1}::')
             sec.Env.AlwaysBuild(talias_run)
 
 
@@ -359,9 +357,12 @@ from SCons.Script.SConscript import SConsEnvironment
 SConsEnvironment.UnitTest=unit_test
 
 api.register.add_builder('__UTEST__',SCons.Script.Builder(
-        action = SCons.Script.Action(unit_test_script_bf,unit_test_script_bf_str,varlist=[
-#            'UNIT_TEST_RUN_COMMAND',
-#            'UNIT_TEST_ENV'
+        action = SCons.Script.Action(
+            unit_test_script_bf,
+            unit_test_script_bf_str,
+            varlist=[
+            'UNIT_TEST_RUN_COMMAND',
+            'UNIT_TEST_ENV'
             ]),
         emitter=unit_test_script_bfe,
         ))

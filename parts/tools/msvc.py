@@ -201,7 +201,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
     env.SetDefault(CCPCHFLAGS = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}']))
     env.SetDefault(_MSVC_OUTPUT_FLAG = msvc_output_flag)
     env.SetDefault(_CCCOMCOM  = '$CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS $CCPCHFLAGS $CCPDBFLAGS')
-    env['CC']=parts.tools.Common.toolvar('cl')
+    env['CC']=parts.tools.Common.toolvar('cl', ('cl',), env = env)
     env.SetDefault(CCFLAGS    = SCons.Util.CLVar(''))
     env.SetDefault(CFLAGS     = SCons.Util.CLVar(''))
     env.SetDefault(CPPPATH     = SCons.Util.CLVar(''))
@@ -225,7 +225,7 @@ def generate(env,version=None,use_script=False,script_args=None,**kw):
 #    env.Append(SHOBJEMITTER = [shared_object_emitter])
     env.SetDefault(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME = 1)
 
-    env['RC']=parts.tools.Common.toolvar('rc')
+    env['RC']=parts.tools.Common.toolvar('rc', ('rc',), env = env)
     env.SetDefault(RCFLAGS = SCons.Util.CLVar(''))
     env.SetDefault(RCSUFFIXES=['.rc','.rc2'])
     env.SetDefault(RCCOM = "$RC $_CPPDEFFLAGS $_CPPINCFLAGS $RCFLAGS /fo$TARGET $SOURCES")

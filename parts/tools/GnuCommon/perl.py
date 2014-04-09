@@ -13,7 +13,7 @@ perl.Register(
         install_scanner=[
             PathFinder(['C:\\Perl\\bin'])
             ],
-        opt_dirs=[                
+        opt_dirs=[
             ],
         script=None,
         subst_vars={},
@@ -32,7 +32,7 @@ perl.Register(
             PathFinder(['C:\\Perl64\\bin']),
             PathFinder(['C:\\Perl\\bin'])
             ],
-        opt_dirs=[                
+        opt_dirs=[
             ],
         script=None,
         subst_vars={},

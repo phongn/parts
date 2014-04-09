@@ -38,7 +38,7 @@ class file_scanner12(object):
                             # this is one possible way to look at the
                             # version number of the compiler
                             # ie the data.update.package form
-                            version_group1=result0.groups()[0]+"."+result0.groups()[1]
+                            version_group1=result0.groups()[0]+"."+result0.groups()[-1]
                             # test for the bin directory
                             bin_path=os.path.join(fullpath0,'bin',self.arch,'icc')
 
@@ -57,8 +57,13 @@ class file_scanner12(object):
                                     match = re.search(r'icc\s+version\s+([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+)', line)
 
                                     if match:
-                                        version_group2 = match.group(1)
-                                        ret[version_group1]=fullpath0
+                                        version_group2 = match.groups()[-1]
+                                        try:
+                                            int(version_group1)
+                                        except ValueError:
+                                            pass
+                                        else:
+                                            ret[version_group1]=fullpath0
                                         ret[version_group2]=fullpath0
                                         break
 

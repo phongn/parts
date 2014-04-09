@@ -1,3 +1,4 @@
+import time
 import glb
 import common
 import console
@@ -7,52 +8,75 @@ from process_tools import waitForProcess, killProcessTree
 
 import SCons.Script
 
-import subprocess, sys, string, os
+import subprocess, sys, string
 import thread, threading
 import platform
+import traceback
 
 from SCons.Debug import logInstanceCreation
 from SCons.Errors import UserError
 
-pyver=version.version(platform.python_version())
+pyver = version.version(platform.python_version())
+# We need to close file descriptors on POSIX systems which have fork() mechanism right after
+# the fork, otherwise all descriptors get inherited, and some files are being open much longer
+# than we expect. We don't need this on Windows (or Cygwin) because on Windows processes don't
+# inherit parent file descriptors by default, so nothing to close.
+closeFileDescriptors = sys.platform not in ('win32', 'cygwin')
 
 class pipeRedirector(object):
     def _readerthread(self):
-        l = ' '
-        while l != '':
-            l = self.pipein.readline()
-            if l != "":
-                self.writer(l)
+        line = ' '
+        try:
+            while line:
+                line = self.pipein.readline()
+                if line:
+                    self.output.WriteStream(self.taskId, self.streamId, line)
+        except:
+            # There was an error... that shouldn't happen, but still it did. So we report it
+            # to the caller and close our pipe end so that spawned program won't block
+            self.error = traceback.format_exc()
+            self.pipein.close()
+            self.pipein = None
 
-    def __init__(self,pipein,writer):
+    def __init__(self, pipein, output, taskId, streamId):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.pipeRedirector')
         self.pipein = pipein
-        self.writer = writer
-        self.thread = threading.Thread(target=self._readerthread,
-                args=())
+        self.output = output
+        self.taskId = taskId
+        self.streamId = streamId
+        self.thread = threading.Thread(target=self._readerthread, args=())
         self.executing = True
+        self.error = ''
+
+    def __enter__(self):
         self.thread.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        if self.error:
+            # there was an error during the read... raise it
+            raise UserError('Error while redirecting pipe: {0}'.format(self.error))
 
     def close(self):
         self.executing = False
         self.thread.join()
-        self.pipein = None
+        if self.pipein:
+            self.pipein.close()
         self.thread = None
-        self.writer = None
 
 class part_spawner(object):
     __slots__ = ['__weakref__', 'env']
-    def __init__(self, env=None):
+    def __init__(self, env = None):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.part_spawner')
-        self.env=env
+        self.env = env
 
-    def __call__(self,shell, escape, cmd, args, Env):
+    def __call__(self, shell, escape, cmd, args, Env):
         # setup the call
-        ENV={}
+        ENV = {}
         for k,v in Env.iteritems():
-            ENV[k]=str(v)
+            ENV[k] = str(v)
         # get the part_logger
-        output=self.env._get_part_log_mapper()
+        output = self.env._get_part_log_mapper()
 
         # we ignore the escape function as it breaks linux,
         # and was breaking on python 2.7 windows by adding extra " values
@@ -63,271 +87,269 @@ class part_spawner(object):
         else:
             command_line = string.join(args)
 
-        #tell it we are starting a given action/command, get action_id
-        id=output.TaskStart(command_line)
-        # do the call
-        proc = subprocess.Popen(
-            command_line,
-            shell=True,
-            executable=shell,
-            env=ENV,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-
-        timeout = self.env.get('TIME_OUT', None)
-        if timeout:
-            # might be passed in on the command line, so it would be a string value
-            timeout = float(timeout)
-
-        # get the output and redirect to logger
-        p1 = pipeRedirector(proc.stdout, lambda x: output.WriteOut(id, x))
-        p2 = pipeRedirector(proc.stderr, lambda x: output.WriteErr(id, x))
+        # TempFileMunge issues handling. When executing command using TEMPFILE
+        # the command-line is lost in per-component log files.
+        # To overcome the issue TempFileMunge returns original command-line as
+        # id property of second command argument. Use it for logging.
         try:
-            waitForProcess(proc, timeout)
-            if proc.poll() is None:
-                killProcessTree(proc)
-                raise UserError("Killed by timeout ({0} sec)".format(timeout))
+            command_id = args[1].id
+        except (AttributeError, IndexError):
+            command_id = command_line
+
+        ret = -42 # The universal answer we return in case of exception
+        #tell it we are starting a given action/command, get action_id
+        id = output.TaskStart(command_id)
+        try:
+            # do the call
+            proc = subprocess.Popen(
+                command_line,
+                shell = True,
+                executable = shell,
+                env = ENV,
+                close_fds = closeFileDescriptors,
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE)
+
+            timeout = self.env.get('TIME_OUT', None)
+            if timeout:
+                # might be passed in on the command line, so it would be a string value
+                timeout = float(timeout)
+
+            # get the output and redirect to logger
+            with pipeRedirector(proc.stdout, output, id, console.Console.out_stream):
+                with pipeRedirector(proc.stderr, output, id, console.Console.error_stream):
+                    waitForProcess(proc, timeout)
+                    if proc.poll() is None:
+                        killProcessTree(proc)
+                        raise UserError("Killed by timeout ({0} sec)".format(timeout))
+                    ret = proc.returncode
+        except BaseException, e:
+            msg = str(SCons.Errors.convert_to_BuildError(e, sys.exc_info()))
+            output.WriteStream(id, console.Console.error_stream, msg)
+            ret = -1
+            raise
         finally:
-            p1.close()
-            p2.close()
             # we are done, so tell logger this action is done.
-            ret = proc.returncode
             output.TaskEnd(id, ret)
         return ret
 
 class part_logger(object):
+    class StreamChunk(object):
+        __slots__ = ['stream', 'msg', 'lock']
+        def __init__(self, stream, msg):
+            self.stream = stream
+            self.msg = msg
+            self.lock = threading.RLock()
+
     def __init__(self,env):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.part_logger')
-        self.env=env
-        self.reporter=glb.rpter
-        tmp=SCons.Script.GetOption('num_jobs') > 1
-        if tmp:
-            self.block_text=2 # partial blocking of text
-        else:
-            self.block_text=0 # no blocking of text
-        self.cache={}
+        self.env = env
+        self.reporter = glb.rpter
+        self.block_text = SCons.Script.GetOption('num_jobs') > 1
+        self.cache = {}
+        self.cacheLock = threading.RLock()
 
-        log=env['PART_LOGGER']
+        log = env['PART_LOGGER']
         if common.is_string(log):
-            if log[0]!='$':
-                log="$"+log
-            log = env.subst(log, raw=1, conv=lambda x: x)
+            if log[0] != '$':
+                log = "$" + log
+            log = env.subst(log, raw = 1, conv = lambda x: x)
             if common.is_string(log):
-                log=part_nil_logger
-        self.other_out=log()
+                log = part_nil_logger
+        self.other_out = log(env)
+        self.streamWrite = {console.Console.out_stream: self.reporter.stdout,
+                            console.Console.error_stream: self.reporter.stderr}
+        self.otherOutWrite = {console.Console.out_stream: self.other_out.Out,
+                              console.Console.error_stream: self.other_out.Err}
 
-    def TaskStart(self,msg):
-        id=hash(msg)
-        self.cache[id]=[]
-        self.other_out.Start(self.env,id,msg)
-        return id
+    def TaskStart(self, msg):
+        taskId = hash(msg)
+        with self.cacheLock:
+            while taskId in self.cache:
+                taskId += 1
+            self.cache[taskId] = None
+        self.other_out.Start(taskId, msg)
+        return taskId
 
-    def TaskEnd(self,id,exit_code):
-
-        self._empty_cache(id)
-        self.other_out.End(self.env,id,exit_code)
+    def TaskEnd(self, taskId, exitCode):
+        self._empty_cache(taskId)
+        self.other_out.End(taskId, exitCode)
         try:
-            del self.cache[id]
+            with self.cacheLock:
+                del self.cache[taskId]
         except KeyError:
             pass
 
-    def WriteOut(self,id,msg):
-        if self.block_text==False:
-            self.reporter.stdout(msg)
-            self.other_out.Out(self.env,id,msg)
+    def WriteStream(self, taskId, stream, msg):
+        if not self.block_text:
+            self.streamWrite[stream](msg)
+            self.otherOutWrite[stream](taskId, msg)
         else:
-            try:
-                tmp=self.cache[id][-1][0]
-            except IndexError:
-                tmp=None
-            if tmp == console.Console.out_stream:
-               self.cache[id][-1][1] += msg
-            elif self.block_text == 2: # simple chaching
-                self._empty_cache(id) # this different so flush it
-                self.cache[id].append([console.Console.out_stream,msg])
-            else:
-                self.cache[id].append([console.Console.out_stream,msg])
-
-
-    def WriteErr(self,id,msg):
-
-        if self.block_text==False:
-            self.reporter.stderr(msg)
-            self.other_out.Err(self.env,id,msg)
-        else:
-            try:
-                tmp=self.cache[id][-1][0]
-            except IndexError:
-                tmp=None
-            if tmp == console.Console.error_stream:
-               self.cache[id][-1][1] += msg
-            elif self.block_text == 2: # simple chaching
-                self._empty_cache(id) # this different so flush it
-                self.cache[id].append([console.Console.error_stream,msg])
-            else: #full caching
-                self.cache[id].append([console.Console.error_stream,msg])
-
-    def _empty_cache(self,id):
-        testlst=self.cache[id]
-        self.cache[id]=[]
-        for text in testlst:
-            if text[0] == console.Console.out_stream:
-                brkup=text[1].split('\n')
-                grpstr=''
-                for s in brkup:
-                    if s == '':
-                        pass
-                    elif grpstr == '':
-                        grpstr=s+'\n'
-                    elif s[0]==' ' or s[0]=='\t': # group indented text
-                        grpstr+=s+'\n'
-                    else:
-                        self.reporter.stdout(grpstr)
-                        self.other_out.Out(self.env,id,grpstr)
-                        grpstr=s+'\n'
+            with self.cacheLock:
+                chunk = self.cache[taskId]
+                if not chunk:
+                    # uninitialized cache for this taskId, create it and we're done for now
+                    self.cache[taskId] = self.StreamChunk(stream=stream, msg=msg)
+                    return
+            # now we have logging chunk... sync on its own lock
+            with chunk.lock:
+                if chunk.stream == stream:
+                    # just appending to the currently chunked stream, nothing to do
+                    chunk.msg += msg
                 else:
-                    self.reporter.stdout(grpstr)
-                    self.other_out.Out(self.env,id,grpstr)
-            elif text[0] ==console.Console.error_stream:
-                brkup=text[1].split('\n')
-                grpstr=''
-                for s in brkup:
-                    if s == '':
-                        pass
-                    elif grpstr == '':
-                        grpstr=s+'\n'
-                    elif s[0]==' ' or s[0]=='\t': # group indented text
-                        grpstr+=s+'\n'
-                    else:
-                        self.reporter.stderr(grpstr)
-                        self.other_out.Err(self.env,id,grpstr)
-                        grpstr=s+'\n'
-                else:
-                    self.reporter.stderr(grpstr)
-                    self.other_out.Err(self.env,id,grpstr)
-            else:
-                # we have some error or unknown code
-                pass
+                    # stream changed... flush old one and re-create the stream chunk
+                    self._empty_cache(taskId)
+                    chunk.stream = stream
+                    chunk.msg = msg
 
+    def _empty_cache(self, taskId):
+        with self.cacheLock:
+            chunk = self.cache[taskId]
+        if not chunk:
+            # there was no cache created, nothing to flush
+            return
+
+        with chunk.lock:
+            stream, msg = chunk.stream, chunk.msg
+
+        groupedStr = []
+        for line in msg.splitlines():
+            if not line:
+                continue
+            elif not groupedStr:
+                groupedStr = [line]
+            elif line[0] in (' ', '\t'): # group indented text
+                groupedStr.append(line)
+            else:
+                outLine = '\n'.join(groupedStr) + '\n'
+                self.streamWrite[stream](outLine)
+                self.otherOutWrite[stream](taskId, outLine)
+                groupedStr = [line]
+        outLine = '\n'.join(groupedStr) + '\n'
+        self.streamWrite[stream](outLine)
+        self.otherOutWrite[stream](taskId, outLine)
 
 class part_nil_logger(object):
     ''' the point of this class is to define the base interface for all part logger
     items. The goal is the this object is to be a empty object that can be written to
     in case that no other item is provided, or if logging is turned off'''
-    def __init__(self):
+    def __init__(self, env):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.part_nil_logger')
         pass
-    def Start(self,env,id,cmd):
+    def Start(self,id,cmd):
         pass
-    def End(self,env,id,exit_code):
+    def End(self,id,exit_code):
         pass
-    def Out(self,env,id,msg):
+    def Out(self,id,msg):
         pass
-    def Err(self,env,id,msg):
+    def Err(self,id,msg):
         pass
     def TaskStart(self,msg):
         pass
     def TaskEnd(self,id,exit_code):
         pass
-    def WriteOut(self,id,msg):
-       pass
-    def WriteErr(self,id,msg):
-       pass
+
+class log_file_writer(object):
+    '''
+    This context manager provides serialized access to log files.
+    Usage:
+        with log_file_writer("${my_log_file}", env) as output:
+            output.write("Hello world!\n")
+
+    The class ensures there is only one log writer instance per each
+    log file.
+    '''
+    __slots__ = ('nodepath', 'file', 'lock', '__weakref__')
+    __lock__ = thread.allocate_lock()
+    def __new__(cls, name, env):
+        with cls.__lock__:
+            try:
+                return env.File(name, create = 0).attributes.log_file_writer
+            except (UserError, AttributeError), e:
+                # UserError is raised by env.File when the file is unknown to SCons
+                # AttributeError is raised when there is no log_file_writer_ref
+                # among the file's attributes
+                node = env.File(name)
+                if isinstance(e, UserError):
+                    # Scons knows nothing about the node. Need to clean up the file
+                    node.prepare() # Make sure the file path created
+                    with open(node.abspath, 'w'):
+                        pass
+                node.attributes.log_file_writer = result = super(log_file_writer, cls).__new__(cls)
+                result.nodepath = node.abspath
+                result.lock = thread.allocate_lock()
+                if __debug__: logInstanceCreation(result)
+                return result
+
+    def __enter__(self):
+        self.lock.__enter__()
+        self.file = open(self.nodepath, 'a+')
+        return self.file.__enter__()
+
+    def __exit__(self, exc_type, value, traceback):
+        try:
+            self.file.__exit__(exc_type, value, traceback)
+        finally:
+            self.lock.__exit__(exc_type, value, traceback)
+
+if sys.platform == 'win32':
+    time_func = time.clock
+else:
+    time_func = time.time
 
 class parts_text_logger(object):
-    def __init__(self):
+    def __init__(self, env):
         if __debug__: logInstanceCreation(self, 'parts.part_logger.parts_text_logger')
-        self.m_file=None
-        self.cache={}
-        self.m_lock=thread.allocate_lock()
+        self.writer = log_file_writer('${LOG_PART_DIR}/${LOG_PART_FILE_NAME}', env)
+        self.cache = {}
+        self.times = {}
 
-
-    def create_file(self,env):
-        #The lock is needed here to prevent more than one thread creating this file
-        # at the same time
-        with self.m_lock:
-            if self.m_file is None:
-                dr=env.Dir(env.subst("$LOG_PART_DIR")).abspath
-                fn=env.subst("$LOG_PART_FILE_NAME")
-                cnt=0
-                while os.path.exists(dr) == False and cnt<10:
-                    try:
-                        os.makedirs(dr)
-                        break
-                    except:
-                        pass
-                    cnt+=1
-                else:
-                    if not os.path.exists(dr):
-                        api.output.error_msgf('Cannot create log directory "{0}"',dr)
-                self.fname=os.path.join(dr,fn)
-                self.m_file=open(os.path.join(dr,fn),"w")
-                self.m_file.close() # part of quick "to many file handle" fix
-
-
-    def Start(self,env,id,cmd):
-        self.create_file(env)
-        if cmd[-1:]=='\n':
-            eol=''
-        else:
-            eol='\n'
-        self.cache[id]=[
-            (console.Console.out_stream,'Task:'+cmd+eol),
-            (console.Console.out_stream,"Output begin ----------------------------------------------------------------\n")
+    def Start(self, id, cmd):
+        self.times[id] = time_func()
+        if not cmd.endswith('\n'):
+            cmd += '\n'
+        self.cache[id] = [
+            (console.Console.out_stream,'Task:' + cmd),
+            (console.Console.out_stream,
+            "Output begin ----------------------------------------------------------------\n")
             ]
 
-    def End(self,env,id,exit_code):
-        s=""
-        for text in self.cache[id]:
-            if text[0] == console.Console.out_stream:
-                s+=text[1]
-            elif text[0] ==console.Console.error_stream:
-                s+=text[1]
-            else:
-                # we have some error or unknown code
-                pass
-        s+="Output end   ----------------------------------------------------------------\n"
-        s+="return code = "+str(exit_code)+"\n"
-        self.m_lock.acquire()# part of quick "to many file handle" fix
-        self.m_file=open(self.fname,"a+") # part of quick "to many file handle" fix
-        self.m_file.write(s)
-        self.m_file.close() # part of quick "to many file handle" fix
-        self.m_lock.release()# part of quick "to many file handle" fix
-        del self.cache[id]
+    def End(self, id, exit_code):
+        s  = "".join(content for (text_type, content) in self.cache.pop(id, [])
+            if text_type in (console.Console.out_stream, console.Console.error_stream))
+        s += "Output end   ----------------------------------------------------------------\n"
+        s += "return code = " + str(exit_code) + "\n"
+        s += "Elapsed time {0:.6f} seconds\n".format(time_func() - self.times.pop(id))
+        with self.writer as output:
+            output.write(s)
 
-    def Out(self,env,id,msg):
+    def Out(self, id, msg):
         self.cache[id].append((console.Console.out_stream,msg))
 
-    def Err(self,env,id,msg):
+    def Err(self, id, msg):
         self.cache[id].append((console.Console.error_stream,msg))
 
     def __del__(self):
-        if self.__dict__.has_key('m_file') == False:
+        try:
+            cache = self.cache
+            times = self.times
+            writer = self.writer
+        except AttributeError:
             return
-        for id in self.cache:
-            self.cache[id].append((1,"Build interupted"))
-            s=''
-            for text in self.cache[id]:
-                if text[0] == console.Console.out_stream:
-                    s+=text[1]
-                elif text[0] ==console.Console.error_stream:
-                    s+=text[1]
-                else:
-                    # we have some error or unknown code
-                    pass
-            s+="] (return code = 1)\n"
-
-            self.m_lock.acquire()# part of quick "to many file handle" fix
-            self.m_file=open(self.fname,"a+") # part of quick "to many file handle" fix
-            self.m_file.write(s)
-            self.m_file.close() # part of quick "to many file handle" fix
-            self.m_lock.release()# part of quick "to many file handle" fix
+        s = ""
+        for id in cache.keys():
+            s += "".join(content for (text_type, content) in cache.pop(id)
+                if text_type in (console.Console.out_stream, console.Console.error_stream))
+            s += "Build interupted] (return code = 1)\n"
+            s += "Elapsed time {0:.6f} seconds\n".format(time_func() - times.pop(id))
+        with writer as output:
+            output.write(s)
 
 def _get_part_log_mapper(env):
     try:
         result = env['PART_LOG_MAPPER']
     except KeyError:
-        result = part_nil_logger()
+        result = part_nil_logger(env)
     else:
         if common.is_string(result):
             result = env.subst(result, raw = 1, conv = lambda x: x)

@@ -113,7 +113,7 @@ def ProcessInstall(env,target,sources,sub_dir,create_sdk,sdk_dir='',no_pkg=False
                         add_to_path=kw.get('add_to_path',True),
                         auto_add_file=kw.get('auto_add_file',True))
                 else:
-                    ret=s
+                    ret=[s]
                 out=env.Install(dest_dir, ret,tags=tags,**kw)
                 installed_files.extend(out)
                 src_lst.append(env.Dir(ret[0]))
@@ -475,8 +475,9 @@ api.register.add_variable('PART_INSTALL_CONCEPT','install${ALIAS_SEPARATOR}','')
 api.register.add_variable('INSTALL_ROOT','#_install/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}','')
 
 #these are the replacements
-api.register.add_variable('INSTALL_LIB','${INSTALL_ROOT}/lib','')
-api.register.add_variable('INSTALL_BIN','${INSTALL_ROOT}/bin','')
+api.register.add_variable('INSTALL_LIB', '${INSTALL_ROOT}/lib', '')
+api.register.add_variable('INSTALL_BIN', '${INSTALL_ROOT}/bin', '')
+api.register.add_variable('INSTALL_RELATIVE_LIB', '${__env__.Dir(INSTALL_BIN).rel_path(__env__.Dir(INSTALL_LIB))}', '')
 
 api.register.add_variable('INSTALL_API','${INSTALL_ROOT}/API','')
 api.register.add_variable('INSTALL_INCLUDE','${INSTALL_ROOT}/include','')

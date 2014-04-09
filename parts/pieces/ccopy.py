@@ -8,6 +8,7 @@ import parts.api as api
 import parts.overrides.symlinks as symlinks
 import parts.api.output as output
 import stat
+import errno
 from parts.part_logger import part_nil_logger
 
 # generic copy builder
@@ -192,18 +193,25 @@ else:
         os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
 
 
+def on_rmtree_error(function, path, exc_info):
+    if function == os.remove:
+        os.chmod(os.lstat(path).st_mode | 0222)
+        os.remove(path)
 
-
-def CCopyFuncWrapper(dest, source, env, copyfunc):
+def CCopyFuncWrapper(env, dest, source, copyfunc):
 
     if os.path.isdir(source):
         if os.path.exists(dest):
             if not os.path.isdir(dest):
                 raise SCons.Errors.UserError, "cannot overwrite non-directory '%s' with a directory '%s'" % (str(dest), str(source))
+            shutil.rmtree(dest, onerror = on_rmtree_error)
         else:
-            parent = os.path.split(dest)[0]
-            if not os.path.exists(parent):
+            parent = os.path.dirname(dest)
+            try:
                 os.makedirs(parent)
+            except OSError, err:
+                if err.errno <> errno.EEXIST:
+                    raise
         shutil.copytree(source, dest)
     else:
         copyfunc(dest,source)
@@ -232,7 +240,7 @@ def CCopyFunc(target, source, env, copy_logic):
             symlinks.make_link_bf([t], [t.Entry(t.linkto)], env)
         else:
             #Do normal copy stuff
-            CCopyFuncWrapper(t.get_path(), s.get_path(), env,copy_logic)
+            env.CCopyFuncWrapper(t.get_path(), s.get_path(), copy_logic)
     #tell logger the task has end correctly.
     output.TaskEnd(id,0)
     return None
@@ -249,7 +257,9 @@ def CCopyStringFunc(target, source, env):
     return 'Parts: Copying %s: "%s" to "%s" as: "%s"' % (type, source, target_path,target_f)
 
 def CCopyEmit(target, source, env):
-    return ([target[0]], [source[0]])
+    target, source = target[0], source[0]
+    target.must_be_same(type(source))
+    return [target], [source]
 
 
 class CCopy(object):
@@ -285,7 +295,20 @@ def CCopyWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     try:
         dnodes = env.arg2nodes(target, target_factory.Dir)
     except TypeError:
-        api.output.error_msg("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(dir))
+        exc_typ, value, trace_back = sys.exc_info()
+        # now try to get the bad guy by going to the end:
+        try:
+            while trace_back.tb_next:
+                trace_back = trace_back.tb_next
+
+            try:
+                bad_value = str(trace_back.tb_frame.f_locals['self'])
+            except KeyError:
+                bad_value = 'Unknown'
+            api.output.error_msg("Target `%s' is a file, but should be a directory.  Perhaps you have the arguments backwards?" % str(bad_value))
+        finally:
+            del trace_back
+
 
     #setup copy function
     copy_logic_bak = copy_logic
@@ -378,8 +401,14 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     else:
         copy_logic=env.__CCopyBuilderC__
 
-    for src, tgt in map(lambda x, y: (x, y), source, target):
-        result.extend(copy_logic(env.File(tgt), env.File(src),**kw))
+    source = env.arg2nodes(source)
+    target = env.arg2nodes(target)
+
+    if len(target) <> len(source):
+        api.output.error_msg("Number of targets and sources should be the same")
+
+    for src, tgt in zip(source, target):
+        result.extend(copy_logic(tgt, src, **kw))
     return result
 
 
@@ -398,6 +427,7 @@ from SCons.Script.SConscript import SConsEnvironment
 
 SConsEnvironment.CCopy=CCopyWrapper
 SConsEnvironment.CCopyAs=CCopyAsWrapper
+SConsEnvironment.CCopyFuncWrapper=CCopyFuncWrapper
 
 SConsEnvironment._SDKCOPY_=_sdk_copy
 SConsEnvironment._SDKCOPYAs_=_sdk_copyas

@@ -42,11 +42,6 @@ class wrapper(object):
         self.binfo=binfo
         self.ninfo=ninfo
 
-def make_path_ID(path):
-    t=path
-    return t.replace(os.sep, '/')
-    return t
-
 class fake_ninfo(object):
     __slots__=['timestamp','csig','__weakref__']
     def __init__(self,timestamp,csig):
@@ -65,49 +60,39 @@ File.changed_since_last_build = File.changed_timestamp_then_content
 
 
 
-# visited replacement
-def parts_visited(self):
-    self._orig_visited()
-
-    if not self.isVisited:
-        # this is target node we just built
-        # store the information
+def wrap_FS_store_info(klass):
+    _store_info = klass.store_info
+    def store_info(self):
         glb.pnodes.StoreNode(self)
-        try:
-            # might be a custom node type that does not have am
-            # srcnode concept
-            tmp=self.srcnode()
-            tmp.isVisited=True
-            if tmp!=self:
-                glb.pnodes.StoreNode(tmp)
-        except AttributeError:
-            pass
+        srcnode = self.srcnode()
+        if not srcnode is self and srcnode.exists():
+            glb.pnodes.StoreNode(srcnode)
+            srcnode.isVisited = True
+        self.isVisited = True
+        return _store_info(self)
+    klass.store_info = store_info
+wrap_FS_store_info(SCons.Node.FS.File)
 
-    self.isVisited=True
-
-
-def parts_alias_visited(self):
-    # Visited get called twice in current Scon logic
-    if not self.isVisited:
+def wrap_Alias_store_info(klass):
+    _store_info = klass.store_info
+    def store_info(self):
         glb.pnodes.StoreAlias(self)
-    self._orig_alias_visited()
-
-
-Node._orig_visited=Node.visited
-Node.visited=parts_visited
-File._orig_visited=File.visited
-File.visited=parts_visited
-Alias._orig_alias_visited=Alias.visited
-Alias.visited=parts_alias_visited
+        self.isVisited = True
+        return _store_info(self)
+    klass.store_info = store_info
+wrap_Alias_store_info(SCons.Node.Alias.Alias)
 
 #############################################
 ## these are pnode addition
 
 def _get_isVisited(self):
-    return getattr(self,'_isVisited',False)
+    try:
+        return self.attributes._isVisited
+    except AttributeError:
+        return False
 
 def _set_isVisited(self,value):
-    self._isVisited=value
+    self.attributes._isVisited=value
 
 SCons.Node.Node.isVisited=property(_get_isVisited,_set_isVisited)
 
@@ -115,8 +100,12 @@ def _get_FSID(self):
     try:
         return self.__FSID
     except AttributeError:
-        self.__FSID = self.path.replace(os.sep, '/')
-        return self.__FSID
+        result = SCons.Node.FS.get_default_fs().Dir('#').rel_path(self)
+        if os.path.isabs(result) or result.startswith('..'):
+            result = self.abspath
+        result = result.replace('\\', '/')
+        self.__FSID = result
+        return result
 
 def _get_ValueID(self):
     return "{0}".format(self.value)
@@ -318,31 +307,29 @@ def StoreStoredInfo(self):
 
 SCons.Node.Node.StoreStoredInfo=StoreStoredInfo
 
-
 def GenerateStoredInfo(self):
     info = scons_node_info.scons_node_info()
-    info.Type=self.__class__
-    info.Components=metatag.MetaTagValue(self,'components',ns='partinfo',default={}).copy()
+    info.Type = self.__class__
+    info.Components = metatag.MetaTagValue(self, 'components', ns='partinfo', default={}).copy()
     for partid,sections in info.Components.iteritems():
-        tmp=set([sec.ID for sec in sections])
-        info.Components[partid]=tmp
+        info.Components[partid] = set([sec.ID for sec in sections])
 
-    info.SideEffectIDs=[i.ID for i in self.side_effects] # these are nodes that need to be checked for
+    info.SideEffectIDs = [i.ID for i in self.side_effects] # these are nodes that need to be checked for
 
-    info.AlwaysBuild=self.always_build==True
+    info.AlwaysBuild = bool(self.always_build)
     if isinstance(self,FSBase):
         try:
             if self.ID != self.srcnode().ID:
-                info.SrcNodeID=self.srcnode().ID
+                info.SrcNodeID = self.srcnode().ID
         except:
             pass
 
-    binfo=self.get_binfo()
-    nodes=itertools.izip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),
+    binfo = self.get_binfo()
+    nodes = zip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),
                             binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs)
-    new_binfo={}
+    new_binfo = {}
 
-    for node,ninfo in nodes:
+    for node, ninfo in nodes:
         # some time the node info is a string not a Node object
         try:
             key=node.ID
@@ -353,20 +340,29 @@ def GenerateStoredInfo(self):
             # if the node is not known.. we probally want to swap the
             # os.sep value to a posix forms
             if not glb.pnodes.isKnownNode(node):
-                key=node.replace(os.sep, '/')
+                key = node.replace(os.sep, '/')
             else:
-                key=node
-            node=glb.pnodes.GetNode(key)
+                key = node
+            node = glb.pnodes.GetNode(key)
 
-        if isinstance(self,Alias) and isinstance(node,FSBase):
-            ninfo=node.get_ninfo()
+        if isinstance(node, SCons.Node.FS.Dir):
+            # We do not want nodes to depend on directories
+            # we make them depend on the directories contents
+            nodes.extend(
+                    # Don't care about the ninfo. It will be got later.
+                    (entry, None) for name, entry in node.entries.iteritems()
+                    if name not in ('.', '..'))
+            continue
 
-        new_binfo[key]={
+        elif isinstance(node, FSBase):
+            ninfo = node.get_ninfo()
+
+        new_binfo[key] = {
                         'timestamp':getattr(ninfo,'timestamp',0),
                         'csig':getattr(ninfo,'csig',0)
                         }
 
-    info.SourceInfo=new_binfo
+    info.SourceInfo = new_binfo
 
     return info
 

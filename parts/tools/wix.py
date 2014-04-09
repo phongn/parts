@@ -45,10 +45,8 @@ def generate(env):
     env['MSISUFFIX'] = '.msi'
 
     wix.MergeShellEnv(env)
-    env['WIXCL']=parts.tools.Common.toolvar('candle')
-    env['WIXLINK']=parts.tools.Common.toolvar('light')
-
-    output.print_msg(env.subst('Configured WiX tools of version ${WIX.VERSION} for target ${TARGET_PLATFORM}'))
+    env['WIXCL']=parts.tools.Common.toolvar('candle', ('candle',), env = env)
+    env['WIXLINK']=parts.tools.Common.toolvar('light', ('light',), env = env)
 
 def exists(env):
     return wix.Exists(env)

@@ -15,7 +15,7 @@ class DelayedEventMapper(object):
         self.__addevent={}
 
     def _BindEvents(self):
-        for key, (event, callback) in self.__addevent.iteritems():
+        for event, callback in self.__addevent.itervalues():
             event += callback
 
     def _RegisterEvent(self, key, event, callback):
@@ -327,44 +327,52 @@ class TestRun(RegisterCheckerMixin, DelayedEventMapper):
     A test run allows us to test a certain command and see if certian actions happened as excepted
     Special cases of Test run may test it a test is up-to-date, or out-of -date
     '''
-    __slots__=["__displaystr",
-               "__name",
-               "__test",
-               "__cmd",
-               "__result",
-               "__run_time",
-               "__disk",
-               "__streams",
-               "errorMessage",
-               "StartingRun",
-               "RunStarted",
-               "Running",
-               "RunFinished",
+    class StreamNameReader(testers.Tester):
+        def __init__(self, testRun):
+            testers.Tester.__init__(self, None, False)
+            self.testRun = testRun
+            self.Result = testers.ResultType.Passed
+            self.Reason = ''
+
+        def test(self, eventinfo, **kw):
+            self.testRun.StreamPaths = dict((name, getattr(eventinfo, name))
+                                            for name in dir(eventinfo) if name.endswith('File'))
+
+        @property
+        def UseInReport(self):
+            # exclude this checker from being used (and displayed) in the report since it
+            # is not really a checker
+            return False
+
+    __slots__ = ["__displaystr", "__name", "__test", "__cmd", "__result", "__run_time",
+                 "__disk", "__streams", "errorMessage", "StartingRun", "RunStarted", "Running",
+                 "RunFinished", "StreamPaths"
                ]
-    def __init__(self,test,name,displaystr=None):
+    def __init__(self, test, name, displaystr=None):
         super(TestRun, self).__init__()
         #required setup
-        self.__displaystr=displaystr # what we display for this string
-        self.__name=name # the test name
-        self.__test=test # test object
+        self.__displaystr = displaystr # what we display for this string
+        self.__name = name # the test name
+        self.__test = test # test object
 
         # what to run
-        self.__cmd="" # this is the command we want to run
+        self.__cmd = "" # this is the command we want to run
 
         # information about the run
-        self.__result=None # the return code
-        self.__run_time=None # the time in seconds of the run
+        self.__result = None # the return code
+        self.__run_time = None # the time in seconds of the run
 
         # objects with more stuff we can test.
-        self.__disk=Disk(self)
-        self.__streams=Streams(self)
+        self.__disk = Disk(self)
+        self.__streams = Streams(self)
+        self.StreamPaths = {}
 
         #events that happen during run
         # these get mapped to test objects
-        self.StartingRun=events.Event()
-        self.RunStarted=events.Event()
-        self.Running=events.Event()
-        self.RunFinished=events.Event()
+        self.StartingRun = events.Event()
+        self.RunStarted = events.Event()
+        self.Running = events.Event()
+        self.RunFinished = events.Event().Connect(self.StreamNameReader(self))
 
         # error message (if error happened)
         self.errorMessage = ''
@@ -372,9 +380,6 @@ class TestRun(RegisterCheckerMixin, DelayedEventMapper):
     @property
     def _Test(self):
         return self.__test
-
-    def _RegisterEvents(self):
-        self.__addevent # HUH?!
 
     def get_testers(self):
         testers=[]

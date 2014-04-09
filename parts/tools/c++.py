@@ -28,15 +28,15 @@ def generate(env):
 
     SCons.Tool.cc.add_common_cc_variables(env)
 
-    env['CXX'] = parts.tools.Common.toolvar('c++')
+    env['CXX'] = parts.tools.Common.toolvar('c++', ('c++',), env = env)
 
     env.SetDefault(CXXFLAGS   = SCons.Util.CLVar(''))
     #env['CXXCOM']     = '$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES'
-    env.SetDefault(CXXCOM   = '${TEMPFILE("$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES")}')
+    env.SetDefault(CXXCOM   = '${TEMPFILE("$CXX -o $TARGET -c $CXXFLAGS $CCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS")}')
     env.SetDefault(SHCXX      = '$CXX')
     env.SetDefault(SHCXXFLAGS = SCons.Util.CLVar('$CXXFLAGS'))
     #env['SHCXXCOM']   = '$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES'
-    env.SetDefault(SHCXXCOM   = '${TEMPFILE("$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES")}')
+    env.SetDefault(SHCXXCOM   = '${TEMPFILE("$SHCXX -o $TARGET -c $SHCXXFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS")}')
 
     env.SetDefault(CPPDEFPREFIX  = '-D')
     env.SetDefault(CPPDEFSUFFIX  = '')

@@ -10,6 +10,9 @@ from .. import node_helpers
 from .. import datacache
 from .. import dependent_ref
 from .. import part_ref
+from .. import target_type
+
+import SCons
 
 import os
 import time
@@ -376,8 +379,6 @@ class Changed(base.Base):
         # able to load a extra depends on a dependent unit test call. This is not needed to do the
         # build, but not loading it will cause data mapping  and stored state issues.
         # see if the utest target is being used..
-        import SCons
-        from .. import target_type
         targets=SCons.Script.BUILD_TARGETS
         for t in targets:
             tmp=target_type.target_type(t)
@@ -641,6 +642,11 @@ class Changed(base.Base):
         Any New data that is passed in could change what the Parts does.
         This mean we need to reload it
         '''
+        pinfo=glb.pnodes.GetStoredPNodeIDInfo(sec.Stored.PartID)
+        if pinfo and pinfo.BuildTargets:
+            return pinfo.BuildTargets <> set(
+                    target_type.target_type(target).Section for target in
+                    SCons.Script.BUILD_TARGETS)
 
         return False
 

@@ -71,5 +71,42 @@ java.Register(
     ],
 )
 
+java.Register(
+    hosts = [SystemPlatform('darwin', 'any')],
+    targets = [SystemPlatform('any', 'any')],
+    info = [
+        ToolInfo(
+            version='1.4.0',
+            install_scanner = [
+                PathFinder(['/usr/bin'])
+            ],
+            script=None,
+            subst_vars={},
+            shell_vars={'PATH':'${JAVA.INSTALL_ROOT}'},
+            test_file='javac'
+        ),
+        ToolInfo(
+            version='1.6.0',
+            install_scanner = [
+                PathFinder(['/usr/java/jdk1.6.0*/bin', '/opt/jdk1.6.0*/bin'])
+            ],
+            script=None,
+            subst_vars={},
+            shell_vars={'PATH':'${JAVA.INSTALL_ROOT}'},
+            test_file='javac'
+        ),
+        ToolInfo(
+            version='1.7.0',
+            install_scanner = [
+                PathFinder(['/usr/java/jdk1.7.0*/bin', '/opt/jdk1.7.0*/bin'])
+            ],
+            script=None,
+            subst_vars={},
+            shell_vars={'PATH':'${JAVA.INSTALL_ROOT}'},
+            test_file='javac'
+        ),
+    ],
+)
+
 # vim: set et ts=4 sw=4 ai ft=python :
 

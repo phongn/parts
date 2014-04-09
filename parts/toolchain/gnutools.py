@@ -10,7 +10,7 @@ def _setup(env,ver):
 def resolve(env,version):
     func=lambda x : _setup(x,version)
     host=env['HOST_PLATFORM']
-    if host.OS=='darwin':
+    if host.OS=='darwin' and not env['TARGET_PLATFORM']=='android':
         return [
                 ('g++',func,False),
                 ('gcc',func,False),

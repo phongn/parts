@@ -175,21 +175,20 @@ def generate(env):
     env['LIBSUFFIX']      = '.a'
     env['SHLIBPREFIX']    = 'lib'
     env['SHLIBSUFFIX']    = '.so'
-    env['OBJCOPY']        = 'objcopy'
     env['CHMODVALUE']     = '644'
-    
+
     # this is a hard set.. normally handled by scons platform logic
     # but for win32 hosts it gets the values wrong ( it assumes .a only)
     env['LIBSUFFIXES']    = [ '$LIBSUFFIX', '$SHLIBSUFFIX' ]
-    
-    SCons.Tool.gnulink.generate(env)
+
     parts.tools.GnuCommon.binutils.setup(env)
+    env['OBJCOPY'] = parts.tools.Common.toolvar(env.get('BINUTILS', {}).get('OBJCOPY', env.get('OBJCOPY', 'objcopy')), ('objcopy',), env = env)
+    SCons.Tool.gnulink.generate(env)
 
     # Sometimes we have to use specific tools and command lines.
     # For example when building Android executables on Windows host
     try:
         env.AppendUnique(LINKFLAGS=['-B{0}'.format(env['BINUTILS'].INSTALL_ROOT)])
-        env['OBJCOPY'] = env.get('BINUTILS', {}).get('OBJCOPY', env['OBJCOPY'])
         env['CHMODVALUE'] = env.get('BINUTILS', {}).get('CHMODVALUE', env['CHMODVALUE'])
         env['LINKCOM'] = env.get('BINUTILS', {}).get('LINKCOM', env.get('LINKCOM'))
         env['SHLINKCOM'] = env.get('BINUTILS', {}).get('SHLINKCOM', env.get('SHLINKCOM'))

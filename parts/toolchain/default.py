@@ -29,6 +29,10 @@ def resolve(env,version):
         return [
                 ('gxx',None)
             ]
+    elif host.OS =='darwin' and target =='android':
+        return [
+                ('gxx',None)
+            ]
     elif host =='posix':
         # prefer intel tool if that have it
         if test_tool(env,"intelc"):

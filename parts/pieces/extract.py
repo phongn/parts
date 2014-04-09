@@ -227,37 +227,42 @@ def emitterUntar(target,source,env):
     return target, source
 
 def actionUnpack(generator, target, source, env):
-    target.sort(key = lambda x: x.attributes.archive_index)
-    tgtIter = iter(target)
-    arcIter = generator(source[0])
+    output = env._get_part_log_mapper()
+    id = output.TaskStart("Extracting from {0}".format(source[0].path))
     try:
-        arcItem = arcIter.next()
+        target.sort(key = lambda x: x.attributes.archive_index)
+        tgtIter = iter(target)
+        arcIter = generator(source[0])
+        try:
+            arcItem = arcIter.next()
 
-        tgtItem = tgtIter.next()
-        while True:
-            while tgtItem.attributes.archive_index < arcItem.index:
-                tgtItem = tgtIter.next()
-            while tgtItem.attributes.archive_index > arcItem.index:
-                try:
-                    arcItem = arcIter.next()
-                except StopIteration:
-                    # Oops! There are no more items in the archive but we still
-                    # have targets to be extracted
-                    raise SCons.Errors.UserError('Unexpected end of archive')
-            nodes = []
-            while tgtItem.attributes.archive_index == arcItem.index:
-                try:
-                    nodes.append(tgtItem)
+            tgtItem = tgtIter.next()
+            while True:
+                while tgtItem.attributes.archive_index < arcItem.index:
                     tgtItem = tgtIter.next()
-                except StopIteration:
-                    # We have iterated through all the targets
-                    # now extract them and return
-                    arcItem.extract(nodes)
-                    return None
-            arcItem.extract(nodes)
-    except StopIteration:
-        pass
-    return None
+                while tgtItem.attributes.archive_index > arcItem.index:
+                    try:
+                        arcItem = arcIter.next()
+                    except StopIteration:
+                        # Oops! There are no more items in the archive but we still
+                        # have targets to be extracted
+                        raise SCons.Errors.UserError('Unexpected end of archive')
+                nodes = []
+                while tgtItem.attributes.archive_index == arcItem.index:
+                    try:
+                        nodes.append(tgtItem)
+                        tgtItem = tgtIter.next()
+                    except StopIteration:
+                        # We have iterated through all the targets
+                        # now extract them and return
+                        arcItem.extract(nodes)
+                        return None
+                arcItem.extract(nodes)
+        except StopIteration:
+            pass
+        return None
+    finally:
+        output.TaskEnd(id, 0)
 
 def batch_key(action, env, target, source):
     return _getNameForKey(source[0])

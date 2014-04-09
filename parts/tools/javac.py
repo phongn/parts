@@ -1,6 +1,7 @@
 from Common.java import java
 from SCons.Tool import javac
 from SCons.Tool.JavaCommon import parse_java_file
+import parts.tools.Common
 
 # monkey patch emit_java_classes to do the Right Thing
 # otherwise generated classes have no package name and get rebuilt always
@@ -49,6 +50,8 @@ def generate(env, *args, **kw):
     java.MergeShellEnv(env)
 
     javac.generate(env, *args, **kw)
+
+    env['JAVAC'] = parts.tools.Common.toolvar('javac', env = env)
 
 def exists(env):
     return javac.exists(env)

@@ -34,19 +34,28 @@ class TestsReport(object):
                 else:
                     checkers = []
                     for check in tr.get_testers():
+                        if not check.UseInReport:
+                            continue
                         if check.Result == ResultType.Passed:
                             reason = None
                         else:
                             reason = str(check.Reason)
                         checkers.append((check.Description, ResultType.to_string(check.Result),
-                                         reason))
+                                         reason, False))
+                    try:
+                        with open(tr.StreamPaths['AllFile'], 'r') as streamBoth:
+                            checkers.append(('stream.both.txt', 'contents below:',
+                                             streamBoth.read(), True))
+                    except KeyError:
+                        # no such file stream, probably nothing was built
+                        pass
                     runMessage = (self.ITEM_OTHER, checkers)
                 runs.append((tr.Name, ResultType.to_string(tr._Result)) + runMessage)
             message = (self.ITEM_OTHER, runs)
         self.testRuns[(test.TestDirectory, test.TestFile)] = message
         self.stats[test._Result] += 1
 
-    def _asStrList(self, testDir, testFile):
+    def _asStrList(self, testDir, testFile, addStreamBoth=False):
         status, message = self.testRuns[(testDir, testFile)]
 
         if status != self.ITEM_PASS:
@@ -62,7 +71,9 @@ class TestsReport(object):
                         if runMessage:
                             yield '    Reason: %s' % runMessage
                     else:
-                        for description, result, reason in runMessage:
+                        for description, result, reason, streamBoth in runMessage:
+                            if streamBoth and not addStreamBoth:
+                                continue
                             yield '    Check: %s - %s' % (description, result)
                             if reason:
                                 yield '      Reason: %s' % reason
@@ -75,7 +86,7 @@ class TestsReport(object):
     def exportForJson(self):
         result = []
         for (testDir, testFile), (status, msg) in self.testRuns.iteritems():
-            messages = [msg for msg in self._asStrList(testDir, testFile)]
+            messages = [msg for msg in self._asStrList(testDir, testFile, addStreamBoth=True)]
             result.append((testDir, testFile, status, '\n'.join(messages)))
         return json.dumps(result)
 

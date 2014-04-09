@@ -12,6 +12,10 @@ def generate(env):
         env['RANLIB'] = env.get('BINUTILS', {}).get('RANLIB', env['RANLIB'])
     except KeyError:
         pass
+    try:
+        env['ARCOM'] = env.get('BINUTILS', {}).get('ARCOM', env['ARCOM'])
+    except KeyError:
+        pass
 
 
 def exists(env):

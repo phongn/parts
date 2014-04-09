@@ -4,6 +4,7 @@ Test that run_utest:: targets output is put into separate log file.
 import os
 import platform
 import sys
+import re
 
 def getSystemName():
     PLATFORM_MAP = {'windows': 'win32',
@@ -14,30 +15,23 @@ def getSystemName():
 
 Setup.Copy.FromDirectory('test7')
 
-# generate gold files on-the-fly
-for quote, name in (('', 'noquote'), ('"', 'quote')):
-    with open(str(test.TestDirectory) + '/unittest7runutest-{0}.log'.format(name), 'w') as gold:
-        gold.write('''Task:{quote}cd _unit_tests{sep}debug_{os}-x86{sep}root.utest_1.0.0{sep}test && ..{sep}..{sep}..{sep}..{sep}_install{sep}debug_{os}-x86_default{sep}bin{sep}root.utest-test_1.0.0{quote}
-Output begin ----------------------------------------------------------------
-Output end   ----------------------------------------------------------------
-return code = 1
-'''.format(sep=os.sep, os=getSystemName(), quote=quote))
-    with open(str(test.TestDirectory)+'/unittest7runutest1-{0}.log'.format(name), 'w') as gold:
-        gold.write('''Task:{quote}cd _unit_tests{sep}debug_{os}-x86{sep}root.utest_1.0.0{sep}test1 && ..{sep}..{sep}..{sep}..{sep}_install{sep}debug_{os}-x86_default{sep}bin{sep}root.utest-test1_1.0.0{quote}
-Output begin ----------------------------------------------------------------
-Output end   ----------------------------------------------------------------
-return code = 1
-'''.format(sep=os.sep, os=getSystemName(), quote=quote))
-
 # run test.. should not have any failures
 t = Test.AddBuildRun('run_utest:: -j3 TARGET_ARCH=x86')
 t.ReturnCode = 0
-f = t.Disk.File('logs/run_utest.root.utest-test_1.0.0{suffix}.log'.\
-                format(suffix='.exe' if platform.system().lower() == 'windows' else ''))
-f.Exists = True
-f.Content = ['unittest7runutest-noquote.log', 'unittest7runutest-quote.log']
 
-f = t.Disk.File('logs/run_utest.root.utest-test1_1.0.0{suffix}.log'.format(suffix='.exe' if platform.system().lower() == 'windows' else ''))
-f.Exists = True
-f.Content = ['unittest7runutest1-noquote.log', 'unittest7runutest1-quote.log']
+def checkFile(data, file_name, regexp):
+    if not re.search(regexp, data, re.MULTILINE):
+        return "Regexp:\n{0}\nhas not been found in:\n{1}".format(regexp, data)
+
+f = t.Disk.File('logs/all.log')
+f.Content = Testers.FileContentCallback(callback = lambda data: checkFile(data, 'logs/all.log', 'done building targets'),
+        description = "Checking logs/all.log")
+
+for one in ('', '1'):
+    fname = 'logs/run_utest.root.utest-test{one}_1.0.0{suffix}.log'.\
+                    format(suffix='.exe' if platform.system().lower() == 'windows' else '', one=one)
+    f = t.Disk.File(fname)
+    f.Exists = True
+    f.Content = Testers.FileContentCallback(callback=lambda data: checkFile(data, fname,
+        r"return code = 1\nElapsed time \d+\.\d+ seconds".format(sep=os.sep, os=re.escape(getSystemName()), one=one)), description = "Checking {fname}".format(**locals()))
 

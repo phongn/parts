@@ -37,6 +37,7 @@ on copy... hopefully this can be dropped soon once i get time to make a better s
 __revision__ = "src/engine/SCons/Tool/install.py 3842 2008/12/20 22:59:52 scons"
 
 import os
+import sys
 import shutil
 import stat
 import tarfile
@@ -58,33 +59,17 @@ from parts.part_logger import part_nil_logger
 #
 # Functions doing the actual work of the Install Builder.
 #
-def copyFunc(dest, source, env):
-    """Install a source file or directory into a destination by copying,
-    (including copying permission/mode bits)."""
-
-    if os.path.isdir(source):
-        if os.path.exists(dest):
-            if not os.path.isdir(dest):
-                raise SCons.Errors.UserError, "cannot overwrite non-directory `%s' with a directory `%s'" % (str(dest), str(source))
-        else:
-            parent = os.path.split(dest)[0]
-            if not os.path.exists(parent):
-                os.makedirs(parent)
-        shutil.copytree(source, dest)
-    else:
-        if env['HOST_OS']=='win32':
-            import ctypes
-            ret=ctypes.windll.kernel32.CopyFileW(unicode(source),unicode(dest),False)
-            if ret==0:
-                raise ctypes.WinError()
-        else:
-
-            shutil.copy2(source, dest)
-            st = os.stat(source)
-            os.chmod(dest, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
-
-    return 0
-
+if sys.platform == 'win32':
+    import ctypes
+    def copyfilefunc(dest, source):
+        if not ctypes.windll.kernel32.CopyFileW(
+                unicode(source), unicode(dest), False):
+            raise ctypes.WinError()
+else:
+    def copyfilefunc(dest, source):
+        shutil.copy2(source, dest)
+        os.chmod(dest, os.stat(dest).st_mode | stat.S_IWRITE)
+copyFunc = lambda target, source, env: env.CCopyFuncWrapper(target, source, copyfilefunc)
 
 def installFunc(target, source, env):
     """Install a source file into a target using the function specified

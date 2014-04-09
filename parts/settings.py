@@ -374,11 +374,6 @@ class Settings(object):
         #set mappers
         env.Replace(**mappers)
 
-        ## this is for fixing an issue with the scanners in which one item in a env
-        ## does not have the $vars fully expanded, which causes an issue with in the
-        ## dependency tree. This leads to a false rebuild of few files
-        import overrides
-        overrides.scanner.Scanner_override()
         # this breaks up the value string toolchain in to a list of values ( need to tweak this logic when we use properties )
         env['TOOLCHAIN']=env['toolchain'] if isinstance(env['toolchain'],str) else ",".join(map(lambda x: x if isinstance(x,str) else x[0] if len(x)==1 or x[1] is None else "_".join(x),env['toolchain']))
 

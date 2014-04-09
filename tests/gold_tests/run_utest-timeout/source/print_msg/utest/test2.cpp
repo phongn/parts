@@ -13,7 +13,7 @@
 int main()
 {
     PRINT_MSG;
-    Sleep(2500);
+    Sleep(15 * 1000);
     std::cout<<"; test #2 passed"<<std::endl;
     return 0;
 }

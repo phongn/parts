@@ -25,6 +25,7 @@ import pnode.pnode_manager
 
 from SCons.Script.Main import memory_stats
 from SCons.Debug import logInstanceCreation
+from SCons.Util import flatten
 
 
 ################################################################################
@@ -205,14 +206,15 @@ class parts_addon(object):
                     cmd=' '.join(bf.command)
                 else:
                     cmd=bf.command
-                pinfo=self._part_manager._from_env(bf.node.env)
-                if pinfo:
-                    msg+='Part:"{0}" Target:"{1}" config:"{2}" Node:"{3}"\n'.format(pinfo.Name,
-                                                                              bf.node.env['TARGET_PLATFORM'],
-                                                                              bf.node.env['CONFIG'],
-                                                                              bf.node)
-                else:
-                    msg+='Node: "{0}"\n'.format(bf.node)
+                for node in flatten(bf.node):
+                    pinfo=self._part_manager._from_env(node.env)
+                    if pinfo:
+                        msg+='Part:"{0}" Target:"{1}" config:"{2}" Node:"{3}"\n'.format(pinfo.Name,
+                                                                                  node.env['TARGET_PLATFORM'],
+                                                                                  node.env['CONFIG'],
+                                                                                  node)
+                    else:
+                        msg+='Node: "{0}"\n'.format(bf.node)
 
             api.output.print_msg("Summary: {0} build failure detected during build\n{1}".format(bf_lst_len,msg))
 
@@ -603,18 +605,10 @@ Use -H or --help-options for a list of scons options
         # store the ENV value as this has value that can tell us of differences
         md5.update(common.get_content(self.def_env['ENV']))
 
-###        # we make a different key based on the different "concepts" we building
-###        # as each concept would ideally define a different section, and different sections
-###        # define different set of actions and nodes we need to know about
-###        targets=SCons.Script.BUILD_TARGETS
-###        tmp_lst=set(target_type.target_type(target).Section for target in targets)
-###        for item in tmp_lst:
-###            md5.update(item)
-###
-###        # we add information about that parts we have defined.
-###        # a different set gets a different key
-###        for pobj in self.__part_manager.parts.values():
-###            if pobj.isRoot: md5.update(pobj.ID)
+        # we add information about that parts we have defined.
+        # a different set gets a different key
+        for pobj in self.__part_manager.parts.values():
+            if pobj.isRoot: md5.update(pobj.ID)
 
         self.__cache_key=md5.hexdigest()
 

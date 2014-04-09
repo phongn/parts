@@ -14,46 +14,40 @@ import SCons.Script
 g_sdked_files=set([])
 
 def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
-    
+
     # make sure inputs are in good format
-    target_dir=env.subst(target_dir)
+    target_dir=env.arg2nodes(target_dir)[0]
     # Some varibles
     out=[]
     src_dir=[]
-    clean_list=[]
-    # not sure we need this anymore
-    if do_clean==True:
-            clean_list.append(target_dir)
-    
+
     # go through sources to get the source items correctly processed
     for s in sources:
-        
+
         if isinstance(s,pattern.Pattern):
             #print s.sub_dirs()
             t=s.src_dir.srcnode().abspath
             if t not in src_dir:
                 src_dir.append(t)
-            t,sr=s.target_source(target_dir)
+            t,sr=s.target_source(target_dir.abspath)
 
             if create_sdk==False:
                 out+=sr#s.files(t)
             else:
                 out+=env.CCopyAs(target=t,source=sr)
-            
+
             #print "Pattern type"
         elif isinstance(s,SCons.Node.FS.Dir):
             #get all file in the directory
             #... add code...
-            
+
             t=s.srcnode().abspath
             if t not in src_dir:
                 src_dir.append(t)
                 #print t
             if create_sdk==False:
                 out.append(s)
-                #print s
             else:
-                #print target_dir,s
                 out.extend(env.CCopy(target=target_dir,source=s))
             #print "Dir type"
         elif isinstance(s,SCons.Node.FS.File):
@@ -78,47 +72,49 @@ def process_Sdk_Copy(env,target_dir,sources,create_sdk=True,do_clean=False):
                 out.append(s)
             else:
                 out.extend(env.CCopy(target=target_dir,source=s))
-            #src.append(s)            
+            #src.append(s)
         else:
             api.output.warning_msg('Unknown type "{0}" in process_Sdk_Copy() in sdk.py'.format(type(s)))
-        
+
     #define Alias if we have a part being defined
     if create_sdk==True:
         g_sdked_files.update(out)
-        
-            
+
+
     # return a tuple of output files and the Src_dir list
     # might change this later to a list of the Source file instead
     return (out,src_dir)
 
-    
+
 
 def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_path=True,
                 auto_add_file=True,use_src_dir=False,use_build_dir=False,create_sdk=True):
-    
+
     errors.SetPartStackFrameInfo(True)
 
-    if common.is_list(sources)==False:
-        sources=[sources]
     sources=SCons.Script.Flatten(sources)
-    
+
     pobj=glb.engine._part_manager._from_env(env)
-    
+
     # this is for classic formats and compatible behavior with 0.9
     pobj._sdk_or_installed_called=True
-    
+
     target_paths=[]
-    
+
+    target_dir_name = target_dir
+    target_dir = env.Dir(target_dir_name)
+
     if sub_dir=='':
-        dest_dir="${PARTSUB('"+pobj.Alias+"','"+target_dir+"')}"
-        # currenltly we always add that base path, since this is it, 
+        dest_dir=target_dir
+        # currenltly we always add that base path, since this is it,
         # setting to false reduces a extra duplication latter
         add_to_path=False
     else:
-        dest_dir=os.path.join("${PARTSUB('"+pobj.Alias+"','"+target_dir+"')}",sub_dir)    
+        dest_dir=env.Dir('./'+sub_dir, # To overcome the case when sub_dir starts with #
+                directory = target_dir)
 
     do_clean=True
-    
+
     if env['CREATE_SDK'] == False and create_sdk == True:
         create_sdk=False;
 
@@ -126,13 +122,13 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
     targets,source_dir=process_Sdk_Copy(env,dest_dir,sources,create_sdk,do_clean)
 
     if create_sdk==False and use_build_dir==True:
-        target_dir="${PARTSUB('"+pobj.Alias+"','$BUILD_DIR')}"
+        target_dir=env.Dir('$BUILD_DIR')
     elif create_sdk==False and use_build_dir==False:
         use_src_dir=True
-    
-    
+
+
     if pobj is not None:
-        
+
         #Process the Export of data values
         for _type,_prop in export_info:
             # add missing properties in map
@@ -161,9 +157,9 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
             elif len(export_info) == 1 and export_info[0][0]==Xp.EXPORT_TYPES.PATH:
                 pobj._create_sdk_data.append(('ExportItem',[export_info[0][1],common._make_reld(target_paths),False]))
             else:
-                pobj._create_sdk_data.append(('SdkItem',[target_dir,common._make_rel(targets),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))
-    
-    tmp=target_dir[1:].replace('_','')
+                pobj._create_sdk_data.append(('SdkItem',[target_dir_name,common._make_rel(targets),sub_dir,post_fix,export_info,add_to_path,auto_add_file,True,use_build_dir,False]))
+
+    tmp=target_dir_name[1:].replace('_','')
     if create_sdk:
         env.ExportItem(tmp,targets,create_sdk,True)
 
@@ -174,64 +170,64 @@ def SdkItem(env,target_dir,sources,sub_dir='',post_fix='',export_info=[],add_to_
 def SdkInclude(env,sources,sub_dir='',add_to_path=None,use_src_dir=False,create_sdk=True):
 
     if add_to_path is None:
-        add_to_path=env.get('SDK_INCLUDE_ADD_TO_PATH',False) 
+        add_to_path=env.get('SDK_INCLUDE_ADD_TO_PATH',False)
     ret=SdkItem(env,'$SDK_INCLUDE',sources,sub_dir,'',[(Xp.EXPORT_TYPES.PATH ,'CPPPATH')],
             add_to_path=add_to_path,auto_add_file=True,use_src_dir=use_src_dir,
             use_build_dir=False,create_sdk=create_sdk)
     return ret
-    
-    
+
+
 def SdkLib(env,sources,sub_dir='',add_to_path=None,auto_add_libs=True,use_src_dir=False,create_sdk=True):
-    
+
     if add_to_path is None:
-        add_to_path=env.get('SDK_LIB_ADD_TO_PATH',True)    
+        add_to_path=env.get('SDK_LIB_ADD_TO_PATH',True)
     ret=SdkItem(env,'$SDK_LIB',sources,sub_dir,'',[(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
             add_to_path=add_to_path,auto_add_file=auto_add_libs,use_src_dir=use_src_dir,
             use_build_dir=True,create_sdk=create_sdk)
-    return ret        
-    
+    return ret
+
 def SdkBin(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_BIN',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkConfig(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_CONFIG',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
-    
+
 def SdkDoc(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_DOC',sources,sub_dir,'',[],create_sdk=create_sdk)
-    return ret    
+    return ret
 
 def SdkHelp(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_HELP',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkManPage(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_MANPAGE',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkData(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_DATA',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkMessage(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_MESSAGE',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkResource(env,sources,sub_dir='',create_sdk=True):
-    
+
     ret=SdkItem(env,'$SDK_RESOURCE',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
 def SdkSample(env, sources, sub_dir='',create_sdk=True):
-        
+
     ret=SdkItem(env,'$SDK_SAMPLE',sources,sub_dir,'',[],create_sdk=create_sdk)
     return ret
 
@@ -285,7 +281,7 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
                 pass
         elif isinstance(i,pattern.Pattern):
             for td in i.sub_dirs():
-                for d in i.files(td): 
+                for d in i.files(td):
                     if common.is_catagory_file(env,'SDK_LIB_PATTERN',d):
                         if td !='':
                             tmp=SdkItem(env,'$SDK_LIB',[d],os.path.join(str(sub_dir),str(td)),
@@ -297,10 +293,10 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
                                 [(Xp.EXPORT_TYPES.FILE ,'LIBS'),(Xp.EXPORT_TYPES.PATH ,'LIBPATH')],
                                 add_to_path=add_to_path,auto_add_file=auto_add_libs,use_src_dir=use_src_dir,
                                 use_build_dir=True,create_sdk=create_sdk)
-                        if env['CREATE_SDK'] == True and create_sdk:                                
+                        if env['CREATE_SDK'] == True and create_sdk:
                             env.ExportItem('SDKLIB',tmp,create_sdk,True)
                         out+=tmp
-                        
+
                     elif common.is_catagory_file(env,'SDK_BIN_PATTERN',d):
                         if td !='':
                             tmp=SdkItem(env,'$SDK_BIN',[d],os.path.join(str(sub_dir),str(td)),'',[],create_sdk=create_sdk)
@@ -321,7 +317,7 @@ def Sdk(env,sources,sub_dir='',add_to_path=True,auto_add_libs=True,use_src_dir=F
 #####################################################
 
 def CreateSDK_SF(node, env, path):
-    ''' 
+    '''
     This is a scanner function for the target file
     This will return all node that this object depends on
     in that we want to mapp all files copied into the SDK here
@@ -340,20 +336,20 @@ def CreateSDK_SF(node, env, path):
             ret.append(pdobj._sdk_file)
 
     # we want this depend on all the file that will be copied to the SDK area
-    # so we know is this file exists the build for getting stuff in the SDK 
+    # so we know is this file exists the build for getting stuff in the SDK
     # has happened
-    for t in pobj._sdk_files:        
+    for t in pobj._sdk_files:
         ret.append("#%s"%t.path)
     return ret
 
 
 
 def CreateSDK_BF(target, source, env):
-    
+
 
     output=env._get_part_log_mapper()
     id=output.TaskStart('Generating SDK file for Part '+str(os.path.split(target[0].path)[1][:-9]))
-     
+
     # the part object for this sdk file we want to make
     pobj=glb.engine._part_manager._from_env(env)
     #get the version information
@@ -393,7 +389,7 @@ PartVersion("'''+ver_str+'''")
 def config(env):
     # This is to prevent SDK from generated by mistake another SDK
     env['CREATE_SDK'] = False
-    
+
     #This prevents the SDK from being used with different configurations
     if not env.isConfigBasedOn("'''+env['CONFIG']+'''"):
         env.PrintError("Parts generated SDK for part named '''+env.subst('$PART_NAME')+''' (alias of '''+env.subst('$ALIAS')+\
@@ -403,16 +399,16 @@ def config(env):
 def emit(env):
     #Stuff we need to export
 '''
-    
+
     for i in pobj._create_sdk_data:
         files=[]
         data+=common.func_gen(env,sdk_path,i[0],i[1])+'\n'
-            
-            
+
+
     f = open(str(target[0]), 'wb')
     f.write(data)
     f.close()
-    
+
     output.TaskEnd(id,0)
     return None
 
@@ -457,7 +453,7 @@ api.register.add_builder('__CreateSDKBuilder__',SCons.Builder.Builder(
         emitter=CreateSDK_Emit,
         target_scanner=SCons.Scanner.Base(CreateSDK_SF)
         ))
-import datetime        
+import datetime
 # add configuartion varaible
 api.register.add_variable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%H%M'),'')
 
@@ -465,7 +461,7 @@ api.register.add_variable("DATE_STAMP",datetime.datetime.now().strftime('%Y%m%d%
 api.register.add_variable('SDK_ROOT','#_sdks/${CONFIG}_${TARGET_PLATFORM}_${TOOLCHAIN.replace(",","_")}/${PART_ROOT_NAME}_${PART_VERSION}${"_%s"%PART_ROOT_SIG if PART_ROOT_SIG!="" else ""}',
                     'Root Directory used for copy SDKs to')
 #api.register.add_variable('SDK_ROOT','#sdks/${CONFIG}_${TARGET_PLATFORM}/${PART_ROOT_NAME}_${PART_VERSION}',
-                    #'Root Directory used for copy SDKs to')                    
+                    #'Root Directory used for copy SDKs to')
 api.register.add_variable('SDK_LIB_ROOT','$SDK_ROOT/lib','Full SDK directory for the lib concept')
 api.register.add_variable('SDK_BIN_ROOT','$SDK_ROOT/bin','Full SDK directory for the bin concept')
 api.register.add_variable('SDK_INCLUDE_ROOT','$SDK_ROOT/include','Full SDK directory for the include or header concept')
@@ -490,7 +486,7 @@ api.register.add_bool_variable('SDK_ADD_TO_PATH',True,'Controls is the Path prov
 
 
 api.register.add_bool_variable('USE_SRC_DIR',False,'Controls is the SDK or Src directory of the Part is passed to dependent parts, useful for debug builds')
-api.register.add_bool_variable('CREATE_SDK',True,'Controls if the SDK should be created and used') 
+api.register.add_bool_variable('CREATE_SDK',True,'Controls if the SDK should be created and used')
 
 api.register.add_list_variable('SDK_LIB_PATTERN',['*.lib','*.LIB','*.a','*.A','*.so','*.sl','*.so.*','*.sl.*','*.so-gz','*.dylib'],'filter of file patterns use to match lib type files')
 if 'win32' == glb._host_sys:

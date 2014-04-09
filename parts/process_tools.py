@@ -119,6 +119,14 @@ if os.name == 'nt':
     TerminateProcess.argtypes = (HANDLE, ctypes.c_uint)
     TerminateProcess.restype = BOOL
 
+    DebugActiveProcess = ctypes.windll.kernel32.DebugActiveProcess
+    DebugActiveProcess.argtypes = (DWORD,)
+    DebugActiveProcess.restype = BOOL
+
+    DebugActiveProcessStop = ctypes.windll.kernel32.DebugActiveProcessStop
+    DebugActiveProcessStop.argtypes = (DWORD,)
+    DebugActiveProcessStop.restype = BOOL
+
     GetProcessTimes = ctypes.windll.kernel32.GetProcessTimes
     GetProcessTimes.argtypes = (HANDLE, LPFILETIME, LPFILETIME, LPFILETIME, LPFILETIME)
     GetProcessTimes.restype = BOOL
@@ -191,9 +199,11 @@ if os.name == 'nt':
             CloseHandle(threadHandle)
 
     def suspendProcess(pid):
-        for tid, ownerPid in _listAllThreads():
-            if ownerPid == pid:
-                suspendThread(tid)
+        if not DebugActiveProcess(pid):
+            # if DebugActiveProcess failed try to suspend threads one by one
+            for tid, ownerPid in _listAllThreads():
+                if ownerPid == pid:
+                    suspendThread(tid)
 
     def terminateProcess(pid):
         procHandle = OpenProcess(PROCESS_TERMINATE, False, pid)
@@ -208,7 +218,7 @@ if os.name == 'nt':
 
     PROCESS_ACTIONS = {ProcessAction.SUSPEND: suspendProcess,
                        ProcessAction.TERMINATE: terminateProcess,
-                       ProcessAction.RESUME: lambda pid: None}
+                       ProcessAction.RESUME: DebugActiveProcessStop}
     def _performAction(pid, action):
         try:
             PROCESS_ACTIONS[action](pid)
@@ -220,32 +230,11 @@ elif os.name == 'posix':
     import time
     import re
 
-    if sys.platform in ('linux2', 'cygwin'):
-        if signal.getsignal(signal.SIGCHLD) in (signal.SIG_DFL, signal.SIG_IGN):
-            # We need to install an empty signal handler, otherwise SIGCHLD would be ignored
-            # and time.sleep() won't be interrupted when a child dies. We also need to do so in
-            # main thread (see "signal" module documentation).
-            signal.signal(signal.SIGCHLD, lambda *args: None)
-            signal.siginterrupt(signal.SIGCHLD, False)
-
-        def __waitForProcess(process, timeout):
-            startTime = time.time()
-            endTime = startTime + timeout
-            while (time.time() < endTime) and (process.poll() is None):
-                # time.sleep() is interrupted by signals,
-                # so the loop will continue when child process' state is changed
-                remainingTimeout = endTime - time.time()
-                if remainingTimeout > 0:
-                    time.sleep(remainingTimeout)
-    else:
-    # dirty hack for BSD-like systems (e.g. MacOS): instead of interruptible time.sleep we use
-    # "spin-lock" due to fact that on MacOS enabling time.sleep interrupts by SIGCHLD signal
-    # breaks scons - it says "system call interrupted" and stops
-        def __waitForProcess(process, timeout):
-            startTime = time.time()
-            endTime = startTime + timeout
-            while (time.time() < endTime) and (process.poll() is None):
-                time.sleep(0.1)
+    def __waitForProcess(process, timeout):
+        startTime = time.time()
+        endTime = startTime + timeout
+        while (time.time() < endTime) and (process.poll() is None):
+            time.sleep(0.1)
 
     if sys.platform == 'cygwin':
         _PS_CALL_CMD = ['ps', '-eW']
@@ -290,19 +279,17 @@ def _getRunningProcesses():
     return result
 
 def killProcessTree(proc):
-    killQueue = collections.deque([proc.pid])
-    while killQueue:
-        target = killQueue.popleft()
-        # first STOP the target so it won't spawn new children
-        _performAction(target, ProcessAction.SUSPEND)
-        # now get its children, add them to the end of kill queue and kill the target
-        try:
-            try:
-                killQueue.extend(_getRunningProcesses()[target])
-            finally:
-                _performAction(target, ProcessAction.TERMINATE)
-        finally:
-            _performAction(target, ProcessAction.RESUME)
+    killQueue = list()
+    def fillQueue(pid):
+        _performAction(pid, ProcessAction.SUSPEND)
+        killQueue.append(pid)
+        for item in _getRunningProcesses()[pid]:
+            fillQueue(item)
+        return killQueue
+
+    for pid in fillQueue(proc.pid):
+        _performAction(pid, ProcessAction.TERMINATE)
+        _performAction(pid, ProcessAction.RESUME)
 
 def waitForProcess(process, timeout=None):
     if timeout is None:

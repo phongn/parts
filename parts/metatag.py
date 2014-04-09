@@ -12,7 +12,7 @@ def MetaTag(nodes,ns='meta',**metakv):
             setattr(n,ns,common.namespace())
         for k,v in metakv.iteritems():
             getattr(n,ns)[k]=v
-            
+
 def MetaTagValue(node,key,ns='meta',default=None):
     try:
         return getattr(node,ns)[key]
@@ -46,18 +46,18 @@ def Tag_wrapper(env,nodes,ns='meta',**metakv):
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
-# adding logic to Scons Enviroment object  
+# adding logic to Scons Enviroment object
 SConsEnvironment.MetaTag=MetaTag_method
 SConsEnvironment.Tag=Tag_wrapper # to work around existing tag usage
 SConsEnvironment.MetaTagValue=MetaTagValue_method
 SConsEnvironment.hasMetaTag=hasMetaTag_method
 
-api.register.add_global_parts_object('MetaTag',MetaTag)   
-api.register.add_global_parts_object('MetaTagValue',MetaTagValue)   
-api.register.add_global_parts_object('hasMetaTag',hasMetaTag)   
+api.register.add_global_parts_object('MetaTag',MetaTag)
+api.register.add_global_parts_object('MetaTagValue',MetaTagValue)
+api.register.add_global_parts_object('hasMetaTag',hasMetaTag)
 
-api.register.add_global_object('MetaTag',MetaTag)   
-api.register.add_global_object('MetaTagValue',MetaTagValue)   
-api.register.add_global_object('hasMetaTag',hasMetaTag)   
+api.register.add_global_object('MetaTag',MetaTag)
+api.register.add_global_object('MetaTagValue',MetaTagValue)
+api.register.add_global_object('hasMetaTag',hasMetaTag)
 
 

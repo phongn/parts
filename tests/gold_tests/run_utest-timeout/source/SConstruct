@@ -1,6 +1,6 @@
 from parts import *
 
-SetOptionDefault('RUN_UTEST_TIME_OUT', 1)
+SetOptionDefault('RUN_UTEST_TIME_OUT', 5)
 SetOptionDefault('LOGGER', '$TEXT_LOGGER')
 SetOptionDefault('PART_LOGGER', '$PART_TEXT_LOGGER')
 SetOptionDefault('LOG_PART_FILE_NAME', '${PART_NAME}.log')

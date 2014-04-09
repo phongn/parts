@@ -2,6 +2,7 @@
 cplusplus = __import__('c++', globals(), locals(), [])
 #import c core toolchain
 import SCons.Tool.cc
+import parts.tools.cc
 
 import parts.tools.GnuCommon
 import parts.tools.Common
@@ -16,13 +17,13 @@ def generate(env):
 
     # get the basic C++ flags (unix based stuff only??)
     cplusplus.generate(env)
-    SCons.Tool.cc.generate(env)
+    parts.tools.cc.generate(env)
 
     # set up shell env for running compiler
     parts.tools.GnuCommon.clang.MergeShellEnv(env)
 
-    env['CC'] = parts.tools.Common.toolvar('clang')
-    env['CXX'] = parts.tools.Common.toolvar('clang++')
+    env['CC'] = parts.tools.Common.toolvar('clang', ('clang',), env = env)
+    env['CXX'] = parts.tools.Common.toolvar('clang++', ('clang++',), env = env)
 
     env['SHOBJSUFFIX'] = '.pic.o'
     env['OBJSUFFIX'] = '.o'

@@ -64,16 +64,16 @@ def generate(env):
         static_obj.add_emitter(suffix, SCons.Defaults.StaticObjectEmitter)
         shared_obj.add_emitter(suffix, SCons.Defaults.SharedObjectEmitter)
         
+    msvc.MergeShellEnv(env)
     if env['TARGET_PLATFORM']=='x86_64':
-        env['AS']        = parts.tools.Common.toolvar('ml64')
+        env['AS']        = parts.tools.Common.toolvar('ml64', ('ml64',), env = env)
     else:
-        env['AS']        = parts.tools.Common.toolvar('ml')
+        env['AS']        = parts.tools.Common.toolvar('ml', ('ml',), env = env)
     env['ASFLAGS']   = SCons.Util.CLVar('/nologo')
     env['ASPPFLAGS'] = '$ASFLAGS'
     env['ASCOM']     = '$AS $ASFLAGS /c /Fo$TARGET $SOURCES'
     env['ASPPCOM']   = '$CC $ASPPFLAGS $CPPFLAGS $_CPPDEFFLAGS $_CPPINCFLAGS /c /Fo$TARGET $SOURCES'
     env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
-    msvc.MergeShellEnv(env)
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('masm\ml',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):

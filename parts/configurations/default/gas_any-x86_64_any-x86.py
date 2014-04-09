@@ -11,6 +11,7 @@ config=configuration(map_default_version)
 
 config.VersionRange("3-*",
                     prepend=ConfigValues(
-                        ASPPFLAGS=['-m32']
+                        ASPPFLAGS=['-m32'],
+                        LINKFLAGS=['-m32']
                         )
                     )

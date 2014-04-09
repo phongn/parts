@@ -10,53 +10,53 @@ speed boost as we fill in the values as at this point it is not going to change.
 processing later on the same environment for the same variable.
 '''
 
-import SCons.Tool
 import SCons.Scanner
 from .. import mappers
 import thread
 
-from SCons.Debug import logInstanceCreation
+def wrap_Prog_scan(func):
+    '''
+    this deal with issue with the program scanner for stuff that has .a/.lib./dylib/.so files
+    '''
+    def _scan(node, env, libpath = ()):
+        pass
+    _scan.__code__ = func.__code__
+    _scan.__globals__.update(print_find_libs = SCons.Scanner.Prog.print_find_libs)
+    def scan(node, env, libpath = ()):
+        global _scan
+        prop_lst = env.get('LIBS')
+        if prop_lst:
+            mappers.sub_lst(env, prop_lst, thread.get_ident(), recurse = False)
+        return _scan(node, env, libpath)
+    func.__code__ = scan.__code__
+    func.__globals__.update(
+            _scan = _scan,
+            mappers = mappers,
+            thread = thread,
+            )
+wrap_Prog_scan(SCons.Scanner.Prog.scan)
 
-## this deal with issue with the program scanner for stuff that has .a/.lib./dylib/.so files
-#scons_scan=SCons.Scanner.Prog.scan
+def wrap_FindPathDirs(klass):
+    def _call(self, env, dir, target = None, source = None, argument = None):
+        pass
 
-#def pscan(node, env, libpath = ()):
-#    print env.get('LIBS')
-#    env.subst("$LIBS")
-#    return scons_scan(node,env,libpath)
+    func = klass.__call__.__func__
+    _call.__code__ = func.__code__
 
-#kw={}
-#kw['path_function'] = SCons.Scanner.FindPathDirs('LIBPATH')
-#SCons.Tool.ProgramScanner=SCons.Scanner.Base(pscan, "ProgramScanner", **kw)
+    def call(self, env, dir, target = None, source = None, argument = None):
+        global _call
+        prop_lst = env.get(self.variable)
+        if prop_lst:
+            mappers.sub_lst(env, prop_lst, thread.get_ident(), recurse = False)
+        return _call(self, env, dir, target, source, argument)
 
-# this get the general cases ( for example with handle libpath for the program scanner case above)
-class PartPathDirsWrapper(object):
+    func.__code__ = call.__code__
+    func.__globals__.update(
+             _call = _call,
+             mappers = mappers,
+             thread = thread,
+             )
+wrap_FindPathDirs(SCons.Scanner.FindPathDirs)
 
-    def __init__(self, obj):
-        if __debug__: logInstanceCreation(self)
-        self.obj = obj
-
-    def __call__(self, env, dir, target=None, source=None, argument=None):
-
-        prop_lst=env.get(self.obj.variable,[])
-        if prop_lst!=[]:
-            #print prop_lst
-            ret=mappers.sub_lst(env,prop_lst,thread.get_ident(),recurse=False)
-            #env[self.obj.variable]=ret'''
-            #print 1,env[self.obj.variable]
-        return self.obj(env,dir,target,source,argument)
-
-
-def Scanner_override():
-    ## this is for fixing an issue with the scanners in which one item in a env
-    ## does not have the $vars fully expanded, which causes an issue with in the
-    ## dependency tree. This leads to a false rebuild of few files
-    for k in SCons.Tool.SourceFileScanner.function.keys():
-        if isinstance(SCons.Tool.SourceFileScanner.function[k].path_function,SCons.Scanner.FindPathDirs):
-            SCons.Tool.SourceFileScanner.function[k].path_function=PartPathDirsWrapper(
-            SCons.Tool.SourceFileScanner.function[k].path_function)
-
-
-
-
+# vim: set et ts=4 sw=4 ai :
 

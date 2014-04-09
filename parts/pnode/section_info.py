@@ -20,11 +20,11 @@ class section_info(stored_info.stored_info):
         self.__esigs={}
         self.__esig=None
         self.__dependson=[]
-        self.__exported_requirements=set()
+        self.__exported_requirements=list()
         self.__user_env_diff={}
         #self.build_context=[]
         #self.config_context=[]
-    
+
 
     @property
     def Name(self):
@@ -57,7 +57,7 @@ class section_info(stored_info.stored_info):
     @ESigs.setter
     def ESigs(self,val):
         self.__esigs=val
-    
+
     @property
     def ESig(self):
         return self.__esig
@@ -93,16 +93,16 @@ class section_info(stored_info.stored_info):
     def GetConfigContext(self):
         '''This will get the config context for a given section
         and merge with the parts version as needed'''
-        
+
         # currently we just use the Parts version
         return self.Part.Stored.Root.Stored.ConfigContext
-    
+
     def GetBuilderContext(self):
         '''This will get the builder context for a given section
         and merge with the parts version as needed'''
-        
+
         # currently we just use the Parts version
-        return self.Part.Stored.Root.Stored.BuildContext    
+        return self.Part.Stored.Root.Stored.BuildContext
 
     @property
     def Part(self):

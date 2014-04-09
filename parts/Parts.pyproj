@@ -15,7 +15,7 @@
     <CommandLineArguments>all </CommandLineArguments>
     <IsWindowsApplication>False</IsWindowsApplication>
     <DebugStdLib>False</DebugStdLib>
-    <InterpreterId>9a7a9026-48c1-4688-9d5d-e5699d47d074</InterpreterId>
+    <InterpreterId>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</InterpreterId>
     <InterpreterVersion>2.7</InterpreterVersion>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterArguments />
@@ -330,9 +330,13 @@
     <Compile Include="tools\lipo.py" />
     <Compile Include="tools\MSCommon\MsiFinder.py" />
     <Compile Include="tools\MSCommon\vc11.py" />
+    <Compile Include="tools\MSCommon\vc12.py" />
     <Compile Include="tools\MSCommon\wix.py" />
     <Compile Include="tools\wix.py" />
     <Compile Include="vcs\git.py" />
     <Compile Include="vcs\smart_svn.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{9a7a9026-48c1-4688-9d5d-e5699d47d074}\2.7" />
   </ItemGroup>
 </Project>

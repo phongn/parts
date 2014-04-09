@@ -1,4 +1,3 @@
-
 from .. import glb
 
 import pnode
@@ -14,7 +13,7 @@ from .. import packaging
 #from .. import requirement
 from .. import errors
 from .. import functors
-#from target_type import target_type
+from ..target_type import target_type
 from .. import datacache
 
 # these imports add stuff we will need to export to the parts file.
@@ -29,23 +28,13 @@ import copy
 import pprint
 import os
 import time
+import traceback
 #import SCons.Script
 import SCons.Node
 import types
 import hashlib
 
-class part_compatiblity(object):
-
-    @property
-    def version(self):
-        return self.Version
-
-    @property
-    def alias(self):
-        return self.Alias
-
-
-class part(pnode.pnode,part_compatiblity):
+class part(pnode.pnode):
     """description of class"""
 
     __slots__=[
@@ -76,7 +65,7 @@ class part(pnode.pnode,part_compatiblity):
 
     '__env_diff', # the difference of this environment with the Default environment of the defining Setting object
     '__env_diff_sig', # The MD5 value of this difference
-    '__env_mini_diff_sig' # a short form of it
+    '__env_mini_diff_sig', # a short form of it
 
     '__build_context_files',
     '__config_context_files',
@@ -109,6 +98,7 @@ class part(pnode.pnode,part_compatiblity):
     '__sdk_or_installed_called', # this is to help with issues with unit tests sub parts in classic format
     '__order_value', # use to help with ordering in a compatible way between classic and new formats
     '__cache', # used for internal caching of data
+    '__build_targets', # How does it care about SCons.Script.BUILD_TARGETS
     #'__dict__'
     ]
     # constructor
@@ -117,8 +107,7 @@ class part(pnode.pnode,part_compatiblity):
             Settings=None,
             **kw):
 
-        self.__ID=kw.get('ID')
-        if self.__ID: del kw['ID']
+        self.__ID=kw.pop('ID', None)
         ## stuff for creating an environment
         # need to store this so we can pass to an sub-part
         self.__append=append #This is stuff we want to append to the environment
@@ -184,9 +173,7 @@ class part(pnode.pnode,part_compatiblity):
         self.__short_name=name
         # the parent part object
         # check for kw for parent_part key
-        self.__parent=self.__kw.get('parent_part',None)
-        if self.__parent:
-            del self.__kw['parent_part']
+        self.__parent=self.__kw.pop('parent_part',None)
         # the top level part object
         self.__root=None
         # any subparts to this Part
@@ -282,6 +269,8 @@ class part(pnode.pnode,part_compatiblity):
         else:
             self.__root.Version=version
 
+    version = Version
+
     @property # readonly as it based on full version
     def ShortVersion(self):
         """Get the current short version."""
@@ -293,6 +282,7 @@ class part(pnode.pnode,part_compatiblity):
         if self.__alias is None:
             self.__alias=self.__ID
         return self.__alias
+    alias = Alias
 
     @pnode.pnode.ID.getter
     def ID(self):
@@ -552,6 +542,24 @@ class part(pnode.pnode,part_compatiblity):
     def _cache(self):
         return self.__cache
 
+    @property
+    def BuildTargets(self):
+        try:
+            return self.__build_targets
+        except AttributeError:
+            return None
+
+    @BuildTargets.setter
+    def BuildTargets(self, value):
+        if not value:
+            try:
+                del self.__build_targets
+            except AttributeError:
+                pass
+            return
+        self.__build_targets = value
+
+
 
     # section forwarding API
     # given that we can only define one section at a time
@@ -573,9 +581,8 @@ class part(pnode.pnode,part_compatiblity):
 
     def Section(self,case):
         try:
-            tmp=self.__sections[case]
-            return tmp
-        except:
+            return self.__sections[case]
+        except KeyError:
             return self.__classic_section
 
     # hack till we get new format stuff working...
@@ -648,7 +655,7 @@ class part(pnode.pnode,part_compatiblity):
 
         diff.update(diff_env(base_env,self.__env,['SKIP_CONCEPT_DEFINITION']))
         if diff !={}:
-            
+
             md5=hashlib.md5()
             md5.update(common.get_content(diff))
             self.__env_diff=diff
@@ -673,7 +680,7 @@ class part(pnode.pnode,part_compatiblity):
         if self.__alias is None:
             # we don't have a user provided alias.. make it off the file name
             tmp=self.__env.subst(self.__file)
-            
+
             tmp=os.path.splitext(os.path.split(tmp)[1])[0] # we only want the file name
             #path sig would be enough, but the alias in some form gives the user a value
             # they can reconize.
@@ -731,9 +738,9 @@ class part(pnode.pnode,part_compatiblity):
             self.__platform_match.ARCH='any'
             if self.__kw.get('architecture_indepenent'):
                 api.output.warning_msg('use of "architecture_indepenent" is depreciated. Please use "architecture_independent" instead.')
-        
+
         self.__config_match=not self.__kw.get('config_independent',False)
-        
+
 
         self.__classic_section=glb.pnodes.Create(section.build_section,self)
         self.__is_setup=True
@@ -843,7 +850,110 @@ class part(pnode.pnode,part_compatiblity):
         self.__classic_section._map_targets()
         return
 
+    class build_target_wrapper(object):
+        '''
+        There are some .parts files that inspect SCons.Script.BUILD_TARGETS
+        value to decide whether to build unit-tests or not. We need to determine
+        such parts to make sure they are loaded from file and not from cache
+        when BUILD_TARGETS contain targets from different sections.
+        Wrapping SCons.Script.BUILD_TARGETS. Need to wrap reading methods:
+        __getitem__
+        __iter__
+        __contains__
+        __getslice__
+        See http://docs.python.org/2/reference/datamodel.html#emulating-container-types
+        and http://docs.python.org/2/reference/datamodel.html#additional-methods-for-emulation-of-sequence-types
+        for reference
+        '''
+        __slots__ = ['__obj', '__accessed']
+        def __init__(self, obj):
+            self.__obj = obj
 
+        @property
+        def obj(self):
+            '''
+            Read-only property. Returns the wrapped object.
+            '''
+            return self.__obj
+
+        @property
+        def accessed(self):
+            '''
+            Returns C{True} if the wrapped object is accessed for reading.
+            '''
+            try:
+                return self.__accessed
+            except AttributeError:
+                return False
+
+        def __getattr__(self, name):
+            '''
+            Wraps the object's method to register reading access.
+            '''
+            return getattr(self.__obj, name)
+
+        # We override read-access methods. To avoid cut/pasting we define them dynamically.
+        def def_method(name):
+            def method(self, *args, **kw):
+                result = getattr(self.obj, name)(*args, **kw)
+                self.__accessed = True
+                api.output.warning_msg(
+                        "Inspecting internal SCons.Script.BUILD_TARGETS variable "
+                        "is a bad coding pattern. Consider re-factoring to avoid that.")
+                return result
+            return method
+        for name in ('__iter__', '__getitem__', '__getslice__', '__contains__'):
+            locals()[name] = def_method(name)
+        del name, def_method
+
+    class part_loading_context(object):
+        '''
+        Class used as .parts file loading context. It solves two tasks:
+         1. Filters out exceptions raised during the file reading.
+         2. Registers access to SCons.Script.BUILD_TARGETS list by .parts file.
+        '''
+        def __init__(self, part_file, keep_going):
+            '''
+            @param[in] self - part_loading_context instance
+            @param[in] part_file - C{SCons.Node.Node} instance representing .parts file.
+            @param[in] keep_going - Flag to decide if we need to continue loading in
+                       case of exception raised.
+            '''
+            if keep_going:
+                self.__exit__ = self.__keep_going
+            self.part_file = part_file
+
+        def __enter__(self):
+            '''
+            Enter the context.
+            '''
+            SCons.Script.BUILD_TARGETS = part.build_target_wrapper(
+                    SCons.Script.BUILD_TARGETS)
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            '''
+            Exit the context.
+            '''
+            # Do not suppress any exceptions
+            self.build_targets_accessed = SCons.Script.BUILD_TARGETS.accessed
+            SCons.Script.BUILD_TARGETS = SCons.Script.BUILD_TARGETS.obj
+            return None
+
+        def __keep_going(self, exc_type, exc_value, tb):
+            '''
+            This method is called on exit when the context object has been constructed
+            with keep_going paramter set to True.
+            '''
+            type(self).__exit__(self, exc_type, exc_value, tb)
+            # Suppress all but LoadStoredError exceptions
+            if exc_type == errors.LoadStoredError:
+                return None # Do not suppress this exception
+            api.output.warning_msg(
+                    "Exception thrown while processing {0}\n{1}".format(
+                    self.part_file.srcnode().abspath, traceback.format_exc()))
+            api.output.print_msg("Will try to continue...")
+            return True
 
     def ReadFile(self):
         # we process the file
@@ -898,43 +1008,22 @@ class part(pnode.pnode,part_compatiblity):
                     api.output.error_msg('Parts file '+self.__file.srcnode().abspath+" was not found.")
 
                 # Call the part file
-                if SCons.Script.GetOption('keep_going'):
-                    # don't error is the Parts file has bad data
-                    # we just report it and go on
-                    # will mostly fail if one needs to build everything
-                    # however if i was to build on a component this
-                    # probally will allow me to continue without waiting for the
-                    # one bad component to get fixes
-                    try:
-                        errors.ResetPartStackFrameInfo()
-                        ret=self.__env.SConscript(
-                            self.__file,
-                            src_dir=sdir,
-                            variant_dir=bdir,
-                            duplicate=self.__env['duplicate_build'],
-                            exports=export_map
-                            )
-                    except errors.LoadStoredError:
-                         raise
-                    except Exception,ec:
-                        import traceback,StringIO
-                        ec_str=StringIO.StringIO()
-                        traceback.print_exc(file=ec_str)
-                        api.output.warning_msg("Exception thrown while processing "+self.__file.srcnode().abspath+"\n"+ec_str.getvalue())
-                        api.output.print_msg("Will try to continue...")
-
-                else:
-
+                with self.part_loading_context(self.__file,
+                        SCons.Script.GetOption('keep_going')) as context:
                     errors.ResetPartStackFrameInfo()
+                    self.__env.SConscript(
+                        self.__file,
+                        src_dir=sdir,
+                        variant_dir=bdir,
+                        duplicate=self.__env['duplicate_build'],
+                        exports=export_map
+                        )
+                if context.build_targets_accessed:
+                    # Remember the BUILD_TARGETS state
+                    self.BuildTargets = set(
+                            target_type(target).Section for target in
+                            SCons.Script.BUILD_TARGETS)
 
-                    ret=self.__env.SConscript(
-                            self.__file,
-                            src_dir=sdir,
-                            variant_dir=bdir,
-                            duplicate=self.__env['duplicate_build'],
-                            exports=export_map
-                            )
-            
             api.output.verbose_msg(['part_read'],'Parts file {0} read time: {1}'.format(self.__file.srcnode().abspath,time.time()-st))
             # we tag the Directory nodes so we can latter sort unknown items faster, by checking the directory ownership
             env._log_keys=False
@@ -945,8 +1034,11 @@ class part(pnode.pnode,part_compatiblity):
 
             # hack to help with compatibility issues as we fixed up the mapping table.
             if self.__classic_section.Env.get('PART_REVERSE_EXPORTS_LIBS') == True:
-                self.__classic_section.Exports['LIBS'][0].reverse()
-                
+                try:
+                    self.__classic_section.Exports['LIBS'][0].reverse()
+                except KeyError:
+                    pass
+
 
             sys.path=bk_path
 
@@ -1035,7 +1127,7 @@ class part(pnode.pnode,part_compatiblity):
             return self.__cache['hasFileChanged']
         except KeyError:
             data=self.Stored
-            # check that stored data is exits
+            # check that stored data exists
             if data is None:
                 self.__cache['hasFileChanged']=True
                 self.UpdateReadState(glb.load_file)
@@ -1126,7 +1218,7 @@ class part(pnode.pnode,part_compatiblity):
         info.ForceLoad=self.ForceLoad
 
         #store subpart ID values
-        info.SubPartIDs=set([i.ID for i in self.__subparts.itervalues()])
+        info.SubPartIDs = self.__subparts.keys()
 
         tmp=[]
         i=self.__parent
@@ -1204,6 +1296,7 @@ class part(pnode.pnode,part_compatiblity):
             info.vcs_cache_filename = vcs_obj._cache_filename
         except:
             pass
+        info.BuildTargets = self.BuildTargets
         return info
 
 
@@ -1211,7 +1304,7 @@ class part(pnode.pnode,part_compatiblity):
     # Depends API
     def map_component_info(self,comp_part):
         pass
-      
+
 
 
 
@@ -1242,9 +1335,6 @@ class part(pnode.pnode,part_compatiblity):
         self.__package_group=info.PackageGroup # should be handled by _setup_
         self.__mode=info.Mode #?? # should be handled by _setup_
 
-        tmp={}
-        for name in info.SubPartIDs:
-            tmp[name]=glb.pnodes.GetPNode(name)
         for i in info.SubPartIDs:
             self.__subparts[i]=glb.pnodes.GetPNode(i)
         self.__parent=info.Parent # should be hanlded by _setup_
@@ -1263,10 +1353,12 @@ class part(pnode.pnode,part_compatiblity):
             self.__env=self.__root.Env.Clone()
             self.__is_setup=True
 
-   
+        self.BuildTargets = info.BuildTargets
+
+
 ## some util function
 
-def pcmp(x,y):            
+def pcmp(x,y):
     return cmp(x._order_value,y._order_value)
 
 def complex_compare(v1,v2):

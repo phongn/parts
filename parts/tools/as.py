@@ -17,7 +17,7 @@ def generate(env):
     AS.generate(env)
     AS.ASPPSuffixes[:], AS.ASSuffixes[:] = ASPPSuffixes, ASSuffixes
     env['AS'] = env.get('BINUTILS', {}).get('AS', env['AS'])
-    env['AS'] = parts.tools.Common.toolvar(env['AS'],('as'))
+    env['AS'] = parts.tools.Common.toolvar(env['AS'],('as'), env)
 
 def exists(env):
     parts.tools.GnuCommon.binutils.setup(env)

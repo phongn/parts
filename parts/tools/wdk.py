@@ -3,9 +3,11 @@ from parts.tools.Common.ToolSetting import MatchVersionNumbers
 from parts.tools.Common.ToolInfo import ToolInfo
 from parts.tools.Common.Finders import PathFinder
 from parts.platform_info import SystemPlatform
+from parts.tools.MSCommon import validate_vars
 import parts.tools.mslink
 
 import SCons.Util
+from SCons.Scanner.Prog import print_find_libs
 import os
 
 import parts.api.output as output
@@ -268,13 +270,156 @@ def _resolve_wdk_flags(env, flags):
 #Actions for DDK stuff
 ASAction = SCons.Action.Action("$DDKASCOM", "$DDKASCOMSTR")
 CAction = SCons.Action.Action("$DDKCCCOM", "$DDKCCCOMSTR")
+ShCAction = SCons.Action.Action("$DDKSHCCCOM", "$DDKSHCCCOMSTR")
 CXXAction = SCons.Action.Action("$DDKCXXCOM", "$DDKCXXCOMSTR")
+ShCXXAction = SCons.Action.Action("$DDKSHCXXCOM", "$DDKSHCXXCOMSTR")
 
 LinkAction = SCons.Action.Action("$DDKLINKCOM", "$DDKLINKCOMSTR")
+ShLinkAction = SCons.Action.Action("$DDKSHLINKCOM", "$DDKSHLINKCOMSTR")
 
 ASSuffixes = ['.s', '.asm', '.ASM']
 CSuffixes = ['.c', '.C']
 CXXSuffixes = ['.cc', '.cpp', '.cxx', '.c++', '.C++']
+
+def DriverScanner(**kw):
+    """Return a prototype Scanner instance for scanning executable
+    files for static-lib dependencies"""
+    kw['path_function'] = SCons.Scanner.FindPathDirs('DDKLIBPATH')
+    ps = SCons.Scanner.Base(get_scan(kw.pop('DDKLIBS', 'DDKLIBS')), "DriverScanner", **kw)
+    return ps
+
+def get_scan(DDKLIBS = 'DDKLIBS'):
+    def scan(node, env, libpath = ()):
+        """
+        This scanner scans program files for static-library
+        dependencies.  It will search the LIBPATH environment variable
+        for libraries specified in the LIBS variable, returning any
+        files it finds as dependencies.
+        """
+        try:
+            libs = env[DDKLIBS]
+        except KeyError:
+            # There are no LIBS in this environment, so just return a null list:
+            return []
+        if SCons.Util.is_String(libs):
+            libs = libs.split()
+        else:
+            libs = SCons.Util.flatten(libs)
+
+        try:
+            prefix = SCons.Util.flatten(env['DDKLIBPREFIXES'])
+        except KeyError:
+            prefix = [ '' ]
+
+        try:
+            suffix = SCons.Util.flatten(env['DDKLIBSUFFIXES'])
+        except KeyError:
+            suffix = [ '' ]
+
+        pairs = []
+        for suf in map(env.subst, suffix):
+            for pref in map(env.subst, prefix):
+                pairs.append((pref, suf))
+
+        result = []
+
+        if callable(libpath):
+            libpath = libpath()
+
+        find_file = SCons.Node.FS.find_file
+        adjustixes = SCons.Util.adjustixes
+        for lib in libs:
+            if SCons.Util.is_String(lib):
+                lib = env.subst(lib)
+                for pref, suf in pairs:
+                    l = adjustixes(lib, pref, suf)
+                    l = find_file(l, libpath, verbose=print_find_libs)
+                    if l:
+                        result.append(l)
+            else:
+                result.append(lib)
+
+        return result
+    return scan
+
+def createStaticLibBuilder(env):
+    try:
+        static_lib = env['BUILDERS']['DriverStaticLibrary']
+    except KeyError:
+        action_list = [ SCons.Action.Action("$DDKARCOM", "$DDARCOMSTR") ]
+
+        static_lib = SCons.Builder.Builder(action = action_list,
+                                           emitter = '$DDKLIBEMITTER',
+                                           prefix = '$DDKLIBLINKPREFIX',
+                                           suffix = '$DDKLIBLINKSUFFIX',
+                                           src_suffix = '$DDKOBJSUFFIX',
+                                           src_builder = 'DriverObject')
+        env['BUILDERS']['DriverStaticLibrary'] = static_lib
+        env['BUILDERS']['DriverLibrary'] = static_lib
+
+    return static_lib
+
+def createSharedLibBuilder(env):
+
+    try:
+        shared_lib = env['BUILDERS']['DriverSharedLibrary']
+    except KeyError:
+        import SCons.Defaults
+        action_list = [ SCons.Defaults.SharedCheck,
+                        ShLinkAction ]
+        shared_lib = SCons.Builder.Builder(action = action_list,
+                                           emitter = "$DDKSHLIBEMITTER",
+                                           prefix = '$DDKSHLIBPREFIX',
+                                           suffix = '$DDKSHLIBSUFFIX',
+                                           target_scanner = DriverScanner(DDKLIBS='DDKSHLIBS'),
+                                           src_suffix = '$DDKOBJSUFFIX',
+                                           src_builder = 'DriverObject')
+        env['BUILDERS']['DriverSharedLibrary'] = shared_lib
+
+    return shared_lib
+
+def _dllEmitter(target, source, env):
+    """Common implementation of dll emitter."""
+    validate_vars(env)
+
+    extratargets = []
+    extrasources = []
+
+    dll = env.FindIxes(target, 'DDKSHLIBPREFIX', 'DDKSHLIBSUFFIX')
+    no_import_lib = env.get('no_import_lib', 0)
+
+    if not dll:
+        raise SCons.Errors.UserError, 'A shared library should have exactly one target with the suffix: %s' % env.subst('$DDKSHLIBSUFFIX')
+
+    insert_def = env.subst("$WINDOWS_INSERT_DEF")
+    if not insert_def in ['', '0', 0] and \
+       not env.FindIxes(source, "WINDOWSDEFPREFIX", "WINDOWSDEFSUFFIX"):
+
+        # append a def file to the list of sources
+        extrasources.append(
+            env.ReplaceIxes(dll,
+                            'DDKSHLIBPREFIX', 'DDKSHLIBSUFFIX',
+                            "WINDOWSDEFPREFIX", "WINDOWSDEFSUFFIX"))
+
+    if env.get('PDB') and not env.get('IGNORE_PDB',False):
+        pdb = env.arg2nodes('$PDB', target = target, source = source)[0]
+        extratargets.append(pdb)
+        target[0].attributes.pdb = pdb
+
+    if not no_import_lib and \
+       not env.FindIxes(target, "DDKLIBPREFIX", "DDKLIBSUFFIX"):
+        # Append an import library to the list of targets.
+        extratargets.append(
+            env.ReplaceIxes(dll,
+                            'DDKSHLIBPREFIX', 'DDKSHLIBSUFFIX',
+                            "LIBPREFIX", "LIBSUFFIX"))
+        # and .exp file is created if there are exports from a DLL
+        extratargets.append(
+            env.ReplaceIxes(dll,
+                            'DDKSHLIBPREFIX', 'DDKSHLIBSUFFIX',
+                            "WINDOWSEXPPREFIX", "WINDOWSEXPSUFFIX"))
+
+    return (env.Precious(target + extratargets), env.Precious(source + extrasources))
 
 def createDriverBuilder(env):
     try:
@@ -287,7 +432,7 @@ def createDriverBuilder(env):
             suffix  = '$DDKDRVSUFFIX',
             src_suffix = '$DDKOBJSUFFIX',
             src_builder = 'DriverObject',
-            target_scanner = SCons.Tool.ProgramScanner)
+            target_scanner = DriverScanner())
         env['BUILDERS']['WinDriver'] = driverBuilder
 
     return driverBuilder
@@ -312,6 +457,7 @@ def createBuilders(env):
     return createDriverBuilder(env), createDriverObjectBuilder(env)
 
 def generate(env):
+
     drvBuilder, drvObjBuilder = createBuilders(env)
 
     for suffix in ASSuffixes:
@@ -323,16 +469,22 @@ def generate(env):
     for suffix in CXXSuffixes:
         drvObjBuilder.add_action(suffix, CXXAction)
 
+    createSharedLibBuilder(env)
+    createStaticLibBuilder(env)
+
     WDK.MergeShellEnv(env)
 
+    env.SetDefault(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME = 1)
+
     env.Append(DDKDRVEMITTER = [_pdbEmitter])
+    env.Append(DDKSHLIBEMITTER = [_dllEmitter])
     env['_PDB'] = parts.tools.mslink.pdbGenerator
-    env['DDKCCPDBFLAGS'] = SCons.Util.CLVar(['${"/Z7" if PDB else ""}'])
-    env['DDKCCPCHFLAGS'] = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}'])
+    env.SetDefault(DDKCCPDBFLAGS = SCons.Util.CLVar(['${"/Z7" if PDB else ""}']))
+    env.SetDefault(DDKCCPCHFLAGS = SCons.Util.CLVar(['${(PCH and "/Yu%s /Fp%s"%(PCHSTOP or "",File(PCH))) or ""}']))
 
-    env['DDK_MIN_WIN'] = 'wnet'
+    env.SetDefault(DDK_MIN_WIN = 'wnet')
 
-    env['DDKOBJSUFFIX'] = '.dobj'
+    env.SetDefault(DDKOBJSUFFIX = '.dobj')
 
     env['_ddkplatform'] = _ddkplatform
     env['_ddklibplatform'] = _ddklibplatform
@@ -341,46 +493,82 @@ def generate(env):
     env['DDKDIR'] = r'${WDK.DIR}'
     env['DDKHOSTDIR'] = r'${DDKDIR}\bin\x86'
     env['DDKTARGETARCH'] = r'${_ddkplatform(TARGET_ARCH)}'
-    env['DDKHOSTTARGETDIR'] = r'${DDKHOSTDIR}\${DDKTARGETARCH}'
+    env.SetDefault(DDKHOSTTARGETDIR = r'${DDKHOSTDIR}\${DDKTARGETARCH}')
 
-    env['DDKCC'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\cl.exe', r'${DDKHOSTTARGETDIR}\cl.exe']),('cl'))
-    env['DDKLINK'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\link.exe', r'${DDKHOSTTARGETDIR}\link.exe']),('link'))
-    env['DDKAS'] = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
-        else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe']),('ml','ml64'))
+    env.SetDefault(DDKCC = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\cl.exe', r'${DDKHOSTTARGETDIR}\cl.exe']),('cl',), env = env))
+    env.SetDefault(DDKLINK = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\link.exe', r'${DDKHOSTTARGETDIR}\link.exe']),('link',), env = env))
+    env.SetDefault(DDKAS = parts.tools.Common.toolvar(env.Detect([r'${DDKHOSTDIR}\ml.exe', r'${DDKHOSTTARGETDIR}\ml.exe']) if env['TARGET_ARCH'] == 'x86' \
+        else env.Detect([r'${DDKHOSTTARGETDIR}\ml64.exe']),('ml','ml64'), env = env))
 
-    env['_DDKLIBFLAGS'     ] = '${_concat(DDKLIBLINKPREFIX, DDKLIBS, DDKLIBLINKSUFFIX, __env__)}'
-    env['_DDKLIBDIRFLAGS'  ] = '$( ${_concat(DDKLIBDIRPREFIX, DDKLIBPATH, DDKLIBDIRSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
-    env['_DDKCPPINCFLAGS'  ] = '$( ${_concat(DDKINCPREFIX, DDKCPPPATH, DDKINCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
-    env['_DDKCPPDEFFLAGS'  ] = '${_defines(DDKCPPDEFPREFIX, DDKCPPDEFINES, DDKCPPDEFSUFFIX, __env__)}'
+    env.SetDefault(LIBS = [])
+    env.SetDefault(DDKLIBS = [])
+    env.SetDefault(DDKSHLIBS = [])
+    env.SetDefault(LIBPATH = [])
+    env.SetDefault(DDKLIBPATH = [])
+    env.SetDefault(CPPPATH = [])
+    env.SetDefault(DDKCPPPATH = [])
+    env.SetDefault(CPPDEFINES = [])
+    env.SetDefault(DDKCPPDEFINES = [])
+
+    env['_DDKLIBFLAGS'     ] = '${_concat(DDKLIBLINKPREFIX, DDKLIBS+LIBS, DDKLIBLINKSUFFIX, __env__)}'
+    env['_DDKSHLIBFLAGS'     ] = '${_concat(DDKLIBLINKPREFIX, DDKSHLIBS+LIBS, DDKLIBLINKSUFFIX, __env__)}'
+    env['_DDKLIBDIRFLAGS'  ] = '$( ${_concat(DDKLIBDIRPREFIX, DDKLIBPATH+LIBPATH, DDKLIBDIRSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+    env['_DDKCPPINCFLAGS'  ] = '$( ${_concat(DDKINCPREFIX, DDKCPPPATH+CPPPATH, DDKINCSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
+    env['_DDKCPPDEFFLAGS'  ] = '${_defines(DDKCPPDEFPREFIX, DDKCPPDEFINES+CPPDEFINES, DDKCPPDEFSUFFIX, __env__)}'
 
     env['_DDKCPPDEFINES'] = '${_defines(DDKCPPDEFPREFIX, _resolve_wdk_flags(__env__, "_ddkcppdefines"), DDKCPPDEFSUFFIX, __env__)}'
     env['_DDKLIBPATH'] = '$( ${_concat(DDKLIBDIRPREFIX, _resolve_wdk_flags(__env__, "_ddklibpath"), DDKLIBDIRSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)'
     env['_DDKLINKFLAGS'] = '${_resolve_wdk_flags(__env__, "_ddklinkflags")}'
+    env['_DDKSHLINKFLAGS'] = '${_resolve_wdk_flags(__env__, "_ddkshlinkflags")}'
     env['_DDKLIBS'         ] = '${_concat(DDKLIBLINKPREFIX, _resolve_wdk_flags(__env__, "_ddklibs"), DDKLIBLINKSUFFIX, __env__)}'
 
     env['_DDKCCCOMCOM']  = '$DDKCPPFLAGS $_DDKCPPDEFFLAGS $_DDKCPPDEFINES $_DDKCPPINCFLAGS $DDKCCPCHFLAGS $DDKCCPDBFLAGS'
 
-    env['DDKLIBLINKPREFIX'] = ''
-    env['DDKLIBLINKSUFFIX'] = '.lib'
-    env['DDKLIBDIRPREFIX']  = '-LIBPATH:'
-    env['DDKLIBDIRSUFFIX']  = ''
-    env['DDKINCPREFIX'] = '-I'
-    env['DDKINCSUFFIX'] = ''
+    env.SetDefault(DDKLIBLINKPREFIX = '')
+    env.SetDefault(DDKLIBLINKSUFFIX = '.lib')
+    env.SetDefault(DDKLIBDIRPREFIX = '-LIBPATH:')
+    env.SetDefault(DDKLIBDIRSUFFIX = '')
+    env.SetDefault(DDKLIBPREFIXES = ['$DDKLIBLINKPREFIX'])
+    env.SetDefault(DDKLIBSUFFIXES = ['$DDKLIBLINKSUFFIX'])
+    env.SetDefault(DDKINCPREFIX = '-I')
+    env.SetDefault(DDKINCSUFFIX = '')
+
+    env.SetDefault(WIN32DEFPREFIX = '')
+    env.SetDefault(WIN32DEFSUFFIX = '.def')
+    env.SetDefault(WIN32_INSERT_DEF = 0)
+    env.SetDefault(WINDOWSDEFPREFIX = '${WIN32DEFPREFIX}')
+    env.SetDefault(WINDOWSDEFSUFFIX = '${WIN32DEFSUFFIX}')
+    env.SetDefault(WINDOWS_INSERT_DEF = '${WIN32_INSERT_DEF}')
+
+    env.SetDefault(WIN32EXPPREFIX = '')
+    env.SetDefault(WIN32EXPSUFFIX = '.exp')
+    env.SetDefault(WINDOWSEXPPREFIX = '${WIN32EXPPREFIX}')
+    env.SetDefault(WINDOWSEXPSUFFIX = '${WIN32EXPSUFFIX}')
+
+
     env['DDKCCCOM']      = '${TEMPFILE("$DDKCC -Fo$TARGET -c $SOURCES $DDKCFLAGS $DDKCCFLAGS $_DDKCCCOMCOM")}'
     env['DDKCPPPATH'] =[r'${DDKDIR}\inc\ddk', r'${DDKDIR}\inc\api', r'${DDKDIR}\inc\crt']
     env['DDKLINKCOM'] = SCons.Action.Action('${TEMPFILE("$DDKLINK $_DDKLIBPATH $_DDKLIBDIRFLAGS $_DDKLINKFLAGS $DDKLINKFLAGS /OUT:$TARGET.windows $_DDKLIBDIRFLAGS $_DDKLIBFLAGS $_DDKLIBS $_PDB $SOURCES.windows")}')
-    env['DDKLINKFLAGS'] = []
+    env.SetDefault(DDKLINKFLAGS = [])
     env['DDKASCOM']     = '${TEMPFILE("$DDKAS $DDKASFLAGS $_DDKCPPDEFFLAGS $_DDKCPPDEFINES $_DDKCPPINCFLAGS -c -Fo$TARGET $SOURCES")}'
 
-    env['DDKCFLAGS']   = '-nologo'
+    env.SetDefault(DDKCFLAGS = '-nologo')
 
     env['DDKCXXCOM']     = '${TEMPFILE("$DDKCXX -Fo$TARGET -c $SOURCES $DDKCXXFLAGS $DDKCCFLAGS $_DDKCCCOMCOM")}'
-    env['DDKCPPDEFPREFIX']  = '-D'
-    env['DDKCPPDEFSUFFIX'] = ''
-    env['DDKDRVSUFFIX'] = '.sys'
+    env.SetDefault(DDKCPPDEFPREFIX = '-D')
+    env.SetDefault(DDKCPPDEFSUFFIX = '')
+    env.SetDefault(DDKDRVSUFFIX = '.sys')
 
-    # fix this up so we can control its printing to screen better.
-    output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('WDK',env['WDK_VERSION'],env['TARGET_PLATFORM']))
+    # Static libraries
+    env.SetDefault(DDKARFLAGS = SCons.Util.CLVar('-nologo'))
+    env['DDKARCOM'] = '$DDKLINK ${TEMPFILE("-lib $DDKARFLAGS -OUT:$TARGET $SOURCES")}'
+
+    # Shared libraries
+    env.SetDefault(DDKSHLIBPREFIX = '')
+    env.SetDefault(DDKSHLIBSUFFIX = '.dll')
+    env['DDKSHLINKCOM'] = SCons.Action.Action(
+            '${TEMPFILE("$DDKLINK -dll $_DDKSHLINKFLAGS $DDKSHLINKFLAGS /OUT:$TARGET.windows $_DDKLIBPATH $_DDKLIBDIRFLAGS $_DDKSHLIBFLAGS $_PDB $SOURCES.windows")}')
+    env.SetDefault(DDKSHLINKFLAGS = [])
 
 def exists(env):
     return WDK.Exists(env)

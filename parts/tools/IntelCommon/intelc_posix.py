@@ -12,7 +12,7 @@ Intelc.Register(
     targets=[SystemPlatform('posix','x86'),SystemPlatform('darwin','x86')],
     info=[
         IntelcInfo(
-            version='13.*,2013.0.*-2013.*',
+            version='13.*-*,2013.0.*-2013.*',
             install_scanner=filescanner.file_scanner12(
                 '/opt/intel',
                 common.intel_13_plus_posix,
@@ -38,7 +38,7 @@ Intelc.Register(
     targets=[SystemPlatform('posix','x86_64'),SystemPlatform('darwin','x86_64')],
     info=[
         IntelcInfo(
-            version='13.*,2013.0.*-2013.*',
+            version='13.*-*,2013.0.*-2013.*',
             install_scanner=filescanner.file_scanner12(
                 '/opt/intel',
                 common.intel_13_plus_posix,
@@ -64,7 +64,7 @@ Intelc.Register(
     targets=[SystemPlatform('posix','k1om')],
     info=[
         IntelcInfo(
-            version='13.*,2013.0.*-2013.*',
+            version='13.*-*,2013.0.*-2013.*',
             install_scanner=filescanner.file_scanner12(
                 '/opt/intel',
                 common.intel_13_plus_posix,

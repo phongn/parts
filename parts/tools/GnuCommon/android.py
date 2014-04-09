@@ -1,5 +1,6 @@
 
 import os
+import sys
 import re
 import parts.tools.Common.Finders as Finders
 import common
@@ -33,6 +34,7 @@ class win_scanner(object):
                 paths=[ndk_root]+paths
 
             for path in paths:
+                path = os.path.abspath(path)
                 if not os.path.isdir(path):
                     continue
                 for item0 in os.listdir(path):
@@ -57,10 +59,12 @@ class win_scanner(object):
                                 if item1.startswith(self.arch):
                                     version=item1.split("-")[-1]
                                     archpath=item1
-                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt\windows\bin',self.tool_prefix+self.tool)
-                                    if os.path.isfile(toolpath):
-                                        # we have a hit. store important data
-                                        ret[version]=ndk_path
+                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt\windows{0}\bin',self.tool_prefix+self.tool)
+                                    for arch in ('', '-x86_64'):
+                                        if os.path.isfile(toolpath.format(arch)):
+                                            # we have a hit. store important data
+                                            ret[version]=ndk_path
+                                            break
 
             self.cache=ret
         return self.cache
@@ -89,6 +93,10 @@ class win_scanner(object):
 
 #android scanner for posix/mac
 class posix_scanner(object):
+    if sys.platform == 'linux2':
+        host = 'linux'
+    elif sys.platform == 'darwin':
+        host = 'darwin'
     def __init__(self,env,arch,tool_prefix,tool):
         if __debug__: logInstanceCreation(self)
         self.arch=arch
@@ -142,7 +150,7 @@ class posix_scanner(object):
                                 if item1.startswith(self.arch):
                                     version=item1.split("-")[-1]
                                     archpath=item1
-                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/linux-{0}/bin',self.tool_prefix+self.tool)
+                                    toolpath=os.path.join(ndk_path,'toolchains',archpath,r'prebuilt/' + self.host + '-{0}/bin',self.tool_prefix+self.tool)
                                     for arch in ('x86', 'x86_64'):
                                         if os.path.isfile(toolpath.format(arch)):
                                             # we have a hit. store important data
@@ -175,31 +183,16 @@ class posix_scanner(object):
 
 
 ## this is a mapper to get the lastest API for android in the given NDK
-class android_api(mappers.mapper):
+LATEST_PLATFROM_VERSIONS = dict()
 
-    name='GetLatestNDKAPI'
-
-
-    def __call__(self, target, source, env, for_signature):
-
-        ret=None
-        lastest=version.version(0)
-        for p in os.listdir(os.path.normpath(env.subst("${GXX.INSTALL_ROOT}/platforms"))):
-           
-            v=version.version(p.split('-')[1])
-            if lastest < v:
-                lastest=v
-        if lastest > 0:
-            ret=str(lastest)
-        
-        if ret is None:
-            return ''
-        return ret
-
-
-
-api.register.add_mapper(android_api)
-
+def GetLatestNDKAPI(path):
+    try:
+        return LATEST_PLATFROM_VERSIONS[path]
+    except KeyError:
+        versions = [version.version(p.split('-')[1]) for p in os.listdir(
+                os.sep.join((path, 'platforms'))) if '-' in p]
+        LATEST_PLATFROM_VERSIONS[path] = result = versions and str(max(versions)) or ""
+        return result
 
 # mapping table for differnt STL types in android SDK
 android_stl_map_x86={
@@ -208,37 +201,37 @@ android_stl_map_x86={
                     },
     'gabi++_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/${TARGET_ARCH}"],
                      'LIBS':['libgabi++_static.a']},
     'gabi++_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/${TARGET_ARCH}"],
                      'LIBS':['libgabi++_shared']},
     'stlport_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
                      'CPPDEFINES':['_GNU_SOURCE'],
                      'CXXFLAGS':['-fuse-cxa-atexit'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/${TARGET_ARCH}"],
                      'LIBS':['libstlport_static.a']},
     'stlport_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
                      'CPPDEFINES':['_GNU_SOURCE'],
                      'CXXFLAGS':['-fuse-cxa-atexit'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/${TARGET_ARCH}"],
                      'LIBS':['libstlport_shared']},
     'gnustl_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
-                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86"],
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/${TARGET_ARCH}/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/${TARGET_ARCH}"],
                      'LIBS':['gnustl_static.a']},
     'gnustl_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/include/backward',
-                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/x86"],
+                        '${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/${TARGET_ARCH}/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/${GXX.VERSION}/libs/${TARGET_ARCH}"],
                      'LIBS':['gnustl_shared','m']
                     }
     }
@@ -249,37 +242,37 @@ android_stl_map_x86_pre_r8={
                     },
     'gabi++_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/${TARGET_ARCH}"],
                      'LIBS':['libgabi++_static.a']},
     'gabi++_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/libs/${TARGET_ARCH}"],
                      'LIBS':['libgabi++_shared']},
     'stlport_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
                      'CPPDEFINES':['_GNU_SOURCE'],
                      'CXXFLAGS':['-fuse-cxa-atexit'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/${TARGET_ARCH}"],
                      'LIBS':['libstlport_static.a']},
     'stlport_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/stlport',
                         '${GXX.INSTALL_ROOT}/sources/cxx-stl/gabi++/include'],
                      'CPPDEFINES':['_GNU_SOURCE'],
                      'CXXFLAGS':['-fuse-cxa-atexit'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/x86"],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/stlport/libs/${TARGET_ARCH}"],
                      'LIBS':['libstlport_shared']},
     'gnustl_static':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include',
                             r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward',
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86"],
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/${TARGET_ARCH}/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/${TARGET_ARCH}"],
                      'LIBS':['gnustl_static.a']},
     'gnustl_shared':{'CPPPATH':
                         ['${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include',
                             r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/include/backward',
-                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86/include'],
-                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/x86"],
+                            r'${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/${TARGET_ARCH}/include'],
+                     'LIBPATH':["${GXX.INSTALL_ROOT}/sources/cxx-stl/gnu-libstdc++/libs/${TARGET_ARCH}"],
                      'LIBS':['gnustl_shared','m']
                     }
     }

@@ -6,29 +6,30 @@ from .. import common
 class part_info(stored_info.stored_info):
     """description of class"""
     __slots__=[
-        '__name',           # name of part -- good after file read
-        '__short_name',     # short name of part (just the end piece) - good after file read
-        '__ID',             # the ID - good after file read
-        '__short_alias',    # the short alias ( the end value of the ID) might remove - good after file read
-        '__version',        # the version - good after file read
-        '__rootID',         # the root part ID ( is self if no subparts) - good after file read
-        '__target_platform',    # the target platform we are building for - good after file read
-        '__config',         # the configuration ( debug, release, etc) - good after file read
-        '__platform_match', # any special matching requirments set by this part - good after file read
-        '__config_match',
-        '__package_group',  # the package group this was mapped to - good after file read
-        '__mode',           # any mode information - good after file read
-        '__subpartIDs',     # IDs of the subparts if any - good after file read
-        '__parentIDs',      # chain of all Parent part IDs.. A.B.C will have [a,b] - good after file read
-        '__parentID',       # the direct Parent ID, None if no parent - good after file read
-        '__sectionIDs',     # IDs of all defined sections in this Part - good after file read
-        '__file',           # information about file - good after file read
-        '__src_path',       # information of path that contains part file - good after file read
-        '__build_context',  # Information off all file that defined builders that had been called in any section of this Part - good after file read ( or after queue processing)
-        '__config_context', # Information off all file that defined configuration information that had been called in any section of this Part - good after file read
-        '__force_load',     # does this need to be loaded for file if it is a dependancy, not cache - good after file read
-        '__kw',             # random stuff passed in - good after file read
-        '__vcs_cache_filename'  # information about cache file that has information about VCS state for this Parts, if any. - good after file read
+        '__name',                # name of part -- good after file read
+        '__short_name',          # short name of part (just the end piece) - good after file read
+        '__ID',                  # the ID - good after file read
+        '__short_alias',         # the short alias ( the end value of the ID) might remove - good after file read
+        '__version',             # the version - good after file read
+        '__rootID',              # the root part ID ( is self if no subparts) - good after file read
+        '__target_platform',     # the target platform we are building for - good after file read
+        '__config',              # the configuration ( debug, release, etc) - good after file read
+        '__platform_match',      # any special matching requirments set by this part - good after file read
+        '__config_match',        
+        '__package_group',       # the package group this was mapped to - good after file read
+        '__mode',                # any mode information - good after file read
+        '__subpartIDs',          # IDs of the subparts if any - good after file read
+        '__parentIDs',           # chain of all Parent part IDs.. A.B.C will have [a,b] - good after file read
+        '__parentID',            # the direct Parent ID, None if no parent - good after file read
+        '__sectionIDs',          # IDs of all defined sections in this Part - good after file read
+        '__file',                # information about file - good after file read
+        '__src_path',            # information of path that contains part file - good after file read
+        '__build_context',       # Information off all file that defined builders that had been called in any section of this Part - good after file read ( or after queue processing)
+        '__config_context',      # Information off all file that defined configuration information that had been called in any section of this Part - good after file read
+        '__force_load',          # does this need to be loaded for file if it is a dependancy, not cache - good after file read
+        '__kw',                  # random stuff passed in - good after file read
+        '__vcs_cache_filename',  # information about cache file that has information about VCS state for this Parts, if any. - good after file read
+        '__build_targets',       # How does this Part care about SCons.Script.BUILD_TARGET values
     ]
     def __init__(self):
 
@@ -225,6 +226,23 @@ class part_info(stored_info.stored_info):
     @property
     def Root(self):
         return glb.pnodes.GetPNode(self.RootID)
+
+    @property
+    def BuildTargets(self):
+        try:
+            return self.__build_targets
+        except AttributeError:
+            return None
+
+    @BuildTargets.setter
+    def BuildTargets(self, value):
+        if not value:
+            try:
+                del self.__build_targets
+            except AttributeError:
+                pass
+            return
+        self.__build_targets = value
 
 # vim: set et ts=4 sw=4 ai ft=python :
 

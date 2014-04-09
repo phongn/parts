@@ -325,13 +325,16 @@ def generate(env):
     SCons.Tool.createSharedLibBuilder(env)
     SCons.Tool.createProgBuilder(env)
 
-    env['SHLINK'] = parts.tools.Common.toolvar('link')
+    # Set-up ms tools paths for default version
+    msvc.MergeShellEnv(env)
+
+    env['SHLINK'] = parts.tools.Common.toolvar('link', ('link',), env = env)
     env['SHLINKFLAGS'] = SCons.Util.CLVar('$LINKFLAGS /dll')
     env['_SHLINK_TARGETS'] = windowsShlinkTargets
     env['_SHLINK_SOURCES'] = windowsShlinkSources
     env['SHLINKCOM'] = compositeShLinkAction
     env.Append(SHLIBEMITTER = [windowsLibEmitter])
-    env['LINK'] = parts.tools.Common.toolvar('link')
+    env['LINK'] = parts.tools.Common.toolvar('link', ('link',), env = env)
     env['LINKFLAGS'] = SCons.Util.CLVar()
     env['_PDB'] = pdbGenerator
     env['LINKCOM'] = compositelinkcomAction
@@ -364,7 +367,7 @@ def generate(env):
     env['REGSVRCOM'] = '$REGSVR $REGSVRFLAGS ${TARGET.windows}'
     env['REGISTEREXECOM'] = '${TARGET.windows} /regserver'
 
-    env['MT'] = parts.tools.Common.toolvar('mt')
+    env['MT'] = parts.tools.Common.toolvar('mt', ('mt',), env = env)
     env['MTFLAGS'] = ''
     env['EMBEDMANIFESTDLLCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};2 -manifest ${TARGET}.manifest'
     env['EMBEDMANIFESTPROGCOM'] = '$MT $MTFLAGS -outputresource:${TARGET};1 -manifest ${TARGET}.manifest'
@@ -373,7 +376,7 @@ def generate(env):
     env['MAKECERTFLAGS'] = '-sk "$SIGNING.STORAGE.PRIVATE" -ss "$SIGNING.STORAGE.PUBLIC" -n "$SIGNING.NAME"'
     env['MAKECERTCOM'] = '$MAKECERT $MAKECERTFLAGS'
 
-    env['SIGNTOOL'] = parts.tools.Common.toolvar('signtool')
+    env['SIGNTOOL'] = parts.tools.Common.toolvar('signtool', ('signtool',), env = env)
     env['SIGNTOOLFLAGS'] = ''
 
     env['SIGN'] = '$SIGNTOOL sign'
@@ -390,9 +393,6 @@ def generate(env):
                                       EMAIL = 'unknown',
                                       ENABLED = False,
                                       GENCERT = True)
-
-    # Set-up ms tools paths for default version
-    msvc.MergeShellEnv(env)
 
     # Loadable modules are on Windows the same as shared libraries, but they
     # are subject to different build parameters (LDMODULE* variables).

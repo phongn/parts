@@ -1,28 +1,24 @@
-
 import parts.tools.IntelCommon
 import SCons.Util
 import SCons.Warnings
 import os
 
-import parts.api.output as output
-
-
 def generate(env):
-    
-    is_windows=env['TARGET_PLATFORM'].OS=='win32'
+    parts.tools.IntelCommon.Intelc.MergeShellEnv(env)
+    is_windows = env['TARGET_PLATFORM'].OS == 'win32'
     if is_windows:
-        env['CC']        = parts.tools.Common.toolvar('icl',('icc','intelc'))
-        env['CXX']       = parts.tools.Common.toolvar('icl',('icpc','icl','icc','intelc'))
-        env['LINK']      = parts.tools.Common.toolvar('xilink')
-        env['AR']        = parts.tools.Common.toolvar('xilib')
+        env['CC']        = parts.tools.Common.toolvar('icl', ('icc', 'icl', 'intelc'), env=env)
+        env['CXX']       = parts.tools.Common.toolvar('icl', ('icpc', 'icl', 'icc', 'intelc'), env=env)
+        env['LINK']      = parts.tools.Common.toolvar('xilink', ('xilink',), env=env)
+        env['AR']        = parts.tools.Common.toolvar('xilib', ('xilib',), env=env)
     else:
-        env['CC']        = parts.tools.Common.toolvar('icc',('icl','intelc'))
-        env['CXX']       = parts.tools.Common.toolvar('icpc',('icpc','icl','icc','intelc'))
+        env['CC']        = parts.tools.Common.toolvar('icc', ('icl', 'icc', 'intelc'), env=env)
+        env['CXX']       = parts.tools.Common.toolvar('icpc', ('icpc', 'icl', 'icc', 'intelc'), env=env)
         # Don't reset LINK here;
         # use smart_link which should already be here from link.py.
         #env['LINK']      = '$CC'
-        env['AR']        = parts.tools.Common.toolvar('xiar')
-        env['LD']        = parts.tools.Common.toolvar('xild') # not used by default
+        env['AR']        = parts.tools.Common.toolvar('xiar', ('xiar',), env=env)
+        env['LD']        = parts.tools.Common.toolvar('xild', ('xild',), env=env) # not used by default
 
     
     if is_windows:
@@ -48,13 +44,8 @@ def generate(env):
                                     "  Using the default path as a last resort."
                                         % (envlicdir, defaultlicdir))
         env['ENV']['INTEL_LICENSE_FILE'] = licdir
-        
-    parts.tools.IntelCommon.Intelc.MergeShellEnv(env)
-    
-    # fix this up so we can control its printing to screen better.
-    #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('Intel C\C++',env['INTELC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):
     return parts.tools.IntelCommon.Intelc.Exists(env)
 
-# end of file
+# vim: set et ts=4 sw=4 ai ft=python :

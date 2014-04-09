@@ -146,3 +146,7 @@ class Tester(object):
         # we give up and assume it the value we want to pass in
         return test_value
 
+    @property
+    def UseInReport(self):
+        return True
+

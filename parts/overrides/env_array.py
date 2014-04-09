@@ -24,7 +24,7 @@ def Parts__setitem__(self,key,val):
 
 # not using get at the moment.. however that could change
 def Parts__getitem__(self,key):
-    
+
     tmp=self._orig__getitem__(key)
     if hasattr(tmp,'__eval__'):
         tmp=tmp.__eval__()

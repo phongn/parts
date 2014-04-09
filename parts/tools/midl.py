@@ -77,11 +77,11 @@ midl_builder = SCons.Builder.Builder(action = midl_action,
 def generate(env):
     """Add Builders and construction variables for midl to an Environment."""
 
-    env['MIDL']          = parts.tools.Common.toolvar('midl')
+    msvc.MergeShellEnv(env)
+    env['MIDL']          = parts.tools.Common.toolvar('midl', ('mild',), env = env)
     env['MIDLFLAGS']     = SCons.Util.CLVar('/nologo')
     env['MIDLCOM']       = '$MIDL $MIDLFLAGS /tlb ${TARGETS[0]} /h ${TARGETS[1]} /iid ${TARGETS[2]} /proxy ${TARGETS[3]} /dlldata ${TARGETS[4]} $SOURCE'
     env['BUILDERS']['TypeLibrary'] = midl_builder
-    msvc.MergeShellEnv(env)
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('midl',env['MSVC']['VERSION'],env['TARGET_PLATFORM']))
 
 def exists(env):

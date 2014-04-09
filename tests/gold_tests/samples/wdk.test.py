@@ -14,6 +14,14 @@ Test.SkipUnless(
     )
 Setup.Copy.FromSample('wdk')
 
-Test.AddBuildRun()
+for config in ('debug', 'release'):
+    # There is no 64-bit version for Windows XP
+    Test.AddBuildRun('build:: config={0} DDK_MIN_WIN=wxp TARGET_ARCH=x86'.format(config))
+    for version in ('wnet', 'wlh', 'win7'):
+        for arch in ('x86', 'x86_64'):
+            Test.AddBuildRun(
+                    'build:: config={0} DDK_MIN_WIN={1} TARGET_ARCH={2}'.format(
+                        config, version, arch))
 
+# vim: set et ts=4 sw=4 ai ft=python :
 

@@ -22,27 +22,21 @@ def post_process_func(env):
         ver=float(env['MSVC_VERSION'])
     except:
         raise RuntimeError("You need to define mstools or compatible tool chain with Intel tool chain")
-    if ver >=11:
-        env.AppendUnique(CCFLAGS=['/Qvc11'])
-    elif ver >=10:
-        env.AppendUnique(CCFLAGS=['/Qvc10'])
-    elif ver >=9:
-        env.AppendUnique(CCFLAGS=['/Qvc9'])
-    elif ver >=8:
-        env.AppendUnique(CCFLAGS=['/Qvc8'])
-    elif ver >=7.1:
-        env.AppendUnique(CCFLAGS=['/Qvc7.1'])
-    elif ver >=7:
-        env.AppendUnique(CCFLAGS=['/Qvc7'])
-    elif ver >=6:
-        env.AppendUnique(CCFLAGS=['/Qvc6'])
-    
+    for msvc_ver in sorted((12, 11, 10, 9, 8, 7.1, 6), reverse=True):
+        if ver >= msvc_ver:
+            env.AppendUnique(CCFLAGS=['/Qvc{0}'.format(msvc_ver)])
+            break
+
     ## code coverage feature additions
-    if make_bool(env.get('codecov',False)) == True:    
-        if(env.Version(env['INTELC_VERSION']) >= 11):
-            env.AppendUnique(CCFLAGS=['/Qprof-gen:srcpos'])
-        else:
+    if make_bool(env.get('codecov',False)) == True:
+        ver = env.Version(env['INTELC_VERSION'])
+        env.AppendUnique(CCFLAGS=['/Z7'])
+        if  ver < 11:
             env.AppendUnique(CCFLAGS=['/Qprof-genx'])
+        elif 11 <= ver < 13:
+            env.AppendUnique(CCFLAGS=['/Qprof-gen:srcpos'])
+        else: # ver >= 13
+            env.AppendUnique(CCFLAGS=['/Qcov-gen'])
 
 
 config=configuration(map_default_version,post_process_func)
@@ -53,7 +47,7 @@ config.VersionRange("7-*",
                         CCFLAGS=['/DINTELC_VERSION=$INTELC_VERSION']
                         )
                     )
-    
+
 
 
 

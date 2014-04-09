@@ -95,30 +95,38 @@ def node_up_to_date(node):
     metatag.MetaTag(node,ns='parts',uptodate=True)
     return True
 
+def abs_path(env, path, create_node, need_tag = True):
+    path = env.subst(path)
+    if path.startswith('#'):
+        directory = env.Dir('#')
+        path = path[len('#'):]
+    else:
+        directory = env.Dir(env['SRC_DIR'])
+    result = create_node(path, directory)
+    if need_tag:
+        common.tag_node_ownership(env, result.dir)
+    return result.srcnode().abspath
+
 
 class _AbsFile(object):
     def __init__(self,env):
         if __debug__: logInstanceCreation(self)
         self.env=env
-    def __call__(self,path):
-        return self.env.File(str(path),self.env['SRC_DIR']).srcnode().abspath
+    def __call__(self, path):
+        return abs_path(self.env, path, self.env.File, False)
 
 class _AbsDir(object):
     def __init__(self,env):
         if __debug__: logInstanceCreation(self)
         self.env=env
     def __call__(self,path):
-        return self.env.Dir(str(path),self.env['SRC_DIR']).srcnode().abspath
+        return abs_path(self.env, path, self.env.Dir, False)
 
-def AbsFile(env,path):
-    tmp=env.File(str(path),env['SRC_DIR'])
-    common.tag_node_ownership(env,tmp.Dir('.'))
-    return tmp.srcnode().abspath
+def AbsFile(env, path):
+    return abs_path(env, path, env.File)
 
-def AbsDir(env,path):
-    tmp = env.Dir(str(path),env['SRC_DIR'])
-    common.tag_node_ownership(env,tmp)
-    return tmp.srcnode().abspath
+def AbsDir(env, path):
+    return abs_path(env, path, env.Dir)
 
 # import the meta object we will need to add our code to as methods
 from SCons.Script.SConscript import SConsEnvironment

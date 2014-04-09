@@ -6,7 +6,7 @@ import logger
 import load_module
 import platform_info
 
-import SCons.Script    
+import SCons.Script
 import os
 import sys
 from optparse import OptionValueError
@@ -18,7 +18,7 @@ def SetOptionDefault(key,value):
     args = sys.argv[1:]
     if glb.engine._build_mode=='help':
         return
-    
+
     #special logger logic
     if key=='LOGGER':
         if type(glb.rpter.logger) is not logger.QueueLogger:
@@ -36,7 +36,7 @@ def SetOptionDefault(key,value):
                 mod=load_module.load_module(
                     load_module.get_site_directories('loggers'),
                     'text',
-                    'logger')  
+                    'logger')
                 log_obj=mod.__dict__.get(value,logger.nil_logger)
             elif tmp in opt_false_values:
                 log_obj=logger.nil_logger
@@ -44,18 +44,18 @@ def SetOptionDefault(key,value):
                 mod=load_module.load_module(
                     load_module.get_site_directories('loggers'),
                     tmp,
-                    'logger')  
+                    'logger')
                 log_obj=mod.__dict__.get(tmp,logger.nil_logger)
             #####
             log_obj=log_obj(directory.abspath,env['LOG_FILE_NAME'])
             glb.rpter.reset_logger(log_obj)
-            
+
     api.output.verbose_msg(['settings'],'Setting default value of',key,'to',value)
     try:
         settings.DefaultSettings().vars[key].Default=value
     except KeyError:
         settings.DefaultSettings().vars[key]=value
-    
+
 
 def opt_file(option, opt, value, parser,var,argstr):
     if os.path.exists(value):
@@ -64,11 +64,11 @@ def opt_file(option, opt, value, parser,var,argstr):
         raise OptionValueError("Error: %s %s was not found was not found on disk" % (argstr,value))
 
 def opt_target(option, opt, value, parser):
-    
+
     tmp=platform_info.target_convert(value,error=False)
     if tmp is None:
         raise OptionValueError("Error:  %s is not a valid --target_platform value\nValue must be in form of <Plaform>-<Architecture>" % value)
-    
+
     parser.values.target_platform=tmp
 
 def opt_chain(option, opt, value, parser):
@@ -77,15 +77,15 @@ def opt_chain(option, opt, value, parser):
     for i in tmp:
         lst.append(i.split('_'))
     parser.values.tool_chain=lst
-    
-def opt_list(option, opt, value, parser,var): 
+
+def opt_list(option, opt, value, parser,var):
     parser.values.__dict__[var]=value.split(',')
-    
+
 opt_true_values  = set(['y', 'yes', 'true', 't', '1', 'on' , 'all' ])
 opt_false_values = set(['n', 'no', 'false', 'f', '0', 'off', 'none'])
 
 def opt_bool(option, opt, value, parser,var,negate=False):
-    if negate: 
+    if negate:
         TrueValue=False
     else:
         TrueValue=True
@@ -98,7 +98,7 @@ def opt_bool(option, opt, value, parser,var,negate=False):
     elif tmp in opt_false_values:
         parser.values.__dict__[var]= not TrueValue
     else:
-        raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' % 
+        raise OptionValueError('Invalid value for boolean option "%s" value "%s"\n Valid options are %s' %
                 (var.replace('-','_'),value,opt_true_values|opt_false_values))
 
 def opt_bool_enum(option, opt, value, parser,var,enum,negate=False):
@@ -113,7 +113,7 @@ def opt_bool_enum(option, opt, value, parser,var,enum,negate=False):
     elif tmp in enum:
         parser.values.__dict__[var]=tmp
     else:
-        raise OptionValueError('Invalid value for option "%s" value "%s"\n Valid options are %s' % 
+        raise OptionValueError('Invalid value for option "%s" value "%s"\n Valid options are %s' %
                 (var.replace('-','_'),value,set(enum)|opt_true_values|opt_false_values))
 
 def opt_update(option, opt, value, parser):
@@ -214,10 +214,10 @@ def opt_color(option, opt, value, parser):
  stdtrace, trace, t' % k)
     if colors==False:
         raise OptionValueError("Invalid value for setting color: %s" % value)
-    
+
     parser.values.use_color=colors
-    
-    
+
+
 def opt_logging(option, opt, value, parser):
     if value is None:
         value ='text'
@@ -244,18 +244,18 @@ def opt_logging(option, opt, value, parser):
 SCons.Script.AddOption("--use-parts-site",
             dest='use_part_site',
             default=None,
-            nargs=1, 
+            nargs=1,
             type='string',
             action='store',
             #metavar='DIR',
             help='User provided part-site path. Overides all default location.')
-            
+
 SCons.Script.AddOption("--disable-global-parts-site",
             dest='global_part_site',
-            default=True,
+            default=False,
             action="store_false",
             help='Disable Parts from using the part-site location in the system or user areas.')
-            
+
 SCons.Script.AddOption("--verbose",
             dest='verbose',
             default=[],
@@ -263,7 +263,7 @@ SCons.Script.AddOption("--verbose",
             nargs="?", type='string',
             action='callback',
             help='Control the level of detailed verbose information printed')
-            
+
 SCons.Script.AddOption("--trace",
             dest='trace',
             default=[],
@@ -271,7 +271,7 @@ SCons.Script.AddOption("--trace",
             nargs=1, type='string',
             action='callback',
             help='Control the level of trace information printed')
-            
+
 SCons.Script.AddOption("--log",
             dest='logger',
             default=logger.QueueLogger,
@@ -280,14 +280,14 @@ SCons.Script.AddOption("--log",
             type='string',
             action='callback',
             help='True to use default logger, else name of logger to use')
-            
+
 SCons.Script.AddOption("--build-config","--buildconfig","--bldcfg","--bcfg","--cfg",
             dest='build_config',
             default=None,
             nargs=1, type='string',
             action='store',
             help='The configuration to use')
-                 
+
 SCons.Script.AddOption("--tool-chain","--toolchain","--tc",
             dest='tool_chain',
             default=None,
@@ -296,7 +296,7 @@ SCons.Script.AddOption("--tool-chain","--toolchain","--tc",
             type='string',
             action='callback',
             help='Tool chains to use for build')
-            
+
 
 SCons.Script.AddOption("--mode",
             dest='mode',
@@ -305,14 +305,14 @@ SCons.Script.AddOption("--mode",
             callback=lambda option, opt, value, parser:opt_list(option, opt, value, parser,'mode'),
             type='string',
             action='callback',
-            help='Values used to control different build mode for a given part')  
-            
+            help='Values used to control different build mode for a given part')
+
 SCons.Script.AddOption("--disable-parts-cache",
             dest="parts_cache",
             default=True,
-            action="store_false",
+            action="store_true",
             help='Disable Parts data cache from being used')
-                        
+
 SCons.Script.AddOption("--load-logic","--ll",
             dest='load_logic',
             default='default',
@@ -320,15 +320,15 @@ SCons.Script.AddOption("--load-logic","--ll",
             type='choice',
             choices=['all','target','min','unsafe','default'],
             action='store',
-            help='Tells Parts what logic to use when loading files. Options are "all", "target", "min", "unsafe", "default"')     
+            help='Tells Parts what logic to use when loading files. Options are "all", "target", "min", "unsafe", "default"')
 
 SCons.Script.AddOption("--disable-color",
-            dest='use_color',           
+            dest='use_color',
             callback=lambda option, opt, value, parser:opt_color(option,opt,False,parser),
             type='string',
             action='callback',
             help='Controls if console color support is used')
-            
+
 SCons.Script.AddOption("--enable-color","--use-color","--color",
             dest='use_color',
             nargs="?",
@@ -355,7 +355,7 @@ SCons.Script.AddOption("--ccopy",'--ccopy-logic','--copy-logic',
             type='choice',
             choices=['hard-soft-copy','soft-hard-copy','soft-copy','hard-copy','copy'],
             action='store',
-            help='Control how Parts copy logic will work must be hard-soft-copy,soft-hard-copy, soft-copy, hard-copy, copy') 
+            help='Control how Parts copy logic will work must be hard-soft-copy,soft-hard-copy, soft-copy, hard-copy, copy')
 
 SCons.Script.AddOption('--vcs-update','--update',
             dest='update',
@@ -364,10 +364,10 @@ SCons.Script.AddOption('--vcs-update','--update',
             callback=opt_update,
             type='string',
             action='callback',
-            help='Controls if Parts should update the Vcs object, and which Parts to update.') 
-            
+            help='Controls if Parts should update the Vcs object, and which Parts to update.')
+
 SCons.Script.AddOption("--enable-vcs-clean","--vcs-clean",
-            dest='vcs_clean',            
+            dest='vcs_clean',
             default=False,
             nargs='?',
             callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'vcs_clean'),
@@ -376,14 +376,14 @@ SCons.Script.AddOption("--enable-vcs-clean","--vcs-clean",
             help='Controls if VCS update should ensure a clean, unmodifed, factory defaults update.')
 
 SCons.Script.AddOption("--enable-vcs-retry","--vcs-retry",
-            dest='vcs_retry',            
+            dest='vcs_retry',
             default=False,
             nargs='?',
             callback=lambda option, opt, value, parser:opt_bool(option, opt, value, parser,'vcs_retry'),
             type='string',
             action='callback',
             help='Controls if an failure with a VCS update or checkout is allow to retry the update by removing the existing code')
-            
+
 SCons.Script.AddOption("--vcs-logic",
             dest='vcs_logic',
             default='check',
@@ -391,7 +391,7 @@ SCons.Script.AddOption("--vcs-logic",
             type='choice',
             choices=['none','exists','check','force'],
             action='store',
-            help='Control logic of how Parts will automatically do vcs up date checks. Values must be none, exists, check, force') 
+            help='Control logic of how Parts will automatically do vcs up date checks. Values must be none, exists, check, force')
 
 SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             dest='vcs_jobs',
@@ -399,25 +399,31 @@ SCons.Script.AddOption("--vcs-job",'--vcsj','--vj',
             nargs=1,
             type='int',
             action='store',
-            help='Level of concurrent VCS checkouts/updates that can happen at once. Defaults to -j value if not set') 
-           
+            help='Level of concurrent VCS checkouts/updates that can happen at once. Defaults to -j value if not set')
+
 SCons.Script.AddOption("--disable-section-suppression",
             dest="section_suppression",
             default=True,
             action="store_false",
             help='Disable process suppression of any sections defined in a Part via the SUPPRESS_SECTION variable')
 
-# move to end as work around to a bug in SCons            
+SCons.Script.AddOption("--per-thread-logging",
+            dest="thread_logging_path",
+            default=None,
+            action="store",
+            help='Enable per-thread task logging to the specified directory')
+
+# move to end as work around to a bug in SCons
 SCons.Script.AddOption("--cfg-file","--config-file",
             dest='cfg_file',
             default=os.path.abspath('parts.cfg'),
-            nargs=1, 
+            nargs=1,
             callback=lambda option, opt, value, parser:opt_file(option, opt, value, parser,'cfg_file',"config file:"),
             type='string',
             action='callback',
             help='Configuration file used to store common settings')
-            
-## policy values            
+
+## policy values
 SCons.Script.AddOption("--vcs-policy",
             dest='vcs_policy',
             default='message-update',
@@ -426,8 +432,8 @@ SCons.Script.AddOption("--vcs-policy",
             choices=['warning','error','message-update','warning-update','update','checkout-warning','checkout-error'],
             action='store',
             help='Policy in how Parts should react if the automatic vcs check find that it is out of date.\
- The policy values can be warning, error, message_update, warning-update, update, checkout-warning, checkout-error')         
-            
+ The policy values can be warning, error, message_update, warning-update, update, checkout-warning, checkout-error')
+
 
 
 
@@ -443,7 +449,7 @@ def post_option_setup():
             action='callback',
             help='Sets the default TARGET_PLATFORM use for cross builds')
 
-   
+
 
 
 SCons.Script.SConsOptions.SConsValues.settable.extend(
@@ -460,7 +466,7 @@ SCons.Script.SConsOptions.SConsValues.settable.extend(
      'mode',
      'build_config',
      'tool_chain'
-     ])            
+     ])
 
 api.register.add_global_object('SetOptionDefault',SetOptionDefault)
 api.register.add_list_variable('SUPPRESS_SECTION',[],'Tells Parts to not define any sections of this type')

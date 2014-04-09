@@ -29,8 +29,8 @@ def GetUserName(env):
 # that holds it
 class bindable(object):
     def _bind(self,env,key):
-        raise NotImplementedError 
-        
+        raise NotImplementedError
+
     def _rebind(self,env,key):
         raise NotImplementedError
 
@@ -568,20 +568,23 @@ def func_gen(env,sdk_path,func,values):
     return s
 
 
-def map_alias_to_root(pobj,concept,alias_str,action=None,always_build=False):
+def map_alias_to_root(pobj, concept, alias_str):
+    '''
+    Returns a list of Alias nodes.
+    Each successor is predecessor's parent. I.e. [node, node.parent, node.parent.parent, ...]
+    '''
 
-    basestr=alias_str.format(concept,pobj.Alias)
-    a=pobj.Env.Alias(basestr)
-    if pobj.Parent:
-        parentstr=alias_str.format(concept,pobj.Parent.Alias)
-        env = pobj.Section('build').Env
-        if action:
-            anode=env.Alias(parentstr, a, action)
-            #print anode[0], a[0]
-        else:
-            anode=env.Alias(parentstr, a)
-            #print anode[0], a[0]
-        if always_build:
-            env.AlwaysBuild(anode)
-        return map_alias_to_root(pobj.Parent,concept,alias_str,action,always_build)
-    return a
+    alias_str = alias_str.format(concept, "${ALIAS}")
+    
+    alias = pobj.Env.Alias(alias_str)
+
+    result = list(alias)
+    while pobj.Parent:
+        pobj = pobj.Parent
+        alias = pobj.Env.Alias(alias_str, alias)
+        result.extend(alias)
+
+    return result
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

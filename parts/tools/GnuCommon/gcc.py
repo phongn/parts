@@ -184,7 +184,7 @@ gcc.Register(
     info=[
     ToolInfo(
             version='*',
-            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-','gcc.exe'),        
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-android-linux-','gcc.exe'),
             script=None,
             subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"'},
             shell_vars={
@@ -195,6 +195,7 @@ gcc.Register(
             )
     ]
 )
+
 #post r8
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
@@ -204,7 +205,7 @@ gcc.Register(
     info=[
     ToolInfo(
             version='*',
-            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc.exe'),        
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc.exe'),
             script=None,
             subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"'},
             shell_vars={
@@ -235,6 +236,47 @@ gcc.Register(
             )
     ]
 )
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc.exe'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows-x86_64\bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86-${GCC.VERSION}\prebuilt\windows-x86_64\include'
+                        },
+            test_file='i686-linux-android-gcc.exe'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','gcc.exe'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-arm"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GCC.VERSION}\prebuilt\windows-x86_64\bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\arm-linux-androideabi-${GCC.VERSION}\prebuilt\windows-x86_64\include'
+                        },
+            test_file='arm-linux-androideabi-gcc.exe'
+            )
+    ]
+)
+
 #pre r8
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
@@ -255,6 +297,7 @@ gcc.Register(
             )
     ]
 )
+#posix
 #post r8
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
@@ -319,6 +362,46 @@ gcc.Register(
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','any')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','x86_64-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/linux-x86/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/linux-x86/include'
+                        },
+            test_file='x86_64-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86_64','x86_64-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/linux-x86_64/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/linux-x86_64/include'
+                        },
+            test_file='x86_64-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
     hosts=[SystemPlatform('posix','x86_64')],
     targets=[SystemPlatform('android','arm')],
     info=[
@@ -330,6 +413,128 @@ gcc.Register(
             shell_vars={
                         'PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/linux-x86_64/bin',
                         'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/linux-x86_64/include'
+                        },
+            test_file='arm-linux-androideabi-gcc'
+            )
+    ]
+)
+
+#mac
+#post r8
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/darwin-x86/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/darwin-x86/include'
+                        },
+            test_file='i686-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/darwin-x86/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/darwin-x86/include'
+                        },
+            test_file='arm-linux-androideabi-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('android','x86')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','i686-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/darwin-x86_64/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86-${GCC.VERSION}/prebuilt/darwin-x86_64/include'
+                        },
+            test_file='i686-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','any')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86','x86_64-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/darwin-x86/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/darwin-x86/include'
+                        },
+            test_file='x86_64-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'x86_64','x86_64-linux-android-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/darwin-x86_64/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/x86_64-${GCC.VERSION}/prebuilt/darwin-x86_64/include'
+                        },
+            test_file='x86_64-linux-android-gcc'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('darwin','x86_64')],
+    targets=[SystemPlatform('android','arm')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.posix_scanner(["NDK_ROOT"],'arm','arm-linux-androideabi-','gcc'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}/platforms/android-${ANDROID_API}/arch-arm"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/darwin-x86_64/bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}/toolchains/arm-linux-androideabi-${GCC.VERSION}/prebuilt/darwin-x86_64/include'
                         },
             test_file='arm-linux-androideabi-gcc'
             )

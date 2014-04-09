@@ -1,17 +1,21 @@
 import re
+import sys
 
 # Currently this test is broken on MacOS X 10.4; we don't intend to support this platform,
 # we intend to support 10.6 or higher, but we don't have it in INNL testing yet. Thus I'm
 # disabling this test for MacOS < 10.6
 
 def skipIfOldMac():
-    import sys
     if sys.platform == 'darwin':
         import platform
         macVer = [int(x) for x in re.findall(r'(\d+)', platform.mac_ver()[0])]
         return macVer >= [10, 6]
     return True
 
+if sys.platform == 'win32':
+    exe = '.exe'
+else:
+    exe = ''
 Test.SkipUnless(Condition.Condition(function=skipIfOldMac, reason='MacOSX < 10.6 not supported',
                                     pass_value=True))
 
@@ -29,24 +33,44 @@ t2.ReturnCode = 2
 logfile = t2.Disk.File('logs_run_ut/all.log')
 
 TEST_LINES = [r'hello world from print_msg(); test #1 passed',
-              r'scons: *** [run_utest::alias::print::test2] Killed by timeout (1.0 sec)']
+              r'scons: *** [run_utest::alias::print::test2] Killed by timeout (5.0 sec)']
 
 def checkLogFile(data):
     for line in TEST_LINES:
-        if not re.search(r'.*?^\s*{0}\s*$'.format(re.escape(line)), data, 
+        if not re.search(r'.*?^\s*{0}\s*$'.format(re.escape(line)), data,
                          re.MULTILINE | re.DOTALL):
             return 'line "{0}" not found in the log:\n{1}'.format(line, data)
-    
-    times = sorted(float(x) for x in \
-                   re.findall('Command execution time:\s+(\d+\.\d+)\s+seconds', data))
+    times = re.findall('Command execution time:\s+(\d+\.\d+)\s+seconds', data)
     if len(times) != 2:
         return 'unexpected amount of commands executed: %d' % len(times)
-    if times[0] > 0.7:
-        return 'successful test took to long: %f' % times[0]
-    if times[1] < 0.99 or times[1] > 1.5:
-        return 'timed-out test was either too fast or too short: %f' % times[1]
 
 regexpTester = Testers.FileContentCallback(callback=checkLogFile,
                                            description='Checking all.log')
 logfile.Exists = True
 logfile.Content = regexpTester
+
+run_utest1 = t2.Disk.File('logs_run_ut/run_utest.print_msg-test1_1.0.0{exe}.log'.format(exe = exe))
+run_utest2 = t2.Disk.File('logs_run_ut/run_utest.print_msg-test2_1.0.0{exe}.log'.format(exe = exe))
+
+def run_utest1_check(data):
+    match = re.search("Elapsed time (\d+\.\d+) seconds", data)
+    if not match:
+        return '"Elapsed time N.NN seconds" string not found in the log'
+    value = float(match.group(1))
+    if value > 4:
+        return 'successful test took too long: %f' % value
+
+def run_utest2_check(data):
+    match = re.search("Elapsed time (\d+\.\d+) seconds", data)
+    if not match:
+        return '"Elapsed time N.NN seconds" string not found in the log'
+    value = float(match.group(1))
+    if value < 4.5:
+        return 'timed-out test was too fast: %f' % value
+    if value > 10:
+        return 'timed-out test was too long: %f' % value
+
+run_utest1.Exists = True
+run_utest1.Content = Testers.FileContentCallback(callback = run_utest1_check, description = "Successfull test")
+run_utest2.Exists = True
+run_utest2.Content = Testers.FileContentCallback(callback = run_utest2_check, description = "Timed out test")

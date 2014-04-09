@@ -19,11 +19,27 @@ _ddklibpath = {
     'win7': [r'${DDKDIR}\lib\win7\i386']
 }
 
+_ddklinkcommon = [
+                '-STACK:0x40000,0x1000', '-driver', '-base:0x10000',
+                '-functionpadmin:5', '-safeseh', '-entry:GsDriverEntry@8'
+]
+
 _ddklinkflags = {
-    'wxp' : ['/align:0x80', r'/stub:${DDKDIR}\lib\wxp\stub512.com', '/subsystem:native,5.01'],
-    'wnet': ['/subsystem:native,5.02', r'${DDKDIR}\lib\wnet\i386\hotpatch.obj'],
-    'wlh': ['/subsystem:native,6.00', r'${DDKDIR}\lib\wlh\i386\hotpatch.obj'],
-    'win7': ['/subsystem:native,6.01', r'${DDKDIR}\lib\win7\i386\hotpatch.obj']
+    'wxp' : _ddklinkcommon + ['/align:0x80', r'/stub:${DDKDIR}\lib\wxp\stub512.com', '/subsystem:native,5.01'],
+    'wnet': _ddklinkcommon + ['/subsystem:native,5.02', r'${DDKDIR}\lib\wnet\i386\hotpatch.obj'],
+    'wlh': _ddklinkcommon + ['/subsystem:native,6.00', r'${DDKDIR}\lib\wlh\i386\hotpatch.obj'],
+    'win7': _ddklinkcommon + ['/subsystem:native,6.01', r'${DDKDIR}\lib\win7\i386\hotpatch.obj']
+}
+
+_ddkshlinkcommonflags = [
+        '-safeseh'
+]
+
+_ddkshlinkflags = {
+    'wxp' : _ddkshlinkcommonflags + ['/align:0x80', r'/stub:${DDKDIR}\lib\wxp\stub512.com', '/subsystem:native,5.01'],
+    'wnet': _ddkshlinkcommonflags + ['/subsystem:native,5.02', r'${DDKDIR}\lib\wnet\i386\hotpatch.obj'],
+    'wlh': _ddkshlinkcommonflags + ['/subsystem:native,6.00', r'${DDKDIR}\lib\wlh\i386\hotpatch.obj'],
+    'win7': _ddkshlinkcommonflags + ['/subsystem:native,6.01', r'${DDKDIR}\lib\win7\i386\hotpatch.obj']
 }
 
 _ddklibs = {
@@ -33,11 +49,12 @@ _ddklibs = {
     'win7': [],
 }
 
-config.VersionRange("7600.16385.0",
+config.VersionRange("7600.16385.0-7600.16385.2",
         replace = ConfigValues(
             _ddkcppdefines = _ddkcppdefines,
             _ddklibpath = _ddklibpath,
             _ddklinkflags = _ddklinkflags,
+            _ddkshlinkflags = _ddkshlinkflags,
             _ddklibs = _ddklibs,
         ),
         append = ConfigValues(
@@ -58,13 +75,12 @@ config.VersionRange("7600.16385.0",
             ],
             DDKLIBPATH = [],
             DDKLIBS = [r'ntoskrnl', 'hal', 'wmilib', 'BufferOverflowK'],
+            DDKSHLIBS = ['ntoskrnl', 'hal', 'wmilib', 'BufferOverflow', 'ntstrsafe', 'ntdll'],
             DDKLINKFLAGS = [
                 '-MERGE:_PAGE=PAGE', '-MERGE:_TEXT=.text', '-SECTION:INIT,d',
                 '-OPT:REF', '-OPT:ICF', '-IGNORE:4198,4010,4037,4039,4065,4070,4078,4087,4089,4221',
                 '-INCREMENTAL:NO', '-release', '-NODEFAULTLIB', '-WX', '-debug', '-debugtype:cv,fixup,pdata',
                 '-version:6.1', '-osversion:6.1', '-pdbcompress',
-                '-STACK:0x40000,0x1000', '-driver', '-base:0x10000',
-                '-functionpadmin:5', '-safeseh', '-entry:GsDriverEntry@8'
             ],
             DDKASFLAGS = [
                 '-nologo', '-Cx', '-Zi',

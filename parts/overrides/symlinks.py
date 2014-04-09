@@ -64,7 +64,7 @@ except ImportError:
         def __init__(self, privilegeName):
             if __debug__: logInstanceCreation(self, 'parts.overrides.symlinks.Privilege')
             token = ctypes.c_void_p()
-            if ctypes.windll.kernel32.OpenProcessToken(
+            if ctypes.windll.advapi32.OpenProcessToken(
                     ctypes.c_void_p(ctypes.windll.kernel32.GetCurrentProcess()),
                     TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,
                     ctypes.byref(token)):

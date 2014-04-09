@@ -3,6 +3,7 @@ import SCons.Util
 import SCons.Tool
 import SCons.Tool.mingw as mingw
 import parts.tools.GnuCommon
+from parts.tools.GnuCommon.android import GetLatestNDKAPI
 import parts.tools.Common
 
 cplusplus = __import__('c++', globals(), locals(), [])
@@ -29,7 +30,7 @@ def generate(env):
     # set up shell env for running compiler
     parts.tools.GnuCommon.gxx.MergeShellEnv(env)
 
-    env['CXX'] = parts.tools.Common.toolvar(env['GXX']['TOOL'],('g++','gxx','gnu'))
+    env['CXX'] = parts.tools.Common.toolvar(env['GXX']['TOOL'],('g++','gxx','gnu'), env = env)
 
     # platform specific settings
     # don't mess with these
@@ -42,7 +43,7 @@ def generate(env):
         env['OBJSUFFIX'] = '.o'
 
     if env['TARGET_PLATFORM']=='android':
-        env.SetDefault(ANDROID_API='${GetLatestNDKAPI()}')
+        env.SetDefault(ANDROID_API=GetLatestNDKAPI(env['GXX'].INSTALL_ROOT))
         env.SetDefault(ANDROID_STL='gnustl_shared')
     elif  env['TARGET_PLATFORM']=='win32':
         # set some value for the mingw build

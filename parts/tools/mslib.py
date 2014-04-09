@@ -50,7 +50,7 @@ def generate(env):
     # Set-up ms tools paths for default version
     msvc.MergeShellEnv(env)
 
-    env['AR']          = parts.tools.Common.toolvar('lib')
+    env['AR']          = parts.tools.Common.toolvar('lib', ('lib',), env = env)
     env['ARFLAGS']     = SCons.Util.CLVar('/nologo')
     env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
     env['LIBPREFIX']   = ''

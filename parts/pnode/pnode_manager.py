@@ -4,16 +4,12 @@ from .. import datacache
 from .. import api
 from .. import metatag
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-
-
 import pnode
 import part_info # needed for a type type
 
 import SCons.Node
+
+import parts.picklehelpers as picklehelpers
 
 from SCons.Debug import logInstanceCreation
 
@@ -53,7 +49,6 @@ class manager(object):
         if __debug__: logInstanceCreation(self)
         self.__known_pnodes={}   # ID:node:parts.pnode
         self.__known_nodes={}   # ID:SCons.Node.Node
-        self.__factories={} # type:function(id)
         self.__aliases={} # ID:Alais node
         self.__store_all=False
 
@@ -74,7 +69,6 @@ class manager(object):
                 self.__store_all=True
                 #clear out the cache
                 datacache.StoreData("nodeinfo",{})
-                #datacache.ClearCache("nodeinfo",save=True)
 
     def TotalNode(self):
         return len(self.__known_nodes)
@@ -165,14 +159,14 @@ class manager(object):
         data=self._get_cache()
         if data:
             try:
-                return pickle.loads(data['known_nodes'][nodeID]['pinfo'])
+                return picklehelpers.loads(data['known_nodes'][nodeID]['pinfo'])
             except KeyError:
                 return None
-            except (TypeError, pickle.UnpicklingError):
+            except (TypeError, picklehelpers.UnpicklingError):
                 # Old-style cache. Convert it into new one
                 data = data['known_nodes'][nodeID]
                 result = data['pinfo']
-                data['pinfo'] = pickle.dumps(result, 2)
+                data['pinfo'] = picklehelpers.dumps(result, 2)
                 return result
         return None
 
@@ -183,14 +177,14 @@ class manager(object):
         data=self._get_cache()
         if data:
             try:
-                return pickle.loads(data['known_pnodes'][nodeID]['pinfo'])
+                return picklehelpers.loads(data['known_pnodes'][nodeID]['pinfo'])
             except KeyError:
                 return None
-            except (TypeError, pickle.UnpicklingError):
+            except (TypeError, picklehelpers.UnpicklingError):
                 # Old-style cache. Convert it into new one
                 data = data['known_pnodes'][nodeID]
                 result = data['pinfo']
-                data['pinfo'] = pickle.dumps(result, 2)
+                data['pinfo'] = picklehelpers.dumps(result, 2)
                 return result
         return None
 
@@ -228,6 +222,9 @@ class manager(object):
 
     def _get_cache(self):
         stored_data=datacache.GetCache("nodeinfo")
+        if not stored_data:
+            stored_data = dict()
+            datacache.StoreData("nodeinfo", stored_data)
         return stored_data
 
     def _set_cache(self,key,value):
@@ -239,16 +236,14 @@ class manager(object):
 
 
     def store_value(self,node,_info,valuestostore):
-            valuestostore[node.ID]={
-                'type':node.__class__,
-                'pinfo':pickle.dumps(_info, 2)
-                }
+        valuestostore[node.ID]={
+            'type':node.__class__,
+            'pinfo':picklehelpers.dumps(_info, 2)
+            }
 
 
     def StoreAlias(self,node,valuestostore=None):
-        data={}
-        stored_data=self._get_cache()
-        if stored_data is None: stored_data = {}
+        stored_data = self._get_cache()
 
         if valuestostore is None:
             valuestostore =  stored_data.get('aliases',{})
@@ -267,9 +262,7 @@ class manager(object):
         self._set_cache('aliases',valuestostore)
 
     def StoreNode(self,node):
-        data={}
-        stored_data=self._get_cache()
-        if stored_data is None: stored_data = {}
+        stored_data = self._get_cache()
         valuestostore =  stored_data.get('known_nodes',{})
 
         # if we already have stored information, we want to make sure any incremental changes
@@ -296,13 +289,14 @@ class manager(object):
     def StorePNode(self,pnode):
         data={}
         stored_data=self._get_cache()
-        if stored_data is None: stored_data = {}
         valuestostore =  stored_data.get('known_pnodes',{})
 
-        # if this node is node valid anymore we want to remove it from known data
+        # if this node is not valid anymore we want to remove it from known data
         if pnode._remove_cache:
-            if pnode.ID in valuestostore:
+            try:
                 del valuestostore[pnode.ID]
+            except KeyError:
+                pass
         # This file was loaded, so we want to store information we have on it
         elif (pnode.LoadState==glb.load_file):
             sd=pnode.GenerateStoredInfo()
@@ -312,27 +306,38 @@ class manager(object):
 
     def StoreAllPNodes(self,build_mode):
         # this is mapped to the PostProcessEvent event to store all Pnode information we have
-        for k,node in self.__known_pnodes.copy().iteritems():
+        for node in self.__known_pnodes.values():
             if node.LoadState==glb.load_file:
                 self.StorePNode(node)
 
     def Store(self,goodexit,build_mode):
         # called at end of run to store and extra state that we can save,
         # but was not saved do to target, or build issues
-        data={}
         stored_data=self._get_cache()
         store_all = self.__store_all or stored_data is None
         if store_all:
-            for k,node in self.__aliases.iteritems():
+            aliases_stored = 0
+            for node in self.__aliases.values():
                 if not node.isVisited:
+                    aliases_stored += 1
                     self.StoreAlias(node)
 
-            for k,node in self.__known_nodes.copy().iteritems():
-                if not node.isVisited:
+            nodes_stored = 0
+            for node in self.__known_nodes.values():
+                if not node.isVisited or not self.GetStoredNodeIDInfo(node.ID):
+                    nodes_stored += 1
                     self.StoreNode(node)
-                    if isinstance(node,SCons.Node.FS.Base) and node != node.srcnode():
-                        self.StoreNode(node.srcnode())
+                    node.isVisited = True
+                    if not isinstance(node, SCons.Node.FS.Base):
+                        continue
+                    srcnode = node.srcnode()
+                    if node != srcnode and (not srcnode.isVisited or not self.GetStoredNodeIDInfo(srcnode.ID)):
+                        nodes_stored += 1
+                        self.StoreNode(srcnode)
+                        srcnode.isVisited = True
 
+            api.output.verbose_msg(['cache_save'],"Stored {0} aliases out of {1}".format(aliases_stored, len(self.__aliases)))
+            api.output.verbose_msg(['cache_save'],"Stored {0} nodes out of {1}".format(nodes_stored, len(self.__known_nodes)))
         elif (not goodexit) or (build_mode =='question'):
             datacache.ClearCache("nodeinfo")
 
@@ -376,18 +381,21 @@ class manager(object):
             if self.isNodeIDFileBased(nodeid):
                 sinfo=self.GetStoredNodeIDInfo(nodeid)
                 try:
-                    st_info=os.lstat(os.path.abspath(os.path.normpath(nodeid)))
+                    st_info = os.lstat(os.path.abspath(os.path.normpath(nodeid)))
                 except OSError:
-                    st_info=None
+                    st_info = None
                 if st_info is None and sinfo.SrcNodeID:
-                    nodeid=sinfo.SrcNodeID
-                    st_info=os.lstat(os.path.abspath(os.path.normpath(nodeid)))
+                    nodeid = sinfo.SrcNodeID
+                    try:
+                        st_info = os.lstat(os.path.abspath(os.path.normpath(nodeid)))
+                    except OSError:
+                        st_info = None
 
                 if st_info:
                     info = _node_info(nodeid,long(st_info.st_mtime))
 
             if info is None:
-                info = _node_info(nodeid,0)
+                info = _node_info(nodeid, 0)
             self.__cache['NodeInfo'][orgid]=info
         return info
 
@@ -443,12 +451,17 @@ class manager(object):
             return True
 
         # if this node is a file based. does it exist
-        if self.isNodeIDFileBased(nodeid):
-            if not os.path.exists(nodeid):
+        if issubclass(info.Type, SCons.Node.FS.Base):
+            if issubclass(info.Type, SCons.Node.FS.FileSymbolicLink):
+                exists = os.path.lexists
+            else:
+                exists = os.path.exists
+            if not exists(nodeid):
                 if info.SrcNodeID: nodeid=info.SrcNodeID
-                if not os.path.exists(nodeid):
+                if not exists(nodeid):
                     api.output.verbose_msg(['node_check'],"{0} is out of date because it is not found on disk".format(nodeid))
                     return True
+
         #check to see if this has a AlwaysBuild() state set
         if info.AlwaysBuild:
             api.output.verbose_msg(['node_check'],"{0} is out of date because it was called with AlwaysBuild()".format(nodeid))
@@ -468,7 +481,7 @@ class manager(object):
     def isNodeIDFileBased(self,nodeid):
 
         info=self.GetStoredNodeIDInfo(nodeid)
-        if not info and self. isKnownNode(nodeid):
+        if not info and self.isKnownNode(nodeid):
             return isinstance(self.GetNode(nodeid),SCons.Node.FS.Base)
         elif info:
             return issubclass(info.Type,SCons.Node.FS.Base)
@@ -479,16 +492,16 @@ class manager(object):
         stored_data=self._get_cache()
         if stored_data is None:
             return ret
-        pnodes=  stored_data.get('known_pnodes',{})
-        for pnodeid, data in pnodes.iteritems():
+        pnodes = stored_data.get('known_pnodes',{})
+        for data in pnodes.itervalues():
             try:
-                pinfo = pickle.loads(data['pinfo'])
-            except (TypeError, pickle.UnpicklingError):
+                pinfo = picklehelpers.loads(data['pinfo'])
+            except (TypeError, picklehelpers.UnpicklingError):
                 pinfo = data['pinfo']
-                data['pinfo'] = pickle.dumps(pinfo, 2)
-            if isinstance(pinfo,part_info.part_info):
+                data['pinfo'] = picklehelpers.dumps(pinfo, 2)
+            if isinstance(pinfo, part_info.part_info):
                 # if so test the Part file state
-                tmp=pinfo.File
+                tmp = pinfo.File
                 if self.hasNodeRelationChanged(tmp['name'],tmp):
                     ret.add(pinfo.RootID)
         return ret

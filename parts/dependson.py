@@ -87,7 +87,6 @@ def depends_on_classic(env,depends):
             api.output.print_msg("Skipping the definition of dependence to SCons")
             continue
         api.output.verbose_msg('dependson'," Component",comp.PartRef.Target.Name)
-        import_map={}
         glb.engine.add_preprocess_logic_queue(
                     functors.map_depends(pobj.DefiningSection.Env,comp.PartRef,comp.SectionName,comp.Requires,comp.StackFrame)
                     )
