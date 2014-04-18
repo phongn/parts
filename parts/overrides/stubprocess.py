@@ -197,14 +197,53 @@ if sys.platform in ('linux2', 'darwin'):
             )
 
 
-            def _wrap_execute_child(klass):
-                wrapped_execute_child = klass._execute_child
-                def _execute_child(self, args, executable, preexec_fn, close_fds,
+            # In Python older than 2.7.6 subprocess.Popen._execute_child accepts 17 arguments.
+            # In Python 2.7.6 it accepts 18 args.
+            # To workaround the issue we use _unpack_args* functions. Both 27 and 276 return
+            # a tuple containing args in order they are passed to Python 2.7.6 _execute_child
+            # function. 
+
+            def _unpack_args_27(args):
+                result = (self, argv, executable, preexec_fn, close_fds,
                                        cwd, env, universal_newlines,
-                                       startupinfo, creationflags, shell,
+                                       startupinfo, creationflags, shell, to_close,
                                        p2cread, p2cwrite,
                                        c2pread, c2pwrite,
-                                       errread, errwrite):
+                                       errread, errwrite) = args[:11] + (set(),) + args[11:]
+                to_close.update((p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite))
+                return result
+
+            def _unpack_args_276(args):
+                try:
+                    result = (self, argv, executable, preexec_fn, close_fds,
+                                       cwd, env, universal_newlines,
+                                       startupinfo, creationflags, shell, to_close,
+                                       p2cread, p2cwrite,
+                                       c2pread, c2pwrite,
+                                       errread, errwrite) = args
+                except ValueError:
+                    global _unpack_args
+                    _unpack_args = _unpack_args_27
+                    return _unpack_args_27(args)
+                else:
+                    return result
+
+            _unpack_args = _unpack_args_276
+
+            def _close_in_parent(fd, to_close):
+                os.close(fd)
+                to_close.remove(fd)
+
+            def _wrap_execute_child(klass):
+                wrapped_execute_child = klass._execute_child
+                def _execute_child(*args):
+
+                    (self, args, executable, preexec_fn, close_fds,
+                                   cwd, env, universal_newlines,
+                                   startupinfo, creationflags, shell, to_close,
+                                   p2cread, p2cwrite,
+                                   c2pread, c2pwrite,
+                                   errread, errwrite) = _unpack_args(args)
 
                     if preexec_fn:
                         return wrapped_execute_child(self, args, executable, preexec_fn, close_fds,
@@ -245,11 +284,14 @@ if sys.platform in ('linux2', 'darwin'):
 
                     pid = ctypes.c_int()
 
+                    os_environ = (ctypes.c_char_p * (len(os.environ)+1))(
+                            *(['{0}={1}'.format(*value) for value in os.environ.iteritems()]+[0]))
+
                     try:
                         ret = posix_spawn(ctypes.byref(pid), ctypes.c_char_p(sys.executable),
                                 ctypes.c_void_p(), ctypes.c_void_p(),
                                 ctypes.cast(argv, ctypes.POINTER(ctypes.c_char_p)),
-                                ctypes.POINTER(ctypes.c_char_p)())
+                                ctypes.cast(os_environ, ctypes.POINTER(ctypes.c_char_p)))
                         err = ctypes.get_errno()
                         os.close(errpipe_write)
                         if ret:
@@ -274,11 +316,11 @@ if sys.platform in ('linux2', 'darwin'):
                                 pass
                         os.close(errpipe_read)
                         if p2cread is not None and p2cwrite is not None:
-                            os.close(p2cread)
+                            _close_in_parent(p2cread, to_close)
                         if c2pwrite is not None and c2pread is not None:
-                            os.close(c2pwrite)
+                            _close_in_parent(c2pwrite, to_close)
                         if errwrite is not None and errread is not None:
-                            os.close(errwrite)
+                            _close_in_parent(errwrite, to_close)
 
                 klass._execute_child = _execute_child
 
