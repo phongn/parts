@@ -55,6 +55,18 @@ if sys.platform == 'win32':
         else:
             return OPEN_ALWAYS
 
+    CreateFileW = ctypes.windll.kernel32.CreateFileW
+    CreateFileW.argtypes = (
+            ctypes.c_wchar_p, # lpFileName
+            ctypes.c_uint32,  # dwDesiredAccess
+            ctypes.c_uint32,  # dwSharedMode
+            ctypes.c_void_p,  # lpSecurityAttributes
+            ctypes.c_uint32,  # dwCreationDisposition
+            ctypes.c_uint32,  # dwFlagsAndAttributes
+            ctypes.c_void_p,  # hTemplateFile
+            )
+    CreateFileW.restype = ctypes.c_long
+
     def shared_open(filename, mode='r', bufsize=-1):
         # this is sort of ugly
         # open the file with better shared flags
@@ -62,17 +74,21 @@ if sys.platform == 'win32':
         if not (set(['a', 'w', 'r']) & set(mode)):
             mode = 'r' + mode
 
-        fd = ctypes.windll.kernel32.CreateFileW(
-                    unicode(filename), # the file
-                    get_win32_desired_access(mode),# read, write modes
-                    get_win32_shared_mode(mode),# add share delete
+        filename = unicode(filename)
+        desired_access = get_win32_desired_access(mode)
+        shared_mode = get_win32_shared_mode(mode)
+        creation_disposition = get_win32_creation_disposition(mode)
+        handle = CreateFileW(
+                    filename, # the file
+                    desired_access,# read, write modes
+                    shared_mode,# add share delete
                     None, #default securtity
-                    get_win32_creation_disposition(mode), #If we create the file or not
+                    creation_disposition, #If we create the file or not
                     128, # normal attribute.. FILE_ATTRIBUTE_NORMAL
                     0 # no Template
                 )
-        if fd == -1:
-            # we have some error, try to return it in a python compatible way
+        if handle == -1:
+            # we have some error, return it in a python compatible way
             raise IOError(ctypes.GetLastError(), ctypes.FormatError(ctypes.GetLastError()),
                           filename)
 
@@ -81,11 +97,11 @@ if sys.platform == 'win32':
         # but it does not seem to hurt
         # maps native handle to a C handle
         if 'b' in mode:
-            fileHandle = msvcrt.open_osfhandle(fd, os.O_BINARY)
+            fd = msvcrt.open_osfhandle(handle, os.O_BINARY)
         else:
-            fileHandle = msvcrt.open_osfhandle(fd, os.O_TEXT)
+            fd = msvcrt.open_osfhandle(handle, os.O_TEXT)
         # map the C handle to a python handle
-        f = os.fdopen(fileHandle, mode, bufsize)
+        f = os.fdopen(fd, mode, bufsize)
         if 'a' in mode:
             f.seek(0, os.SEEK_END)
         return f
@@ -109,3 +125,6 @@ if sys.platform == 'win32':
 
     os.remove = win32_rm
     os.unlink = win32_rm
+
+# vim: set et ts=4 sw=4 ai :
+

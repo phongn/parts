@@ -785,6 +785,8 @@ class TempFileMunge(mapper):
             data = data.replace('\\', '/')
         os.write(fd, data + "\n")
         os.close(fd)
+        command_id = ' '.join((SCons.Subst.quote_spaces(cmd[0]), data))
+        command_args = self.result(prefix, native_tmp, command_id)
         # XXX Using the SCons.Action.print_actions value directly
         # like this is bogus, but expedient.  This class should
         # really be rewritten as an Action that defines the
@@ -801,10 +803,8 @@ class TempFileMunge(mapper):
         # purity get in the way of just being helpful, so we'll
         # reach into SCons.Action directly.
         if SCons.Action.print_actions:
-            print("Using tempfile "+native_tmp+" for command line:\n"+
-                  str(cmd[0]) + " " + " ".join(args))
-        return [ cmd[0], self.result(prefix, native_tmp,
-                env.subst(self.cmd, target=target, source=source)) ]
+            print command_args.id
+        return [ cmd[0], command_args ]
 
 
 api.register.add_mapper(_concat)

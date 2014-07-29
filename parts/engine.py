@@ -427,34 +427,14 @@ class parts_addon(object):
         with SetOptionDefault or the config file
         '''
 
-        overides={}
-        tmp=SCons.Script.GetOption('target_platform')
-        if tmp is not None:
-            api.output.verbose_msg("startup","Setting target_platform:",tmp,'type:',type(tmp))
-            overides['TARGET_PLATFORM']=tmp
-
-
-        tmp=SCons.Script.GetOption('build_config')
-        if tmp is not None:
-            api.output.verbose_msg("startup","Setting build_config:",tmp,'type:',type(tmp))
-            overides['CONFIG']=tmp
-
-        tmp=SCons.Script.GetOption('tool_chain')
-        if tmp is not None:
-            api.output.verbose_msg("startup","Setting tool_chain:",tmp,'type:',type(tmp))
-            overides['toolchain']=tmp
-
-        tmp=SCons.Script.GetOption('mode')
-        if tmp is not None:
-            api.output.verbose_msg("startup","Setting mode:",tmp,'type:',type(tmp))
-            overides['mode']=tmp
-
-        tmp=SCons.Script.GetOption('ccopy_logic')
-        if tmp is not None:
-            api.output.verbose_msg("startup","Setting ccopy_logic:",tmp,'type:',type(tmp))
-            overides['CCOPY_LOGIC']=tmp
-
-        SCons.Script.ARGUMENTS.update(overides)
+        for option_name, env_name in (('target_platform', 'TARGET_PLATFORM'),
+                ('build_config', 'CONFIG'), ('tool_chain', 'toolchain'), ('mode', 'mode'),
+                ('ccopy_logic', 'CCOPY_LOGIC')):
+            value = SCons.Script.GetOption(option_name)
+            if value is not None:
+                api.output.verbose_msg('startup', 'Setting {0}:'.format(option_name),
+                        value, 'type:', type(value))
+                SCons.Script.ARGUMENTS[env_name] = value
 
         # this is basically just tests code...
         tmp=SCons.Script.GetOption('target_platform')
@@ -471,8 +451,6 @@ class parts_addon(object):
         api.output.trace_msg("logger_option","logger =",SCons.Script.GetOption('logger'))
         api.output.trace_msg("show_progress_option","show_progress =",SCons.Script.GetOption('show_progress'))
         api.output.trace_msg("parts_cache_option","parts_cache =",SCons.Script.GetOption('parts_cache'))
-        #api.output.trace_msg("incremental_cache_option","incremental_cache =",SCons.Script.GetOption('incremental_cache'))
-        #api.output.trace_msg("incremental_dependent_checks_option","incremental_dependent_checks =",SCons.Script.GetOption('incremental_dependent_checks'))
         api.output.trace_msg("vcs_jobs_option","vcs_jobs =",SCons.Script.GetOption('vcs_jobs'))
         api.output.trace_msg("update_option","update =",SCons.Script.GetOption('update'))
 
@@ -593,7 +571,7 @@ Use -H or --help-options for a list of scons options
                 #print k,v,getattr(SCons.Script.Main.OptionsParser.values,k)
 
         # this stuff makes up the core key
-        md5.update("%s,%s,%s"%(self.def_env.subst('$CONFIG'),self.def_env['HOST_PLATFORM'],self.def_env['TARGET_PLATFORM']))
+        md5.update(self.def_env.subst("${CONFIG},${HOST_PLATFORM},${TARGET_PLATFORM}"))
         # the thought is that the exact tool path are chached
         # so changes to cli tools are seen as different
         for i in self.def_env['CONFIGURED_TOOLS']:

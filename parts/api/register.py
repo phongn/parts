@@ -67,17 +67,17 @@ def add_variable(key,default,help,validator=None,converter=None):
 
 
 def add_bool_variable(key,default,help):
-    '''Generic varible addition'''
+    '''Generic variable addition'''
     from .. import settings
     settings.DefaultSettings().BoolVariable(key, help=help,  default=default,value=None, help_group=None)
 
 def add_enum_variable(key,default,help,allowed_values,map={},ignorecase=1):
-    '''Generic varible addition'''
+    '''Generic variable addition'''
     from .. import settings
     settings.DefaultSettings().EnumVariable(key, help=help, default=default, allowed_values=allowed_values, map=map, ignorecase=ignorecase,value=None,help_group=None)
 
 def add_list_variable(key,default,help,names=[],map={}):
-    '''Generic varible addition'''
+    '''Generic variable addition'''
     from .. import settings
     from .. import Variables
     settings.DefaultSettings().ListVariable(key, help=help,  default=default,names=names, map=map, value=None, help_group=None)

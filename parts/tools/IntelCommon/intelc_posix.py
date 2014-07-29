@@ -17,7 +17,7 @@ Intelc.Register(
                 '/opt/intel',
                 common.intel_13_plus_posix,
                 'ia32',
-                'ICPP_COMPILER13'),
+                ['ICPP_COMPILER{0}'.format(x) for x in xrange(15,12,-1)]),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/iclvars_ia32.bat'), # huh?
             subst_vars={
 
@@ -43,7 +43,7 @@ Intelc.Register(
                 '/opt/intel',
                 common.intel_13_plus_posix,
                 'intel64',
-                'ICPP_COMPILER13'),
+                ['ICPP_COMPILER{0}'.format(x) for x in xrange(15,12,-1)]),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/Intel64/intel64.sh'), # huh?
             subst_vars={
 
@@ -69,7 +69,7 @@ Intelc.Register(
                 '/opt/intel',
                 common.intel_13_plus_posix,
                 'intel64_mic',
-                'ICPP_COMPILER13'),
+                ['ICPP_COMPILER{0}'.format(x) for x in xrange(15,12,-1)]),
             script=None,
             subst_vars={
             },

@@ -443,6 +443,23 @@ def InstallScript(env, src_files, sub_dir='',no_pkg=False,create_sdk=True,**kw):
     env.ExportItem('INSTALLSCRIPT',installed_files,create_sdk,True)
     return installed_files
 
+def InstallPkgData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True, packagetype=None, **kw):
+    # this function is used to install control files for different packages. 
+    # packagetype is to specify what is the package type. For example if packagetype = 'dpkg',
+    # will associate control file installed using this function for debian type only.
+    # input given by user for packegetype should be in lowercase.
+
+    installed_files = InstallItem(env, '$INSTALL_PKGDATA', src_files,
+        sub_dir=sub_dir,sdk_dir='$SDK_PKGDATA',no_pkg=no_pkg,create_sdk=create_sdk,
+        **get_args('PKGDATA',**kw))
+
+    if packagetype is not None:
+        packagetype =common.make_list(packagetype)        
+        env.MetaTag(installed_files,'package', types=packagetype)
+    env.ExportItem('INSTALLPKGDATA',installed_files,create_sdk,True)
+    return installed_files	
+
+
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
@@ -465,6 +482,7 @@ SConsEnvironment.InstallBin=InstallBin
 SConsEnvironment.InstallLib=InstallLib
 SConsEnvironment.InstallPython=InstallPython
 SConsEnvironment.InstallScript=InstallScript
+SConsEnvironment.InstallPkgData=InstallPkgData  
 
 SConsEnvironment.InstallItem=InstallItem
 
@@ -493,6 +511,7 @@ api.register.add_variable('INSTALL_TOP_LEVEL','${INSTALL_ROOT}/','')
 api.register.add_variable('PKG_NO_INSTALL','${INSTALL_ROOT}/NOINSTALL','')
 api.register.add_variable('INSTALL_PYTHON','${INSTALL_ROOT}/python','')
 api.register.add_variable('INSTALL_SCRIPT','${INSTALL_ROOT}/scripts','')
+api.register.add_variable('INSTALL_PKGDATA','${INSTALL_ROOT}/pkgdata','')
 
 
 

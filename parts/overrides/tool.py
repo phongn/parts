@@ -2,14 +2,15 @@
 # and imporve report handling when a tools fails
 import imp
 import sys
-import StringIO
 import traceback
 import SCons.Tool
 from .. import api
 
 from SCons.Debug import logInstanceCreation
+from collections import defaultdict
 
 class Parts_Tool(object):
+    _cache = defaultdict(dict)
     def __init__(self, name, toolpath=[], **kw):
         if __debug__: logInstanceCreation(self)
         self.name = name
@@ -25,81 +26,88 @@ class Parts_Tool(object):
 
     def _tool_module(self):
         # TODO: Interchange zipimport with normal initilization for better error reporting
-        oldpythonpath = sys.path
-        sys.path = self.toolpath + sys.path
 
+        new_sys_path = sys.path + self.toolpath
+        path_key = ''.join(new_sys_path)
         try:
-            try:
-                file, path, desc = imp.find_module(self.name, self.toolpath)
-                full_name="{0}<{1}>".format(self.name,str(path.__hash__()))
-                try:
-                    return sys.modules[full_name]
-                except KeyError:
-                    pass
-                try:
-                    return imp.load_module(full_name, file, path, desc)
-                finally:
-                    if file:
-                        file.close()
-            except ImportError, e:
-                ec_str=StringIO.StringIO()
-                traceback.print_exc(file=ec_str)
-                api.output.verbose_msg("tools","Failed to load module!")
-                api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
-                if str(e)!="No module named %s"%self.name:
-                    raise SCons.Errors.EnvironmentError, e
-                try:
-                    import zipimport
-                except ImportError:
-                    pass
-                else:
-                    for aPath in self.toolpath:
-                        try:
-                            importer = zipimport.zipimporter(aPath)
-                            return importer.load_module(self.name)
-                        except ImportError, e:
-                            pass
-        finally:
-            sys.path = oldpythonpath
-
-        full_name = 'SCons.Tool.' + self.name
-        try:
-            return sys.modules[full_name]
+            return Parts_Tool._cache[path_key][self.name]
         except KeyError:
+            oldpythonpath = sys.path
+            sys.path = list(self.toolpath) + sys.path
+
             try:
-                smpath = sys.modules['SCons.Tool'].__path__
                 try:
-                    file, path, desc = imp.find_module(self.name, smpath)
-                    module = imp.load_module(full_name, file, path, desc)
-                    setattr(SCons.Tool, self.name, module)
-                    if file:
-                        file.close()
-                    return module
+                    file, path, desc = imp.find_module(self.name, self.toolpath)
+                    full_name="{0}<{1}>".format(self.name,str(path.__hash__()))
+                    try:
+                        Parts_Tool._cache[path_key][self.name] = result = sys.modules[full_name]
+                    except KeyError:
+                        pass
+                    else:
+                        return result
+                    try:
+                        Parts_Tool._cache[path_key][self.name] = result = imp.load_module(full_name, file, path, desc)
+                    finally:
+                        if file:
+                            file.close()
+                    return result
                 except ImportError, e:
+                    api.output.verbose_msg("tools","Failed to load module!")
+                    api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(traceback.format_exc()))
                     if str(e)!="No module named %s"%self.name:
-                        traceback.print_exc(file=ec_str)
-                        api.output.verbose_msg("tools","Failed to load module!")
-                        api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
                         raise SCons.Errors.EnvironmentError, e
                     try:
                         import zipimport
-                        importer = zipimport.zipimporter( sys.modules['SCons.Tool'].__path__[0] )
-                        module = importer.load_module(full_name)
+                    except ImportError:
+                        pass
+                    else:
+                        for aPath in self.toolpath:
+                            try:
+                                importer = zipimport.zipimporter(aPath)
+                                Parts_Tool._cache[path_key][self.name] = result = importer.load_module(self.name)
+                            except ImportError, e:
+                                pass
+                            else:
+                                return result
+            finally:
+                sys.path = oldpythonpath
+
+            full_name = 'SCons.Tool.' + self.name
+            try:
+                Parts_Tool._cache[path_key][self.name] = result = sys.modules[full_name]
+            except KeyError:
+                try:
+                    smpath = sys.modules['SCons.Tool'].__path__
+                    try:
+                        file, path, desc = imp.find_module(self.name, smpath)
+                        Parts_Tool._cache[path_key][self.name] = module = imp.load_module(full_name, file, path, desc)
                         setattr(SCons.Tool, self.name, module)
+                        if file:
+                            file.close()
                         return module
                     except ImportError, e:
-                        m = "No tool named '%s': %s" % (self.name, e)
-                        traceback.print_exc(file=ec_str)
-                        api.output.verbose_msg("tools","Failed to load module!")
-                        api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
-                        raise SCons.Errors.EnvironmentError, m
-            except ImportError, e:
-                m = "No tool named '%s': %s" % (self.name, e)
-                ec_str=StringIO.StringIO()
-                traceback.print_exc(file=ec_str)
-                api.output.verbose_msg("tools","Failed to load module!")
-                api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(ec_str.getvalue()))
-                raise SCons.Errors.EnvironmentError, m
+                        if str(e)!="No module named %s"%self.name:
+                            api.output.verbose_msg("tools","Failed to load module!")
+                            api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(traceback.format_exc()))
+                            raise SCons.Errors.EnvironmentError, e
+                        try:
+                            import zipimport
+                            importer = zipimport.zipimporter( sys.modules['SCons.Tool'].__path__[0] )
+                            Parts_Tool._cache[path_key][self.name] = module = importer.load_module(full_name)
+                            setattr(SCons.Tool, self.name, module)
+                            return module
+                        except ImportError, e:
+                            m = "No tool named '%s': %s" % (self.name, e)
+                            api.output.verbose_msg("tools","Failed to load module!")
+                            api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(traceback.format_exc()))
+                            raise SCons.Errors.EnvironmentError, m
+                except ImportError, e:
+                    m = "No tool named '%s': %s" % (self.name, e)
+                    api.output.verbose_msg("tools","Failed to load module!")
+                    api.output.verbose_msg(["tools_failure","load_module"],"Stack:\n%s"%(traceback.format_exc()))
+                    raise SCons.Errors.EnvironmentError, m
+            else:
+                return result
 
     def __call__(self, env, *args, **kw):
         if self.init_kw is not None:

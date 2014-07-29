@@ -6,6 +6,8 @@ import parts.tools.Common.Finders as Finders
 import common
 import subprocess
 
+from parts.common import make_list
+
 from SCons.Debug import logInstanceCreation
 
 # for version 12.x
@@ -15,7 +17,7 @@ class file_scanner12(object):
         self.path=path # path to scan
         self.pattern=pattern    # pattern to install root
         self.arch=arch
-        self.env_var=Finders.EnvFinder(env,arch)
+        self.env_var=Finders.EnvFinder(make_list(env), arch)
         self.cache=None
 
 

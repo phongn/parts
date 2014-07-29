@@ -35,6 +35,31 @@ FSBase=SCons.Node.FS.Base
 Value=SCons.Node.Python.Value
 Alias=SCons.Node.Alias.Alias
 
+def wrap_MkdirFunc(function):
+    def MkdirFunc(target, source, env):
+        global BuildError, errno
+        target = target[0]
+        if not target.exists():
+            try:
+                target.fs.mkdir(target.abspath)
+            except OSError, error:
+                if error.errno == errno.EEXIST:
+                    if not target.fs.isdir(target.abspath):
+                        raise BuildError(node=target,
+                                errstr=("Cannot create directory when "
+                                    "there is an existing file with the same name"),
+                                filename=target.path, exc_info=error)
+                else:
+                    raise
+        return 0
+    function.__code__ = MkdirFunc.__code__
+    from SCons.Errors import BuildError
+    import errno
+    function.__globals__.update(BuildError=BuildError, errno=errno)
+
+wrap_MkdirFunc(SCons.Node.FS.MkdirFunc)
+
+
 
 class wrapper(object):
     def __init__(self,binfo,ninfo=None):

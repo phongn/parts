@@ -9,44 +9,45 @@ import sys
 # rtf Simple logger. Probally needs more work.
 
 
-def RtfColorIndex (col): 
-    if col == color.Black: ret = 17
-    elif col==color.Blue:  ret = 2 
-    elif col==color.Green: ret = 3
-    elif col==color.Cyan: ret = 4 
-    elif col==color.Red: ret = 5  
-    elif col==color.Magenta: ret = 6 
-    elif col==color.Yellow: ret = 7 
-    elif col==color.White: ret = 8 
-    elif col==color.Gray: ret = 9 
-    elif col==color.BrightBlue: ret = 10 
-    elif col==color.BrightGreen: ret = 11 
-    elif col==color.BrightCyan: ret = 12 
-    elif col==color.BrightRed: ret = 13 
-    elif col==color.BrightMagenta: ret = 14 
-    elif col==color.BrightYellow: ret = 15 
-    elif col==color.BrightWhite: ret = 16 
-    else: ret = 0 
-
-    return ret
- 
-
-
+def RtfColorIndex (col):
+    global _RtfColorIndex
+    try:
+        return _RtfColorIndex.get(col) or 0
+    except NameError:
+        _RtfColorIndex = dict((
+            (color.Black, 17),
+            (color.Blue, 2),
+            (color.Green, 3),
+            (color.Cyan, 4),
+            (color.Red, 5),
+            (color.Magenta, 6),
+            (color.Yellow, 7),
+            (color.White, 8),
+            (color.Gray, 9),
+            (color.BrightBlue, 10),
+            (color.BrightGreen, 11),
+            (color.BrightCyan, 12),
+            (color.BrightRed, 13),
+            (color.BrightMagenta, 14),
+            (color.BrightYellow, 15),
+            (color.BrightWhite, 16),
+        ))
+        return _RtfColorIndex.get(col) or 0
 
 class rtf(logger.Logger):
-    
+
     def __init__(self,dir,file):
         if os.path.exists(dir) == False:
             os.makedirs(dir)
         if file.endswith(".rtf") ==False:
             file+=".rtf"
         self.m_file=open(os.path.join(dir,file),"w")
-        
+
         self.colors=SCons.Script.GetOption('use_color')
         self.fg_color=0
         self.writeheader()
         super(rtf, self).__init__(dir,file)
-        
+
     def writeheader(self):
         self.m_file.write("{\\rtf1\\fbidis\\ansi\\ansicpg1252")
         self.m_file.write('''{\\colortbl;red0\\green0\\blue128;\\red0\\green128\\blue0;\\red0\\green128\\blue128;\
@@ -69,9 +70,9 @@ class rtf(logger.Logger):
                 fg=self.fg_color
         else:
             self.fg_color=fg
-        
+
         self.m_file.write("\\cf1\\cf%s "%(RtfColorIndex(self.fg_color)))
-        
+
     def writestr(self,msg):
         for c in msg:
             if c == '\t':
@@ -86,19 +87,19 @@ class rtf(logger.Logger):
                 self.m_file.write('\\par\n')
             else:
                 self.m_file.write(c)
-    
+
     def logout(self,msg):
         self.out_color(self.colors['stdout'])
         self.writestr(msg)
-        
+
     def logerr(self,msg):
         self.out_color(self.colors['stderr'])
         self.writestr(msg)
-        
+
     def logwrn(self,msg):
         self.out_color(self.colors['stdwrn'])
         self.writestr(msg)
-    
+
     def logmsg(self,msg):
         self.out_color(self.colors['stdmsg'])
         self.writestr(msg)
@@ -106,11 +107,17 @@ class rtf(logger.Logger):
     def logtrace(self,msg):
         self.out_color(self.colors['stdtrace'])
         self.writestr(msg)
-    
+
     def logverbose(self,msg):
         self.out_color(self.colors['stdverbose'])
         self.writestr(msg)
-    
+
     def shutdown(self):
         self.m_file.write("}")
         self.m_file.close()
+
+    def __del__(self):
+        try:
+            self.m_file.close()
+        except:
+            pass

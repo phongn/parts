@@ -2,6 +2,7 @@
 from variable import Variable
 from .. import events
 from .. import api
+from parts.common import make_list
 
 import os
 import sys
@@ -11,21 +12,11 @@ import SCons.Util
 
 from SCons.Debug import logInstanceCreation
 
-# remove to use common version once we clean up code a bit more
-def make_list(obj):
-    ''' 
-    The purpose of thsi function is to make the obj into a list if it is not
-    already one. It will flatten as well    
-    '''
-    if SCons.Util.is_List(obj):
-        return SCons.Util.flatten(obj)
-    return [obj]
-
 class Variables(dict,object):
     ''' Container of variable we will want to add to a given Environment.
     The object allow for setting and getting of variable before the Environment is created.
     It will also define convert and valiade and value before it is set
-    
+
     '''
 ##    __slots__=[
 ##    '__args',
@@ -36,39 +27,39 @@ class Variables(dict,object):
     def __init__(self, files=None, args=None, user_defaults=None, **kw):
         """
         Construct a Varibles object
-        
+
         @param files List of optional configuration files to load
         @param args The command line ARGUMENTS used to override any value from the command line
         @param user_defaults Values to overide the defined varaible defaults with
         """
         if __debug__: logInstanceCreation(self)
-        
+
         if args is None:
             args={}
-        self.__dict__['_args'] = args 
+        self.__dict__['_args'] = args
         if files is None:
             files=[]
         self.__dict__['_files'] = make_list(files)
         if user_defaults is None:
             user_defaults={}
         self.__dict__['_user_defaults']=user_defaults
-        #Value that we get added via loading data from the CLI arguments or 
+        #Value that we get added via loading data from the CLI arguments or
         #  cfg files that are not defined aleady
-        self.__dict__['_unknowns'] = {} 
-        self.__dict__['_on_change'] =events.Event() 
-        
+        self.__dict__['_unknowns'] = {}
+        self.__dict__['_on_change'] =events.Event()
+
         for k, v in kw.iteritems():
             if not isinstance(v, Variable):
                 kw[k]=Variable(v)
             kw[k]._on_change+=self._on_change
-        
-                
+
+
         dict.__init__(self,kw)
-        
+
     @property
     def Files(self):
         return self._files
-    
+
     @Files.setter
     def Files(self,lst):
         self._files=make_list(lst)
@@ -79,13 +70,13 @@ class Variables(dict,object):
         '''
         tmp=self[name]
         return tmp
-    
+
     def __setattr__(self,name,value):
         '''Used for dynamic setting of variable value by the user
-        
+
         @param name The name of variable we want to access. If it does not exist a KeyError will be raised
         @param value The value we want to set. See notes below.
-        
+
         This function makes sure everything is a Variable class type. It will only truly replace if this value is of a Variable type,
         otherwise it replaces the value of an exist Variable or it will wrap that value in a Generic Varible object'''
         if self.__dict__.has_key(name):
@@ -98,7 +89,7 @@ class Variables(dict,object):
             self[name]=Variable(name, value=value)
             self[name]._on_change+=self._on_change
             self._on_change()
-            
+
     def __setitem__(self,name,value):
         if isinstance(value, Variable):
             dict.__setitem__(self,name,value)
@@ -108,11 +99,11 @@ class Variables(dict,object):
             value=Variable(name, value=value)
             dict.__setitem__(self,name,value)
             self[name]._on_change+=self._on_change
-            self._on_change()  
-        
+            self._on_change()
+
     def __delattr__(self,name):
         del self[name]
-        
+
     def AddVariables(self, *optlist):
         """
         Add a list of options.
@@ -135,16 +126,16 @@ class Variables(dict,object):
             else:
                 #classic case
                 self.Add(*o)
-    
+
     def Add(self, key, help=None, default=None, validator=None, converter=None, help_group=None,  **kw):
         '''This will add a Variable that will the user can overide on the Command like or with a config file
-        @param key The name of the varable to add, or is a varaible type, if the latter the other arguments as overides 
+        @param key The name of the varable to add, or is a varaible type, if the latter the other arguments as overides
         @param help The help text for this given item
         @param default The default value to be used for the variable, if no other value is provided.
         @param validator An optional call back function that will validate the value as good or bad
         @param converter An optional function used to convert and set the value in the Environment, if not provided a default one is used
         @param **kw is ignored at this time
-        
+
         This function exist as a backward compatibility function.. normally the Setting.XXXVariable() api would be called
         '''
         if isinstance(key, Variable):
@@ -161,11 +152,11 @@ class Variables(dict,object):
             val=key
             key=val.Name
         else:
-            val=Variable(key, 
-                         help=help, 
-                         default=default, 
-                         validator=validator, 
-                         converter=converter, 
+            val=Variable(key,
+                         help=help,
+                         default=default,
+                         validator=validator,
+                         converter=converter,
                          help_group=help_group)
             if SCons.Util.is_List(key) or SCons.Util.is_Tuple(key):
                 key=key[0]
@@ -173,7 +164,7 @@ class Variables(dict,object):
             api.output.warning_msg("Variable {0} is already defined.".format(key))
         val._on_change+=self._on_change
         self[key]=val
-        
+
 
     def Update(self, env, args=None, files=None, user_defaults=None, add_unknown=False):
         """
@@ -190,7 +181,7 @@ class Variables(dict,object):
         values = {}
         if user_defaults is None:
             user_defaults=self._user_defaults
-            
+
         ## user overides to default values
         # first fill in all options value with default values
         for k,option in self.iteritems():
@@ -198,7 +189,7 @@ class Variables(dict,object):
             values[k] = option.Default
         #add any default overides
         values.update(user_defaults)
-        
+
 
         ## File overides
         # next set the value specified in the options file
@@ -214,7 +205,9 @@ class Variables(dict,object):
                     sys.path.insert(0, dir)
                 try:
                     values['__name__'] = filename
-                    exec open(filename).read().replace('\r', '\n') in {}, values
+                    with open(filename) as file_obj:
+                        file_content = file_obj.read()
+                    exec file_content.replace('\r', '\n') in {}, values
                 finally:
                     #cleanup
                     if dir:
@@ -223,11 +216,11 @@ class Variables(dict,object):
 
         ## any commandline arguments/user added values
         # set the values specified on the command line
-        # if None, SCons is not passing any to us 
+        # if None, SCons is not passing any to us
         if args is None:
             #use the user supplied arguments, if this is the case
             args = self._args
-        
+
         #Override any value we have with Arguments provided
         for arg, value in args.iteritems():
             # we need to see if there is a alias for this
@@ -241,7 +234,7 @@ class Variables(dict,object):
             else:
                 # no match was found so we store this in unknowns
                 self._unknowns[arg] = value
-                
+
 
         # at this point the values should be up to date
         # put the variables in the environment:
@@ -264,8 +257,8 @@ class Variables(dict,object):
         for k,v in values.iteritems():
             tmp=self[k]
             tmp.Update(env,v)
-            
-        
+
+
 
     def UnknownVariables(self):
         """
@@ -273,10 +266,10 @@ class Variables(dict,object):
         were not known, declared options in this object.
         """
         return self._unknowns
-        
+
     def Save(self, filename, env):
         pass
-        
+
     def GenerateHelpText(self, env, sort=None):
        return "to do"
 
@@ -285,7 +278,7 @@ class Variables(dict,object):
 
     def FormatVariableHelpText(self, env, key, help, default, actual, aliases=[]):
         pass
-    
+
 
 # Local Variables:
 # tab-width:4

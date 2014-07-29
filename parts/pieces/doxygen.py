@@ -91,7 +91,8 @@ class MyDir(SCons.Node.FS.Dir):
         sigs = [SCons.Util.MD5signature(self.abspath)]
         for root, dirs, files in os.walk(self.abspath):
             for f in files:
-                sigs.append(SCons.Util.MD5signature(file(os.path.join(root, f), 'r').read()))
+                with open(os.path.join(root, f), 'r') as f:
+                    sigs.append(SCons.Util.MD5signature(f.read()))
         csig = SCons.Util.MD5collect(sigs)
         self.get_ninfo().csig = csig
         return csig
@@ -285,7 +286,8 @@ def generateSources(config, env):
 def doxyEmitter(target,source,env):
     doxyfile = env.get('DOXYFILE') or 'Doxyfile'
     source = [doxyfile]
-    config = parseDoxyFile(file(doxyfile, 'r'))
+    with file(doxyfile, 'r') as doxyfile:
+        config = parseDoxyFile(doxyfile)
     outdir = config.get('OUTPUT_DIRECTORY') or '.'
 
     target = generateTargets(config, outdir)

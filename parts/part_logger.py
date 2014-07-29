@@ -5,6 +5,7 @@ import console
 import api.output
 import version
 from process_tools import waitForProcess, killProcessTree
+import json
 
 import SCons.Script
 
@@ -98,7 +99,7 @@ class part_spawner(object):
 
         ret = -42 # The universal answer we return in case of exception
         #tell it we are starting a given action/command, get action_id
-        id = output.TaskStart(command_id)
+        id = output.TaskStart('{0}\nENV = {1}\n'.format(command_id, json.dumps(ENV)))
         try:
             # do the call
             proc = subprocess.Popen(

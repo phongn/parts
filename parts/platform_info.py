@@ -216,13 +216,20 @@ class SystemPlatform(common.bindable):
         # this is a bit of a hack to forward stuff in SCons as it should be in 1.3
         if key == "TARGET_PLATFORM" or key == "HOST_PLATFORM":
             tkey = key[:-9]
-            env[tkey+"_ARCH"] = self.ARCH != 'any' and self.ARCH or env.has_key(tkey+"_ARCH") and env[tkey+"_ARCH"] or ChipArchitecture() # getArch
-            env[tkey+"_OS"]= self.OS != 'any' and self.OS or env.has_key(tkey+"_OS") and env[tkey+"_OS"] or SCons.Platform.platform_default() # getPlatform
+            
+            env[tkey+"_ARCH"] = self.ARCH if self.ARCH else env[tkey+"_ARCH"] if env.has_key(tkey+"_ARCH") else ChipArchitecture() # getArch
+            env[tkey+"_OS"]= self.OS if self.OS else env[tkey+"_OS"] if env.has_key(tkey+"_OS") else SCons.Platform.platform_default()# getPlatform
             self.key=tkey
             self._env=env
 
     def _rebind(self,env,key):
-        tmp=SystemPlatform(os=self.OS,arch=self.ARCH)
+        if key == "TARGET_PLATFORM":
+            tkey = key[:-9]
+            tmp=SystemPlatform(
+                os=env[tkey+"_OS"] if env.has_key(tkey+"_OS") else self.OS ,
+                arch=env[tkey+"_ARCH"] if env.has_key(tkey+"_ARCH") else self.ARCH)
+        else:
+            tmp=SystemPlatform(os=self.OS,arch=self.ARCH)
         tmp._bind(env,key)
         return tmp
 

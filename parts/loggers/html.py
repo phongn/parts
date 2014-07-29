@@ -11,32 +11,36 @@ import sys
 # html Simple logger. Probally needs more work.
 
 
-def RtfColorIndex (col): 
-    if col == color.Black: ret = "black"
-    elif col==color.Blue:  ret = "blue" 
-    elif col==color.Green: ret = "green"
-    elif col==color.Cyan: ret = "aqua" 
-    elif col==color.Red: ret = "red"  
-    elif col==color.Magenta: ret = "purple" 
-    elif col==color.Yellow: ret = "yellow" 
-    elif col==color.White: ret = "white" 
-    elif col==color.Gray: ret = "gray" 
-    elif col==color.BrightBlue: ret = "brightblue" 
-    elif col==color.BrightGreen: ret = "brightgreen" 
-    elif col==color.BrightCyan: ret = "brightaqua"
-    elif col==color.BrightRed: ret = "brightred" 
-    elif col==color.BrightMagenta: ret = "brightmagenta" 
-    elif col==color.BrightYellow: ret = "brightyellow" 
-    elif col==color.BrightWhite: ret = "brightwhite" 
-    else: ret = "black" 
+def RtfColorIndex (col):
+    global _RtfColorIndex
+    try:
+        return _RtfColorIndex.get(col) or "black"
+    except NameError:
+        _RtfColorIndex = dict((
+            (color.Black, "black"),
+            (color.Blue, "blue"),
+            (color.Green, "green"),
+            (color.Cyan, "aqua"),
+            (color.Red, "red"),
+            (color.Magenta, "purple"),
+            (color.Yellow, "yellow"),
+            (color.White, "white"),
+            (color.Gray, "gray"),
+            (color.BrightBlue, "brightblue"),
+            (color.BrightGreen, "brightgreen"),
+            (color.BrightCyan, "brightaqua"),
+            (color.BrightRed, "brightred"),
+            (color.BrightMagenta, "brightmagenta"),
+            (color.BrightYellow, "brightyellow"),
+            (color.BrightWhite, "brightwhite"),
+        ))
+        return _RtfColorIndex.get(col) or "black"
 
-    return ret
- 
 
 
 
 class html(logger.Logger):
-    
+
     def __init__(self,dir,file):
         if os.path.exists(dir) == False:
             os.makedirs(dir)
@@ -44,13 +48,13 @@ class html(logger.Logger):
             file+=".html"
         self.m_file=open(os.path.join(dir,file),"w")
         super(html, self).__init__(dir,file)
-        
+
         self.colors=SCons.Script.GetOption('use_color')
         self.fg_color=color.White
         self.default_color=color.White
         self.writeheader()
-        
-        
+
+
     def writeheader(self):
         self.m_file.write('''<html>
 <head>
@@ -137,11 +141,11 @@ class html(logger.Logger):
                 fg=self.default_color-8
             else:
                 fg=self.default_color
-        
+
         self.fg_color=fg
         with self._lock:
             self.m_file.write("<span class=\"%s\">"%(RtfColorIndex(self.fg_color)))
-        
+
     def writestr(self,msg):
         with self._lock:
             for c in msg:
@@ -156,19 +160,19 @@ class html(logger.Logger):
                 else:
                     self.m_file.write(c)
             self.m_file.write("</span>\n")
-    
+
     def logout(self,msg):
         self.out_color(self.colors['stdout'])
         self.writestr(msg)
-        
+
     def logerr(self,msg):
         self.out_color(self.colors['stderr'])
         self.writestr(msg)
-        
+
     def logwrn(self,msg):
         self.out_color(self.colors['stdwrn'])
         self.writestr(msg)
-    
+
     def logmsg(self,msg):
         self.out_color(self.colors['stdmsg'])
         self.writestr(msg)
@@ -176,12 +180,18 @@ class html(logger.Logger):
     def logtrace(self,msg):
         self.out_color(self.colors['stdtrace'])
         self.writestr(msg)
-    
+
     def logverbose(self,msg):
         self.out_color(self.colors['stdverbose'])
         self.writestr(msg)
-    
+
     def shutdown(self):
         with self._lock:
             self.m_file.write("</body></html>")
         self.m_file.close()
+
+    def __del__(self):
+        try:
+            self.m_file.close()
+        except:
+            pass

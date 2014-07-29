@@ -31,8 +31,8 @@ def __load_cache_data(datafile):
     try:
         if os.path.exists(datafile):
             with open(datafile, 'rb') as inputfile:
-                tmp, stored_data = cPickle.load(inputfile)
-            return (tmp,stored_data)
+                data = inputfile.read()
+            return cPickle.loads(data)
 
     except Exception,ec:
         api.output.warning_msg("Failed to load datacache file %s, will rebuild file."%datafile,print_once=True)

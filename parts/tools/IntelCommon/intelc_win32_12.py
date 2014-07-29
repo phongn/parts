@@ -507,7 +507,7 @@ Intelc.Register(
                 [r'Software\Wow6432Node\Intel\Suites\15.0',
                 r'Software\Intel\Suites\15.0'],
                 r'\Defaults\C++\EM64T',
-                'ICPP_COMPILER14'),
+                'ICPP_COMPILER15'),
             script=None,
             subst_vars={},
             shell_vars={
@@ -533,7 +533,7 @@ Intelc.Register(
                 [r'Software\Wow6432Node\Intel\Suites\15.0',
                 r'Software\Intel\Suites\15.0'],
                 r'\Defaults\C++\IA32',
-                'ICPP_COMPILER14'),
+                'ICPP_COMPILER15'),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32/compilervars.bat'),
             subst_vars={
 
@@ -560,7 +560,7 @@ Intelc.Register(
                 [r'Software\Wow6432Node\Intel\Suites\15.0',
                 r'Software\Intel\Suites\15.0'],
                 r'\Defaults\C++\EM64T',
-                'ICPP_COMPILER14'),
+                'ICPP_COMPILER15'),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/ia32_intel64/compilervars.bat'),
             subst_vars={
 
@@ -587,7 +587,7 @@ Intelc.Register(
                 [r'Software\Wow6432Node\Intel\Suites\15.0',
                 r'Software\Intel\Suites\15.0'],
                 r'\Defaults\C++\EM64T',
-                'ICPP_COMPILER14'),
+                'ICPP_COMPILER15'),
             script=ScriptFinder('${INTELC.INSTALL_ROOT}/bin/intel64/compilervars.bat'),
             subst_vars={
 

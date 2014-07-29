@@ -58,4 +58,22 @@ api.register.add_builder('Bz2File',SCons.Builder.Builder(action = bz2Action,
                                    source_scanner = SCons.Defaults.DirScanner,
                                    suffix = '.bz2',multi = 1))
 
+api.register.add_builder('TarBz2File',SCons.Builder.Builder(action = bz2Action,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffix = '.tar.bz2',multi = 1))
 
+api.register.add_builder('TgzFile',SCons.Builder.Builder(action = GzAction,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffx = '.tgz',multi = 1))
+
+api.register.add_builder('TarGzFile',SCons.Builder.Builder(action = GzAction,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffx = '.tar.gz',multi = 1))
+
+api.register.add_builder('Tbz2File',SCons.Builder.Builder(action = bz2Action,
+                                   source_factory = SCons.Node.FS.Entry,
+                                   source_scanner = SCons.Defaults.DirScanner,
+                                   suffix = '.tbz2',multi = 1))

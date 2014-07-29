@@ -9,10 +9,9 @@ import policy
 import SCons.Script
 
 
-
 g_package_groups={}
 
-_packaging_groups = _INSTALLED_PACKAGING_GROUPS, _INSTALLED_NO_PACKAGING_GROUPS = dict(), dict()
+_packaging_groups = dict(), dict()
 
 def PackageGroups():
     return g_package_groups.keys()
@@ -32,23 +31,22 @@ def PackageGroup(name,parts=None):
     try:
         result = g_package_groups[name]
     except KeyError:
-        g_package_groups[name] = result = list()
+        g_package_groups[name] = result = set()
 
     if parts:
         parts = common.make_list(parts)
         for p in parts:
             if common.is_string(p):
-                common.append_unique(result,p)
+                result.add(p)
                 api.output.verbose_msg('packaging','Adding to PackageGroup :"{0}" Part: "{1}"'.format(name,p))
             else:
                 raise RuntimeError("%s does not refer to a defined Part" % (p) )
 
         #cache is out of date.. zap it to force rebuild
-        if _INSTALLED_PACKAGING_GROUPS.has_key(name):
-            _INSTALLED_PACKAGING_GROUPS.clear()
-            _INSTALLED_NO_PACKAGING_GROUPS.clear()
+        if name in _packaging_groups[0]:
+            map(dict.clear, _packaging_groups)
 
-    return result
+    return tuple(x for x in result)
 
 # global form
 def ReplacePackageGroupCriteria(name,func):
@@ -146,12 +144,9 @@ def GetPackageGroupFiles(name,no_pkg=False):
     This function will try to cache known result to improve speed.
     '''
     # get Cache value
-    if no_pkg:
-        groups = _INSTALLED_NO_PACKAGING_GROUPS
-    else:
-        groups = _INSTALLED_PACKAGING_GROUPS
+    groups = _packaging_groups[int(bool(no_pkg))]
     try:
-        return groups[name]
+        return list(groups[name])
     except KeyError:
         # no cache value.. re build list
         api.output.verbose_msg('packaging','Sorting PackageGroup Parts into nodes')
@@ -159,19 +154,15 @@ def GetPackageGroupFiles(name,no_pkg=False):
 
 
     # return what we got, if not in rebuilt list return empty list
-    return groups.get(name,[])
+    return list(groups.get(name, set()))
 
-def get_group_list(name, no_pkg):
-    if no_pkg:
-        that, this = _packaging_groups
-    else:
-        this, that = _packaging_groups
-
+def get_group_set(name, no_pkg):
+    group = _packaging_groups[int(bool(no_pkg))]
     try:
-        return this[name]
+        return group[name]
     except KeyError:
-        this[name] = result = list()
-        that[name] = list()
+        group[name] = result = set()
+        _packaging_groups[int(bool(not no_pkg))][name] = set()
         return result
 
 def SortPackageGroups():
@@ -197,7 +188,7 @@ def SortPackageGroups():
 
             for f in files:
                 _no_pkg=metatag.MetaTagValue(f,'no_package','package',False)
-                group_val = list(common.make_list(metatag.MetaTagValue(f,'group','package',[])))
+                group_val = set(common.make_list(metatag.MetaTagValue(f,'group','package',[])))
                 if not group_val:
 
                     # Set default meta-tag value
@@ -206,14 +197,15 @@ def SortPackageGroups():
                     for group, tests in map_objs.iteritems():
                         for test in tests:
                             if test(f):
-                                common.append_unique(group_val, group)
+                                group_val.add(group)
+                                break
                     if not group_val:
-                        group_val = [name]
+                        group_val = set([name])
                     #apply meta tag to file
-                    metatag.MetaTag(f,'package',group=group_val)
+                    metatag.MetaTag(f,'package',group=list(group_val))
 
                 for group in group_val:
-                    common.append_unique(get_group_list(group, _no_pkg), f)
+                    get_group_set(group, _no_pkg).add(f)
                 api.output.verbose_msg('packaging','Adding to PackageGroup(s)={0}, no_package={1} nodes={2}'.format(group_val, _no_pkg, f.ID))
 
 def GetPackageGroupFiles_env(env,name,no_pkg=False):

@@ -11,6 +11,8 @@ import stat
 import errno
 from parts.part_logger import part_nil_logger
 
+from collections import deque
+
 # generic copy builder
 if sys.platform == 'win32':
     import ctypes
@@ -195,24 +197,58 @@ else:
 
 def on_rmtree_error(function, path, exc_info):
     if function == os.remove:
-        os.chmod(os.lstat(path).st_mode | 0222)
+        os.chmod(os.lstat(path).st_mode | 0o222)
         os.remove(path)
+
+try:
+    WindowsError
+except NameError:
+    WindowsError = None
+
+def copytree(src, dst):
+    '''
+    We use our version of copytree because one from shutil fails when destination
+    directory exists already.
+    '''
+    dirs = deque(['.'])
+    while dirs:
+        current = dirs.popleft()
+        src_dir = os.sep.join((src, current))
+        dst_dir = os.sep.join((dst, current))
+
+        # Make sure the destination directory exists
+        try:
+            os.makedirs(dst_dir)
+        except OSError, error:
+            if error.errno == errno.EEXIST:
+                if not os.path.isdir(dst_dir):
+                    raise SCons.Errors.UserError, ("cannot overwrite non-directory "
+                            "'%s' with a directory '%s'") % (dst_dir, src_dir)
+            else:
+                raise
+
+        # Iterate by source directory entries.
+        # Files are copied, directories are add to the dirs list.
+        for entry in os.listdir(src_dir):
+            src_entry = os.sep.join((src_dir, entry))
+            if os.path.isdir(src_entry):
+                dirs.append(os.sep.join((current, entry)))
+            else:
+                shutil.copy2(src_entry, os.sep.join((dst_dir, entry)))
+
+        try:
+            shutil.copystat(src, dst)
+        except OSError, why:
+            if WindowsError is not None and isinstance(why, WindowsError):
+                # Copying file access times may fail on Windows
+                pass
+            else:
+                raise
 
 def CCopyFuncWrapper(env, dest, source, copyfunc):
 
     if os.path.isdir(source):
-        if os.path.exists(dest):
-            if not os.path.isdir(dest):
-                raise SCons.Errors.UserError, "cannot overwrite non-directory '%s' with a directory '%s'" % (str(dest), str(source))
-            shutil.rmtree(dest, onerror = on_rmtree_error)
-        else:
-            parent = os.path.dirname(dest)
-            try:
-                os.makedirs(parent)
-            except OSError, err:
-                if err.errno <> errno.EEXIST:
-                    raise
-        shutil.copytree(source, dest)
+        copytree(source, dest)
     else:
         copyfunc(dest,source)
 

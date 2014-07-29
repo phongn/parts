@@ -100,8 +100,9 @@ class ToolInfo(object):
         env[namespace]=self.get_namespace(INSTALL_ROOT=install_root,
                                 VERSION=self.resolve_version(version),
                                 TOOL=tool)
+        cache_key = str(version)+str(install_root)+str(script)+env.subst("$CONFIG")
         try:
-            return self.shell_cache[str(version)+str(install_root)+str(script)+env.subst("$CONFIG")]
+            return self.shell_cache[cache_key]
         except KeyError:
             if SCons.Util.is_String(script) and script not in ['True','False','true','false','1','0']:
                 # process the script directly
@@ -125,11 +126,11 @@ class ToolInfo(object):
                         # try to warn if we have an install root
                         if install_root is not None:
                             api.output.verbose_msgf("toolinfo","Script '{0}' not found, needed to setup tool '{1}', version '{2}'",self.script.name,tool,version,show_stack=False)
-                        return {}
-                    ret=env.GetScriptVariables(script_data,self.script.args)
-                    
+                        ret = {}
+                    else:
+                        ret = env.GetScriptVariables(script_data,self.script.args)
                 else:
-                    return {}
+                    ret = {}
 
             else: # script is False
                 # subst data
@@ -137,7 +138,7 @@ class ToolInfo(object):
                 for k, v in self.shell_vars.iteritems():
                     ret[k]=os.path.normpath(env.subst(v))
 
-        self.shell_cache[str(version)+str(install_root)+str(script)]=ret
+        self.shell_cache[cache_key]=ret
         return ret
 
     def get_namespace(self,**kw):

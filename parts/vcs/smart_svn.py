@@ -25,7 +25,7 @@ class smart_svn(svn.svn):
 
                 server=None,
                 revision=None,
-                **kw            
+                **kw
              ):
 
         self._vars={}
@@ -33,7 +33,7 @@ class smart_svn(svn.svn):
         self._vars['NAME']=component_name
         self._vars['COMPONENT_TYPE']=component_type
         self._vars['STABLE_VERSION']=version.version(stable_version)
-        
+
         self._vars['SUB_DIR']=sub_dir
         self._vars['BRANCH_PATH']=self.find_best_branch
         self._branch_info={}
@@ -52,10 +52,10 @@ class smart_svn(svn.svn):
             svn.svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
             if svn.svn.svnpath is None:
                 svn.svn.svnpath=self._env.WhereIs('svn',os.environ['PATH'])
-        
+
         # get cache states
         cache=datacache.GetCache(name=self._cache_filename,key='vcs')
-        
+
         if cache:
             if cache.get('type') == 'smartsvn':
                 self._branch_info=cache['branch_info']
@@ -71,28 +71,28 @@ class smart_svn(svn.svn):
             self._vars['COMPONENT_TYPE_PATH']=tmp[self._vars['COMPONENT_TYPE']]
         except KeyError:
             api.output.error_msgf("{0} is not a known component type",self._vars['COMPONENT_TYPE'])
-        
-        # get the different branches 
+
+        # get the different branches
         tmp= common.namespace(**self._env.get('SVN_BRANCH_MAP',{}))
         self._vars['BRANCH_MAP']=tmp
-        
+
         # stuff that is useful if the user has some sort of user ID branch
         self._vars['USER'] = '${0}_USER'.format(self._vars['NAME'].upper())
         try:
             self._env['{0}_USER'.format(self._vars['NAME'].upper())]
         except KeyError:
             self._env['{0}_USER'.format(self._vars['NAME'].upper())] = '$PART_USER'
-        
+
         self._vars['UID_PATH'] = '${0}_UID_PATH'.format(self._vars['NAME'].upper())
         try:
             self._env['{0}_UID_PATH'.format(self._vars['NAME'].upper())]
         except KeyError:
             self._env['{0}_UID_PATH'.format(self._vars['NAME'].upper())] = '$UID_PATH'
 
-        #setup a few more values we will need to fill in the different pieces           
+        #setup a few more values we will need to fill in the different pieces
         repo=self._env['SVN_REPOSITORY']
 
-        # we don't set the server path                 
+        # we don't set the server path
         self._env['VCS']=common.namespace(
                 TYPE='smartsvn',
                 CHECKOUT_DIR='$VCS_SMART_SVN_DIR',
@@ -111,13 +111,13 @@ class smart_svn(svn.svn):
 
         # calling this will requiresome work to be done
         self._env['VCS']['SERVER_PATH']=self.FullPath
-        
-        
+
+
 
     @property
     def Repository(self):
         '''returns the value of the server
-        
+
         Subclasses may add to this logic as they might want to define other values based on custom logic.
         '''
         if self._repository == '':
@@ -130,17 +130,13 @@ class smart_svn(svn.svn):
         in SVN, and if it does use it, else if will fallback to different location or error out
         if nothing is found.
         '''
-        # This is a simple test to see if the login, or something else is messed up an the user needs to fix it
-        retcode,text=self.command_output('"{0}" ls --non-interactive {1}'.format(svn.svn.svnpath,self.Server))
-        if retcode:
-            api.output.error_msg("SVN access issue:\n {0}".format(text.rstrip()),show_stack=False)
         # get branch we want
         branch=self.GetBranchType()
         api.output.verbose_msgf("smart_svn","Finding information for branch {0}",branch)
         ##if force is false we will try to see if we can use a cache
         if force == False:
-            
-            try:    
+
+            try:
                 api.output.verbose_msg("smart_svn","looking for stored state")
                 if self._stored_version!=self._vars['STABLE_VERSION']:
                     api.output.verbose_msg("smart_svn","Stable version does not match")
@@ -157,11 +153,11 @@ class smart_svn(svn.svn):
                     api.output.verbose_msg("smart_svn","Found state",tmp)
                     return tmp # returns (found branch,path)
             except KeyError:
-                api.output.verbose_msg("smart_svn","No state was found")   
-        
+                api.output.verbose_msg("smart_svn","No state was found")
+
         ret=self.find_match_for_branch(branch)
         if ret is None:
-            
+
             api.output.error_msgf(
                 'Could not find {0} branch "{1}" in svn\n looked in {2}',
                 self._vars['NAME'],branch,self._env.subst(self._vars['BRANCH_MAP'][branch]),
@@ -173,10 +169,10 @@ class smart_svn(svn.svn):
 
     def find_match_for_branch(self,branch):
         '''This will return the path to requested branch else None
-        
+
         @param branch The branch type we want to get a path for
         '''
-        
+
         # get a list of paths we have to check
         try:
             brch_lst = common.make_list(self._vars['BRANCH_MAP'][branch])
@@ -197,7 +193,7 @@ class smart_svn(svn.svn):
             svn_path=self._env.subst("{0}/{1}".format(self.Server,repo_path)).replace('\\','/')
             #test path
             api.output.verbose_msg("smart_svn",'Testing path "%s"'%svn_path)
-            
+
             retcode,text=self.command_output('"{0}" ls --non-interactive {1}'.format(svn.svn.svnpath,svn_path))
             api.output.verbose_msg(["smart_svn_hidden","smart_svn"],text)
             if not retcode:
@@ -213,7 +209,7 @@ class smart_svn(svn.svn):
         branch=self._env.get("{0}_BRANCH".format(self._env['VCS']['NAME']),self._env.get('BUILD_BRANCH','stable'))
         #new stuff
         value=self._env.GetOption('build_branch')
-        
+
         for k,v in value.iteritems():
             t=target_type.target_type(k)
             # we ignore version.. as we don't know it technically.
@@ -243,9 +239,9 @@ class smart_svn(svn.svn):
         'user':self._env.subst('${VCS.USER}'),
         'uid_path':self._env.subst('${VCS.UID_PATH}')
         }
-        
+
         datacache.StoreData(name=self._cache_filename,data=tmp,key='vcs')
-        
+
 api.register.add_global_object('VcsSmartSvn',smart_svn)
 api.register.add_variable('VCS_SMART_SVN_DIR','${CHECK_OUT_ROOT}/${VCS.NAME}${VCS.STABLE_VERSION}','Full path used for any given checked out item')
 api.register.add_variable('UID_PATH','<unknown>','')
@@ -254,11 +250,11 @@ from optparse import OptionValueError
 def opt_branch(option, opt, value, parser):
 
     tmp=value.lower()
-    
+
     fvalue={'default':'stable'}
     tmp=value.split(',')
     for t in tmp:
-        
+
         try:
             # need better logic to validate arguments.. but this will do for now
             k,v=t.rsplit(':',1)
@@ -268,9 +264,9 @@ def opt_branch(option, opt, value, parser):
 
         k=k.lower()
         v=v.lower()
-        
+
         fvalue[k]=v
-        
+
 
     parser.values.build_branch=fvalue
 
