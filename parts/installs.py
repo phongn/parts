@@ -206,10 +206,10 @@ def InstallItem(env, target, source, sub_dir="" ,sdk_dir='',no_pkg=False,create_
     # add installed file to Part object
     pobj.DefiningSection.InstalledFiles.update(installed_files)
 
-    #env.MetaTag(installed_files, PACKAGING_ALIAS = env['ALIAS'])
-    env.MetaTag(installed_files, 'package',part_alias = env['ALIAS'])
-    env.MetaTag(installed_files, 'package',part_name = env.subst('$PART_NAME'))
-    env.MetaTag(installed_files, 'package',part_version = env.subst('$PART_VERSION'))
+    env.MetaTag(installed_files, 'package',
+            part_alias = env['ALIAS'],
+            part_name = env.subst('$PART_NAME'),
+            part_version = env.subst('$PART_VERSION'))
 
     if create_sdk:
         pobj._create_sdk_data.append(('InstallItem',[target, common._make_rel(src_files), sub_dir,"",no_pkg,False]))
@@ -454,7 +454,7 @@ def InstallPkgData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True, pack
         **get_args('PKGDATA',**kw))
 
     if packagetype is not None:
-        packagetype =common.make_list(packagetype)        
+        packagetype = common.make_list(packagetype)        
         env.MetaTag(installed_files,'package', types=packagetype)
     env.ExportItem('INSTALLPKGDATA',installed_files,create_sdk,True)
     return installed_files	

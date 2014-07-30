@@ -63,46 +63,44 @@ class Streams(BaseTestRunItem):
     def __init__(self,testrun):
         super(Streams, self).__init__(testrun)
 
-    @classmethod
-    def createStreamProperty(cls, name, event, testValue):
-        def getter(self):
-            return self._GetRegisterEvent(event)
+    def __defineProperties__(properties):
+        def createStreamProperty(name, event, testValue):
+            def getter(self):
+                return self._GetRegisterEvent(event)
 
-        def setter(self, value):
-            def getChecker():
-                if isinstance(value, testers.Tester):
-                    value.TestValue = testValue
-                    return value
-                elif isinstance(value, basestring):
-                    return testers.GoldFile(File(self._TestRun, value, runtime=False),
-                                            test_value=testValue)
-                elif isinstance(value, (tuple, list)):
-                    return testers.GoldFileList([File(self._TestRun, item, runtime=False)
-                                                 for item in value], test_value=testValue)
+            def setter(self, value):
+                def getChecker():
+                    if isinstance(value, testers.Tester):
+                        value.TestValue = testValue
+                        return value
+                    elif isinstance(value, basestring):
+                        return testers.GoldFile(File(self._TestRun, value, runtime=False),
+                                                test_value=testValue)
+                    elif isinstance(value, (tuple, list)):
+                        return testers.GoldFileList([File(self._TestRun, item, runtime=False)
+                                                     for item in value], test_value=testValue)
 
-            self._RegisterChecker(event, getChecker)
+                self._RegisterChecker(event, getChecker)
 
-        setattr(cls, name, property(getter, setter))
+            properties[name] = property(getter, setter)
 
-    STREAMS = (
-               #std streams
-               ('stdout', 'Streams.stdout', 'StdOutFile'),
-               ('stderr', 'Streams.stderr', 'StdErrFile'),
-               #filtered streams
-               ('All', 'Streams.All', 'AllFile'),
-               ('Message', 'Streams.Message', 'MessageFile'),
-               ('Warning', 'Streams.Warning', 'WarningFile'),
-               ('Error', 'Streams.Error', 'ErrorFile'),
-               ('Debug', 'Streams.Debug', 'DebugFile'),
-               ('Verbose', 'Streams.Verbose', 'VerboseFile'),
-              )
+        STREAMS = (
+                   #std streams
+                   ('stdout', 'Streams.stdout', 'StdOutFile'),
+                   ('stderr', 'Streams.stderr', 'StdErrFile'),
+                   #filtered streams
+                   ('All', 'Streams.All', 'AllFile'),
+                   ('Message', 'Streams.Message', 'MessageFile'),
+                   ('Warning', 'Streams.Warning', 'WarningFile'),
+                   ('Error', 'Streams.Error', 'ErrorFile'),
+                   ('Debug', 'Streams.Debug', 'DebugFile'),
+                   ('Verbose', 'Streams.Verbose', 'VerboseFile'),
+                  )
 
-    @classmethod
-    def defineStreamProperties(cls):
-        for name, event, testValue in cls.STREAMS:
-            cls.createStreamProperty(name, event, testValue)
-
-Streams.defineStreamProperties()
+        for name, event, testValue in STREAMS:
+            createStreamProperty(name, event, testValue)
+    __defineProperties__(locals())
+    del __defineProperties__
 
 class File(BaseTestRunItem):
     '''

@@ -390,7 +390,7 @@ class part_manager(object):
             # check to see if the whole parts seems to be missing
             if parent._remove_cache:
                 pobj._remove_cache=True
-                api.output.verbose_msgf(['loading'],"{0} being ignored as {1} seems to not exist in the SConstruct anymore",pobj.ID,pobj.Stored.root.ID)
+                api.output.verbose_msgf(['loading'],"{0} being ignored as {1} seems to not exist in the SConstruct anymore",pobj.ID,pobj.Stored.RootID)
                 return
 
             #Given that it is read at this point. we need to check to see if we are read

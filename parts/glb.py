@@ -65,7 +65,9 @@ arch_map = {
 'ia64':'ia64',
 'k1om':'k1om',
 'arm':'arm',
-'any':'any'
+'any':'any',
+'noarch':'noarch',
+'NOARCH':'NOARCH'
 }
 
 os_map = {

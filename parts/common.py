@@ -336,31 +336,6 @@ def option_bool(val,option, default=False):
             return default
     return bool(val)
 
-#def is_lib_file(env,file):
-#    '''This function returns True if the argument looks like a file that would be copied to a LIB directory'''
-#    return is_catagory_file(env,'LIB_PATTERN',file)
-
-#def is_bin_file(env,file):
-#    '''This function returns True is the argument looks like a file that would be copied to a BIN directory'''
-#    return is_catagory_file(env,'BIN_PATTERN',file)
-
-def tag_node_ownership(env,node):
-    alias=env['PART_ALIAS']
-    tmp=env.MetaTagValue(node,'owners','parts',[])
-    if alias not in tmp:
-        #print "Tagged",alias, node
-        env.MetaTag(node,'parts',owners=[alias]+tmp)
-
-    tmp=env.MetaTagValue(node.srcnode(),'owners','parts',[])
-    if alias not in tmp:
-        #print "Tagged",alias, node.srcnode()
-        env.MetaTag(node.srcnode(),'parts',owners=[alias]+tmp)
-
-    for k,e in node.entries.copy().iteritems():
-        if isinstance(e,SCons.Node.FS.Dir) and k != '.' and k!='..':
-            tag_node_ownership(env,e)
-
-
 ## amazing enough python never added a relpath function....
 def relpath(to_dir, from_dir=os.curdir):
     """

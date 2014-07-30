@@ -34,6 +34,23 @@ import SCons.Node
 import types
 import hashlib
 
+def safe_visited_call(node):
+    '''
+    In SCons 2.3.1 they changed node.visited() method implementation
+    to reference node.executor attribute which is missed for source nodes.
+    To safely call the method we temporary create an executor for the node
+    and then reset it.
+    '''
+    try:
+        node.visited()
+    except AttributeError:
+        node.get_executor()
+        try:
+            node.visited()
+        finally:
+            node.reset_executor()
+
+
 class part(pnode.pnode):
     """description of class"""
 
@@ -1027,7 +1044,6 @@ class part(pnode.pnode):
             api.output.verbose_msg(['part_read'],'Parts file {0} read time: {1}'.format(self.__file.srcnode().abspath,time.time()-st))
             # we tag the Directory nodes so we can latter sort unknown items faster, by checking the directory ownership
             env._log_keys=False
-            #common.tag_node_ownership(self.__env,bdir)
 
             # set file as read
             self.__classic_section.LoadState = glb.load_file
@@ -1266,6 +1282,8 @@ class part(pnode.pnode):
             if i is None:
                 continue
             i=self.__env.File(i)
+            # Make SCons store node info
+            safe_visited_call(i)
             # see if node time stamp matches
             tmp.append(
                     {
@@ -1283,6 +1301,8 @@ class part(pnode.pnode):
             tmp[k]=[]
             for f in v:
                 i=self.__env.File(f)
+                # Make SCons store node info
+                safe_visited_call(i)
                 # see if node time stamp matches
                 tmp[k].append({
                         'name':i.abspath,

@@ -88,3 +88,6 @@ SConsEnvironment.TarBz2Package = lambda env, target, sources, **kw: ArchivePacka
 SConsEnvironment.TgzPackage = lambda env, target, sources, **kw: ArchivePackage_wrapper(env, target, sources, 'tgz', **kw)
 SConsEnvironment.Bz2Package = lambda env, target, sources, **kw: ArchivePackage_wrapper(env, target, sources, 'bz2', **kw)
 SConsEnvironment.Tbz2Package = lambda env, target, sources, **kw: ArchivePackage_wrapper(env, target, sources, 'tbz2', **kw)
+
+# vim: set et ts=4 sw=4 ai ft=python :
+

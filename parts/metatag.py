@@ -5,29 +5,26 @@ def MetaTag(nodes,ns='meta',**metakv):
     #make sure the nodes are in a list
     nodes=common.make_list(nodes)
     #for each node add the meta values
-    for n in nodes:
-        # see if we have the meta attrbuted added already
-        if hasattr(n,ns) == False:
-            #if not add it
-            setattr(n,ns,common.namespace())
-        for k,v in metakv.iteritems():
-            getattr(n,ns)[k]=v
+    for node in nodes:
+        try:
+            namespace = getattr(node.attributes, ns)
+        except AttributeError:
+            namespace = common.namespace()
+            setattr(node.attributes, ns, namespace)
+
+        for item in metakv.iteritems():
+            setattr(namespace, *item)
 
 def MetaTagValue(node,key,ns='meta',default=None):
     try:
-        return getattr(node,ns)[key]
+        return getattr(getattr(node.attributes, ns), key)
     except AttributeError:
-        return default
-    except KeyError:
         return default
 
 def hasMetaTag(node,key,ns='meta'):
-    if hasattr(node,ns)==False:
-        return False
     try:
-        getattr(node,ns)[key]
-        return True
-    except KeyError:
+        return hasattr(getattr(node.attributes, ns), key)
+    except AttributeError:
         return False
 
 

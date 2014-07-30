@@ -532,6 +532,8 @@ Use -H or --help-options for a list of scons options
         # stuff that is getting mapped in more than one way
         # that needs to be white listed from being part of the cache key
         white_list=[
+            'LOGGER',
+            'PART_LOGGER',
             'CONFIG',
             'config',
             'TARGET_PLATFORM',

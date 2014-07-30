@@ -68,40 +68,36 @@ def parts_node_errors(builder, env, tlist, slist):
 SCons.Builder._node_errors=parts_node_errors
 
 # util function
-def tag_part_info(node_list,pobj):
+def tag_part_info(node_list, pobj):
     for node in node_list:
-        alias=pobj.Alias
-        section=pobj.DefiningSection
-        data=metatag.MetaTagValue(node,'components',ns='partinfo',default={})
+        alias = pobj.Alias
+        section = pobj.DefiningSection
+        data = metatag.MetaTagValue(node,'components',ns='partinfo',default={})
 
         #Tag this node with information about the Parts and Section that would care about it
-        try:
-            data[alias].add(section)
-        except KeyError:
-            data[alias]=set([section])
+        data.setdefault(alias, set()).add(section)
 
-        metatag.MetaTag(node,'partinfo',components=data)
+        metatag.MetaTag(node, 'partinfo', components=data)
 
         # Tag Parent Directory nodes
-        if isinstance(node,SCons.Node.FS.Base):
-            if isinstance(node,SCons.Node.FS.Entry):
-                dnode=node.get_dir()
+        if isinstance(node, SCons.Node.FS.Base):
+            if isinstance(node, SCons.Node.FS.Entry):
+                dnode = node.get_dir()
             else:
-                dnode=node.Dir('.')
+                dnode = node.Dir('.')
             while True:
 
-                data=metatag.MetaTagValue(dnode,'components',ns='partinfo',default={})
+                data=metatag.MetaTagValue(dnode, 'components', ns='partinfo', default={})
                 # check to see if this directory has this information already
                 # if so we can exit
-                if section in data.get(alias,set()):
+                sections = data.setdefault(alias, set())
+                if section in sections:
                     break
-                try:
-                    data[alias].add(section)
-                except KeyError:
-                    data[alias]=set([section])
-                metatag.MetaTag(dnode,'partinfo',components=data)
+
+                sections.add(section)
+                metatag.MetaTag(dnode, 'partinfo', components=data)
 
                 if dnode == dnode.Dir('..'):
                     break
-                dnode=dnode.Dir('..')
+                dnode = dnode.Dir('..')
 

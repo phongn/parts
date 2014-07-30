@@ -125,12 +125,11 @@ def stringFunc(target, source, env):
 # auto tagging
 def auto_tag(env,node):
     if env.get("AUTO_TAG_ON_INSTALL",True):
-        tags=env.get("AUTO_TAG_INSTALL",[])
-        for tag in tags:
-            pl=make_list(tag[0])
-            for pattern in pl:
-                if fnmatch.fnmatchcase(str(node),pattern):
-                    env.MetaTag(node,'package',**tag[1])
+        for patterns, tags in env.get("AUTO_TAG_INSTALL",[]):
+            patterns = make_list(patterns)
+            for pattern in patterns:
+                if fnmatch.fnmatchcase(str(node), pattern):
+                    env.MetaTag(node, 'package', **tags)
 
 
 #
@@ -145,10 +144,10 @@ def add_targets_to_INSTALLED_FILES(target, source, env):
     ##add to global list of install files
     for t in target:
         # add meta tags
-        if tags != {}:
-            env.MetaTag(t,'package',**tags)
+        if tags:
+            env.MetaTag(t, 'package', **tags)
         # see if the file should be auto taged based on value
-        auto_tag(env,t)
+        auto_tag(env, t)
         # sort into list is it has not been set with package::no_package tag
         no_pkg=env.MetaTagValue(t,'no_package','package',False)
         # don't add No package tagged items to the installed files list

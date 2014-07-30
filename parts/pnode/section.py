@@ -302,6 +302,10 @@ class section(pnode.pnode):
         info.ESigs = self.ESigs()
         info.ESig = self.ESig()
         info.Exports = self.Exports
+        if self.InstalledFiles:
+            info.InstalledFiles = (
+                    (node.ID, getattr(node.attributes, 'package', {}))
+                        for node in self.InstalledFiles)
 
         ## data about what this depends on we want the direct depend here
         ## as this will allow us to speed up incremential build latter
@@ -347,6 +351,19 @@ class section(pnode.pnode):
                 except KeyError:
                     api.output.verbose_msgf(['cache_load_warning'],"{0} was not found in the exports dictionary. Mapping value of []",export)
                     self.__env.Alias("{0}::alias::{1}::{2}".format(self.Name, self.__pobj.Alias, export),[])
+        cached = info.InstalledFiles
+        if cached:
+            installed_files = set()
+            for node_id, package in cached:
+                node = glb.pnodes.GetNode(node_id)
+                setattr(node.attributes, 'package', package)
+                installed_files.add(node)
+            self.__installed_files = installed_files
+        else:
+            try:
+                del self.__installed_files
+            except AttributeError:
+                pass
 
     def hasPartFileChanged(self):
         '''Has the Part File defining this section changed in some way

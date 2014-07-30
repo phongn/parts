@@ -11,7 +11,8 @@ class section_info(stored_info.stored_info):
         '__esig',                   # sig data for all items we export ( faster to test than testing values of export table) - good after all part files are processed
         '__dependson',              # info on what we dependon - good after all part files are processed ( only for info that maps what was resolved)
         '__exported_requirements',  # items we want to make alias of for cache loading as these items are mapped as dependent alias for the main target ( re look at this) - good after file process
-        '__user_env_diff'           # info about what is different with the environment vs the given default - good after file process
+        '__user_env_diff',          # info about what is different with the environment vs the given default - good after file process
+        '__installed_files',        # List of (<node id>, <package metatag>) pairs
     ]
     def __init__(self):
         self.__name=''
@@ -107,4 +108,17 @@ class section_info(stored_info.stored_info):
     @property
     def Part(self):
         return glb.pnodes.GetPNode(self.PartID)
+
+    @property
+    def InstalledFiles(self):
+        try:
+            return self.__installed_files
+        except AttributeError:
+            return tuple()
+
+    @InstalledFiles.setter
+    def InstalledFiles(self, value):
+        # To validate the value we iterate by its items and unpack each one
+        self.__installed_files = tuple(
+                (node_id, package_tag) for (node_id, package_tag) in value)
 

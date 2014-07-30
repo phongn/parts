@@ -253,7 +253,6 @@ def unit_test(env, target, source, command_args=None, data_src=None, src_dir='.'
         if tmp_bld is None:
             api.output.error_msg("Builder {0} is not found".format(builder))
         ret = tmp_bld(target=build_dir+"/"+sec.Env['UNIT_TEST_TARGET_NAME'], source=src_files)
-        #common.tag_node_ownership(pobj.Env, pobj.Env.Dir(build_dir))
 
         #build alias
         build_alias = '${PART_BUILD_CONCEPT}${PART_ALIAS_CONCEPT}${PART_ALIAS}'

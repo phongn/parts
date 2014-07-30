@@ -1,6 +1,5 @@
 import glb
 import common
-import metatag
 import api.output
 import settings
 
@@ -187,26 +186,37 @@ def SortPackageGroups():
                 files=pobj.Section('build').InstalledFiles
 
             for f in files:
-                _no_pkg=metatag.MetaTagValue(f,'no_package','package',False)
-                group_val = set(common.make_list(metatag.MetaTagValue(f,'group','package',[])))
-                if not group_val:
+                # ATTENTION: for performance reasons we inline metatag.MetaTag() function in this code.
+                try:
+                    package = f.attributes.package
+                except AttributeError:
+                    _no_pkg, group_val = False, set()
+                    f.attributes.package = package = common.namespace(no_package=_no_pkg, group=group_val)
+                else:
+                    _no_pkg, group_val = package.get('no_package', False), package.get('group', set())
+
+                if isinstance(group_val, basestring): # Check most common case first
+                    get_group_set(group_val, _no_pkg).add(f)
+                elif not group_val:
 
                     # Set default meta-tag value
-                    metatag.MetaTag(f, 'package', group=name)
+                    package.update(group=name)
 
                     for group, tests in map_objs.iteritems():
                         for test in tests:
                             if test(f):
                                 group_val.add(group)
+                                get_group_set(group, _no_pkg).add(f)
                                 break
                     if not group_val:
                         group_val = set([name])
+                        get_group_set(name, _no_pkg).add(f)
                     #apply meta tag to file
-                    metatag.MetaTag(f,'package',group=list(group_val))
-
-                for group in group_val:
-                    get_group_set(group, _no_pkg).add(f)
-                api.output.verbose_msg('packaging','Adding to PackageGroup(s)={0}, no_package={1} nodes={2}'.format(group_val, _no_pkg, f.ID))
+                    package.update(group=list(group_val))
+                else:
+                    # group_val is asserted to be a list or a set
+                    for group in group_val:
+                        get_group_set(group, _no_pkg).add(f)
 
 def GetPackageGroupFiles_env(env,name,no_pkg=False):
     return GetPackageGroupFiles(name,no_pkg)
