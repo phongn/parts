@@ -101,11 +101,11 @@ class TestPlatform(unittest.TestCase):
 
     def test_platform15(self):        
         s1 = SystemPlatform('win32','x86')        
-        self.assertEqual(s1._getOS(),'win32')        
+        self.assertEqual(s1.OS,'win32')        
         
     def test_platform16(self):        
         s1 = SystemPlatform('win32','x86')        
-        self.assertEqual(s1._getArch(),'x86') 
+        self.assertEqual(s1.ARCH,'x86') 
 
     def test_platform17(self):
         try:

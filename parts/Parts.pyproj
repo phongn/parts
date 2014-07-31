@@ -45,10 +45,7 @@
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
-    <SearchPath Include="C:\Program Files (x86)\IronPython 2.7\Lib\site-packages\scons-1.2.0\" />
     <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
-    <SearchPath Include="C:\Python26\Lib\site-packages\scons-1.2.0\SCons\" />
-    <SearchPath Include="C:\Users\jlkenny\code\parts\" />
     <SearchPath Include="C:\Users\jlkenny\code\parts\" />
     <SearchPath Include="C:\Users\jlkenny\code\parts\" />
     <SearchPath Include="C:\Users\jlkenny\code\parts\" />
@@ -149,7 +146,6 @@
     <None Include="part_manager.py" />
     <None Include="part_ref.py" />
     <None Include="pattern.py" />
-    <None Include="pickle_helpers.py" />
     <None Include="pieces\add_xml_header.py" />
     <None Include="pieces\ccopy.py" />
     <None Include="pieces\doxygen.py" />
@@ -274,8 +270,6 @@
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\code\parts\" />
-    <WorkingDirectory Include="C:\Users\jlkenny\code\parts_tigris\trunk\parts\" />
-    <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
     <WorkingDirectory Include="C:\Users\jlkenny\Desktop\parts\" />
   </ItemGroup>
   <ItemGroup>
@@ -311,6 +305,7 @@
     <Compile Include="overrides\override_env.py" />
     <Compile Include="overrides\symlinks.py" />
     <Compile Include="overrides\tool.py" />
+    <Compile Include="picklehelpers.py" />
     <Compile Include="pieces\deb_wrapper.py" />
     <Compile Include="pieces\dpkg.py" />
     <Compile Include="pieces\zip_file.py" />
@@ -318,6 +313,7 @@
     <Compile Include="platformspecific\win32\__init__.py" />
     <Compile Include="platformspecific\__init__.py" />
     <Compile Include="pnode\dependent_info.py" />
+    <Compile Include="process_tools.py" />
     <Compile Include="tools\ar.py" />
     <Compile Include="tools\as.py" />
     <Compile Include="tools\clang.py" />
