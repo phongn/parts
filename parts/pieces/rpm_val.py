@@ -33,7 +33,7 @@ def rpm_spec(env,target,source,**kw):
         fobjw = open(filep, 'wb')
         for item in file_content.split('\n'):
             if not item.startswith('BuildArch'):
-                 fobjw.write('{}\n'.format(item))
+                 fobjw.write('{0}\n'.format(item))
             else:
                 pass
         fobjw.close()
@@ -68,16 +68,16 @@ def rpm_spec(env,target,source,**kw):
             fobj = open(filep, 'wb')
             for line in file_content.split('\n'):
                 if not line.startswith(('Name','Version','Release')):
-                    fobj.write('{}\n'.format(line))
+                    fobj.write('{0}\n'.format(line))
                 if line.startswith('Name'):
                     name = line.replace(line,('Name:'+target_name))
-                    fobj.write('{}\n'.format(name))
+                    fobj.write('{0}\n'.format(name))
                 if line.startswith('Version'):
                     version = line.replace(line,('Version:'+target_version))
-                    fobj.write('{}\n'.format(version))
+                    fobj.write('{0}\n'.format(version))
                 if line.startswith('Release'):
                     release = line.replace(line,('Release:'+target_release))
-                    fobj.write('{}\n'.format(release))
+                    fobj.write('{0}\n'.format(release))
             fobj.close
 
         return spec_dict

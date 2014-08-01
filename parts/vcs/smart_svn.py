@@ -4,6 +4,8 @@ from .. import api
 from .. import version
 from .. import target_type
 
+from .base import normalize_url
+
 import SCons.Script
 import svn
 
@@ -59,7 +61,7 @@ class smart_svn(svn.svn):
         if cache:
             if cache.get('type') == 'smartsvn':
                 self._branch_info=cache['branch_info']
-                self._stored_version=cache['stable_version']
+                self._stored_version=version.version(cache['stable_version'])
                 self._completed=cache['completed']
                 self._stored_uid=cache['user']
                 self._stored_uid_path=cache['uid_path']
@@ -135,11 +137,10 @@ class smart_svn(svn.svn):
         api.output.verbose_msgf("smart_svn","Finding information for branch {0}",branch)
         ##if force is false we will try to see if we can use a cache
         if force == False:
-
             try:
-                api.output.verbose_msg("smart_svn","looking for stored state")
+                api.output.verbose_msgf("smart_svn","looking for stored state of {0}",self._env.subst('${VCS.NAME}'))
                 if self._stored_version!=self._vars['STABLE_VERSION']:
-                    api.output.verbose_msg("smart_svn","Stable version does not match")
+                    api.output.verbose_msgf("smart_svn","Stable version does not match: {0} != {1}", self._stored_version, self._vars['STABLE_VERSION'])
                 elif self._stored_uid!=self._env.subst('${VCS.USER}'):
                     api.output.verbose_msg("smart_svn","user (UID) does not match {0}!={1}".format(self._stored_uid,self._env.subst('${VCS.USER}')))
                 elif self._stored_uid_path!=self._env.subst('${VCS.UID_PATH}'):
@@ -153,7 +154,9 @@ class smart_svn(svn.svn):
                     api.output.verbose_msg("smart_svn","Found state",tmp)
                     return tmp # returns (found branch,path)
             except KeyError:
-                api.output.verbose_msg("smart_svn","No state was found")
+                api.output.verbose_msgf("smart_svn","No state was found: {0}",self._env.subst('${VCS.NAME}'))
+
+        api.output.verbose_msgf("smart_svn", "Getting state from repository: {0}",self._env.subst('${VCS.NAME}'))
 
         ret=self.find_match_for_branch(branch)
         if ret is None:
@@ -163,7 +166,7 @@ class smart_svn(svn.svn):
                 self._vars['NAME'],branch,self._env.subst(self._vars['BRANCH_MAP'][branch]),
                 show_stack=False
                 )
-        if ret.endswith("/"): ret=ret[:-1]
+        ret = normalize_url(ret)
         self._branch_info[branch]=ret
         return ret
 

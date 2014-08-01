@@ -11,6 +11,6 @@ Test.SkipUnless(
     )
 )
 
-Setup.Copy.FromDirectory('rpm_test1')
+Setup.Copy.FromSample('rpm')
 
 Test.AddBuildRun('.')

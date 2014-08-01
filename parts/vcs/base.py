@@ -1,14 +1,28 @@
 
 import os
+import re
 import sys
 import stat
 import subprocess
+import traceback
+
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
+
 from .. import common
 from .. import datacache
 from .. import api
 from .. import part_ref
 from .. import target_type
 from ..reporter import PartRuntimeError as PartRuntimeError
+
+def normalize_url(url):
+    # Combine and normalize the URL
+    schema, netloc, path, query, fragment = urlparse.urlsplit(url)
+    return urlparse.urlunsplit((schema, netloc, re.sub(r'/+', '/', path),
+            query, fragment)).rstrip('/')
 
 def removeall(path):
     '''
@@ -65,9 +79,10 @@ class base(object):
     __slots__=[
                '_repository',
                '_server',
-               '_allow_parallel',
-               '_pobj',
-               '_env'
+               '_allow_parallel', # Default value is True
+               '_pobj', # Default value is None
+               '_env', # Default value is None
+               '_full_path',
                ]
 
     def __init__(self,repository,server=None):
@@ -115,7 +130,13 @@ class base(object):
     @property
     def FullPath(self):
         ''' returns the full path'''
-        return os.path.join(self.Server,self.Repository).replace('\\','/')
+        try:
+            return self._full_path
+        except AttributeError:
+            # Combine and normalize the URL
+            self._full_path = result = normalize_url(
+                    '/'.join((self.Server.rstrip('\\/'), self.Repository)))
+            return result
 
     def AllowParallelAction(self):
         # change this latter to get value of
@@ -311,7 +332,6 @@ class base(object):
                     ret=True
             except:
                 api.output.error_msg("Unexpected exception when doing Update actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
-                import traceback,StringIO
                 traceback.print_exc()
                 raise
             if ret and self._env.GetOption('vcs_retry') == True:
@@ -321,7 +341,6 @@ class base(object):
                 ret=self.CheckOut()
             except:
                 api.output.error_msg("Unexpected exception when Checkout actions for {0}. Stopping build!".format(self._pobj.Alias),show_stack=False,exit=False)
-                import traceback,StringIO
                 traceback.print_exc()
                 raise
             if ret and self._env.GetOption('vcs_retry') == True:

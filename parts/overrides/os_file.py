@@ -50,7 +50,7 @@ if sys.platform == 'win32':
     def get_win32_creation_disposition(mode):
         if 'w' in mode:
             return CREATE_ALWAYS
-        elif 'r' in mode or '+' in mode:
+        elif 'r' in mode:
             return OPEN_EXISTING
         else:
             return OPEN_ALWAYS

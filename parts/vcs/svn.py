@@ -285,7 +285,7 @@ def GetSvnData(env,checkoutdir=None):
     if svn.svnpath is None:
         svn.svnpath=env.WhereIs('svn',os.environ['PATH'])
 
-    ret,data=base.command_output('"{0}" {1}'.format(svn.svnver,checkoutdir))
+    ret, data=base.command_output('"{0}" {1}'.format(svn.svnver,checkoutdir))
     # this is a quick check to see if the current directory may be in bad state
     # but not unversioned. Given that we try to the directory above us, till we get an unversioned
     # value

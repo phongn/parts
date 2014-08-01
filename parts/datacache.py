@@ -110,7 +110,7 @@ def StoreData(name,data,key=None):
     if key is None: #get default key
         key=_get_default_key()
 
-    filename=os.path.join(".parts.cache",key,name+".cache")
+    filename=os.sep.join((".parts.cache",key,name+".cache"))
     __cache[filename]=data
     __dirty_cache |= set((filename,))
 
@@ -128,7 +128,7 @@ def SaveCache(name=None,key=None):
 
     # store everything for a given key
     if name is None and key:
-        tmp=os.path.join(".parts.cache",key,"*.cache")
+        tmp=os.sep.join((".parts.cache",key,"*.cache"))
         for k in set(__dirty_cache):
             #see if the path matched
             if fnmatch.fnmatchcase(k, tmp):
@@ -144,7 +144,7 @@ def SaveCache(name=None,key=None):
     # store everything for a given name and default key
     elif name and key is None:
         key=_get_default_key()
-        filename=os.path.join(".parts.cache",key,name+".cache")
+        filename=os.sep.join((".parts.cache",key,name+".cache"))
         if filename in __dirty_cache:
             data=__cache[filename]
             __store_cache_data(filename,data)
@@ -153,7 +153,7 @@ def SaveCache(name=None,key=None):
 
     # store a give name for a given key
     else:
-        filename=os.path.join(".parts.cache",key,name+".cache")
+        filename=os.sep.join((".parts.cache",key,name+".cache"))
 
         if filename in __dirty_cache:
             data=__cache[filename]
@@ -178,7 +178,7 @@ def ClearCache(name=None,key=None,save=False):
         SaveCache(name,key)
      # clear everything for a given key
     if name is None and key:
-        tmp=os.path.join(".parts.cache",key,"*.cache")
+        tmp=os.sep.join((".parts.cache",key,"*.cache"))
         for k in __cache.keys():
             #see if the path matched
             if fnmatch.fnmatchcase(k, tmp):
@@ -193,12 +193,12 @@ def ClearCache(name=None,key=None,save=False):
     # clear everything for a given name and default key
     elif name and key is None:
         key=_get_default_key()
-        filename=os.path.join(".parts.cache",key,name+".cache")
+        filename=os.sep.join((".parts.cache",key,name+".cache"))
         clear_item(filename)
 
     # clear a give name for a given key
     else:
-        filename=os.path.join(".parts.cache",key,name+".cache")
+        filename=os.sep.join((".parts.cache",key,name+".cache"))
         clear_item(filename)
 
 

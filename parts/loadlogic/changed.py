@@ -146,7 +146,6 @@ class Changed(base.Base):
                                         if secID != section_info.section.ID)
                     self._known_nodes[srcID] = tmp
                 if tmp:
-                    self._known_nodes[nodeid] = True
                     src_out_of_date.add(srcID)
                     # we are out of date because a src node is out of date
                     api.output.verbose_msg(['node_check'],"{0} is out of date because source node {1} say it is out of date".format(nodeid,srcID))
@@ -164,20 +163,7 @@ class Changed(base.Base):
                     if section:
                         self.sections_to_load.add(section)
                         section.ReadState = glb.load_cache
-
-            # last check we need to do is call this function on any "sideffect" nodes
-            for SideEffectID in info.SideEffectIDs:
-                try:
-                    # get the state of node given we have visited it already
-                    tmp=self._known_nodes[SideEffectID]
-                except KeyError:
-                    #don't have it yet. go down tree to get information
-                    tmp=self.isNodeChanged(section_info,SideEffectID)
-                if tmp:
-                    # we are out of date because a src node is out of date
-                    self._known_nodes[nodeid] = True
-                    api.output.verbose_msg(['node_check'],"{0} is out of date because sideffect node {1} say it is out of date".format(nodeid,SideEffectID))
-                    break
+                self._known_nodes[nodeid] = True
 
             # if everything is still good we want to check the edge inforation for this node
             try:

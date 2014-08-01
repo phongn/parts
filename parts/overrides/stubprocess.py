@@ -76,11 +76,6 @@ if sys.platform in ('linux2', 'darwin'):
             _set_cloexec_flag(errpipe_write, True)
             try:
 
-                if isinstance(args, types.StringTypes):
-                    args = [args]
-                else:
-                    args = list(args)
-
                 if shell:
                     args = [executable or "/bin/sh", "-c"] + args
 
@@ -255,6 +250,15 @@ if sys.platform in ('linux2', 'darwin'):
                             _set_cloexec_flag(fd, False)
 
                     errpipe_read, errpipe_write = os.pipe()
+
+                    if isinstance(args, types.StringTypes):
+                        args = [str(args)]
+                    else:
+                        args = [str(x) for x in args]
+
+                    if env:
+                        env = dict((str(key), str(value)) 
+                                for (key, value) in env.iteritems())
 
                     data = base64.encodestring(
                             pickle.dumps(

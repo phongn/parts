@@ -453,12 +453,18 @@ def InstallPkgData(env, src_files, sub_dir='',no_pkg=False,create_sdk=True, pack
         sub_dir=sub_dir,sdk_dir='$SDK_PKGDATA',no_pkg=no_pkg,create_sdk=create_sdk,
         **get_args('PKGDATA',**kw))
 
+    #Normalizing packagetype to be in lower case and without a dot.
+    # If user gives packagetype as TARGZ or TAR.GZ or tar.gz or targz
+    # All the cases will be normalized to targz.
+
     if packagetype is not None:
-        packagetype = common.make_list(packagetype)        
+        pkgtype = []
+        for packagetype1 in packagetype:
+            pkgtype.append(packagetype1.lower().replace('.',''))
+        packagetype = common.make_list(pkgtype)
         env.MetaTag(installed_files,'package', types=packagetype)
     env.ExportItem('INSTALLPKGDATA',installed_files,create_sdk,True)
     return installed_files	
-
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

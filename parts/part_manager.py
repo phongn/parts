@@ -1101,7 +1101,7 @@ class part_manager(object):
                 #old name does not exist
                 pass
 
-    def Store(self,goodexit,build_mode):
+    def Store(self,goodexit,build_mode='build'):
         if goodexit:
             if isinstance(self.Loader,loadlogic.all.All):
                 #clear out the cache

@@ -310,7 +310,7 @@ class manager(object):
             if node.LoadState==glb.load_file:
                 self.StorePNode(node)
 
-    def Store(self,goodexit,build_mode):
+    def Store(self,goodexit,build_mode='build'):
         # called at end of run to store and extra state that we can save,
         # but was not saved do to target, or build issues
         stored_data=self._get_cache()

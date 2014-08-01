@@ -220,7 +220,7 @@ class SystemPlatform(common.bindable):
         # this is a bit of a hack to forward stuff in SCons as it should be in
         # 1.3
         if key == "TARGET_PLATFORM" or key == "HOST_PLATFORM":
-            tkey = key[:-9]
+            tkey = key.rsplit("_PLATFORM",1)[0]
             
             env[tkey + "_ARCH"] = self.ARCH if self.ARCH != 'any' and self.ARCH else env[tkey + "_ARCH"] if env.has_key(tkey + "_ARCH") else ChipArchitecture() # getArch
             env[tkey + "_OS"] = self.OS if self.OS != 'any' and self.OS else env[tkey + "_OS"] if env.has_key(tkey + "_OS") else SCons.Platform.platform_default()# getPlatform
@@ -234,9 +234,8 @@ class SystemPlatform(common.bindable):
         # this allows us to clone TARGET_ARCH or TARGET_OS correctly
         # we DON"T want HOST to be changed, it should be inmutable.
         if key == "TARGET_PLATFORM":
-            tkey = key[:-9]
-            tmp = SystemPlatform(os=env[tkey + "_OS"] if env.has_key(tkey + "_OS") else self.OS ,
-                arch=env[tkey + "_ARCH"] if env.has_key(tkey + "_ARCH") else self.ARCH)
+            tmp = SystemPlatform(os=env["TARGET_OS"] if env.has_key("TARGET_OS") else self.OS ,
+                arch=env["TARGET_ARCH"] if env.has_key("TARGET_ARCH") else self.ARCH)
         else:
             tmp = SystemPlatform(os=self.OS,arch=self.ARCH)
         tmp._bind(env,key)
@@ -259,8 +258,7 @@ class SystemPlatform(common.bindable):
     def __str__(self):
         return self.OS + "-" + self.ARCH
 
-    def __repr__(self):
-        return self.OS + "-" + self.ARCH
+    __repr__ = __str__
 
     def __hash__(self):
         return hash(str(self))

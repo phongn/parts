@@ -333,25 +333,28 @@ def StoreStoredInfo(self):
 SCons.Node.Node.StoreStoredInfo=StoreStoredInfo
 
 def GenerateStoredInfo(self):
+
     info = scons_node_info.scons_node_info()
     info.Type = self.__class__
     info.Components = metatag.MetaTagValue(self, 'components', ns='partinfo', default={}).copy()
     for partid,sections in info.Components.iteritems():
         info.Components[partid] = set([sec.ID for sec in sections])
 
-    info.SideEffectIDs = [i.ID for i in self.side_effects] # these are nodes that need to be checked for
-
     info.AlwaysBuild = bool(self.always_build)
     if isinstance(self,FSBase):
         try:
-            if self.ID != self.srcnode().ID:
+            if self.ID != self.srcnode().ID and not self.exists() and self.srcnode().exists():
                 info.SrcNodeID = self.srcnode().ID
         except:
             pass
 
-    binfo = self.get_binfo()
-    nodes = zip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),
+    if self.has_builder() or self.side_effect:
+        binfo = self.get_binfo()
+        nodes = zip(getattr(binfo,'bsources',[])+getattr(binfo,'bdepends',[])+getattr(binfo,'bimplicit',[]),
                             binfo.bsourcesigs+binfo.bdependsigs+binfo.bimplicitsigs)
+    else:
+        nodes = []
+
     new_binfo = {}
 
     for node, ninfo in nodes:
@@ -413,10 +416,6 @@ def Scons_alias_node_factory(func,ID=None,*lst,**kw):
         tmp=func(ID)[0]
     else:
         tmp=func(ID,*lst,**kw)[0]
-    #binfo=glb.pnodes.GetAliasStoredInfo(tmp.ID)
-    #if binfo:
-        #tmp._memo['get_stored_info']=wrapper(binfo)
-
     return tmp
 
 pnode_manager.manager.RegisterNodeType(File,         lambda x,*lst,**kw: Scons_fsnode_factory(SCons.Script.DefaultEnvironment().File,*lst,**kw))

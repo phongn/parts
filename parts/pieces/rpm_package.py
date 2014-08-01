@@ -49,16 +49,17 @@ def RpmPackage_wrapper(_env, target, sources, **kw):
         arch_mapper = dict(env['PKG_ARCH_MAPPER'].items()+env.get('arch_mapper',{}).items())
 
         def implicit_rpm_mapping(target_arch):
-            if len(arch_mapper.keys()) == 0:
+            rpm_arch=None
+            if not arch_mapper:
                 rpm_arch = platform.machine()
-                arch_map_rpm.update({target_arch:rpm_arch})
-                rpm_arch = arch_map_rpm[target_arch]
+            arch_map_rpm[target_arch]=rpm_arch
             return rpm_arch
-
+        
         def explicit_rpm_mapping(target_arch):
+            rpm_arch=None
             if arch_map_rpm.has_key(target_arch):
                      rpm_arch = arch_mapper[target_arch]
-                     arch_map_rpm.update({target_arch:rpm_arch})
+                     arch_map_rpm[target_arch]=rpm_arch
             return rpm_arch
 
         try:
