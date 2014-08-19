@@ -580,7 +580,6 @@ def get_config(env,name,tool,host,target):
         return ({},{}),files
     return settings,files
 
-
 def get_defining_config_files(name,tool,host,target):
     '''
     This function just gets the file defining a configuration
@@ -592,10 +591,6 @@ def get_defining_config_files(name,tool,host,target):
         load_cfg(name)
     # is tool loaded?
     return found_config_files(name,tool,host,target)
-
-
-
-
 
 ## compatibility object
 class config_type_wrapper(str,common.bindable):
@@ -692,10 +687,8 @@ def _isconfigbasedon(env,name,config):
     else:
         return False
 
-def isConfigBasedOn(env,name):
-    config=env.subst('$CONFIG')
-    return _isconfigbasedon(env,name,config)
-
+def isConfigBasedOn(env, name):
+    return _isconfigbasedon(env, name, env.subst('$CONFIG'))
 
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment

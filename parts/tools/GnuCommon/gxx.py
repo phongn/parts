@@ -238,6 +238,57 @@ gxx.Register(
 gxx.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','x86')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','x86_64-linux-android-','g++.exe'),
+            script=None,
+            subst_vars={
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"',
+                        'STL_MAP':android.android_stl_map_x86
+                        },
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}\toolchains\x86_64-${GXX.VERSION}\prebuilt\windows-x86\bin',
+                        'CPLUS_INCLUDE_PATH':
+                            r'${GXX.INSTALL_ROOT}\toolchains\x86_64-${GXX.VERSION}\prebuilt\windows-x86\include',
+                        },
+            test_file='x86_64-linux-android-g++.exe'
+            )
+    ]
+)
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+        ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86_64','x86_64-linux-android-','g++.exe'),
+            script=None,
+            subst_vars={
+                        'SYS_ROOT':r'"${GXX.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"',
+                        'STL_MAP':android.android_stl_map_x86
+                        },
+            shell_vars={
+                        'PATH':r'${GXX.INSTALL_ROOT}\toolchains\x86_64-${GXX.VERSION}\prebuilt\windows-x86_64\bin',
+                        'CPLUS_INCLUDE_PATH':
+                            r'${GXX.INSTALL_ROOT}\toolchains\x86_64-${GXX.VERSION}\prebuilt\windows-x86_64\include',
+
+                        },
+            test_file='x86_64-linux-android-g++.exe'
+            )
+    ]
+)
+
+
+
+gxx.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
     hosts=[SystemPlatform('win32','any')],
     targets=[SystemPlatform('android','arm')],
     info=[
@@ -283,7 +334,6 @@ gxx.Register(
             )
     ]
 )
-
 
 gxx.Register(
     # we assume that the system has the correct libraies installed to do a cross build

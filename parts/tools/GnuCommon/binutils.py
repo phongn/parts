@@ -321,6 +321,67 @@ binutils.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
     hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','x86_64-linux-android-', 'ld.exe'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86\bin\x86_64-linux-android-objcopy.exe',
+                'AR':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86\bin\x86_64-linux-android-ar.exe',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86\bin\x86_64-linux-android-ranlib.exe',
+                'AS':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86\bin\x86_64-linux-android-as.exe',
+                'CHMODVALUE':None,
+
+
+                'ARCOM': '${TEMPFILE("$AR $ARFLAGS $TARGET $SOURCES",force_posix_paths=True)}',
+                'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                '__RPATH':'$_RPATH',
+                'RPATHPREFIX':'-Wl,-rpath=',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86\bin'},
+            test_file='x86_64-linux-android-ld.exe'
+            )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86_64','x86_64-linux-android-', 'ld.exe'),
+            script=None,
+            subst_vars={
+                'SYS_ROOT':r'"${BINUTILS.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"',
+                'OBJCOPY':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86_64\bin\x86_64-linux-android-objcopy.exe',
+                'AR':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86_64\bin\x86_64-linux-android-ar.exe',
+                'RANLIB':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86_64\bin\x86_64-linux-android-ranlib.exe',
+                'AS':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86_64\bin\x86_64-linux-android-as.exe',
+                'CHMODVALUE':None,
+
+                'ARCOM': '${TEMPFILE("$AR $ARFLAGS $TARGET $SOURCES",force_posix_paths=True)}',
+                'LINKCOM':'${TEMPFILE("$LINK -o $TARGET $LINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                'SHLINKCOM':'${TEMPFILE("$SHLINK -o $TARGET $SHLINKFLAGS $__RPATH $SOURCES $_LIBDIRFLAGS $_LIBFLAGS",force_posix_paths=True)}',
+                '__RPATH':'$_RPATH',
+                'RPATHPREFIX':'-Wl,-rpath=',
+            },
+            shell_vars={'PATH':r'${BINUTILS.INSTALL_ROOT}\toolchains\x86_64-${BINUTILS.VERSION}\prebuilt\windows-x86_64\bin'},
+            test_file='x86_64-linux-android-ld.exe'
+            )
+    ]
+)
+
+binutils.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
     targets=[SystemPlatform('android','arm')],
     info=[
     ToolInfo(

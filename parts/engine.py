@@ -23,6 +23,8 @@ import target_type
 import events
 import pnode.pnode_manager
 
+import overrides.script_main_debugtime
+
 from SCons.Script.Main import memory_stats
 from SCons.Debug import logInstanceCreation
 from SCons.Util import flatten
@@ -325,6 +327,7 @@ class parts_addon(object):
         # call Part manager to do this
         api.output.print_msg("Storing Data Cache")
         st=time.time()
+        overrides.script_main_debugtime.pre_parts_cache_storing = st
         self.CacheDataEvent(goodexit,build_mode)
         api.output.verbose_msg(['cache_save'],"Fill time=",time.time()-st)
         st=time.time()

@@ -61,12 +61,14 @@ class svn(base):
          command is the more correct option in this case than the update command!
          '''
 
-        cmd1= '"{0}" -R revert "{1}"'.format(svn.svnpath,out_dir)
-        strval1= '{0} -R revert "{1}"'.format('svn',out_dir)
-        clean_actions=[
-            self._env.Action(lambda target, source, env: self.remove_unversioned(out_dir),"Removing unversioned SVN files in {0}".format(out_dir)),
-            self._env.Action(cmd1,strval1)
+        clean_actions = [
+            self._env.Action(lambda target, source, env: self.remove_unversioned(out_dir),
+                             "Removing unversioned SVN files in {0}".format(out_dir)),
             ]
+        for svnCommand in ('cleanup', '-R revert'):
+            clean_actions.append(self._env.Action(
+                    '"{0}" {1} "{2}"'.format(svn.svnpath, svnCommand, out_dir),
+                    '{0} {1} "{2}"'.format('svn', svnCommand, out_dir)))
 
         #if the server is different we need to relocate
         update_path=self.FullPath

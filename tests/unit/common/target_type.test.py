@@ -1,22 +1,20 @@
 import unittest
-import SCons.Script
 import parts.target_type as target_type
 from parts.reporter import PartRuntimeError
 
-
 class TestTarget_base(unittest.TestCase):
     def setUp(self):
-        self.target_string='all'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'all'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
     def test_ambiguous(self):
         tmp=target_type.target_type(self.target_string)
@@ -61,438 +59,438 @@ class TestTarget_base(unittest.TestCase):
 
 class TestTarget_all(TestTarget_base):
     def setUp(self):
-        self.target_string='all'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'all'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 
 class TestTarget_concept1(TestTarget_base):
     def setUp(self):
-        self.target_string='build::'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept="build"
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build::'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = "build"
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_concept2(TestTarget_base):
     def setUp(self):
-        self.target_string='utest::'
-        self.string='utest::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept="utest"
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest::'
+        self.string = 'utest::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = "utest"
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_concept3(TestTarget_base):
     def setUp(self):
-        self.target_string='run_utest::'
-        self.string='run_utest::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept="run_utest"
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'run_utest::'
+        self.string = 'run_utest::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = "run_utest"
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_special1(TestTarget_base):
     def setUp(self):
-        self.target_string='name::'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_special2(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_special3(TestTarget_base):
     def setUp(self):
-        self.target_string='name::::'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::::'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_special4(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::::'
-        self.string='build::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name=None
-        self.concept=None
-        self.alias=None
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::::'
+        self.string = 'build::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = None
+        self.concept = None
+        self.alias = None
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name1(TestTarget_base):
     def setUp(self):
-        self.target_string='build'
-        self.string='name::build'
-        self.ambiguous=True
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='build'
-        self.concept=None
-        self.alias=None
-        self.name='build'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build'
+        self.string = 'name::build'
+        self.ambiguous = True
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'build'
+        self.concept = None
+        self.alias = None
+        self.name = 'build'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name2(TestTarget_base):
     def setUp(self):
-        self.target_string='utest'
-        self.string='name::utest'
-        self.ambiguous=True
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='utest'
-        self.concept=None
-        self.alias=None
-        self.name='utest'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest'
+        self.string = 'name::utest'
+        self.ambiguous = True
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'utest'
+        self.concept = None
+        self.alias = None
+        self.name = 'utest'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name3(TestTarget_base):
     def setUp(self):
-        self.target_string='run_utest'
-        self.string='name::run_utest'
-        self.ambiguous=True
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='run_utest'
-        self.concept=None
-        self.alias=None
-        self.name='run_utest'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'run_utest'
+        self.string = 'name::run_utest'
+        self.ambiguous = True
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'run_utest'
+        self.concept = None
+        self.alias = None
+        self.name = 'run_utest'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name4(TestTarget_base):
     def setUp(self):
-        self.target_string='alias'
-        self.string='name::alias'
-        self.ambiguous=True
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='alias'
-        self.concept=None
-        self.alias=None
-        self.name='alias'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias'
+        self.string = 'name::alias'
+        self.ambiguous = True
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'alias'
+        self.concept = None
+        self.alias = None
+        self.name = 'alias'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name5(TestTarget_base):
     def setUp(self):
-        self.target_string='name'
-        self.string='name::name'
-        self.ambiguous=True
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='name'
-        self.concept=None
-        self.alias=None
-        self.name='name'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name'
+        self.string = 'name::name'
+        self.ambiguous = True
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'name'
+        self.concept = None
+        self.alias = None
+        self.name = 'name'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_implied_name6(TestTarget_base):
     def setUp(self):
-        self.target_string='name@k:v@k1:1,2,3,4@k3:hello'
-        self.string='name::name@k3:hello@k:v@k1:1,2,3,4'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='name'
-        self.concept=None
-        self.alias=None
-        self.name='name'
-        self.groups=[]
-        self.properties={'k3': 'hello', 'k': 'v', 'k1': ['1', '2', '3', '4']}
+        self.target_string = 'name@k:v@k1:1,2,3,4@k3:hello'
+        self.string = 'name::name@k3:hello@k:v@k1:1,2,3,4'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'name'
+        self.concept = None
+        self.alias = None
+        self.name = 'name'
+        self.groups = []
+        self.properties = {'k3': 'hello', 'k': 'v', 'k1': ['1', '2', '3', '4']}
 
 class TestTarget_implied_name7(TestTarget_base):
     def setUp(self):
-        self.target_string='alias@k:v@k1:1,2,3,4@k3:hello'
-        self.string='name::alias@k3:hello@k:v@k1:1,2,3,4'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='alias'
-        self.concept=None
-        self.alias=None
-        self.name='alias'
-        self.groups=[]
-        self.properties={'k3': 'hello', 'k': 'v', 'k1': ['1', '2', '3', '4']}
+        self.target_string = 'alias@k:v@k1:1,2,3,4@k3:hello'
+        self.string = 'name::alias@k3:hello@k:v@k1:1,2,3,4'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'alias'
+        self.concept = None
+        self.alias = None
+        self.name = 'alias'
+        self.groups = []
+        self.properties = {'k3': 'hello', 'k': 'v', 'k1': ['1', '2', '3', '4']}
 
 class TestTarget_alias1(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::foo'
-        self.string='alias::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept=None
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::foo'
+        self.string = 'alias::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = None
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias2(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::foo.boo'
-        self.string='alias::foo.boo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept=None
-        self.alias='foo.boo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::foo.boo'
+        self.string = 'alias::foo.boo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = None
+        self.alias = 'foo.boo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias3(TestTarget_base):
     def setUp(self):
-        self.target_string='build::alias::foo'
-        self.string='build::alias::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept="build"
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build::alias::foo'
+        self.string = 'build::alias::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = "build"
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias4(TestTarget_base):
     def setUp(self):
-        self.target_string='utest::alias::foo'
-        self.string='utest::alias::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept="utest"
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest::alias::foo'
+        self.string = 'utest::alias::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = "utest"
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias5(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::foo::'
-        self.string='alias::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept=None
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::foo::'
+        self.string = 'alias::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = None
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias6(TestTarget_base):
     def setUp(self):
-        self.target_string='alias::foo.boo::'
-        self.string='alias::foo.boo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept=None
-        self.alias='foo.boo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'alias::foo.boo::'
+        self.string = 'alias::foo.boo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = None
+        self.alias = 'foo.boo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias7(TestTarget_base):
     def setUp(self):
-        self.target_string='build::alias::foo::'
-        self.string='build::alias::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept="build"
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build::alias::foo::'
+        self.string = 'build::alias::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = "build"
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_alias8(TestTarget_base):
     def setUp(self):
-        self.target_string='utest::alias::foo::'
-        self.string='utest::alias::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias='foo'
-        self.root_name=None
-        self.concept="utest"
-        self.alias='foo'
-        self.name=None
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest::alias::foo::'
+        self.string = 'utest::alias::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = 'foo'
+        self.root_name = None
+        self.concept = "utest"
+        self.alias = 'foo'
+        self.name = None
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name1(TestTarget_base):
     def setUp(self):
-        self.target_string='name::foo'
-        self.string='name::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept=None
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::foo'
+        self.string = 'name::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = None
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name2(TestTarget_base):
     def setUp(self):
-        self.target_string='name::foo.boo'
-        self.string='name::foo.boo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept=None
-        self.alias=None
-        self.name='foo.boo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::foo.boo'
+        self.string = 'name::foo.boo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = None
+        self.alias = None
+        self.name = 'foo.boo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name3(TestTarget_base):
     def setUp(self):
-        self.target_string='build::name::foo'
-        self.string='build::name::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept="build"
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build::name::foo'
+        self.string = 'build::name::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = "build"
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name4(TestTarget_base):
     def setUp(self):
-        self.target_string='utest::name::foo'
-        self.string='utest::name::foo'
-        self.ambiguous=False
-        self.recursive=False
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept="utest"
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest::name::foo'
+        self.string = 'utest::name::foo'
+        self.ambiguous = False
+        self.recursive = False
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = "utest"
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name5(TestTarget_base):
     def setUp(self):
-        self.target_string='name::foo::'
-        self.string='name::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept=None
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::foo::'
+        self.string = 'name::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = None
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name6(TestTarget_base):
     def setUp(self):
-        self.target_string='name::foo.boo::'
-        self.string='name::foo.boo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept=None
-        self.alias=None
-        self.name='foo.boo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'name::foo.boo::'
+        self.string = 'name::foo.boo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = None
+        self.alias = None
+        self.name = 'foo.boo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name7(TestTarget_base):
     def setUp(self):
-        self.target_string='build::name::foo::'
-        self.string='build::name::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept="build"
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'build::name::foo::'
+        self.string = 'build::name::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = "build"
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 class TestTarget_name8(TestTarget_base):
     def setUp(self):
-        self.target_string='utest::name::foo::'
-        self.string='utest::name::foo::'
-        self.ambiguous=False
-        self.recursive=True
-        self.root_alias=None
-        self.root_name='foo'
-        self.concept="utest"
-        self.alias=None
-        self.name='foo'
-        self.groups=[]
-        self.properties={}
+        self.target_string = 'utest::name::foo::'
+        self.string = 'utest::name::foo::'
+        self.ambiguous = False
+        self.recursive = True
+        self.root_alias = None
+        self.root_name = 'foo'
+        self.concept = "utest"
+        self.alias = None
+        self.name = 'foo'
+        self.groups = []
+        self.properties = {}
 
 
 class TestParseTarget(unittest.TestCase):

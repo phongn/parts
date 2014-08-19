@@ -221,6 +221,46 @@ gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
     hosts=[SystemPlatform('win32','any')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86','x86_64-linux-android-','gcc.exe'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86_64-${GCC.VERSION}\prebuilt\windows-x86\bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86_64-${GCC.VERSION}\prebuilt\windows-x86\include'
+                        },
+            test_file='x86_64-linux-android-gcc.exe'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','x86_64')],
+    targets=[SystemPlatform('android','x86_64')],
+    info=[
+    ToolInfo(
+            version='*',
+            install_scanner=android.win_scanner(["NDK_ROOT"],'x86_64','x86_64-linux-android-','gcc.exe'),
+            script=None,
+            subst_vars={'SYS_ROOT':r'"${GCC.INSTALL_ROOT}\platforms\android-${ANDROID_API}\arch-x86_64"'},
+            shell_vars={
+                        'PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86_64-${GCC.VERSION}\prebuilt\windows-x86_64\bin',
+                        'C_INCLUDE_PATH':r'${GCC.INSTALL_ROOT}\toolchains\x86_64-${GCC.VERSION}\prebuilt\windows-x86_64\include'
+                        },
+            test_file='x86_64-linux-android-gcc.exe'
+            )
+    ]
+)
+
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('win32','any')],
     targets=[SystemPlatform('android','arm')],
     info=[
     ToolInfo(

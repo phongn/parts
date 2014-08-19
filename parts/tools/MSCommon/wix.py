@@ -89,6 +89,27 @@ wix.Register(
                 'PATH': '${WIX.INSTALL_ROOT}'
                 },
             test_file='candle.exe'
+            ),
+        ToolInfo(
+            version='3.8',
+            install_scanner=[
+                MsiFinder(
+                    r'WiX Toolset v3\.8 Core.*',
+                    r'candle.exe'
+                    ),
+                PathFinder([
+                    r'C:\Program Files (x86)\WiX Toolset v3.8\bin'
+                ]),
+                EnvFinder([
+                    'WIX_PATH'
+                ], '.')
+            ],
+            script=False,
+            subst_vars={},
+            shell_vars={
+                'PATH': '${WIX.INSTALL_ROOT}'
+                },
+            test_file='candle.exe'
             )
         ]
     )

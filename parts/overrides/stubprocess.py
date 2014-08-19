@@ -65,6 +65,14 @@ if sys.platform in ('linux2', 'darwin'):
                 closerange(3, but)
                 closerange(but + 1, MAXFD)
 
+        def report_exception(errpipe_write):
+            exc_type, exc_value, tb = sys.exc_info()
+            del exc_type, tb
+            # Save the traceback and attach it to the exception object
+            exc_lines = traceback.format_exc()
+            exc_value.child_traceback = ''.join(exc_lines)
+            os.write(errpipe_write, pickle.dumps(exc_value))
+
         def do_execv(args=None, executable=None, close_fds=None, cwd=None, env=None,
                 shell=None, p2cread=None, p2cwrite=None, c2pread=None, c2pwrite=None,
                 errread=None, errwrite=None, errpipe_read=None, errpipe_write=None):
@@ -131,24 +139,24 @@ if sys.platform in ('linux2', 'darwin'):
                 else:
                     os.execvpe(executable, args, env)
             except:
-                exc_type, exc_value, tb = sys.exc_info()
-                # Save the traceback and attach it to the exception object
-                exc_lines = traceback.format_exc()
-                exc_value.child_traceback = ''.join(exc_lines)
-                os.write(errpipe_write, pickle.dumps(exc_value))
+                report_exception(errpipe_write)
 
             # This exitcode won't be reported to applications, so it
             # really doesn't matter what we return.
             os._exit(255)
 
-        if sys.argv[1] == '@':
-            with open(sys.argv[2], 'rb') as data:
-                data = data.read()
-            os.unlink(sys.argv[2])
-        else:
-            data = sys.argv[1]
-        params = pickle.loads(base64.decodestring(data))
-        do_execv(**params)
+        errpipe_write = int(sys.argv[1])
+        try:
+            if sys.argv[2] == '@':
+                with open(sys.argv[3], 'rb') as data:
+                    data = data.read()
+                os.unlink(sys.argv[3])
+            else:
+                data = sys.argv[2]
+            params = pickle.loads(base64.decodestring(data))
+            do_execv(**params)
+        except:
+            report_exception(errpipe_write)
 
     else: # __name__ <> '__main__'
         import ctypes
@@ -170,7 +178,6 @@ if sys.platform in ('linux2', 'darwin'):
                         if err.errno == errno.EINTR:
                             continue
                         raise
-
 
         try:
             # We support only Linux and Mac OS X now.
@@ -252,19 +259,29 @@ if sys.platform in ('linux2', 'darwin'):
                     errpipe_read, errpipe_write = os.pipe()
 
                     if isinstance(args, types.StringTypes):
-                        args = [str(args)]
+                        args = [unicode(args)]
                     else:
-                        args = [str(x) for x in args]
+                        args = [unicode(x) for x in args]
 
                     if env:
-                        env = dict((str(key), str(value)) 
+                        env = dict((unicode(key), unicode(value)) 
                                 for (key, value) in env.iteritems())
+                    else:
+                        env = None
+                    if executable:
+                        executable = unicode(executable)
+                    else:
+                        executable = None
+                    if cwd:
+                        cwd = unicode(cwd)
+                    else:
+                        cwd = None
 
                     data = base64.encodestring(
                             pickle.dumps(
                                 dict(
-                                    args=args, executable=executable, close_fds=close_fds,
-                                    cwd=cwd, env=env, shell=shell,
+                                    args=args, executable=executable, close_fds=bool(close_fds),
+                                    cwd=cwd, env=env, shell=bool(shell),
                                     p2cread=p2cread, p2cwrite=p2cwrite,
                                     c2pread=c2pread, c2pwrite=c2pwrite,
                                     errread=errread, errwrite=errwrite,
@@ -276,10 +293,11 @@ if sys.platform in ('linux2', 'darwin'):
                     if use_file:
                         with tempfile.NamedTemporaryFile(delete=False) as the_file:
                             the_file.write(data)
-                        argv = (ctypes.c_char_p * 5)(sys.executable, __file__,
-                                '@', the_file.name, 0)
+                        argv = (sys.executable, __file__, str(errpipe_write), '@',
+                                the_file.name, 0)
                     else:
-                        argv = (ctypes.c_char_p * 4)(sys.executable, __file__, data, 0)
+                        argv = (sys.executable, __file__, str(errpipe_write), data, 0)
+                    argv = (ctypes.c_char_p * len(argv))(*argv)
 
                     pid = ctypes.c_int()
 

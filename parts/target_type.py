@@ -19,29 +19,28 @@ def is_concepts(val):
 def map_concept(val):
     return __known_concepts[val]
 
-
 def get_concept(tlst):
     # see if the concept is defined
 
     # special 'all' case
-    if tlst[0]=='all' and len(tlst) == 1:
-        return {'_section':'build', '_recursive': True}, tlst[1:]
+    if tlst[0] == 'all' and len(tlst) == 1:
+        return {'_section': 'build', '_recursive': True}, []
     # special case that is possibly ambiguous'
     if len(tlst) == 1 and "@" not in tlst[0]:
-        return {'_section':'build', '_recursive': False, '_ambiguous':True, '_name':tlst[0]}, tlst[1:]
-    # special case of "alias:: or name::
-    if len(tlst)==2 and tlst[0] in ['name', 'alias'] and tlst[1]=='':
-        return {'_section':'build'}, tlst[1:]
+        return {'_section': 'build', '_recursive': False, '_ambiguous': True,
+                '_name': tlst[0]}, []
+    # special case of alias:: or name::
+    if len(tlst) == 2 and tlst[0] in ['name', 'alias'] and not tlst[1]:
+        return {'_section': 'build'}, ['']
     # some concept would have to be xxx:: else we assume it is a name
     elif is_concepts(tlst[0]) and len(tlst) > 1:
         #we have a concept defined
-        section=map_concept(tlst[0])
-        return {'_concept':tlst[0], '_section':section}, tlst[1:]
+        section = map_concept(tlst[0])
+        return {'_concept': tlst[0], '_section': section}, tlst[1:]
 
     # set default concept
     # value is hard coded at the moment
-    return {'_section':'build'}, tlst
-
+    return {'_section': 'build'}, tlst
 
 def get_partrefdata(tok):
 
@@ -164,7 +163,7 @@ def _parse_target(target):
     # build::name::foo::group::
     # however a case of build:::::::: is also to many as no name is provided
     if len(t) > 5:
-        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))
+        api.output.error_msg('target value "{0}" is bad, too many :: breaks'.format(target))
     # get the concept
     r, t=get_concept(t)
     ret.update(r)
@@ -184,7 +183,7 @@ def _parse_target(target):
         ret['_recursive']=True
 
     if len(t) > 1:
-        api.output.error_msg('target value "%s" is bad, to many :: breaks":"'.format(target))
+        api.output.error_msg('target value "{0}" is bad, too many :: breaks'.format(target))
     return ret
 
 '''

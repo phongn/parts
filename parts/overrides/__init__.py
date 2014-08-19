@@ -18,4 +18,4 @@ import tool
 import executor
 import buildtask_debugtime
 import stubprocess
-
+import script_main_debugtime
