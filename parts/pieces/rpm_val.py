@@ -6,106 +6,63 @@ import parts.glb as glb
 import shutil, os
 import tempfile
 
-def rpm_spec(env,target,source,**kw):
+def rpm_spec(env,target,source):
 
-    target_name= env.subst('$NAME')
-    target_version= env.subst('$VERSION')
-    target_release= env.subst('$RELEASE')
-    target_arch= env.subst('$TARGET_ARCH')
+    # these are set from rpm_package wrapper function
+    target_name= env['NAME']
+    target_version= env['VERSION']
+    target_release= env['RELEASE']
+    target_arch= env['TARGET_ARCH']
 
-    #path to the specfile
-    bd=env.Dir(env.subst('${{BUILD_DIR}}/SPECS/{0}'.format(target[0].name[:-4]))).abspath
+    # open spec file
+    with open(source[0].abspath, 'r') as file_obj:
+        file_contents = file_obj.read().split('\n')
 
-    spec_dict = {}
-    #Use function read_spec to build dictionary from the spec file
-    # override the information if there is no match with the target provided
-    def rpmspec():
-        lis = os.listdir(bd) # list of specfiles in the build dir/SPECS
-        for filen in lis:
-            filep = os.path.join(bd, filen)
-            file_obj = open(filep, 'r')
-            file_content = file_obj.read()
-            file_obj.close()
+    # If BuildArch exists in specfile, delete the line
+    # It will take host architecture as the build architecture by default
+    file_contents = filter(lambda x : not x.startswith('BuildArch') ,file_contents)
 
-        #If BuildArch exists in specfile, delete the line
-        # It will take host architecture as the build architecture by default
+    # override some value to match name of out rpm files.
+    print "Overriding the spec file values for name, version, release"
+    i=0
+    tmp=set(('name', 'version', 'release'))
+    for line in file_contents: 
+        if line.startswith('Name'):
+            file_contents[i]='Name:'+target_name
+            # should only hit it once... but to be safe..
+            try:
+                tmp.remove('name')
+            except KeyError:
+               pass
+        elif line.startswith('Version'):
+            file_contents[i] = 'Version:'+target_version            
+            # should only hit it once... but to be safe..
+            try:
+                tmp.remove('version')
+            except KeyError:
+               pass
+        elif line.startswith('Release'):
+            file_contents[i] = 'Release:'+target_release
+            # should only hit it once... but to be safe..
+            try:
+                tmp.remove('release')
+            except KeyError:
+               pass
+        i+=1
+    if tmp:
+        api.output.warning_msg("Did not find keys value in spec file for {0}".format(", ".join(tmp)))
+        
+    #If BuildArch exists in specfile, delete the line
+    # It will take host architecture as the build architecture by default
+    file_contents= "\n".join(file_contents)
+    with open(target[0].abspath, 'wb') as out_file:
+        out_file.write(file_contents)
 
-        fobjw = open(filep, 'wb')
-        for item in file_content.split('\n'):
-            if not item.startswith('BuildArch'):
-                 fobjw.write('{0}\n'.format(item))
-            else:
-                pass
-        fobjw.close()
-
-        file_obj = open(filep, 'r')
-        file_content = file_obj.read()
-        file_obj.close()
-
-        for item in file_content.split('\n'):
-            token = item.replace(" ","").split(':')
-            spec_dict[token[0]] = token[1:]
-
-        keyset = ['Name','Version','Release']
-        #Check if the dict has keys "Name","Version","Release". If doesn't exist print a "value missing" message
-
-        for key in keyset:
-            if spec_dict.has_key(key):
-                filename_spec = spec_dict['Name'][0]+'-'+spec_dict['Version'][0]+'-'+spec_dict['Release'][0]
-            else:
-                print "Entries (Name or Version or Release) is missing from the specfile"
-
-        filename_target = target_name+'-'+target_version+'-'+target_release
-
-        #Check if the filename from specfile matches with the filename (target) from parts file
-        # If a match continue
-        # Else override the values of the specfile
-
-        if filename_spec == filename_target and not spec_dict.has_key('BuildArch'):
-            pass
-        else:
-            print "Overriding the spec file values for name, version, release"
-            fobj = open(filep, 'wb')
-            for line in file_content.split('\n'):
-                if not line.startswith(('Name','Version','Release')):
-                    fobj.write('{0}\n'.format(line))
-                if line.startswith('Name'):
-                    name = line.replace(line,('Name:'+target_name))
-                    fobj.write('{0}\n'.format(name))
-                if line.startswith('Version'):
-                    version = line.replace(line,('Version:'+target_version))
-                    fobj.write('{0}\n'.format(version))
-                if line.startswith('Release'):
-                    release = line.replace(line,('Release:'+target_release))
-                    fobj.write('{0}\n'.format(release))
-            fobj.close
-
-        return spec_dict
-
-    rpmspec()
-
-    #filename to used to build the tar.gz file
-    filename = target_name+'-'+target_version
-
-    #############################################
-    ##create the source gz file
-    #Replace source with the name and version  from the specfile for proper formatting of build of the tar.gz file
-    #and building the rpm
-
-    ret = env.CCopyAs(
-                [('${{BUILD_DIR}}/'+filename+'/{0}').format(env.Dir('${INSTALL_ROOT}').rel_path(n)) for n in source ],
-                source,
-                CCOPY_LOGIC='hard-copy'
-               )
-
-    env.TarGzFile((('${{BUILD_DIR}}/_rpm/{0}/SOURCES/{1}.tar.gz').format(target[0].name[:-4],filename)),ret)
-    env.CCopyAs(env.Dir('${{BUILD_DIR}}/_rpm/{0}/SPECS'.format(target[0].name[:-4])),env.Dir('${{BUILD_DIR}}/SPECS/{0}'.format(target[0].name[:-4])))
-    env._rpm('${{BUILD_DIR}}/_rpm/{0}'.format(target[0].name[:-4]))
-
+    
 rpmspec_action = SCons.Action.Action(rpm_spec)
 
 api.register.add_builder('_rpmspec',SCons.Builder.Builder(
                     action = rpmspec_action,
-                    source_factory = SCons.Node.FS.Entry,
+                    source_factory = SCons.Node.FS.File,
                     target_factory = SCons.Node.FS.File
                     ))
