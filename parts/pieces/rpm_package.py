@@ -6,6 +6,8 @@ import parts.glb as glb
 import shutil, os,re
 import operator,platform
 
+rpm_reg="(\w+)\-([\d.]+)\-([\w.]+)\.(\w+)\.rpm"
+
 def rpm_wrapper_mapper(env, target, sources, **kw):
     def rpm_builder():
 
@@ -28,12 +30,14 @@ def rpm_wrapper_mapper(env, target, sources, **kw):
             return True
 
         src=filter(spec,new_sources)
-        grps=re.match("(\w+)\-([\d.-]+)\-([\w.-]+)\.(\w+)\.rpm",target[0].name,re.IGNORECASE)
+        grps=re.match(rpm_reg,target[0].name,re.IGNORECASE)
         
         target_name= grps.group(1)
         target_version= grps.group(2)
         target_release= grps.group(3)
         target_arch= grps.group(4)
+        # make sure the TARGET_ARCH matched the value in the RPM file
+        env['TARGET_ARCH']=target_arch
         
         filename = target_name+'-'+target_version
 
@@ -46,8 +50,7 @@ def rpm_wrapper_mapper(env, target, sources, **kw):
                             spec_in,
                             NAME=target_name,
                             VERSION=target_version,
-                            RELEASE=target_release,
-                            TARGET_ARCH=target_arch
+                            RELEASE=target_release
                             )
         
         # copy the source files to are to be archived
@@ -140,7 +143,7 @@ def RpmPackage_wrapper(_env, target, sources, **kw):
         
     # validate RPM name
     api.output.verbose_msgf(['rpm'],"validating string value of: {0}",target[0].name)
-    grps=re.match("(\w+)\-([\d.-]+)\-([\w.-]+)\.(\w+)\.rpm",target[0].name,re.IGNORECASE)
+    grps=re.match(rpm_reg,target[0].name,re.IGNORECASE)
     if grps is None:
         api.output.error_msg("RPM target files must be in format of <name>-<version>-<release>.<arch>.rpm")
 

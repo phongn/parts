@@ -64,4 +64,4 @@ def MsiPackage_wrapper(env,target,sources,**kw):
 # This is what we want to be setup in parts
 from SCons.Script.SConscript import SConsEnvironment
 
-SConsEnvironment.MsiPackage=MsiPackage_wrapper
+SConsEnvironment.MSIPackage=MsiPackage_wrapper

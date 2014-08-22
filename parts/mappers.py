@@ -148,15 +148,17 @@ class mapper(object):
 
     @staticmethod
     def map_global_var(env,prop,rvalue,value,spacer):
-        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
         try:
             # see if we even have a key here to map
-            # will throw if env does not have this key mapped
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Before env value: {0}".format(env[prop]))
+            env[prop] # will throw if env does not have this key mapped
         except KeyError:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
             return
-        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value to set: {0}".format(value))
         try:
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Before env value: {0}".format(env[prop]))
+            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value to set: {0}".format(value))
+
             if common.is_list(env[prop]):
                 replace_list_items(env[prop], rvalue, value)
             else:
@@ -445,10 +447,10 @@ class part_id_mapper(mapper):
                 if common.is_list(env[self.part_prop]):
                     if ret:
                         if self.ignore:
-                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}',{ignore})}}"
+                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}',{ignore})}}".format(**self.__dict__)
                         else:
-                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}')}}}"
-                        replace_list_items(env[self.part_prop], rvalue.format(**self.__dict__), ret)
+                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}')}}}".format(self.__dict__)
+                        replace_list_items(env[self.part_prop], rvalue, ret)
                 else:
                     env[self.part_prop] = [ret]
                 api.output.trace_msg(['partid_mapper','mapper'],spacer,"After env value: {0}".format(env[self.part_prop]))
@@ -533,27 +535,22 @@ class part_id_export_mapper(mapper):
             # Here we need to flatten the list
             ret = filter(None,env.Flatten(ret))
             self.map_global_var(env,self.part_prop,str_val,ret,spacer)
-            if not ret:
+            if ret == []:
                 api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (1) value of {0}".format("''"))
                 return ''
             else:
                 api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (2) value of {0}".format(ret[0]))
                 return ret[0]
         else:
-            ret = psec.Exports.get(self.part_prop, [])
-            # We need to return first item of the list we got because the mapper itself in the
-            # code above has already tinkered with the list it's substituting: for example, we
-            # were iterating over the list like ["a", "$MAPPER()", "b", "d"], and $MAPPER()
-            # results # to ["c", "d"], but we cannot return this directly or SCons
-            # env.subst_list() will get crazy - it will get the result like
-            # ["a", "c", "d", "b", "d"], i.e. with "d" duplicated; instead we trick SCons into
-            # thinking it's iterating over ["a", "c", "b", "d"], i.e. we merge our list
-            # *in place*. We do so by returning first element of the list because Python
-            # "for a in lst" will iterate over other (placed in the original list) elements
-            # automatically
-            pret = ret[0] if ret else ''
+            #this case we have a list of stuff. we pickle it to get it throught the SCons subst engine
+            pret = ret
             api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (3) value of '{0}'".format(ret))
             return pret
+
+        # we don't have list so we just return the whole value
+        tmp = penv.subst(ret, conv = lambda x: x)
+        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Returning (4) value of {0}".format(tmp))
+        return tmp
 
 class part_subst_mapper(mapper):
     ''' This class maps the part vars in the Default enviroment to the actual

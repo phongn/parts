@@ -12,7 +12,6 @@ def rpm_spec(env,target,source):
     target_name= env['NAME']
     target_version= env['VERSION']
     target_release= env['RELEASE']
-    target_arch= env['TARGET_ARCH']
 
     # open spec file
     with open(source[0].abspath, 'r') as file_obj:

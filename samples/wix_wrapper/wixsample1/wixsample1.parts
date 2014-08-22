@@ -10,7 +10,7 @@ env.Append(
     WIXLINKEXTENSIONS = ['WixUIExtension'],
 )
 
-result=env.MsiPackage('install',sources = ['pkg1','pkg_control'])
+result=env.MSIPackage('install',sources = ['pkg1','pkg_control'])
 env.Alias("${PART_SECTION}::alias::${PART_ALIAS}::dist",env.CCopy("#dist",result))[0]
 
 # vim: set et ts=4 sw=4 ft=python :
