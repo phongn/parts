@@ -438,7 +438,7 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         copy_logic=env.__CCopyBuilderC__
 
     source = env.arg2nodes(source)
-    target = env.arg2nodes(target)
+    target = common.make_list(target)
 
     if len(target) <> len(source):
         api.output.error_msg("Number of targets and sources should be the same")
@@ -446,9 +446,17 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
     for src, tgt in zip(source, target):
         #if the tragets is a string and the source is a symlink, we want to make the target a symlink as well
         if common.is_string(tgt) and isinstance(src, symlinks.FileSymbolicLink):
-            result.extend(env.SymLink(tgt,src.linkto))
-        else:
-            result.extend(copy_logic(tgt, src, **kw))
+            d,f = os.path.split(tgt)
+            tgt=env.Dir(d).FileSymbolicLink(os.sep.join(('.',f)))
+            try:
+                copiedas = src.attributes.copiedas
+            except AttributeError:
+                src.attributes.copiedas = copiedas =[]
+            copiedas.append(tgt)
+
+        
+        result.extend(copy_logic(tgt, src, **kw))
+
     return result
 
 

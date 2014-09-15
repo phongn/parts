@@ -50,7 +50,8 @@ def rpm_wrapper_mapper(env, target, sources, **kw):
                             spec_in,
                             NAME=target_name,
                             VERSION=target_version,
-                            RELEASE=target_release
+                            RELEASE=target_release,
+                            PKG_FILES=src
                             )
         
         # copy the source files to are to be archived
@@ -59,8 +60,10 @@ def rpm_wrapper_mapper(env, target, sources, **kw):
                 src,
                 CCOPY_LOGIC='hard-copy'
                )
+
         # archive the source file to be added to RPM needs to be in form of <target_name>-<target_version>.tar.gz
         d1=env.TarGzFile((('${{BUILD_DIR}}/_rpm/{0}/SOURCES/{1}.tar.gz').format(target[0].name[:-4],filename)),ret)
+
         # copy the processed spec file to correct location for RPM build to work
         d2=env.CCopyAs(env.Dir('${{BUILD_DIR}}/_rpm/{0}/SPECS'.format(target[0].name[:-4])),env.Dir('${{BUILD_DIR}}/SPECS/{0}'.format(target[0].name[:-4])))
         print env.subst('$TARGET_ARCH'),env.subst('$TARGET_PLATFORM')
