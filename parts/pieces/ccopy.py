@@ -444,7 +444,11 @@ def CCopyAsWrapper(env, target=None, source=None,copy_logic=CCopy.default,**kw):
         api.output.error_msg("Number of targets and sources should be the same")
 
     for src, tgt in zip(source, target):
-        result.extend(copy_logic(tgt, src, **kw))
+        #if the tragets is a string and the source is a symlink, we want to make the target a symlink as well
+        if common.is_string(tgt) and isinstance(src, symlinks.FileSymbolicLink):
+            result.extend(env.SymLink(tgt,src.linkto))
+        else:
+            result.extend(copy_logic(tgt, src, **kw))
     return result
 
 

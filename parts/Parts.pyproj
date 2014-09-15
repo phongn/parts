@@ -158,7 +158,6 @@
     <None Include="pieces\strip_xml_comments.py" />
     <None Include="pieces\tar.py" />
     <None Include="pieces\unit_test.py" />
-    <None Include="pieces\zip_package.py" />
     <None Include="pieces\__init__.py" />
     <None Include="platform_info.py" />
     <None Include="pnode\part.py" />
@@ -306,9 +305,15 @@
     <Compile Include="overrides\symlinks.py" />
     <Compile Include="overrides\tool.py" />
     <Compile Include="picklehelpers.py" />
+    <Compile Include="pieces\archive_package.py" />
     <Compile Include="pieces\deb_wrapper.py" />
     <Compile Include="pieces\dpkg.py" />
+    <Compile Include="pieces\msi_wrapper.py" />
+    <Compile Include="pieces\rpm.py" />
+    <Compile Include="pieces\rpm_package.py" />
+    <Compile Include="pieces\rpm_val.py" />
     <Compile Include="pieces\zip_file.py" />
+    <Compile Include="pieces\zip_pkg.py" />
     <Compile Include="platformspecific\win32\msi.py" />
     <Compile Include="platformspecific\win32\__init__.py" />
     <Compile Include="platformspecific\__init__.py" />
