@@ -23,7 +23,7 @@ msvc.Register(
                     r'Software\Microsoft\VCExpress\12.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
-                    'VS110COMNTOOLS'
+                    'VS120COMNTOOLS'
                 ],'../../VC'),
                 PathFinder([
                     r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC',
@@ -57,7 +57,7 @@ msvc.Register(
                     r'Software\Microsoft\VCExpress\12.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
-                    'VS110COMNTOOLS'
+                    'VS120COMNTOOLS'
                 ],'../../VC'),
                 PathFinder([
                     r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC',
@@ -91,7 +91,7 @@ msvc.Register(
                     r'Software\Wow6432Node\Microsoft\VCExpress\12.0\Setup\VC\ProductDir',
                 ]),
                 EnvFinder([
-                    'VS110COMNTOOLS'
+                    'VS120COMNTOOLS'
                 ],'../../VC'),
                 PathFinder([
                     r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC'
@@ -125,7 +125,7 @@ msvc.Register(
                     r'Software\Microsoft\VCExpress\12.0\Setup\VC\ProductDir'
                 ]),
                 EnvFinder([
-                    'VS110COMNTOOLS'
+                    'VS120COMNTOOLS'
                 ],'../../VC'),
                 PathFinder([
                     r'C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC'

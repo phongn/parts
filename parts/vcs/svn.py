@@ -16,7 +16,7 @@ class svn(base):
         ]
     svnpath=None #the path to the svn program to run
     svnver=None # the path the svnversion program
-
+    connected_servers=[]
     def __init__(self,repository,server=None,revision=None):
         '''Constructor call for the SVN object
         @param repository The repository or path from server under the server to get our data from

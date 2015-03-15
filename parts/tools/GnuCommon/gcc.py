@@ -8,8 +8,8 @@ import android
 gcc.Register(
     # we assume that the system has the correct libraies installed to do a cross build
     # or that the user add the extra check for the stuff the need
-    hosts=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
-    targets=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64')],
+    hosts=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64'),SystemPlatform('freebsd','x86_64')],
+    targets=[SystemPlatform('posix','x86'),SystemPlatform('posix','x86_64'),SystemPlatform('freebsd','x86_64')],
     info=[
     GnuInfo(
         #standard location, however there might be
@@ -611,4 +611,33 @@ gcc.Register(
     ]
 )
 
-
+# FreeBSD-target on POSIX host
+gcc.Register(
+    # we assume that the system has the correct libraies installed to do a cross build
+    # or that the user add the extra check for the stuff the need
+    hosts=[SystemPlatform('posix','x86_64')],
+    targets=[SystemPlatform('freebsd','x86_64')],
+    info=[
+    GnuInfo(
+        #standard location, however there might be
+        # some posix offshoot that might tweak this directory
+        # so we allow this to be set
+        install_scanner=[PathFinder(['/usr/bin'])],
+        opt_dirs=['/opt/'],
+        opt_pattern=r'gcc-((\d+\.)*\d+)-crossfreebsd',
+        script=None,
+        subst_vars={'APPENDS': {
+            'LIBPATH': [r'${GCC.INSTALL_ROOT}/../x86_64-unknown-freebsd10.0/usr/local/lib',
+                        r'${GCC.INSTALL_ROOT}/../x86_64-unknown-freebsd10.0/usr/local/lib/gcc44',
+                        r'/usr/local/lib',
+                        r'/usr/local/lib/gcc44'],
+            'CPPPATH': [r'${GCC.INSTALL_ROOT}/../x86_64-unknown-freebsd10.0/usr/local/lib/gcc44/include/c++',
+                        r'${GCC.INSTALL_ROOT}/../x86_64-unknown-freebsd10.0/usr/local/lib/gcc44/include/c++/x86_64-portbld-freebsd10.0',
+                        r'/usr/local/lib/gcc44/include/c++',
+                        r'/usr/local/lib/gcc44/include/c++/x86_64-portbld-freebsd10.0',]},
+        },
+        shell_vars={'PATH':'${GCC.INSTALL_ROOT}'},
+        test_file='x86_64-unknown-freebsd10.0-gcc'
+        )
+    ]
+)

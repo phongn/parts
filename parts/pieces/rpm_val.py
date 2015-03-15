@@ -3,66 +3,45 @@ import parts.api as api
 import parts.errors
 import parts.common as common
 import parts.glb as glb
-import shutil, os
+import shutil
 import tempfile
+import os
 
-
+MACRO_STARTS = ('%description', '%prep', '%check', '%build', '%install', '%clean', '%files')
 def is_macro_header(line):
-    if line.startswith('%description'):
-        return True
-    if line.startswith('%prep'):
-        return True
-    if line.startswith('%check'):
-        return True
-    if line.startswith('%build'):
-        return True
-    if line.startswith('%install'):
-        return True
-    if line.startswith('%clean'):
-        return True
-    if line.startswith('%files'):
-        return True
-    return False
+    return any(line.startswith(start) for start in MACRO_STARTS)
+
+def add_install_content(env, file_contents):
+    deflines = ['%install', 'rm -rf "%{buildroot}"',
+                'mkdir -p %{buildroot}', 'cp -a * %{buildroot}']
+
+    #add default install contents
+    for line in deflines:
+        file_contents.append(line)
 
 
-def add_install_content(file_contents, idx=-1):
-    lines = ['rm -rf %{buildroot}', 'mkdir -p  %{buildroot}',
-             'cp -a * %{buildroot}']
-
-    if idx == -1:
-        file_contents.append('%install')
-        for i in xrange(len(lines)):
-            file_contents.append(lines[i])
-    else:
-        for i in xrange(len(lines)):
-            file_contents.insert(idx+1+i, lines[i])
-
-
-def add_files_content(env, file_contents, pkg_files_objs, idx=-1):
+def add_files_content(env, file_contents, pkg_files, idx=-1):
     # add all content in archive file
     defattrs = '%defattr(-,root,root,-)'
 
-
-    f2 = env.subst('${BUILD_DIR}')
-    f3 = env.subst('${INSTALL_ROOT}')
-
     files = []
-    for f in pkg_files_objs:
-        #print ("***PKG FILE " + str(f))
-        files.append(f.ID.replace(env.subst('${INSTALL_ROOT}'),
-                                    '%_prefix/../'))
-        #print ("***PKG FILE2 " + str(files[-1]))
+    for f in pkg_files:
+        repstr = env.subst(f.env['INSTALL_ROOT']).lstrip('#')
+        files.append(f.ID.replace(repstr, env.subst('${RPM_BUILD_ROOT}')))
 
-	#TODO add like of MetaTag attributes mapping to RPM
+    #TODO add like of MetaTag attributes mapping to RPM
+
+    #if files section does not exist
     if idx == -1:
         file_contents.append('%files')
         file_contents.append(defattrs)
         for i in xrange(len(files)):
             file_contents.append(files[i])
     else:
-        file_contents.insert(idx+1+i, defattrs)
+        file_contents.insert(idx+1, defattrs)
         for i in xrange(len(files)):
             file_contents.insert(idx+2+i, files[i])
+
 
 def rpm_spec(env, target, source):
 
@@ -90,6 +69,7 @@ def rpm_spec(env, target, source):
     #tmp set to detect duplicates of values that should only be defined once
     tmp=set(('name', 'version', 'release'))
 
+
     while i < len(file_contents): 
 
         if file_contents[i].startswith('Name'):
@@ -113,18 +93,8 @@ def rpm_spec(env, target, source):
             except KeyError:
                pass
 
-        #check for %install section where files are added to buildroot staging 
-        #area, the staging area gets contents from the source.tar.gz file
         elif file_contents[i].startswith('%install'):
             found_install = True
-
-            #remove existing install section
-            j = i+1
-            while not is_macro_header(file_contents[j]):
-                file_contents.pop(j)
-
-            # add the content
-            add_install_content(file_contents, i)
 
         #add file contents that will be installed in rpm
         elif file_contents[i].startswith('%files'):
@@ -135,7 +105,7 @@ def rpm_spec(env, target, source):
 
     #add sections if they do not exist
     if not found_install:
-        add_install_content(file_contents)
+        add_install_content(env, file_contents)
 
     if not found_files:
         add_files_content(env, file_contents, pkg_files)

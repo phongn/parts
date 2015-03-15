@@ -7,7 +7,6 @@ There is also env.SymLink builder is introduced here
 '''
 import os
 import ctypes
-import exceptions
 
 import SCons.Node.FS
 from SCons.Script.SConscript import SConsEnvironment
@@ -42,96 +41,77 @@ except ImportError:
     SE_PRIVILEGE_ENABLED = 0x00000002
 
     class LUID(ctypes.Structure):
-        _fields_ = [
-            ('LowPart', ctypes.c_ulong),
-            ('HighPart', ctypes.c_long),
-        ]
+        _fields_ = [('LowPart', ctypes.c_ulong),
+                    ('HighPart', ctypes.c_long)]
     class LUID_AND_ATTRIBUTES(ctypes.Structure):
         _pack_ = 4
-        _fields_ = [
-            ('Luid', LUID),
-            ('Attributes', ctypes.c_ulong),
-        ]
+        _fields_ = [('Luid', LUID),
+                    ('Attributes', ctypes.c_ulong)]
     class TOKEN_PRIVILEGES(ctypes.Structure):
-        _fields_ = [
-            ('PrivilegeCount', ctypes.c_ulong),
-            ('Privileges', LUID_AND_ATTRIBUTES * 1)
-        ]
+        _fields_ = [('PrivilegeCount', ctypes.c_ulong),
+                    ('Privileges', LUID_AND_ATTRIBUTES * 1)]
+
     class Privilege(object):
         """
         Context class to temporary elevate privilege.
         """
         def __init__(self, privilegeName):
-            if __debug__: logInstanceCreation(self, 'parts.overrides.symlinks.Privilege')
+            if __debug__:
+                logInstanceCreation(self, 'parts.overrides.symlinks.Privilege')
+            self.token = None
+            self.savedState = None
+            self.privilegeLuid = LUID()
+            if not ctypes.windll.advapi32.LookupPrivilegeValueA(
+                    ctypes.c_void_p(), ctypes.c_char_p(privilegeName),
+                    ctypes.byref(self.privilegeLuid)):
+                raise createWindowsError()
+
+        def __enter__(self):
             token = ctypes.c_void_p()
             if ctypes.windll.advapi32.OpenProcessToken(
                     ctypes.c_void_p(ctypes.windll.kernel32.GetCurrentProcess()),
                     TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,
                     ctypes.byref(token)):
-                self._token = token
-                self._savedState = None
+                self.token = token
+                self.savedState = None
                 privileges = TOKEN_PRIVILEGES()
                 privileges.PrivilegeCount = 1
-                if ctypes.windll.advapi32.LookupPrivilegeValueA(
-                        ctypes.c_void_p(), ctypes.c_char_p(privilegeName),
-                        ctypes.byref(privileges.Privileges[0].Luid)):
-                    privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED
-                    savedState = TOKEN_PRIVILEGES()
-                    dwReturned = ctypes.c_ulong(ctypes.sizeof(savedState))
-                    if ctypes.windll.advapi32.AdjustTokenPrivileges(self._token,
-                            0, ctypes.byref(privileges), ctypes.sizeof(privileges), ctypes.byref(savedState),
-                            ctypes.byref(dwReturned)) and ctypes.windll.kernel32.GetLastError() == 0:
-                        self._savedState = savedState
+                privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED
+                privileges.Privileges[0].Luid = self.privilegeLuid
+
+                savedState = TOKEN_PRIVILEGES()
+                dwReturned = ctypes.c_ulong(ctypes.sizeof(savedState))
+                if ctypes.windll.advapi32.AdjustTokenPrivileges(self.token, 0,
+                            ctypes.byref(privileges), ctypes.sizeof(privileges),
+                            ctypes.byref(savedState), ctypes.byref(dwReturned)) and \
+                        ctypes.GetLastError() == 0:
+                    self.savedState = savedState
             else:
-                self._token = None
-
-        def __del__(self):
-            if self._token:
-                if self._savedState:
-                    ctypes.windll.advapi32.AdjustTokenPrivileges(self._token, ctypes.c_long(), ctypes.byref(self._savedState),
-                            ctypes.sizeof(self._savedState), ctypes.c_void_p(), ctypes.c_void_p())
-                ctypes.windll.kernel32.CloseHandle(self._token)
-
-        def __enter__(self):
-            pass
+                self.token = None
+                raise createWindowsError()
+            return self
 
         def __exit__(self, exc_type, exc_value, traceback):
-            pass
+            if self.token:
+                if self.savedState:
+                    ctypes.windll.advapi32.AdjustTokenPrivileges(self.token, ctypes.c_long(),
+                            ctypes.byref(self.savedState), ctypes.sizeof(self.savedState),
+                            ctypes.c_void_p(), ctypes.c_void_p())
+                ctypes.windll.kernel32.CloseHandle(self.token)
 
-    def raiseOSError(err = None, path = None):
+    def createWindowsError(path=None):
         """
-        Utility function to raise a human readable OSError exception.
-        @param err: C{Integer} representing Win32 error code. If it is C{None} C{GetLastError()}
-            result will be used.
-        @param path: Optional C{string} specifying path to file/directory operationg on
+        Utility function to create a human-readable WindowsError exception.
+        @param path: Optional C{string} specifying path to file/directory operation on
             which caused the exception.
         """
-        if err is None:
-            err = ctypes.windll.kernel32.GetLastError()
-
-        buf = ctypes.c_char_p()
-        buflen = ctypes.windll.kernel32.FormatMessageA(
-                FORMAT_MESSAGE_ALLOCATE_BUFFER|\
-                FORMAT_MESSAGE_FROM_SYSTEM|\
-                FORMAT_MESSAGE_IGNORE_INSERTS,
-                ctypes.c_void_p(),
-                err,
-                0,
-                ctypes.byref(buf), 0, ctypes.c_void_p());
-        if not len:
-            msg = None
-        else:
-            msg = buf.value.strip()
-            ctypes.windll.kernel32.LocalFree(buf)
-        if msg:
+        errorCode = ctypes.GetLastError()
+        message = ctypes.FormatError(errorCode)
+        if message:
             if path:
-                err = (err, msg, path)
-            else:
-                err = (err, msg)
-        else:
-            err = (err,)
-
-        raise OSError(*err)
+                return WindowsError(errorCode, message, path)
+            return WindowsError(errorCode, message)
+        return WindowsError(errorCode)
 
     # Some data types
     class SymbolicLinkReparseBuffer(ctypes.Structure):
@@ -151,15 +131,17 @@ except ImportError:
             ('PathBuffer', ctypes.c_ushort * 1)
         ]
     PSymbolicLinkReparseBuffer = ctypes.POINTER(SymbolicLinkReparseBuffer)
+    SYMLINK_PRIVILEGE_NAME = 'SeCreateSymbolicLinkPrivilege'
     try:
         CreateSymbolicLink = ctypes.windll.kernel32.CreateSymbolicLinkW
         def os_symlink(linkto, linkname, isdir):
-            with Privilege('SeCreateSymbolicLinkPrivilege'):
-                if not CreateSymbolicLink(unicode(linkname), unicode(linkto), 1 if isdir else 0):
-                    raiseOSError(path = linkname)
+            with Privilege(SYMLINK_PRIVILEGE_NAME):
+                if not CreateSymbolicLink(unicode(linkname), unicode(linkto),
+                                          1 if isdir else 0):
+                    raise createWindowsError(path=linkname)
     except AttributeError:
-        # This means we are running on the Windows older than Vista. It has no CreateSymbolicLink API.
-        # Let's implement it.
+        # This means we are running on the Windows older than Vista which has no
+        # CreateSymbolicLink API. Let's implement it.
 
         # The following code was written under impression of reading FAR Manager code.
         # See http://farmanager.com/svn/trunk/unicode_far/flink.cpp
@@ -186,13 +168,17 @@ except ImportError:
             pBuffer.PrintNameLength = len(printName) * ctypes.sizeof(ctypes.c_wchar)
 
             p = ctypes.cast(ctypes.pointer(pBuffer.PathBuffer), ctypes.c_void_p)
-            ctypes.memmove(p, ctypes.c_wchar_p(printName), ctypes.sizeof(ctypes.c_wchar) * len(printName))
+            ctypes.memmove(p, ctypes.c_wchar_p(printName),
+                           ctypes.sizeof(ctypes.c_wchar) * len(printName))
 
             pBuffer.SubstituteNameOffset = pBuffer.PrintNameLength
             pBuffer.SubstituteNameLength = len(sysName) * ctypes.sizeof(ctypes.c_wchar)
 
-            p = ctypes.cast(ctypes.cast(ctypes.pointer(pBuffer.PathBuffer), ctypes.c_void_p).value + pBuffer.SubstituteNameOffset, ctypes.c_void_p)
-            ctypes.memmove(p, ctypes.c_wchar_p(sysName), ctypes.sizeof(ctypes.c_wchar) * len(sysName))
+            p = ctypes.cast(ctypes.cast(ctypes.pointer(pBuffer.PathBuffer),
+                                        ctypes.c_void_p).value + pBuffer.SubstituteNameOffset,
+                            ctypes.c_void_p)
+            ctypes.memmove(p, ctypes.c_wchar_p(sysName),
+                           ctypes.sizeof(ctypes.c_wchar) * len(sysName))
 
             pBuffer.ReparseDataLength = buffsize - REPARSE_DATA_BUFFER_HEADER_SIZE
 
@@ -204,27 +190,30 @@ except ImportError:
 
             @param linkto: C{string} representing link target name
             @param linkname: Link name C{string}
-            @param isdir: C{boolean} determining whether the symlink points to directory or to a file.
+            @param isdir: C{boolean} determining whether the symlink points to directory or
+                to a file.
             """
-            with Privilege('SeCreateSymbolicLinkPrivilege'):
-                ctypes.windll.kernel32.SetLastError(0)
+            with Privilege(SYMLINK_PRIVILEGE_NAME):
+                ctypes.SetLastError(0)
                 if isdir:
                     if not ctypes.windll.kernel32.CreateDirectoryA(linkname):
-                        raiseOSError(path = linkname)
-                    handle = ctypes.windll.kernel32.CreateFileA(linkname, GENERIC_WRITE, 0, ctypes.c_void_p(), OPEN_EXISTING,
-                            FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, ctypes.c_void_p())
+                        raise createWindowsError(path=linkname)
+                    handleFlag = OPEN_EXISTING
                 else:
-                    handle = ctypes.windll.kernel32.CreateFileA(linkname, GENERIC_WRITE, 0, ctypes.c_void_p(), CREATE_NEW,
-                            FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, ctypes.c_void_p())
+                    handleFlag = CREATE_NEW
+                handle = ctypes.windll.kernel32.CreateFileA(linkname, GENERIC_WRITE, 0,
+                                ctypes.c_void_p(), handleFlag,
+                                FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS,
+                                ctypes.c_void_p())
                 if handle < 0:
-                    raiseOSError(path = linkname)
+                    raise createWindowsError(path=linkname)
                 try:
                     buffer, size = _formatLinkBuffer(linkto)
                     dwreturned = ctypes.c_ulong()
                     if not ctypes.windll.kernel32.DeviceIoControl(
                             handle, FSCTL_SET_REPARSE_POINT, buffer, size, ctypes.c_void_p(), 0,
                             ctypes.byref(dwreturned), ctypes.c_void_p()):
-                        raiseOSError(path = linkname)
+                        raise createWindowsError(path=linkname)
                 finally:
                     ctypes.windll.kernel32.CloseHandle(handle)
 try:
@@ -245,25 +234,28 @@ except ImportError:
         """
         attrs = ctypes.windll.kernel32.GetFileAttributesA(name)
         if attrs == INVALID_FILE_ATTRIBUTES or (attrs & FILE_ATTRIBUTE_REPARSE_POINT == 0):
-            raiseOSError(path = name)
-        h = ctypes.windll.kernel32.CreateFileA(name, GENERIC_READ, 0, ctypes.c_void_p(), OPEN_EXISTING,
-                FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, ctypes.c_void_p())
+            raise createWindowsError(path=name)
+        h = ctypes.windll.kernel32.CreateFileA(name, GENERIC_READ, 0, ctypes.c_void_p(),
+                OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS,
+                ctypes.c_void_p())
         if h == INVALID_HANDLE_VALUE:
-            raiseOSError(path = name)
+            raise createWindowsError(path=name)
         try:
             buffer = ctypes.create_string_buffer(MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
             dwreturned = ctypes.c_ulong()
             if not ctypes.windll.kernel32.DeviceIoControl(
-                h, FSCTL_GET_REPARSE_POINT, ctypes.c_void_p(), 0, buffer, ctypes.sizeof(buffer), ctypes.byref(dwreturned), ctypes.c_void_p()):
-                raiseOSError(path = name)
+                    h, FSCTL_GET_REPARSE_POINT, ctypes.c_void_p(), 0, buffer,
+                    ctypes.sizeof(buffer), ctypes.byref(dwreturned), ctypes.c_void_p()):
+                raise createWindowsError(path=name)
         finally:
             ctypes.windll.kernel32.CloseHandle(h)
 
         content = ctypes.cast(buffer, PSymbolicLinkReparseBuffer).contents
         if not content.ReparseTag == IO_REPARSE_TAG_SYMLINK:
-            raiseOSError(path = name)
-        return ctypes.wstring_at(ctypes.cast(content.PathBuffer, ctypes.c_void_p).value + content.PrintNameOffset,
-                content.PrintNameLength / 2)
+            raise createWindowsError(path=name)
+        return ctypes.wstring_at(ctypes.cast(content.PathBuffer,
+                                             ctypes.c_void_p).value + content.PrintNameOffset,
+                                 content.PrintNameLength / 2)
 
 ## End of OS level support for symbolic links
 
@@ -274,7 +266,8 @@ class FileSymbolicLink(SCons.Node.FS.File):
     specified as its argument.
     """
     def __init__(self, name, directory, fs):
-        if __debug__: logInstanceCreation(self, 'parts.overrides.symlinks.FileSymbolicLink')
+        if __debug__:
+            logInstanceCreation(self, 'parts.overrides.symlinks.FileSymbolicLink')
         SCons.Node.FS.File.__init__(self, name, directory, fs)
 
     @property
@@ -605,7 +598,7 @@ def ResolveSymLinkChain(env, link):
 
     return result
 
-SConsEnvironment.SymLink=SymLinkEnv
+SConsEnvironment.SymLink = SymLinkEnv
 SConsEnvironment.ResolveSymLinkChain = ResolveSymLinkChain
 
 # vim: set et ts=4 sw=4 ai ft=python :

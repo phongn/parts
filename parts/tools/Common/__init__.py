@@ -16,7 +16,7 @@ class toolvar(str, CmdStringHolder):
         return super(toolvar, cls).__new__(cls, command)
 
     def __init__(self, command, type_list=None, env=None):
-        self.__tlist = type_list or ()
+        self.__tlist = frozenset(type_list or ())
 
     def __eq__(self,val):
         return super(toolvar, self).__eq__(val) or val in self.__tlist

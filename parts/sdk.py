@@ -80,7 +80,6 @@ def process_Sdk_Copy(env, target_dir, sources, create_sdk=True, do_clean=False):
     if create_sdk == True:
         g_sdked_files.update(out)
 
-
     # return a tuple of output files and the Src_dir list
     # might change this later to a list of the Source file instead
     return (out, src_dir)

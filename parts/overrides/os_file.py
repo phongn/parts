@@ -6,31 +6,33 @@
 import os
 import sys
 import ctypes
+
 from SCons.Script import _SConscript
 
 if sys.platform == 'win32':
+    import ctypes.wintypes
     #This allow us to up file in a non-exclusive mode
 
     import __builtin__
     import msvcrt
 
-    _orginial_file = __builtin__.file
-    _orginial_open = __builtin__.open
+    _original_file = __builtin__.file
+    _original_open = __builtin__.open
 
     # this import to stop SCons from doing what it is doing with open/file
-    import SCons.Platform.win32
+    import SCons.Platform.win32 #pylint: disable=unused-import
 
-    FILE_SHARE_READ =   1
-    FILE_SHARE_WRITE =  2
+    FILE_SHARE_READ = 1
+    FILE_SHARE_WRITE = 2
     FILE_SHARE_DELETE = 4
 
-    GENERIC_READ =  -0x80000000
+    GENERIC_READ = 0x80000000
     GENERIC_WRITE = 0x40000000
 
-    CREATE_NEW =        1
-    CREATE_ALWAYS =     2
-    OPEN_EXISTING =     3
-    OPEN_ALWAYS =       4
+    CREATE_NEW = 1
+    CREATE_ALWAYS = 2
+    OPEN_EXISTING = 3
+    OPEN_ALWAYS = 4
     TRUNCATE_EXISTING = 5
 
     def get_win32_desired_access(mode):
@@ -64,8 +66,12 @@ if sys.platform == 'win32':
             ctypes.c_uint32,  # dwCreationDisposition
             ctypes.c_uint32,  # dwFlagsAndAttributes
             ctypes.c_void_p,  # hTemplateFile
-            )
+    )
     CreateFileW.restype = ctypes.c_long
+
+    DeleteFileW = ctypes.windll.kernel32.DeleteFileW
+    DeleteFileW.argtypes = (ctypes.c_wchar_p, )
+    DeleteFileW.restype = ctypes.wintypes.BOOL
 
     def shared_open(filename, mode='r', bufsize=-1):
         # this is sort of ugly
@@ -110,7 +116,8 @@ if sys.platform == 'win32':
     __builtin__.file = shared_open
     __builtin__.open = shared_open
     # modify handle in SCons
-    _SConscript.open = _orginial_open
+    _SConscript.open = _original_open
+    _SConscript.file = _original_file
 
     ## at this level these call replace the os.<file calls> that may be called by the user
     ## as for some reason some of these call lock the files in the python imple
@@ -118,13 +125,11 @@ if sys.platform == 'win32':
     ## the File or Dir nodes to do all file operation in SCon someday
     ## this will then change to allow help in that migration
     def win32_rm(path):
-        result = ctypes.windll.kernel32.DeleteFileW(unicode(path))
-        if result == 0:
-            raise OSError(ctypes.GetLastError(), ctypes.FormatError(ctypes.GetLastError()),
+        if not DeleteFileW(unicode(path)):
+            raise WindowsError(ctypes.GetLastError(), ctypes.FormatError(ctypes.GetLastError()),
                           path)
 
     os.remove = win32_rm
     os.unlink = win32_rm
 
 # vim: set et ts=4 sw=4 ai :
-

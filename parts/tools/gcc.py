@@ -52,6 +52,8 @@ def generate(env):
     env['SHOBJSUFFIX'] = '.pic.o'
     env['OBJSUFFIX'] = '.o'
 
+    env.Append(**env['GCC'].get('APPENDS', {}))
+
  # fix this up so we can control its printing to screen better.
     #api.output.print_msg("Configured Tool %s\t for version <%s> target <%s>"%('gcc',env['GCC']['VERSION'],env['TARGET_PLATFORM']))
 

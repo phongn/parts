@@ -22,12 +22,6 @@ Buildroot: %{_tmppath}/%{name}-%{version}-root
 
 %build
 
-%install
-rm -rf %{buildroot}
-mkdir -p  %{buildroot}
-
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files
-%defattr(-,root,root,-)

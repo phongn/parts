@@ -1,17 +1,18 @@
-import glob,os.path
-import parts.load_module as load_module
+#pylint: disable=missing-docstring, unused-import
+import glob
+import os.path
 
-#The pieces directories to load
-pt_dirs=load_module.get_site_directories('pieces')
-# scan each directory and load all the pieces file
-for d in pt_dirs:
-    if os.path.exists(d):
-        objs=glob.glob(os.path.join(d,'*.py'))
-        for i in objs:
-            name = os.path.splitext(os.path.basename(i))[0]
-            if name != '__init__':
-                load_module.load_module([d],name,'pieces')
-                #locals()[name]=__import__(name,globals(),locals(),[])
+def loadAllPieces():
+    import parts.load_module as load_module
+    # The pieces directories to load
+    piecesDirs = load_module.get_site_directories('pieces')
+    # scan each directory and load all the pieces file
+    for directory in piecesDirs:
+        if os.path.exists(directory):
+            pyObjects = glob.glob(os.path.join(directory, '*.py'))
+            for pyFile in pyObjects:
+                name = os.path.splitext(os.path.basename(pyFile))[0]
+                if name != '__init__':
+                    load_module.load_module([directory], name, 'pieces')
 
-
-
+loadAllPieces()

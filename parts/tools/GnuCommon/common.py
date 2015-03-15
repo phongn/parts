@@ -6,6 +6,17 @@ import SCons.Util
 import subprocess
 import os,re
 
+def makeStdBinutilsTool(env, name, compareNames):
+    '''
+    Helper function that is used to make a toolvar; it follows a pattern like (for example):
+        tool = env.get('BINUTILS', {}).get('AR', env['AR'])
+        env['AR'] = parts.tools.Common.toolvar(tool, ['ar'], env)
+    '''
+    try:
+        tool = env.get('BINUTILS', {}).get(name, env[name])
+    except KeyError:
+        return
+    env[name] = parts.tools.Common.toolvar(tool, compareNames, env)
 
 def MatchVersionNumbers(verStr1, verStr2):
 
@@ -142,7 +153,6 @@ class GnuInfo(ToolInfo):
         return ret
     
     def scan_query(self,install_root,opt_scan=True):
-        
         if self.found is None:
             ret={}         
             reg=re.compile(self.test_file.replace('+',r'\+')+r'\-?([0-9]+\.[0-9]+\.[0-9]*|[0-9]+\.[0-9]+|[0-9]+)', re.I)

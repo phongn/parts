@@ -148,17 +148,15 @@ class mapper(object):
 
     @staticmethod
     def map_global_var(env,prop,rvalue,value,spacer):
+        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
         try:
             # see if we even have a key here to map
-            env[prop] # will throw if env does not have this key mapped
-        except KeyError:
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
-            return
-        try:
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Trying to replace value in env[{0}]".format(prop))
+            # will throw if env does not have this key mapped
             api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Before env value: {0}".format(env[prop]))
-            api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value to set: {0}".format(value))
-
+        except KeyError:
+            return
+        api.output.trace_msg(['partexport_mapper','mapper'],spacer,"Value to set: {0}".format(value))
+        try:
             if common.is_list(env[prop]):
                 replace_list_items(env[prop], rvalue, value)
             else:
@@ -447,10 +445,10 @@ class part_id_mapper(mapper):
                 if common.is_list(env[self.part_prop]):
                     if ret:
                         if self.ignore:
-                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}',{ignore})}}".format(**self.__dict__)
+                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}',{ignore})}}"
                         else:
-                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}')}}}".format(self.__dict__)
-                        replace_list_items(env[self.part_prop], rvalue, ret)
+                            rvalue = "${{{name}('{part_name}','{ver_range}','{part_prop}')}}}"
+                        replace_list_items(env[self.part_prop], rvalue.format(**self.__dict__), ret)
                 else:
                     env[self.part_prop] = [ret]
                 api.output.trace_msg(['partid_mapper','mapper'],spacer,"After env value: {0}".format(env[self.part_prop]))

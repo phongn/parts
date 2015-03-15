@@ -93,6 +93,7 @@ os_map = {
 'darwin':'darwin',
 'mac':'darwin',
 'macos':'darwin',
+'freebsd':'freebsd',
 'any':'any'
 }
 valid_arch = None

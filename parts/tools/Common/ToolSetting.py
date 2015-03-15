@@ -452,7 +452,6 @@ class ToolSetting(object):
         a match or not. The Key holds data on everything but the version
         the cache_key adds the version
         '''
-
         #get cache key for this enviroment setup
         key=self.get_cache_key(env)
         _v=version=env.get(self.version_tag,None)

@@ -46,7 +46,7 @@ class smart_svn(svn.svn):
 
     def UpdateEnv(self):
         '''
-        Overide the base svn function to allow us to set certain values in the correct order
+        Override the base svn function to allow us to set certain values in the correct order
         to prevent issue with mapping repository information provided by the user
         '''
         if svn.svn.svnpath is None:
@@ -111,7 +111,7 @@ class smart_svn(svn.svn):
 
         self._env['VCS'].update(**self._vars)
 
-        # calling this will requiresome work to be done
+        # calling this will require some work to be done
         self._env['VCS']['SERVER_PATH']=self.FullPath
 
 
@@ -127,7 +127,7 @@ class smart_svn(svn.svn):
         return self._repository
 
     def find_best_branch(self,force=False):
-        '''This funtion will try to get the correct repository value to use
+        '''This function will try to get the correct repository value to use
         for a checkout. For a given Branch it will try to see if a given location exists
         in SVN, and if it does use it, else if will fallback to different location or error out
         if nothing is found.
@@ -184,9 +184,9 @@ class smart_svn(svn.svn):
  --build-branch=<branch>|default:<branch>|<Component name>:<branch>,...
 
  <branch and default:<branch> set the default branch value for a given Part
- <part ref>:branch set the branch for a given Part(s) refered to by <part ref>
+ <part ref>:branch set the branch for a given Part(s) referred to by <part ref>
  <branch> can be {1}
- <componet name> which is the value of the component_name argument in the VcsSmartSvn()'''.format(branch,self._vars['BRANCH_MAP'].keys())
+ <component name> which is the value of the component_name argument in the VcsSmartSvn()'''.format(branch,self._vars['BRANCH_MAP'].keys())
             api.output.error_msg(err_str,show_stack=False)
         # check each path till we get a hit
         for path in brch_lst:

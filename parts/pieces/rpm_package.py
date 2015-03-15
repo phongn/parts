@@ -41,32 +41,33 @@ def rpm_wrapper_mapper(env, target, sources, **kw):
         
         filename = target_name+'-'+target_version
 
+
         #############################################
         ##create the source gz file
         #Replace source with the name and version  from the specfile for proper formatting of build of the tar.gz file
         #and building the rpm 
+
+        # This depends statement seems to help address issues with getting symlink.linkto data        
+        env.Depends(spec_in,src)
+
         spec_file = env._rpmspec(
                             '${{BUILD_DIR}}/SPECS/{0}/{1}'.format(target[0].name[:-4],spec_in.name), 
                             spec_in,
                             NAME=target_name,
                             VERSION=target_version,
                             RELEASE=target_release,
-                            PKG_FILES=src
+                            PKG_FILES=src,
                             )
         
-        # copy the source files to are to be archived
-        ret = env.CCopyAs(
-                [('${{BUILD_DIR}}/'+filename+'/{0}').format(env.Dir('${INSTALL_ROOT}').rel_path(n)) for n in src ],
-                src,
-                CCOPY_LOGIC='hard-copy'
-               )
+        # copy the source files to be archived
+        ret = env.CCopyAs([('${{BUILD_DIR}}/'+filename+'/{0}').format(env.Dir(n.env['INSTALL_ROOT']).rel_path(n)) for n in src ], src, CCOPY_LOGIC='hard-copy')
+
 
         # archive the source file to be added to RPM needs to be in form of <target_name>-<target_version>.tar.gz
         d1=env.TarGzFile((('${{BUILD_DIR}}/_rpm/{0}/SOURCES/{1}.tar.gz').format(target[0].name[:-4],filename)),ret)
 
         # copy the processed spec file to correct location for RPM build to work
         d2=env.CCopyAs(env.Dir('${{BUILD_DIR}}/_rpm/{0}/SPECS'.format(target[0].name[:-4])),env.Dir('${{BUILD_DIR}}/SPECS/{0}'.format(target[0].name[:-4])))
-        print env.subst('$TARGET_ARCH'),env.subst('$TARGET_PLATFORM')
         env._rpm(target,d1+d2)
 
     return rpm_builder

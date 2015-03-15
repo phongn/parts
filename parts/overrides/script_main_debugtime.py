@@ -22,11 +22,11 @@ def wrapFunction(targetObj, targetAttrName):
         return wrapper
     return wrapped
 
-scons_exited_normally = False
+SCONS_EXITED_NORMALLY = False
 pre_parts_cache_storing = None
 
 def printTimingStatistics():
-    if not (scons_exited_normally or not Main.print_time):
+    if not (SCONS_EXITED_NORMALLY or not Main.print_time):
         # SCons didn't exit normally (that means no printed statistics), and we were
         # requested to output such statistics, so we print it ourselves
 

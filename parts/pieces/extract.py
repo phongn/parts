@@ -1,7 +1,9 @@
 import os
 import zipfile
 import tarfile
+import errno
 import contextlib
+
 import SCons.Builder
 import SCons.Action
 import SCons.Environment
@@ -107,7 +109,11 @@ class _ArcInfoProxy(object):
             try:
                 symlinks.os_symlink(self.linkname, node.abspath, False)
             except (OSError, IOError):
-                os.unlink(node)
+                try:
+                    os.unlink(node.abspath)
+                except OSError as err:
+                    if err.errno != errno.ENOENT:
+                        raise
                 symlinks.os_symlink(self.linkname, node.abspath, False)
             symlinks.ensure_node_is_symlink(node)
 

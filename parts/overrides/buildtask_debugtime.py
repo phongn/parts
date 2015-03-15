@@ -47,7 +47,7 @@ def logTaskEvent(task, event, timestamp, duration=-1):
             taskLine = '\t'.join(repr(x) for x in (
                     [str(t) for t in targets],
                     [str(s) for s in sources],
-                    env.subst(str(executor), target = targets, source = sources))
+                    env.subst(str(executor), target=targets, source=sources))
                     )
         except BaseException, substErr:
             taskLine = 'Cannot get task representation: %r' % substErr

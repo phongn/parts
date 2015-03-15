@@ -71,6 +71,7 @@ def generate(env):
     #Backward compatiblity
     env['CXXVERSION']=env['GXX']['VERSION']  
 
+    env.Append(**env['GXX'].get('APPENDS', {}))
 
  # fix this up so we can control its printing to screen better.
     #api.output.print_msg( "Configured Tool %s\t for version <%s> target <%s>"%('g++',env['GXX']['VERSION'],env['TARGET_PLATFORM']))

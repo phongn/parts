@@ -178,8 +178,13 @@ def ChipArchitecture():
 
 
 class SystemPlatform(common.bindable):
-    def __init__(self,os=SCons.Platform.platform_default(),arch=ChipArchitecture()):
+    def __init__(self,os=None,arch=ChipArchitecture()):
         if __debug__: logInstanceCreation(self)
+        if not os:
+            if 'freebsd' in sys.platform.lower():
+                os = 'freebsd'
+            else:
+                os = SCons.Platform.platform_default()
 
         if arch == ChipArchitecture():
             platform_str = os
