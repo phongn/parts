@@ -60,6 +60,10 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
         '-DCMAKE_INSTALL_LIBDIR=lib '
         '-DCMAKE_INSTALL_BINDIR=bin '
         '-DCMAKE_BUILD_TYPE=Release '
+        '-DCMAKE_INCLUDE_FLAG_C="$CMAKE_INCLUDE_FLAG" '
+        '-DCMAKE_INCLUDE_FLAG_CXX="$CMAKE_INCLUDE_FLAG" '
+        '-DCMAKE_INCLUDE_SYSTEM_FLAG_C="$CMAKE_INCLUDE_SYSTEM_FLAG" '
+        '-DCMAKE_INCLUDE_SYSTEM_FLAG_CXX="$CMAKE_INCLUDE_SYSTEM_FLAG" '
         +cflags+
         '-DCMAKE_SHARED_LINKER_FLAGS="$LINKFLAGS $_RUNPATH $_ABSRPATHLINK" '
         '-DCMAKE_EXE_LINKER_FLAGS="$LINKFLAGS $_RUNPATH $_ABSRPATHLINK" '
@@ -144,3 +148,5 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
 api.register.add_method(CMake)
 
 api.register.add_variable('CMAKE_DESTDIR', '${ABSPATH("$BUILD_DIR/destdir")}', 'Defines location to install bits from the CMake')
+api.register.add_variable('CMAKE_INCLUDE_FLAG', '$INCPREFIX', 'Define the include flag for current compiler toolchain')
+api.register.add_variable('CMAKE_INCLUDE_SYSTEM_FLAG', '$SYSINCPREFIX', 'Define the system include flag for current compiler toolchain')
