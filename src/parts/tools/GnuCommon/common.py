@@ -19,6 +19,7 @@ def makeStdBinutilsTool(env, name, compareNames):
         tool = env.get('BINUTILS', {}).get('AR', env['AR'])
         env['AR'] = parts.tools.Common.toolvar(tool, ['ar'], env)
     '''
+    import parts.tools.Common
     try:
         tool = env.get('BINUTILS', {}).get(name, env[name])
     except KeyError:
