@@ -452,6 +452,7 @@ def RpmPackage_wrapper(env, target, source=None, **kw):
         api.output.warning_msgf("{} is not a known defined TARGET_ARCH", target_arch)
         del kw["TARGET_ARCH"]
 
+    env_org = env
     env = env.Clone(**kw)
 
     if target_arch:
@@ -472,7 +473,23 @@ def RpmPackage_wrapper(env, target, source=None, **kw):
     env['TARGET_ARCH'] = rpmarch(env, env['TARGET_ARCH'])
     api.output.verbose_msgf(['rpm'], "mapping architecture to rpm value of: {0}", env['TARGET_ARCH'])
 
-    return env._RPMPackage(target, source, **kw)
+    ret = env._RPMPackage(target, source, **kw)
+
+    # If a dist path is configured, also place the built rpm(s) there. This lets
+    # the destination be controlled by a single variable (e.g. set once in a
+    # parts-site) instead of a hand-written `env.CCopy(...)` after every
+    # RPMPackage call. Empty by default, so it is purely opt-in.
+    #
+    # The copy is also put under the part's `::dist` alias, so it can be built
+    # on its own. It is not added to the return value: that stays the rpm
+    # itself, so a part that still copies `out` somewhere by hand copies one
+    # file, not the rpm and this copy of it under the same name.
+    dist_path = env.subst('$RPM_PACKAGE_DIST_PATH')
+    if dist_path:
+        dist_copy = env.CCopy(dist_path, ret)
+        env_org.Alias("${PART_SECTION}::alias::${PART_ALIAS}::dist", dist_copy)
+
+    return ret
 
 
 api.register.add_method(RpmPackage_wrapper, 'RPMPackage')
@@ -517,3 +534,10 @@ api.register.add_bool_variable(
     'When set, the rpm scanner stages each rpath-rewritten file under its '
     'install-relative subpath, so same-named files installed to different '
     'paths do not collide during the rpath rewrite')
+
+api.register.add_variable(
+    'RPM_PACKAGE_DIST_PATH', '',
+    'If set, RPMPackage copies each built .rpm into this directory. Lets the '
+    'collection point be set in one place (e.g. a parts-site) instead of a '
+    'per-part CCopy. Empty disables the copy. Following the _sdk/_build/_scm '
+    'convention, "#_dist" is the recommended value.')
