@@ -1,0 +1,5 @@
+Import('*')
+PartName("foo")
+# installs FooConfig.cmake to lib/cmake/foo/ and exports the SDK cmake dir as
+# CMAKE_PREFIX_PATH for dependents
+env.InstallCMakeConfig('FooConfig.cmake', sub_dir='foo')
