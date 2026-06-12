@@ -1,0 +1,109 @@
+'''
+Git setup items for gold tests, providing Test.Setup.Git.* helpers that
+mirror the built-in Test.Setup.Svn.* items.
+
+autest only ships an Svn setup item (autest/setupitems/svn.py), but several
+vcs gold tests drive on-the-fly git repositories via Test.Setup.Git. This
+extension supplies the missing pieces:
+
+    Test.Setup.Git.CreateRepository(name)
+        Create an empty git repository under the sandbox and export its
+        absolute path as ${NAME_GIT_PATH}. parts' VcsGit builds a file
+        protocol clone URL as "file:///${GIT_SERVER}", so the exported value
+        is the bare repository path (no file:// prefix).
+
+    Test.Setup.Git.ImportDirectory(name, dir_to_add, sub_dir='')
+        Populate a previously created repository with the contents of a
+        directory relative to the test file, committing on the "master"
+        branch (parts' default clone uses -b master).
+
+SetupItem, AddSetupItem and SetupError are injected into the extension's
+namespace by autest's autest-site loader.
+'''
+
+import os
+import shutil
+
+
+class CreateRepository(SetupItem):
+    def __init__(self, name):
+        self._name = name
+        super(CreateRepository, self).__init__(itemname="Create Git repository")
+
+    def setup(self):
+        repo_path = os.path.abspath(
+            os.path.join(self.SandBoxDir, self._name)).replace('\\', '/')
+        # parts' VcsGit (protocol="file") clones from "file:///${GIT_SERVER}",
+        # so expose the bare repository path rather than a file:// URL.
+        self.Env['{0}_GIT_PATH'.format(self._name.upper())] = repo_path
+
+        if os.path.exists(repo_path):
+            raise SetupError('Repository at "%s" already exists' % repo_path)
+
+        os.makedirs(repo_path)
+
+        # -c init.defaultBranch=master keeps the initial branch named "master"
+        # regardless of the host git's configured default, which both the gold
+        # output and parts' default clone (-b master) depend on.
+        cmd_str = 'git -C "{0}" -c init.defaultBranch=master init'.format(repo_path)
+        if self.RunCommand(cmd_str):
+            raise SetupError('Setup command "{0}" Failed'.format(cmd_str))
+
+    def cleanup(self):
+        pass
+
+
+class ImportDirectory(SetupItem):
+    def __init__(self, name, dir_to_add, sub_dir=''):
+        self._name = name
+        self._dir_to_add = dir_to_add
+        self._sub_dir = sub_dir
+        super(ImportDirectory, self).__init__(itemname="Import Git repository")
+
+    def setup(self):
+        path_to_add = os.path.abspath(
+            os.path.join(self.TestFileDir, self._dir_to_add))
+        try:
+            repo_path = self.Env['{0}_GIT_PATH'.format(self._name.upper())]
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            # error if we don't have a value for this.. meaning they did not
+            # create or define a repository
+            raise SetupError(
+                'Git repository "{0}" does not exist for importing'.format(
+                    self.ItemName))
+
+        dest = repo_path
+        if self._sub_dir and self._sub_dir not in ('.', ''):
+            dest = os.path.join(repo_path, self._sub_dir)
+
+        # copy the source tree into the repository work area
+        for entry in os.listdir(path_to_add):
+            src = os.path.join(path_to_add, entry)
+            dst = os.path.join(dest, entry)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst)
+            else:
+                os.makedirs(dest, exist_ok=True)
+                shutil.copy2(src, dst)
+
+        # stage and commit on master. user.* and commit.gpgsign are passed
+        # inline so the commit succeeds even when the environment has no global
+        # git identity configured (or has signing enabled).
+        commit = (
+            'git -C "{0}" '
+            '-c user.email=autest@example.com -c user.name=autest '
+            '-c commit.gpgsign=false '
+            'commit -m "import {1}"'.format(repo_path, self._name)
+        )
+        for cmd_str in ['git -C "{0}" add -A'.format(repo_path), commit]:
+            if self.RunCommand(cmd_str):
+                raise SetupError('Setup command "{0}" Failed'.format(cmd_str))
+
+    def cleanup(self):
+        pass
+
+
+AddSetupItem(CreateRepository, ns="Git")
+AddSetupItem(ImportDirectory, ns="Git")
