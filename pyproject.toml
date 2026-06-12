@@ -31,7 +31,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "nox",
-    "autest",
+    "autest >= 1.10.5",
     "pytest",
     "pylama",
     "mypy",
@@ -43,7 +43,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"] 
+where = ["src"]
 
 [tool.setuptools.dynamic]
 version = {attr = "parts.parts_version._PARTS_VERSION"}
