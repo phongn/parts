@@ -40,15 +40,17 @@ class git(base):
         '_protocol',
         '_patchfile',
         '_istag',
+        '_username',
     ]
     gitpath = None  # the path to the git program to run
 
-    def __init__(self, repository, server=None, protocol=None, branch=None, tag=None, revision=None, patchfile=None, use_cache=None, **kw):
+    def __init__(self, repository, server=None, protocol=None, branch=None, tag=None, revision=None, patchfile=None, use_cache=None, username=None, **kw):
         '''Constructor call for the GIT object
         @param repository The repository or path from server under the server to get our data from
         @param server The server to connect to
         @param branch The optional branch to use after the clone, or on an update
         @param remote_branches Optional remote branches to add to the clone for tracking
+        @param username Optional username for the git-ssh protocol (defaults to $GIT_DEFAULT_SSH_USER)
         '''
         self.__branch = branch if branch is not None else ''
         self.__revision = revision
@@ -56,6 +58,7 @@ class git(base):
         self._completed = None
         self._protocol = protocol
         self._patchfile = patchfile
+        self._username = username
 
         if repository.endswith('.git'):
             repository = repository[:-4]
@@ -109,7 +112,7 @@ class git(base):
         if not self._full_path:
             protocol = self._protocol if self._protocol else self._env['GIT_PROTOCOL']
             if protocol == "git":
-                self._full_path = f"git@{self.Server}:{self.Repository}.git"
+                self._full_path = f"{self.Username}@{self.Server}:{self.Repository}.git"
             elif protocol == "https":
                 self._full_path = f"https://{self.Server}/{self.Repository}.git"
             elif protocol == "file":
@@ -132,6 +135,13 @@ class git(base):
         if ret.endswith("/"):
             ret = ret[:-1]
         return ret
+
+    @property
+    def Username(self):
+        '''Username for the git-ssh URL: the per-extern value if provided, else $GIT_DEFAULT_SSH_USER.'''
+        if self._username is not None:
+            return self._username
+        return self._env['GIT_DEFAULT_SSH_USER']
 
     def CreateMirrorAction(self):
         '''
@@ -819,6 +829,7 @@ api.register.add_variable('GIT_SERVER', '', '')
 api.register.add_variable('SCM_GIT_DIR', '$VCS_GIT_DIR', '')
 api.register.add_variable('VCS_GIT_DIR', '${CHECK_OUT_ROOT}/${PART_ALIAS}', '')
 api.register.add_variable('GIT_DEFAULT_BRANCH', '', '')
+api.register.add_variable('GIT_DEFAULT_SSH_USER', 'git', 'The default username for git-ssh (git@) clone URLs')
 api.register.add_bool_variable('GIT_IGNORE_UNTRACKED', False, 'Controls if we should care about untracked files when updating')
 api.register.add_enum_variable('GIT_PROTOCOL', 'https', '', ['https', 'git', 'file', 'local'])
 
