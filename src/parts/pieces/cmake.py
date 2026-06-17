@@ -98,6 +98,12 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
         '-DCMAKE_CXX_COMPILER=$CXX '
         '-DCMAKE_C_COMPILER=$CC '
         '$_CMAKE_GENERATOR_ARG '
+        # Optional compiler launcher (e.g. ccache/sccache). Routed through CMake's
+        # COMPILER_LAUNCHER rather than baked into CMAKE_*_COMPILER so the compiler
+        # identity/version probe is unaffected; works for both Make and Ninja. Only
+        # emitted when $CC_LAUNCHER/$CXX_LAUNCHER are non-empty.
+        '${define_if("$CC_LAUNCHER","-DCMAKE_C_COMPILER_LAUNCHER=")}$CC_LAUNCHER '
+        '${define_if("$CXX_LAUNCHER","-DCMAKE_CXX_COMPILER_LAUNCHER=")}$CXX_LAUNCHER '
         '$CMAKE_ARGS'
                    )
     
