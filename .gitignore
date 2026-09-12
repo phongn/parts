@@ -15,4 +15,5 @@ build/
 
 src/scons_parts.egg-info/
 uv.lock
-_sandbox/
+*.log
+_*/
