@@ -19,8 +19,8 @@ def generate(env):
     # $CCARCHFLAGS) that the parts C++ command already gets. c++.py does not call
     # the base generate(), which is why its SetDefault(CXXCOM) works; this brings
     # the C path in line with C++.
-    env['CCCOM'] = '${TEMPFILE("$CC_LAUNCHER $CC -o $TARGET -c $CFLAGS $CCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS","$CCCOMSTR")}'
-    env['SHCCCOM'] = '${TEMPFILE("$CC_LAUNCHER $SHCC -o $TARGET -c $SHCFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS","$SHCCCOMSTR")}'
+    env['CCCOM'] = '$CC_LAUNCHER ${TEMPFILE("$CC -o $TARGET -c $CFLAGS $CCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS","$CCCOMSTR")}'
+    env['SHCCCOM'] = '$CC_LAUNCHER ${TEMPFILE("$SHCC -o $TARGET -c $SHCFLAGS $SHCCFLAGS $_CCCOMCOM $SOURCES $CCARCHFLAGS","$SHCCCOMSTR")}'
 
     env.SetDefault(SYSINCPREFIX='$INCPREFIX')
     env.SetDefault(SYSINCSUFFIX='$INCSUFFIX')

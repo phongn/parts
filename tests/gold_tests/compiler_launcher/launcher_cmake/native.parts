@@ -1,3 +1,5 @@
 Import('*')
 env['CC_LAUNCHER'] = env.File('#launch.sh').abspath
+env['CXX_LAUNCHER'] = env.File('#launch.sh').abspath
 env.InstallBin(env.Program('native', 'native.c'))
+env.InstallBin(env.Program('native_cxx', 'native_cxx.cpp'))

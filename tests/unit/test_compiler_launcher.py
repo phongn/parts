@@ -10,9 +10,10 @@ are prefixed to the *compiler* invocation across all three build surfaces:
   * AutoMake -> folded into CC=/CXX= passed to configure (pieces/automake.py),
     since autotools has no launcher concept.
 
-Both default to empty, so they add nothing to any command line unless set. The
-real cached-compile behavior with an actual ccache is out of scope here; this
-just pins the wiring and the empty-default no-op.
+Both default to empty, so they add nothing to any command line unless set.
+These tests pin the defaults and the native C*COM wiring. The CMake and
+AutoMake paths are covered by the compiler_launcher gold tests, which build
+through a logging launcher.
 """
 import os
 
@@ -42,16 +43,17 @@ class TestDefaults:
         assert env['CC_LAUNCHER'] == ''
         assert env['CXX_LAUNCHER'] == ''
 
-    @pytest.mark.parametrize('com,fragment', [
-        ('CCCOM', '$CC_LAUNCHER $CC'),
-        ('SHCCCOM', '$CC_LAUNCHER $SHCC'),
-        ('CXXCOM', '$CXX_LAUNCHER $CXX'),
-        ('SHCXXCOM', '$CXX_LAUNCHER $SHCXX'),
+    @pytest.mark.parametrize('com,prefix', [
+        ('CCCOM', '$CC_LAUNCHER ${TEMPFILE("$CC '),
+        ('SHCCCOM', '$CC_LAUNCHER ${TEMPFILE("$SHCC '),
+        ('CXXCOM', '$CXX_LAUNCHER ${TEMPFILE("$CXX '),
+        ('SHCXXCOM', '$CXX_LAUNCHER ${TEMPFILE("$SHCXX '),
     ])
-    def test_launcher_leads_compiler_in_com(self, env, com, fragment):
-        # the launcher must sit immediately before the compiler token, so an empty
-        # launcher is a clean no-op and a set one prefixes the compile
-        assert fragment in env[com]
+    def test_launcher_leads_compiler_outside_tempfile(self, env, com, prefix):
+        # the launcher goes in front of TEMPFILE, not inside it: a response file
+        # keeps only the first word of the command on the command line, so a
+        # launcher inside it would run with just @file and no compiler
+        assert env[com].startswith(prefix)
 
 
 class TestNativeApplied:
@@ -77,41 +79,3 @@ class TestNativeApplied:
         env['CXX_LAUNCHER'] = 'ccache'
         assert env.subst('$CC_LAUNCHER $SHCC').split()[0] == 'ccache'
         assert env.subst('$CXX_LAUNCHER $SHCXX').split()[0] == 'ccache'
-
-
-# The exact fragments as composed in pieces/cmake.py and pieces/automake.py.
-CMAKE_C_FRAG = '${define_if("$CC_LAUNCHER","-DCMAKE_C_COMPILER_LAUNCHER=")}$CC_LAUNCHER'
-CMAKE_CXX_FRAG = '${define_if("$CXX_LAUNCHER","-DCMAKE_CXX_COMPILER_LAUNCHER=")}$CXX_LAUNCHER'
-AUTOMAKE_FRAG = 'CC="$CC_LAUNCHER $CC" CXX="$CXX_LAUNCHER $CXX"'
-
-
-class TestCMakeArgs:
-    def test_empty_emits_no_launcher_flag(self, env):
-        assert env.subst(CMAKE_C_FRAG).strip() == ''
-        assert env.subst(CMAKE_CXX_FRAG).strip() == ''
-
-    def test_set_emits_compiler_launcher_flag(self, env):
-        env['CC_LAUNCHER'] = 'ccache'
-        env['CXX_LAUNCHER'] = 'ccache'
-        assert env.subst(CMAKE_C_FRAG).strip() == '-DCMAKE_C_COMPILER_LAUNCHER=ccache'
-        assert env.subst(CMAKE_CXX_FRAG).strip() == '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache'
-
-    def test_compiler_id_arg_stays_clean(self, env):
-        # the launcher must NOT leak into CMAKE_*_COMPILER (would break the probe)
-        env['CC_LAUNCHER'] = 'ccache'
-        assert env.subst('-DCMAKE_C_COMPILER=$CC') == '-DCMAKE_C_COMPILER=' + env.subst('$CC')
-
-
-class TestAutoMakeArgs:
-    def test_empty_launcher_leaves_compiler_bare(self, env):
-        # CC=" cc" word-splits to just the compiler; configure handles it
-        out = env.subst(AUTOMAKE_FRAG)
-        assert 'ccache' not in out and 'sccache' not in out
-        assert 'CC="' in out and 'CXX="' in out
-
-    def test_set_launcher_folds_into_cc(self, env):
-        env['CC_LAUNCHER'] = 'ccache'
-        env['CXX_LAUNCHER'] = 'ccache'
-        out = env.subst(AUTOMAKE_FRAG)
-        assert 'CC="ccache ' in out
-        assert 'CXX="ccache ' in out
