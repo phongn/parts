@@ -133,12 +133,16 @@ def AutoMake(env, autoreconf="autoreconf", autoreconf_args="-if", configure="con
     #env['_ABSLIBDIRFLAGS'] = '$( ${_concat(LIBDIRPREFIX, LIBPATH, LIBDIRSUFFIX, __env__, ABSDir, TARGET, SOURCE)} $)'
     if auto_configure_args:
         # $CC_LAUNCHER/$CXX_LAUNCHER (e.g. ccache/sccache) are folded into CC/CXX
-        # since autotools has no launcher concept; empty by default. CC="ccache gcc"
-        # is the standard ccache+autotools idiom and configure's probes handle it.
+        # since autotools has no launcher concept. CC="ccache gcc" is the standard
+        # ccache+autotools idiom and configure's probes handle it. Only when one is
+        # set: an empty launcher must leave the argument exactly CC="$CC", or every
+        # AutoMake part would reconfigure once for a changed command line.
+        env["_AUTO_MAKE_CC"] = "$CC_LAUNCHER $CC" if env.subst("$CC_LAUNCHER") else "$CC"
+        env["_AUTO_MAKE_CXX"] = "$CXX_LAUNCHER $CXX" if env.subst("$CXX_LAUNCHER") else "$CXX"
         env["_CONFIGURE_ARGS"] = '--prefix=$CONFIGURE_PREFIX\
             ${define_if("$PKG_CONFIG_PATH","PKG_CONFIG_PATH=")}${MAKEPATH("$PKG_CONFIG_PATH")}\
-            CC="$CC_LAUNCHER $CC"\
-            CXX="$CXX_LAUNCHER $CXX"\
+            CC="$_AUTO_MAKE_CC"\
+            CXX="$_AUTO_MAKE_CXX"\
             CPPFLAGS="$CCFLAGS $CPPFLAGS $_CPPDEFFLAGS $AUTO_MAKE_INCLUDE_FLAGS"\
             CFLAGS="$CCFLAGS $CFLAGS"\
             LDFLAGS="$LINKFLAGS $_RUNPATH $_ABSRPATHLINK $_ABSLIBDIRFLAGS"\

@@ -4,4 +4,5 @@ PartName('cm')
 @build
 def source(env):
     env['CC_LAUNCHER'] = env.File('#launch.sh').abspath
+    env['CXX_LAUNCHER'] = env.File('#launch.sh').abspath
     env.CMake()
