@@ -85,9 +85,12 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
     else:
         cmake_file = "${CHECK_OUT_DIR}/CMakeLists.txt"
 
-    # generate the build files
+    # generate the build files. The target is the file the generator writes at
+    # the top of the build tree: build.ninja for Ninja, Makefile otherwise. A
+    # target that is never written makes every build configure again.
+    generator_file = "build.ninja" if "ninja" in env.subst("$CMAKE_GENERATOR").lower() else "Makefile"
     out = env.CCommand(
-        [build_dir.File("Makefile")],
+        [build_dir.File(generator_file)],
         [cmake_file],
         [
             # delete the directory as it can contains cached data
@@ -133,7 +136,10 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
         ],
         out + src_files,
         [
-            f"cd ${{SOURCE.dir}} ; $CMAKE --build . --config $CMAKE_BUILD_TYPE --target {targets} -- $CMAKE_DESTDIR_FLAG $_CMAKE_MAKE_ARGS"
+            # DESTDIR goes in the environment, where cmake's install step reads
+            # it with any generator; after "--" it is a make variable, which
+            # Ninja rejects as an unknown target
+            f"cd ${{SOURCE.dir}} ; $CMAKE_DESTDIR_FLAG $CMAKE --build . --config $CMAKE_BUILD_TYPE --target {targets} -- $_CMAKE_MAKE_ARGS"
         ],
         source_scanner=scanners.NullScanner,
         target_factory=env.Dir,
