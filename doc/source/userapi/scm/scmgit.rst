@@ -35,6 +35,11 @@
     :param Optional[str] username: The user in the clone URL of the ``git`` (ssh)
             protocol, ``<username>@<server>:<repository>.git``.
             If not provided the value of ``$GIT_DEFAULT_SSH_USER`` will be used.
+            An empty value leaves ``<username>@`` out of the URL, so the ``User``
+            from the ssh configuration applies.
+            A user other than ``git`` gets its own mirror and extern checkout,
+            since on a plain ssh server the same path can name a different
+            repository for each user.
             The other protocols ignore it.
     :param **kw: This value is ignored and provided as a way to help
             with future compatibility.
@@ -205,8 +210,8 @@ ScmGit can be control via a number of variables.
 
 .. py:data:: GIT_DEFAULT_SSH_USER
 
-    The user in the clone URL of the ``git`` (ssh) protocol when an extern does
-    not pass ``username``.
+    The user in the clone URL of the ``git`` (ssh) protocol when ScmGit is not
+    given ``username``. An empty value leaves the user out of the URL.
     Defaults to ``git``
 
 .. py:data:: GIT_TAG_ARGS

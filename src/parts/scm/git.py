@@ -104,7 +104,10 @@ class git(base):
 
     @property
     def MirrorPath(self) -> Path:
-        return Path(self._env.subst("$SCM_GIT_CACHE_DIR")) / self.Server / f"{self.Repository}.git"
+        server = self.Server
+        if (user := self._ssh_user_key) is not None:
+            server = f"{user}@{server}"
+        return Path(self._env.subst("$SCM_GIT_CACHE_DIR")) / server / f"{self.Repository}.git"
 
     def _branch_changed(self, data):
         return data['branch'] != f"{self.__branch}...origin/{self.__branch}" and self.__branch not in data['tags']
@@ -120,7 +123,10 @@ class git(base):
         if not self._full_path:
             protocol = self._protocol if self._protocol else self._env['GIT_PROTOCOL']
             if protocol == "git":
-                self._full_path = f"{self.Username}@{self.Server}:{self.Repository}.git"
+                # an empty user leaves it out of the URL, so the User from the
+                # ssh configuration applies
+                user = f"{self.Username}@" if self.Username else ""
+                self._full_path = f"{user}{self.Server}:{self.Repository}.git"
             elif protocol == "https":
                 self._full_path = f"https://{self.Server}/{self.Repository}.git"
             elif protocol == "file":
@@ -146,10 +152,40 @@ class git(base):
 
     @property
     def Username(self):
-        '''Username for the git-ssh URL: the per-extern value if provided, else $GIT_DEFAULT_SSH_USER.'''
+        '''Username for the git-ssh URL: the username given to ScmGit, else $GIT_DEFAULT_SSH_USER.'''
         if self._username is not None:
             return self._username
-        return self._env['GIT_DEFAULT_SSH_USER']
+        # None counts as empty: no user in the URL
+        return self._env['GIT_DEFAULT_SSH_USER'] or ''
+
+    @property
+    def _ssh_user_key(self):
+        '''The ssh user, when it is part of what identifies the repository.
+
+        With the git protocol a different user can reach a different repository:
+        on a plain ssh server a relative path resolves under that user's home.
+        So a user other than "git", the one the URL always had before it could
+        be chosen, keeps its own mirror and extern checkout. "git" and the other
+        protocols return None, which leaves existing mirrors and extern
+        checkouts where they are.
+        '''
+        protocol = self._protocol if self._protocol else self._env['GIT_PROTOCOL']
+        if protocol != "git" or self.Username == "git":
+            return None
+        return self.Username
+
+    def _request_hash(self):
+        '''Hash of what the extern checkout directory is shared by.'''
+        md5 = hashlib.md5()
+        md5.update(self.Server.encode())
+        md5.update(self.Repository.encode())
+        if self.__revision:
+            md5.update(self.__revision.encode())
+        else:
+            md5.update(self.__branch.encode())
+        if (user := self._ssh_user_key) is not None:
+            md5.update(f"user={user}".encode())
+        return md5.hexdigest()
 
     def CreateMirrorAction(self):
         '''
@@ -605,14 +641,7 @@ class git(base):
 
         # define a request hash that is used to help with making extern checkout
         # directories more sharable.
-        md5 = hashlib.md5()
-        md5.update(self.Server.encode())
-        md5.update(self.Repository.encode())
-        if self.__revision:
-            md5.update(self.__revision.encode())
-        else:
-            md5.update(self.__branch.encode())
-        request_hash = md5.hexdigest()
+        request_hash = self._request_hash()
 
         env_key = 'SCM_EXTERN' if self.isExtern else "SCM"
         self._env[env_key] = common.namespace(
