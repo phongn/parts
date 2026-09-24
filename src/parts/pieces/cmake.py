@@ -11,6 +11,24 @@ from SCons.Node.FS import Dir
 from SCons.Script.SConscript import SConsEnvironment
 
 
+def configure_output(generator: str) -> str:
+    '''The file the configure step is tracked by, for a CMake generator name.
+
+    It has to be a file the generator writes, or SCons finds the target missing
+    and every build configures again. The default and the Makefile generators
+    write Makefile and the Ninja generators build.ninja, and those stay the
+    targets so existing build trees do not configure again. Every other
+    generator (Xcode, Visual Studio, ...) is tracked by CMakeCache.txt, which
+    configure always writes.
+    '''
+    name = generator.lower()
+    if not name or "makefiles" in name:
+        return "Makefile"
+    if "ninja" in name:
+        return "build.ninja"
+    return "CMakeCache.txt"
+
+
 def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,Dir]=None, auto_scanner={}, ignore:List[str]=[], top_level:bool=True, hide_c_flags:bool=False, targets:str="install", **kw):
     '''
         prefix - assumed install default location
@@ -90,12 +108,9 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
     else:
         cmake_file = "${CHECK_OUT_DIR}/CMakeLists.txt"
 
-    # generate the build files. The target is the file the generator writes at
-    # the top of the build tree: build.ninja for Ninja, Makefile otherwise. A
-    # target that is never written makes every build configure again.
-    generator_file = "build.ninja" if "ninja" in env.subst("$CMAKE_GENERATOR").lower() else "Makefile"
+    # generate the build files
     out = env.CCommand(
-        [build_dir.File(generator_file)],
+        [build_dir.File(configure_output(env.subst("$CMAKE_GENERATOR")))],
         [cmake_file],
         [
             # delete the directory as it can contains cached data

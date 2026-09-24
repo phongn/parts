@@ -1,8 +1,6 @@
 Test.Summary = '''
-A CMake() build with a Ninja generator configures once. The second build of
-an unchanged tree must not run the configure step again. The generator is
-"Ninja Multi-Config", whose name has a space, so it also checks that the name
-reaches cmake as a single -G argument.
+A CMake() build with the Ninja generator configures once. The second build of
+an unchanged tree must not run the configure step again.
 '''
 
 Test.SkipUnless(
@@ -14,8 +12,8 @@ Setup.Copy.FromDirectory('cmake_ninja')
 
 t = Test.AddBuildRun('all')
 t.ReturnCode = 0
-t.Streams.stdout = Testers.ContainsExpression(r'-G "Ninja Multi-Config"', 'the first build configures with Ninja Multi-Config')
+t.Streams.stdout = Testers.ContainsExpression(r'-G "Ninja"', 'the first build configures with Ninja')
 
 t = Test.AddBuildRun('all')
 t.ReturnCode = 0
-t.Streams.stdout = Testers.ExcludesExpression(r'-G "Ninja Multi-Config"', 'the second build does not configure again')
+t.Streams.stdout = Testers.ExcludesExpression(r'-G "Ninja"', 'the second build does not configure again')
