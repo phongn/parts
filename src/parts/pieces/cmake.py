@@ -1,6 +1,7 @@
 # an enhanced Command function
 # that also accepts target scanners
 
+import shlex
 from typing import List, Dict, Any, Optional, Union
 import parts.api as api
 import SCons.Builder
@@ -73,6 +74,18 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
     # not change.
     env['_CMAKE_GENERATOR_ARG'] = '-G "$CMAKE_GENERATOR"' if env.subst("$CMAKE_GENERATOR") else ''
 
+    # Optional compiler launchers (e.g. ccache/sccache), routed through CMake's
+    # COMPILER_LAUNCHER rather than baked into CMAKE_*_COMPILER so the compiler
+    # identity/version probe is unaffected. CMake takes the launcher as a
+    # ;-separated list, the program and then its arguments; shell-style
+    # splitting keeps a quoted path with a space in it as one word. Only when
+    # one is set, for the same reason as the generator. Like the generator, it
+    # is read here, when CMake() is called.
+    for lang, var in (('C', 'CC_LAUNCHER'), ('CXX', 'CXX_LAUNCHER')):
+        words = shlex.split(env.subst(f'${var}'))
+        env[f'_CMAKE_{lang}_LAUNCHER_ARG'] = \
+            f'-DCMAKE_{lang}_COMPILER_LAUNCHER="{";".join(words)}"' if words else ''
+
     
     cflags = '-DCMAKE_C_FLAGS="$CCFLAGS $CFLAGS" -DCMAKE_CXX_FLAGS="$CCFLAGS $CXXFLAGS" '
     if hide_c_flags:
@@ -98,12 +111,8 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
         '-DCMAKE_CXX_COMPILER=$CXX '
         '-DCMAKE_C_COMPILER=$CC '
         '$_CMAKE_GENERATOR_ARG '
-        # Optional compiler launcher (e.g. ccache/sccache). Routed through CMake's
-        # COMPILER_LAUNCHER rather than baked into CMAKE_*_COMPILER so the compiler
-        # identity/version probe is unaffected; works for both Make and Ninja. Only
-        # emitted when $CC_LAUNCHER/$CXX_LAUNCHER are non-empty.
-        '${define_if("$CC_LAUNCHER","-DCMAKE_C_COMPILER_LAUNCHER=")}$CC_LAUNCHER '
-        '${define_if("$CXX_LAUNCHER","-DCMAKE_CXX_COMPILER_LAUNCHER=")}$CXX_LAUNCHER '
+        '$_CMAKE_C_LAUNCHER_ARG '
+        '$_CMAKE_CXX_LAUNCHER_ARG '
         '$CMAKE_ARGS'
                    )
     
