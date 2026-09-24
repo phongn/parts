@@ -50,6 +50,11 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
     env.SetDefault(CMAKE='cmake')
     env['RUNPATHS'] = r'${GENRUNPATHS("\\$$$$$$$$ORIGIN")}'
 
+    # The generator goes to cmake as -G, quoted: most generator names have a
+    # space in them. Only when one is set, so the default configure command does
+    # not change.
+    env['_CMAKE_GENERATOR_ARG'] = '-G "$CMAKE_GENERATOR"' if env.subst("$CMAKE_GENERATOR") else ''
+
     
     cflags = '-DCMAKE_C_FLAGS="$CCFLAGS $CFLAGS" -DCMAKE_CXX_FLAGS="$CCFLAGS $CXXFLAGS" '
     if hide_c_flags:
@@ -74,7 +79,7 @@ def CMake(env:SConsEnvironment, prefix:str="$PACKAGE_ROOT", cmake_dir:Union[str,
         '-DCMAKE_EXE_LINKER_FLAGS="$LINKFLAGS $_RUNPATH $_ABSRPATHLINK" '
         '-DCMAKE_CXX_COMPILER=$CXX '
         '-DCMAKE_C_COMPILER=$CC '
-        '${define_if("$CMAKE_GENERATOR","-DCMAKE_GENERATOR=$CMAKE_GENERATOR")} '
+        '$_CMAKE_GENERATOR_ARG '
         '$CMAKE_ARGS'
                    )
     
@@ -164,7 +169,7 @@ api.register.add_method(CMake)
 api.register.add_variable('CMAKE_BUILDDIR', "$BUILD_DIR/$CMAKE_BUILDSUBDIR", 'Defines build directory for the CMake build')
 api.register.add_variable('CMAKE_BUILDSUBDIR', "build", 'Defines build subdirectory name for the CMake build')
 api.register.add_variable('CMAKE_BUILD_TYPE', "Release", 'CMAKE_BUILD_TYPE used for the configure and --build steps')
-api.register.add_variable('CMAKE_GENERATOR', '', 'If set, passed as -DCMAKE_GENERATOR (e.g. "Ninja"); empty uses cmake\'s default')
+api.register.add_variable('CMAKE_GENERATOR', '', 'If set, passed to cmake as -G (e.g. "Ninja", "Unix Makefiles"); empty uses cmake\'s default')
 api.register.add_variable('CMAKE_DESTDIR', '${ABSPATH("$BUILD_DIR/destdir")}', 'Defines location to install bits from the CMake')
 api.register.add_variable('CMAKE_INCLUDE_FLAG', '$INCPREFIX', 'Define the include flag for current compiler toolchain')
 api.register.add_variable('CMAKE_INCLUDE_SYSTEM_FLAG', '$SYSINCPREFIX', 'Define the system include flag for current compiler toolchain')

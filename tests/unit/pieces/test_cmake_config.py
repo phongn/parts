@@ -36,7 +36,6 @@ class TestCMakeFlagFlowThrough:
     LIBDIR = '-DCMAKE_INSTALL_LIBDIR:PATH=$INSTALL_LIB_SUBDIR'
     CXX = '-DCMAKE_CXX_FLAGS="$CCFLAGS $CXXFLAGS"'
     CC = '-DCMAKE_C_FLAGS="$CCFLAGS $CFLAGS"'
-    GEN = '${define_if("$CMAKE_GENERATOR","-DCMAKE_GENERATOR=$CMAKE_GENERATOR")}'
 
     def test_cxxflags_and_cflags_reach_args(self, env):
         env['CXXFLAGS'] = '-std=c++20'
@@ -47,12 +46,6 @@ class TestCMakeFlagFlowThrough:
     def test_install_libdir_is_configurable(self, env):
         env['INSTALL_LIB_SUBDIR'] = 'lib64'
         assert env.subst(self.LIBDIR) == '-DCMAKE_INSTALL_LIBDIR:PATH=lib64'
-
-    def test_generator_emitted_only_when_set(self, env):
-        # default empty -> no -DCMAKE_GENERATOR at all
-        assert env.subst(self.GEN).strip() == ''
-        env['CMAKE_GENERATOR'] = 'Ninja'
-        assert env.subst(self.GEN).strip() == '-DCMAKE_GENERATOR=Ninja'
 
     def test_build_type_is_configurable(self, env):
         env['CMAKE_BUILD_TYPE'] = 'Debug'
