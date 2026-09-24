@@ -63,15 +63,16 @@ class TestWindowsSearchPathSafety:
         monkeypatch.delenv('ALLUSERSPROFILE', raising=False)
         monkeypatch.delenv('APPDATA', raising=False)
         dirs = _dirs(monkeypatch, 'win32', 'wintools')
-        # nothing but the sconstruct, home and parts install locations
+        # nothing but the sconstruct, home and parts install locations, built
+        # from the fixture's roots so the separators match on any host
         home = os.path.expanduser('~')
         assert dirs == [
-            _p('/proj', 'parts-site', 'wintools'),
-            _p('/proj', '.parts-site', 'wintools'),
+            _p(glb.sconstruct_path, 'parts-site', 'wintools'),
+            _p(glb.sconstruct_path, '.parts-site', 'wintools'),
             _p(home, 'parts-site', 'wintools'),
             _p(home, '.parts-site', 'wintools'),
-            _p('/opt/parts', 'parts-site', 'wintools'),
-            _p('/opt/parts', 'wintools'),
+            _p(glb.parts_path, 'parts-site', 'wintools'),
+            _p(glb.parts_path, 'wintools'),
         ]
 
     def test_win32_uses_appdata_and_allusersprofile(self, resolver, monkeypatch):
