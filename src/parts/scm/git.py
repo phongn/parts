@@ -159,8 +159,8 @@ class git(base):
         Update an exiting mirror
         '''
 
-        strval = f'cd {self.MirrorPath} && git fetch --force'
-        cmd = f'cd {self.MirrorPath} && "{git.gitpath}" fetch --force'
+        strval = f'cd {self.MirrorPath} && git fetch --force ${{GIT_FETCH_ARGS}}'
+        cmd = f'cd {self.MirrorPath} && "{git.gitpath}" fetch --force ${{GIT_FETCH_ARGS}}'
         ret = [self._env.Action(cmd, strval)]
 
         return ret
