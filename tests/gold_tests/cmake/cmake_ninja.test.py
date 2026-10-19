@@ -3,6 +3,9 @@ A CMake() build with the Ninja generator configures once. The second build of
 an unchanged tree must not run the configure step again.
 '''
 
+# CMake() builds its configure and build steps as POSIX shell commands
+# ("cd ... ;", "DESTDIR=... cmake"), which cmd.exe cannot run
+Test.SkipIf(Condition.IsPlatform('windows'))
 Test.SkipUnless(
     Condition.HasProgram('cmake', 'cmake is required to run this build'),
     Condition.HasProgram('ninja', 'ninja is required to run this build'),

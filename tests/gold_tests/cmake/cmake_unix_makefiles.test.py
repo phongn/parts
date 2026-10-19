@@ -4,6 +4,9 @@ it, so it has to reach cmake as one quoted -G argument. The second build of an
 unchanged tree must not run the configure step again.
 '''
 
+# CMake() builds its configure and build steps as POSIX shell commands
+# ("cd ... ;", "DESTDIR=... cmake"), which cmd.exe cannot run
+Test.SkipIf(Condition.IsPlatform('windows'))
 Test.SkipUnless(
     Condition.HasProgram('cmake', 'cmake is required to run this build'),
     Condition.HasProgram('make', 'make is required to run this build'),
