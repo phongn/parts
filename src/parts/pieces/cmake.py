@@ -23,9 +23,15 @@ def launcher_definition(env, lang: str, launcher_var: str) -> str:
     split the word there, the whole argument is shell-quoted so quotes inside a
     word survive, and $ is escaped: the launcher is expanded here, so the
     command's own expansion must leave it as it is. Empty when no launcher is
-    set, so the configure command does not change for parts without one.
+    set, so the configure command does not change for parts without one. A
+    launcher that does not split, such as one with an unbalanced quote, is
+    reported as an error.
     '''
-    words = shlex.split(env.subst(f'${launcher_var}'))
+    value = env.subst(f'${launcher_var}')
+    try:
+        words = shlex.split(value)
+    except ValueError as e:
+        api.output.error_msg(f'{launcher_var} {value!r} cannot be split into words: {e}')
     if not words:
         return ''
     launcher = ';'.join(word.replace(';', r'\;') for word in words)

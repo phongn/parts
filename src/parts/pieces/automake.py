@@ -21,16 +21,20 @@ def compiler_assignment(env, var, launcher_var):
     configure splits $CC at whitespace and does not remove quotes, so no word
     of the launcher or the compiler can contain whitespace: a quoted word with
     a space in it fails configure's compiler probes. CMake() takes the
-    launcher as a list and has no such limit. With a launcher, the launcher
-    and the compiler are expanded here, the whole argument is shell-quoted so
-    it reaches configure as one argument, and $ is escaped so the command's
-    own expansion leaves it as it is. Without one it is exactly CC="$CC", as
-    it always was, so existing parts do not configure again.
+    launcher as a list, so there a word can contain whitespace. With a
+    launcher, the launcher and the compiler are expanded here, the whole
+    argument is shell-quoted so it reaches configure as one argument, and $ is
+    escaped so the command's own expansion leaves it as it is. Without a
+    launcher it is exactly CC="$CC", as it always was, so existing parts do
+    not configure again. It is the same when the compiler is empty, so
+    configure still finds one itself rather than taking the launcher alone as
+    the compiler.
     '''
     launcher = env.subst(f'${launcher_var}')
-    if not launcher:
+    compiler = env.subst(f'${var}')
+    if not launcher or not compiler:
         return f'{var}="${var}"'
-    return shlex.quote(f'{var}={launcher} {env.subst("$" + var)}').replace('$', '$$')
+    return shlex.quote(f'{var}={launcher} {compiler}').replace('$', '$$')
 
 
 def AutoMake(env, autoreconf="autoreconf", autoreconf_args="-if", configure="configure", prefix:str="$PACKAGE_ROOT", configure_args=[],

@@ -13,7 +13,9 @@ def generate(env):
     # In the compile commands it sits in front of TEMPFILE, since a response file
     # keeps only the first word on the command line, and inside $( $), so it is
     # not part of the signature: the compiler stays the command's implicit
-    # dependency, and turning a launcher on or off does not recompile.
+    # dependency, and turning a launcher on or off does not recompile. CMake()
+    # and AutoMake() parts do configure again, since there the launcher is part
+    # of the configure command.
     env.SetDefault(CC_LAUNCHER='')
 
     # Assign (not SetDefault): SCons.Tool.cc.generate() above already set

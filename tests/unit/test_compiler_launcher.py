@@ -127,6 +127,13 @@ class TestConfigureArguments:
         assert automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER') == 'CC="$CC"'
         assert automake_piece.compiler_assignment(env, 'CXX', 'CXX_LAUNCHER') == 'CXX="$CXX"'
 
+    def test_automake_launcher_without_a_compiler_is_unchanged(self, env):
+        # with no C++ compiler, configure finds one itself, as before; it must
+        # not get the launcher alone as the compiler
+        env['CXX'] = ''
+        env['CXX_LAUNCHER'] = 'ccache'
+        assert automake_piece.compiler_assignment(env, 'CXX', 'CXX_LAUNCHER') == 'CXX="$CXX"'
+
     # configure splits CC at whitespace and does not remove quotes, so the
     # quoted words with spaces in the next two tests fail its compiler probes
     # (see compiler_assignment). They pin only that the argument stays one
@@ -164,6 +171,19 @@ class TestConfigureArguments:
         arg = cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
         # CMake reads \; as a ; in the word, not as a list separator
         assert _as_run(env, arg) == [r'-DCMAKE_C_COMPILER_LAUNCHER=env;CCACHE_DIR=/cache/a\;b;ccache']
+
+    def test_cmake_launcher_that_does_not_split_is_reported(self, env, monkeypatch):
+        reported = []
+
+        def fake_error_msg(msg, **kw):
+            reported.append(msg)
+            raise RuntimeError('reported')
+
+        monkeypatch.setattr(cmake_piece.api.output, 'error_msg', fake_error_msg)
+        env['CC_LAUNCHER'] = "ccache --opt=it's"
+        with pytest.raises(RuntimeError):
+            cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
+        assert 'CC_LAUNCHER' in reported[0] and "it's" in reported[0]
 
     def test_cmake_launcher_dollar_is_expanded_once(self, env):
         env['CC_LAUNCHER'] = 'env CCACHE_DIR=$$CC ccache'
