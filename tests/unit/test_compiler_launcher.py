@@ -11,15 +11,18 @@ are prefixed to the *compiler* invocation across all three build surfaces:
     since autotools has no launcher concept.
 
 Both default to empty, so they add nothing to any command line unless set.
-These tests pin the defaults and the native C*COM wiring. The CMake and
-AutoMake paths are covered by the compiler_launcher gold tests, which build
-through a logging launcher.
+These tests pin the defaults, the native C*COM wiring, and the configure
+arguments AutoMake() and CMake() build from a launcher. The compiler_launcher
+gold tests build all three paths through a logging launcher.
 """
 import os
+import shlex
 
 import pytest
 import SCons.Action
 
+import parts.pieces.automake as automake_piece
+import parts.pieces.cmake as cmake_piece
 import parts.settings as parts_settings
 
 
@@ -109,3 +112,50 @@ class TestNativeApplied:
         env['CC_LAUNCHER'] = env.WhereIs('sh')
         deps = SCons.Action.Action('$CCCOM').get_implicit_deps(target, source, env)
         assert [str(d) for d in deps] == [str(env.File(compiler))]
+
+
+def _as_run(env, arg):
+    # what the shell receives: SCons expands the command, then sh splits it
+    return shlex.split(env.subst(arg))
+
+
+class TestConfigureArguments:
+    """The launcher arguments AutoMake() and CMake() add to their configure step."""
+
+    def test_automake_without_a_launcher_is_unchanged(self, env):
+        # exactly what the configure command always had, so no part reconfigures
+        assert automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER') == 'CC="$CC"'
+        assert automake_piece.compiler_assignment(env, 'CXX', 'CXX_LAUNCHER') == 'CXX="$CXX"'
+
+    def test_automake_launcher_quotes_reach_configure_whole(self, env):
+        env['CC_LAUNCHER'] = 'env CCACHE_DIR="two words" ccache'
+        arg = automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER')
+        # one shell word, with the launcher's own quotes intact
+        assert _as_run(env, arg) == [f'CC=env CCACHE_DIR="two words" ccache {env.subst("$CC")}']
+
+    def test_automake_quotes_in_the_compiler_reach_configure_whole(self, env):
+        env['CC'] = "gcc -DX='a b'"
+        env['CC_LAUNCHER'] = 'ccache'
+        arg = automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER')
+        assert _as_run(env, arg) == ["CC=ccache gcc -DX='a b'"]
+
+    def test_automake_launcher_dollar_is_expanded_once(self, env):
+        # $$ is a literal $ in a construction variable, here as anywhere
+        env['CC_LAUNCHER'] = 'env CCACHE_DIR=$$CC ccache'
+        arg = automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER')
+        assert _as_run(env, arg) == [f'CC=env CCACHE_DIR=$CC ccache {env.subst("$CC")}']
+
+    def test_cmake_without_a_launcher_adds_nothing(self, env):
+        assert cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER') == ''
+        assert cmake_piece.launcher_definition(env, 'CXX', 'CXX_LAUNCHER') == ''
+
+    def test_cmake_launcher_is_one_list_argument(self, env):
+        env['CC_LAUNCHER'] = 'env \'CCACHE_DIR=two "quoted" words\' ccache'
+        arg = cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
+        # one shell word holding CMake's ;-list, a word's double quotes intact
+        assert _as_run(env, arg) == ['-DCMAKE_C_COMPILER_LAUNCHER=env;CCACHE_DIR=two "quoted" words;ccache']
+
+    def test_cmake_launcher_dollar_is_expanded_once(self, env):
+        env['CC_LAUNCHER'] = 'env CCACHE_DIR=$$CC ccache'
+        arg = cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
+        assert _as_run(env, arg) == ['-DCMAKE_C_COMPILER_LAUNCHER=env;CCACHE_DIR=$CC;ccache']

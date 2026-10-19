@@ -13,7 +13,7 @@ Setup.Copy.FromDirectory('launcher_native')
 t = Test.AddBuildRun('all')
 t.ReturnCode = 0
 log = t.Disk.File('launch.log', exists=True)
-log.Content = Testers.ContainsExpression(r'\[native\] .*native\.c', 'the C compile went through CC_LAUNCHER, argument and all')
+log.Content = Testers.ContainsExpression(r'\[native\] \[dir=two words\] .*native\.c', 'the C compile went through CC_LAUNCHER, env prefix and arguments whole')
 log.Content += Testers.ContainsExpression(r'native_cxx\.cpp', 'the C++ compile went through CXX_LAUNCHER')
 # MAXLINELENGTH=20 puts the whole compile in a response file; the launcher has
 # to stay on the command line in front of the compiler and its @file

@@ -15,5 +15,5 @@ Setup.Copy.FromDirectory('launcher_cmake')
 t = Test.AddBuildRun('all')
 t.ReturnCode = 0
 log = t.Disk.File('launch.log', exists=True)
-log.Content = Testers.ContainsExpression(r'\[cmake\] .*cmake_main\.c', 'the CMake C compile went through CC_LAUNCHER, argument and all')
+log.Content = Testers.ContainsExpression(r'\[cmake\] \[dir=two "quoted" words\] .*cmake_main\.c', 'the CMake C compile went through CC_LAUNCHER, env prefix and arguments whole')
 log.Content += Testers.ContainsExpression(r'\[spaced\] .*cmake_cxx\.cpp', 'the CMake C++ compile went through CXX_LAUNCHER, whose path has a space')

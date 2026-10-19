@@ -14,4 +14,4 @@ Setup.Copy.FromDirectory('launcher_automake')
 t = Test.AddBuildRun('all')
 t.ReturnCode = 0
 log = t.Disk.File('launch.log', exists=True)
-log.Content = Testers.ContainsExpression(r'\[automake\] .*automake_main\.c', 'the AutoMake compile went through CC_LAUNCHER, argument and all')
+log.Content = Testers.ContainsExpression(r'\[automake\] \[dir=two words\] .*automake_main\.c', 'the AutoMake compile went through CC_LAUNCHER, env prefix and arguments whole')
