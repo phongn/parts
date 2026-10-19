@@ -17,12 +17,15 @@ def compiler_assignment(env, var, launcher_var):
     '''The CC= or CXX= argument AutoMake passes to configure.
 
     A launcher (e.g. ccache/sccache) is folded into it, since autotools has no
-    launcher concept; CC="ccache gcc" is the standard ccache+autotools idiom
-    and configure's probes handle it. With a launcher, the launcher and the
-    compiler are expanded here, the whole argument is shell-quoted so quotes
-    in either survive, and $ is escaped so the command's own expansion leaves
-    it as it is. Without one it is exactly CC="$CC", as it always was, so
-    existing parts do not configure again.
+    launcher concept; CC="ccache gcc" is the standard ccache+autotools idiom.
+    configure splits $CC at whitespace and does not remove quotes, so no word
+    of the launcher or the compiler can contain whitespace: a quoted word with
+    a space in it fails configure's compiler probes. CMake() takes the
+    launcher as a list and has no such limit. With a launcher, the launcher
+    and the compiler are expanded here, the whole argument is shell-quoted so
+    it reaches configure as one argument, and $ is escaped so the command's
+    own expansion leaves it as it is. Without one it is exactly CC="$CC", as
+    it always was, so existing parts do not configure again.
     '''
     launcher = env.subst(f'${launcher_var}')
     if not launcher:

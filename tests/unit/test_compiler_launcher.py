@@ -127,13 +127,17 @@ class TestConfigureArguments:
         assert automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER') == 'CC="$CC"'
         assert automake_piece.compiler_assignment(env, 'CXX', 'CXX_LAUNCHER') == 'CXX="$CXX"'
 
-    def test_automake_launcher_quotes_reach_configure_whole(self, env):
+    # configure splits CC at whitespace and does not remove quotes, so the
+    # quoted words with spaces in the next two tests fail its compiler probes
+    # (see compiler_assignment). They pin only that the argument stays one
+    # shell word: quotes in it do not end it early and spill the rest into
+    # other configure arguments.
+    def test_automake_launcher_quotes_stay_in_one_argument(self, env):
         env['CC_LAUNCHER'] = 'env CCACHE_DIR="two words" ccache'
         arg = automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER')
-        # one shell word, with the launcher's own quotes intact
         assert _as_run(env, arg) == [f'CC=env CCACHE_DIR="two words" ccache {env.subst("$CC")}']
 
-    def test_automake_quotes_in_the_compiler_reach_configure_whole(self, env):
+    def test_automake_compiler_quotes_stay_in_one_argument(self, env):
         env['CC'] = "gcc -DX='a b'"
         env['CC_LAUNCHER'] = 'ccache'
         arg = automake_piece.compiler_assignment(env, 'CC', 'CC_LAUNCHER')
@@ -154,6 +158,12 @@ class TestConfigureArguments:
         arg = cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
         # one shell word holding CMake's ;-list, a word's double quotes intact
         assert _as_run(env, arg) == ['-DCMAKE_C_COMPILER_LAUNCHER=env;CCACHE_DIR=two "quoted" words;ccache']
+
+    def test_cmake_launcher_semicolon_stays_in_its_word(self, env):
+        env['CC_LAUNCHER'] = "env 'CCACHE_DIR=/cache/a;b' ccache"
+        arg = cmake_piece.launcher_definition(env, 'C', 'CC_LAUNCHER')
+        # CMake reads \; as a ; in the word, not as a list separator
+        assert _as_run(env, arg) == [r'-DCMAKE_C_COMPILER_LAUNCHER=env;CCACHE_DIR=/cache/a\;b;ccache']
 
     def test_cmake_launcher_dollar_is_expanded_once(self, env):
         env['CC_LAUNCHER'] = 'env CCACHE_DIR=$$CC ccache'

@@ -19,15 +19,17 @@ def launcher_definition(env, lang: str, launcher_var: str) -> str:
     CMAKE_<LANG>_COMPILER, so the compiler identity/version probe is
     unaffected. CMake takes it as a ;-separated list, the program and then its
     arguments. Shell-style splitting keeps a quoted path with a space in it as
-    one word, the whole argument is shell-quoted so quotes inside a word
-    survive, and $ is escaped: the launcher is expanded here, so the command's
-    own expansion must leave it as it is. Empty when no launcher is set, so the
-    configure command does not change for parts without one.
+    one word, a ; inside a word is escaped with a backslash so CMake does not
+    split the word there, the whole argument is shell-quoted so quotes inside a
+    word survive, and $ is escaped: the launcher is expanded here, so the
+    command's own expansion must leave it as it is. Empty when no launcher is
+    set, so the configure command does not change for parts without one.
     '''
     words = shlex.split(env.subst(f'${launcher_var}'))
     if not words:
         return ''
-    return shlex.quote(f'-DCMAKE_{lang}_COMPILER_LAUNCHER={";".join(words)}').replace('$', '$$')
+    launcher = ';'.join(word.replace(';', r'\;') for word in words)
+    return shlex.quote(f'-DCMAKE_{lang}_COMPILER_LAUNCHER={launcher}').replace('$', '$$')
 
 
 def configure_output(generator: str) -> str:
