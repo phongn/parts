@@ -69,7 +69,13 @@ def PackageGroup(name, parts=None) -> Tuple[str, ...]:
             else:
                 raise RuntimeError(f"{p} does not refer to a defined Part")
 
-    # We need to clear the sorted data as new items are being added
+    # Mark the sorted data stale, so the next SortPackageGroups() sorts again;
+    # the criteria functions call this with no parts for that. A re-sort does
+    # not apply a changed criterion to a file that is already sorted: the first
+    # sort records the file's groups on it and later sorts use those. It
+    # does run the PACKAGE_NODE_FILTER callbacks again. The sort does not read
+    # g_package_groups. No lock: SortPackageGroups() clears the flag
+    # before it reads its inputs, so a set that lands during a pass survives it.
     g_resort_package_data = True
 
     return tuple(x for x in result)
@@ -271,13 +277,17 @@ def _get_file_entries(node):
 
 
 def SortPackageGroups():
-    # do a quick test to see if we had installed new files since last
-    # sort. This is avoid resorting unless g_resort_package_data is set
     global g_resort_package_data
     global g_known_num_of_install_files
-    # The test is under the lock, so a caller on another thread waits for a
-    # pass in progress instead of taking the quick return and reading a cache
-    # that is still being filled.
+    # Skip the sort unless files were installed since the last one or
+    # g_resort_package_data is set. The test is under the lock, so a caller on
+    # another thread waits for a pass in progress instead of taking the quick
+    # return. A reader of _sorted_groups has to hold the lock across this call
+    # and its read, as GetPackageGroupFiles() does. A filter callback on the
+    # sorting thread gets the RLock, so its read sees the cache only as far as
+    # the pass has filled it. If the data was marked stale earlier in the pass,
+    # its read starts a nested pass instead, and a callback that marks and
+    # reads on every node recurses without end.
     with g_sort_data_lock:
         current_num = len(SCons.Tool.install._INSTALLED_FILES)
         if g_known_num_of_install_files == current_num and not g_resort_package_data:
@@ -286,9 +296,10 @@ def SortPackageGroups():
 
         # Cleared before the pass, not after: a PackageGroup() call made while we
         # are sorting has to force another sort, and clearing at the end would
-        # throw that away. A PACKAGE_NODE_FILTER callback can reach PackageGroup()
-        # on this thread, and g_sort_data_lock is an RLock, so this is not only a
-        # cross-thread concern.
+        # throw that away. A PACKAGE_GROUP_FILTER criterion or a PACKAGE_NODE_FILTER
+        # callback can call PackageGroup() on this thread mid-pass, so this is not
+        # only a cross-thread concern. A callback that does that on every pass
+        # keeps the data stale for good, so every lookup sorts again.
         g_resort_package_data = False
 
         try:
@@ -329,9 +340,11 @@ def SortPackageGroups():
                 # run the node filter on the node to add it to any extra groups
                 _filter_node(node, node_filters, metainfo)
         except BaseException:
-            # The pass did not finish, so the cache is partly filled. Leave the
-            # data marked stale, so the next call sorts again instead of taking
-            # the quick return.
+            # The pass did not finish, so the cache is partly filled. Mark the
+            # data stale again, so the next call sorts again instead of taking
+            # the quick return. BaseException, not Exception: SCons turns a
+            # SystemExit from a scanner or action into a build error and, with
+            # -k, keeps building, so later calls still read the cache.
             g_resort_package_data = True
             raise
     return

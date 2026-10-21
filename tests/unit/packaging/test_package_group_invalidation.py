@@ -1,4 +1,4 @@
-'''Tests that PackageGroup() invalidates the sorted package data.
+'''Tests for the invalidation of the sorted package data.
 
 SortPackageGroups() keeps a sorted view of which installed nodes belong to which
 package group, and skips the work when nothing has changed:
@@ -6,17 +6,19 @@ package group, and skips the work when nothing has changed:
     if g_known_num_of_install_files == current_num and not g_resort_package_data:
         return
 
-so the only thing that forces a re-sort when group membership changes without the
-installed-file count changing is g_resort_package_data. PackageGroup() set that
-name without declaring it global, which bound a local and threw it away, and the
-re-sort never happened.
+so with the installed-file count unchanged, only g_resort_package_data forces a
+re-sort. PackageGroup() set that name without declaring it global, which bound a
+local and threw it away, so the re-sort it asked for never happened.
 
-That matters most for ReplacePackageGroupCriteria / Append / Prepend: their whole
-job is to change how nodes are filtered into groups, and the PackageGroup(name)
-call at the end is their only cache invalidation.
+A re-sort does not apply a changed PACKAGE_GROUP_FILTER criterion to a file that
+is already sorted: the first sort records the file's groups on the file, and later
+sorts use those. It does run the PACKAGE_NODE_FILTER callbacks again, so a
+callback that now returns another group puts the file in it.
 
-The tests that sort run real SortPackageGroups() passes over one stand-in
-installed node, with glb.engine and the installed-file list patched.
+The tests also cover a failed pass being run again, and a caller on another
+thread waiting for a pass in progress. They run real SortPackageGroups() passes
+over one stand-in installed node, with the engine's def_env and _part_manager and
+the installed-file list patched.
 '''
 import contextlib
 import threading
@@ -28,7 +30,6 @@ import SCons.Tool.install
 
 import parts.core.util as common
 import parts.packaging as packaging
-import parts.settings as settings
 
 
 class _InstalledNode:
@@ -42,13 +43,12 @@ class _InstalledNode:
 class TestPackageGroupInvalidation(unittest.TestCase):
 
     def setUp(self):
-        # PackageGroup() substs the name through the default environment
-        self.env = settings.DefaultSettings().Environment()
         self._saved_flag = packaging.g_resort_package_data
         self._saved_known = packaging.g_known_num_of_install_files
         self._saved_groups = dict(packaging.g_package_groups)
         self._saved_sorted = tuple(dict(groups) for groups in packaging._sorted_groups)
         self.node = _InstalledNode('test_installed_file')
+        self.thread_errors = []
         # start from "everything is sorted and up to date"
         packaging.g_resort_package_data = False
         packaging.g_known_num_of_install_files = 1
@@ -82,15 +82,35 @@ class TestPackageGroupInvalidation(unittest.TestCase):
             packaging.SortPackageGroups()
         return seen == [self.node.ID]
 
+    def _thread(self, target):
+        '''A thread running target; what it raises goes to self.thread_errors.'''
+        def run():
+            try:
+                target()
+            except BaseException as e:
+                self.thread_errors.append(e)
+        return threading.Thread(target=run)
+
+    def test_up_to_date_data_is_not_sorted_again(self):
+        self.assertFalse(self._next_call_sorts())
+        # forced by the flag
+        packaging.g_resort_package_data = True
+        self.assertTrue(self._next_call_sorts())
+        self.assertFalse(self._next_call_sorts())
+        # forced by a new installed file
+        packaging.g_known_num_of_install_files = 0
+        self.assertTrue(self._next_call_sorts())
+        self.assertFalse(self._next_call_sorts())
+
     def test_adding_a_part_marks_the_sorted_data_stale(self):
         packaging.PackageGroup('test_group_with_parts', ['some_part_alias'])
-        self.assertTrue(packaging.g_resort_package_data)
+        self.assertTrue(self._next_call_sorts())
 
     def test_naming_a_group_alone_marks_the_sorted_data_stale(self):
-        # this is the form the criteria functions use: no parts, called purely to
-        # invalidate after changing a filter
+        # this is the form the criteria functions use: no parts, called mainly
+        # to invalidate after changing a filter
         packaging.PackageGroup('test_group_no_parts')
-        self.assertTrue(packaging.g_resort_package_data)
+        self.assertTrue(self._next_call_sorts())
 
     def test_the_part_is_actually_recorded(self):
         packaging.PackageGroup('test_group_records', ['part_a'])
@@ -101,33 +121,57 @@ class TestPackageGroupInvalidation(unittest.TestCase):
     def test_an_empty_name_does_not_invalidate(self):
         # PackageGroup returns early for an empty name without touching anything
         self.assertEqual(packaging.PackageGroup(''), tuple())
-        self.assertFalse(packaging.g_resort_package_data)
+        self.assertFalse(self._next_call_sorts())
+
+    def test_a_node_filter_group_added_later_is_picked_up(self):
+        # what a re-sort forced by PackageGroup() does change for a file that is
+        # already sorted: the PACKAGE_NODE_FILTER callbacks run again, so a
+        # filter that now returns another group puts the file in it
+        late_groups = []
+        packaging.g_known_num_of_install_files = 0
+        with self._installed(lambda node: late_groups):
+            self.assertEqual(packaging.GetPackageGroupFiles('test_group_default'), [self.node])
+            late_groups.append('test_group_late')
+            packaging.PackageGroup('test_group_late')
+            files = packaging.GetPackageGroupFiles('test_group_late')
+        self.assertEqual(files, [self.node])
 
     def test_invalidation_during_a_sort_survives_it(self):
         # SortPackageGroups() clears the flag before its pass rather than after,
         # so a PackageGroup() call made during the pass, here by a
         # PACKAGE_NODE_FILTER callback on the sorting thread, still forces
-        # another sort
+        # another sort, and only one
         def node_filter(node):
             packaging.PackageGroup('test_group_midsort', ['part_m'])
 
         packaging.g_resort_package_data = True
         with self._installed(node_filter):
             packaging.SortPackageGroups()
+        self.assertIn('test_group_midsort', packaging.g_package_groups)
         self.assertTrue(self._next_call_sorts())
+        self.assertFalse(self._next_call_sorts())
 
     def test_a_failed_sort_runs_again(self):
         # a callback that raises leaves the cache partly filled, so the next call
         # has to sort again, whether the flag or a new installed file forced the
         # failed sort
-        def node_filter(node):
-            raise RuntimeError('filter failed')
+        def raising(exc):
+            def node_filter(node):
+                raise exc
+            return node_filter
 
-        for forced_by, flag, known in (('flag', True, 1), ('installed file', False, 0)):
+        cases = (
+            ('flag', True, 1, RuntimeError('filter failed')),
+            ('installed file', False, 0, RuntimeError('filter failed')),
+            # SCons turns a SystemExit from a scanner or action into a build
+            # error and, with -k, keeps building
+            ('SystemExit', False, 0, SystemExit(3)),
+        )
+        for forced_by, flag, known, exc in cases:
             with self.subTest(forced_by=forced_by):
                 packaging.g_resort_package_data = flag
                 packaging.g_known_num_of_install_files = known
-                with self._installed(node_filter), self.assertRaises(RuntimeError):
+                with self._installed(raising(exc)), self.assertRaises(type(exc)):
                     packaging.SortPackageGroups()
                 self.assertTrue(self._next_call_sorts())
 
@@ -144,8 +188,8 @@ class TestPackageGroupInvalidation(unittest.TestCase):
 
         packaging.g_resort_package_data = True
         with self._installed(node_filter):
-            sorter = threading.Thread(target=packaging.SortPackageGroups)
-            caller = threading.Thread(target=packaging.SortPackageGroups)
+            sorter = self._thread(packaging.SortPackageGroups)
+            caller = self._thread(packaging.SortPackageGroups)
             try:
                 sorter.start()
                 self.assertTrue(in_pass.wait(30))
@@ -157,20 +201,9 @@ class TestPackageGroupInvalidation(unittest.TestCase):
                 sorter.join(timeout=30)
                 if caller.ident is not None:
                     caller.join(timeout=30)
+        self.assertEqual(self.thread_errors, [])
         self.assertTrue(waited)
         self.assertFalse(sorter.is_alive() or caller.is_alive())
-
-    def test_invalidation_is_visible_to_another_thread(self):
-        # the flag has to reach the module, not a frame that is about to be
-        # discarded, or a concurrent sort will not see it
-        def add():
-            packaging.PackageGroup('test_group_threaded', ['part_x'])
-
-        worker = threading.Thread(target=add)
-        worker.start()
-        worker.join(timeout=30)
-        self.assertFalse(worker.is_alive())
-        self.assertTrue(packaging.g_resort_package_data)
 
 
 if __name__ == '__main__':
